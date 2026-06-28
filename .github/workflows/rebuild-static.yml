@@ -1,0 +1,132 @@
+# Rebuild the static SEO site from the LIVE Supabase catalogue
+# ────────────────────────────────────────────────────────────────────────────
+# WHAT: runs `node site/build.js`, which now reads the plan catalogue LIVE from
+# `public.plans` over the Supabase REST API (PUBLIC anon key) and regenerates
+# every server-rendered *.html (real prices + schema.org JSON-LD baked in) plus
+# sitemap.xml / robots.txt / llms.txt / ai.txt. If anything changed, it commits
+# and pushes — and because the site is deployed from this repo via the host's
+# git integration (Netlify / Vercel), that push redeploys the static site. So an
+# owner editing prices/perks in the Supabase dashboard reaches production with
+# NO manual git push.
+#
+# Why server-render (and NOT client-side DOM price-swapping): the desktop site
+# and AI/answer-engine crawlers read the prices + JSON-LD straight from the HTML.
+# Rebuilding regenerates that HTML from the DB so the visible prices, the
+# schema.org Offer/AggregateOffer, and the window.__PLANS__ blob ALWAYS agree.
+# A client-only fetch would risk HTML/JSON-LD divergence and break the SEO rule.
+#
+# TRUTH-ONLY / NEVER-BLANK: build.js falls back to the committed
+# `site/data/plans.json` (last-known-good) if the live read fails or is empty,
+# so a DB blip can never blank the site or publish fabricated data — at worst the
+# prices are momentarily a snapshot behind, then self-heal on the next run.
+#
+# ── Triggers ────────────────────────────────────────────────────────────────
+#  (a) schedule — every 30 min: near-real-time refresh with no human in the loop.
+#  (b) workflow_dispatch — a manual "Run workflow" button (Actions tab).
+#  (c) repository_dispatch (event type: catalogue-updated) — an INSTANT rebuild
+#      the moment the DB changes, fired by a Supabase Database Webhook (below).
+#
+# ── INSTANT path: wire a Supabase DB webhook → repository_dispatch (owner) ────
+# Do this ONCE so a price edit triggers a rebuild within seconds (no 30-min wait):
+#
+#  1. Create a GitHub token with permission to dispatch repo events:
+#       • Fine-grained PAT (recommended): repo = nitukbeclick-code/Switchy,
+#         Repository permissions → Contents: Read and write
+#         (this also covers the `repository_dispatch` REST call). OR a classic
+#         token with the `repo` scope.
+#       • Treat it as a SECRET — it lives ONLY in Supabase, never in this repo.
+#  2. Supabase dashboard → Database → Webhooks → Create a new hook on
+#     `public.plans` for INSERT / UPDATE / DELETE, type "HTTP Request":
+#       • Method: POST
+#       • URL:    https://api.github.com/repos/nitukbeclick-code/Switchy/dispatches
+#       • Headers:
+#           Authorization: Bearer <THE_GITHUB_TOKEN_FROM_STEP_1>
+#           Accept:        application/vnd.github+json
+#           User-Agent:    supabase-plans-webhook
+#           Content-Type:  application/json
+#       • Body (raw JSON):
+#           {"event_type":"catalogue-updated"}
+#     (Optionally debounce with a short DB trigger/queue if you bulk-edit, to
+#      avoid one dispatch per row — the 30-min schedule is the safety net either
+#      way.)
+#
+# NOTE ON SECRETS: the catalogue read uses only the PUBLIC anon/publishable key,
+# which is already shipped in the static HTML — so build.js needs NO secret. The
+# only secret involved is the GitHub token, and it is held by Supabase, not here.
+# The push back to this repo uses the built-in GITHUB_TOKEN (contents: write).
+
+name: Rebuild static site
+
+on:
+  schedule:
+    # Every 30 minutes — near-real-time without any manual push.
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+  repository_dispatch:
+    types: [catalogue-updated]
+
+concurrency:
+  # Never let two rebuilds race on the same branch; let the running one finish so
+  # we don't push half-generated output.
+  group: rebuild-static
+  cancel-in-progress: false
+
+permissions:
+  # Needed to push the regenerated *.html back to the repo (which redeploys it).
+  contents: write
+
+env:
+  # Public, RLS-gated catalogue read target. The anon key is NOT here on purpose:
+  # build.js already carries the public anon key as a safe default, and the URL
+  # defaults to the known project ref — so the live read works out of the box.
+  # To point at a different project, set NEXT_PUBLIC_SUPABASE_URL (a repo
+  # Variable is fine; it is public) without editing build.js.
+  NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://orzitfqmlvopujsoyigr.supabase.co' }}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Rebuild static site from the live catalogue
+        # build.js has no dependencies (and no package.json), so there is nothing
+        # to install — just run it. It prints whether it used the LIVE DB or fell
+        # back to the bundled snapshot. A failed/empty live read is NOT fatal:
+        # the build still succeeds on the last-known-good bundled data.
+        run: node site/build.js
+
+      - name: Commit & push regenerated output (redeploys the site)
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Only the build OUTPUTS — never re-commit source. (build.js itself is
+          # unchanged by a run; staging just the generated artefacts keeps the
+          # commit honest and the diff reviewable.)
+          git add site/*.html site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
+
+          if git diff --cached --quiet; then
+            echo "No catalogue changes — nothing to redeploy."
+            exit 0
+          fi
+
+          # Identify what fired this run for an honest commit trail.
+          trigger="${{ github.event_name }}"
+          git commit -m "chore(site): rebuild static SEO pages from live catalogue [skip ci]
+
+          Regenerated from public.plans via build.js (trigger: ${trigger}).
+          Prices + schema.org JSON-LD are server-rendered into the HTML.
+
+          Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+
+          # Push to the branch this workflow ran on (main on schedule). The host's
+          # git integration (Netlify/Vercel) picks up the push and redeploys.
+          git push origin "HEAD:${{ github.ref_name }}"

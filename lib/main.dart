@@ -8,6 +8,7 @@ import 'app_state.dart';
 import 'app.dart';
 import 'router.dart';
 import 'services/auth_service.dart';
+import 'services/catalogue_sync.dart';
 import 'services/meeting_sync.dart';
 import 'services/push_notification_service.dart';
 import 'services/secure_session_store.dart';
@@ -49,6 +50,11 @@ void main() async {
   // App-scope meeting sync: a rep confirmation must land (status + Zoom link +
   // push reminders) no matter which screen is open. Fire-and-forget.
   MeetingSync.start();
+  // App-scope live catalogue: refresh allPlans from public.plans so owner edits
+  // (price / benefits / fine-print) reach the running app without an App Store
+  // release, with the compiled snapshot as the cold-start / fallback value.
+  // Fire-and-forget — the compiled catalogue already renders meanwhile.
+  CatalogueSync.start();
 }
 
 /// True once `runApp` has been called — used to suppress navigation on the

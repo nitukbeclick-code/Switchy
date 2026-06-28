@@ -3,12 +3,13 @@
 //
 // This is the thin server route behind the /quiz wizard. It validates the five
 // quiz inputs (category / budget / priority / lines / abroad), builds a
-// MatchProfile, and ranks the bundled catalogue's plans through THE shared,
-// provider-neutral formula in lib/recommend.ts — the SAME formula the WhatsApp
-// bot, the edge agent (_shared/scoring.ts), and the Flutter app use, so the
-// rankings match across every surface. It returns the top matches with their
-// score, annual saving (only when a real bill is given), and Hebrew
-// reasons/caveats.
+// MatchProfile, and ranks the LIVE catalogue's plans (read from public.plans via
+// getLivePlans, with the bundled snapshot as a resilient fallback) through THE
+// shared, provider-neutral formula in lib/recommend.ts — the SAME formula the
+// WhatsApp bot, the edge agent (_shared/scoring.ts), and the Flutter app use, so
+// the rankings match across every surface AND the prices match /compare + the
+// plan-detail pages. It returns the top matches with their score, annual saving
+// (only when a real bill is given), and Hebrew reasons/caveats.
 //
 // E-E-A-T / HONESTY:
 //   • Every plan returned is a REAL catalogue row (id/provider/plan/price/…),
@@ -25,6 +26,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { getPlans } from "@/lib/data";
+import { getLivePlans } from "@/lib/live-catalogue";
 import {
   rankPlans,
   priorityFromId,
@@ -38,8 +40,8 @@ import type { Plan } from "@/lib/types";
 import type { RecommendMatch } from "@/app/quiz/types";
 
 export const runtime = "nodejs";
-// Catalogue is bundled + immutable at build time, so the ranking for a given body
-// is pure. Keep it dynamic (per-request body) but cache-free.
+// Ranking depends on the per-request body AND the live catalogue read, so keep it
+// dynamic (per-request) and cache-free — each call sees the current DB prices.
 export const dynamic = "force-dynamic";
 
 // ── Origin allow-list (mirrors /api/lead + /api/rights) ──────────────────────
@@ -145,7 +147,13 @@ export async function POST(req: Request) {
   };
 
   // ── Rank REAL catalogue plans through the shared, provider-neutral formula ──
-  const plans = getPlans() as ScorablePlan[];
+  // Read the LIVE DB catalogue (scoped to the quiz category) so the quiz ranks the
+  // SAME fresh prices /compare and the plan-detail pages show. getLivePlans never
+  // throws — on any failure it returns the bundled snapshot (stale) — and we add a
+  // belt-and-braces bundled fallback if the live list comes back empty for the
+  // category, so the quiz can never return zero matches from a transient read.
+  const { plans: live } = await getLivePlans({ category });
+  const plans = (live.length ? live : getPlans()) as ScorablePlan[];
   const ranked = rankPlans(plans, profile, { limit });
 
   const matches: RecommendMatch[] = ranked.map((m) => {

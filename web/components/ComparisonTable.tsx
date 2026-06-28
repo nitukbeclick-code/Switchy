@@ -265,7 +265,9 @@ export default function ComparisonTable({
             <li
               key={plan.id}
               className={[
-                "rounded-2xl border bg-surface p-4 elevate-card",
+                // overflow-hidden + the break-words on text below keep long
+                // benefit lists / fine-print from blowing out the card width (RTL-safe).
+                "overflow-hidden rounded-2xl border bg-surface p-4 elevate-card",
                 label
                   ? "border-accent/30 bg-accent/[0.06] ring-1 ring-inset ring-accent/25"
                   : "border-border/60",
@@ -276,7 +278,9 @@ export default function ComparisonTable({
               {/* Header: provider badge + name, optional editorial label. */}
               <div className="flex flex-wrap items-center gap-2">
                 <ProviderLogo provider={plan.provider} />
-                <span className="font-medium text-foreground">{plan.provider}</span>
+                <span className="min-w-0 break-words font-medium text-foreground">
+                  {plan.provider}
+                </span>
                 {label ? <FeatureBadges label={label} /> : null}
               </div>
 
@@ -312,9 +316,10 @@ export default function ComparisonTable({
                 </div>
               ) : null}
 
-              {/* Perks line ("מידע נוסף"). */}
+              {/* Perks line ("מידע נוסף"). break-words so a long benefit list wraps
+                  inside the card instead of forcing horizontal overflow. */}
               {d.perks.length > 0 ? (
-                <p className="mt-3 text-[13px] leading-relaxed text-muted">
+                <p className="mt-3 break-words text-[13px] leading-relaxed text-muted">
                   {d.perks.join(" · ")}
                 </p>
               ) : null}
@@ -335,7 +340,9 @@ export default function ComparisonTable({
                   </summary>
                   <ul className="mt-2 list-disc space-y-1 ps-5 text-[13px] leading-relaxed text-foreground">
                     {extraFineLines(d).map((line, i) => (
-                      <li key={i}>{line}</li>
+                      <li key={i} className="break-words">
+                        {line}
+                      </li>
                     ))}
                   </ul>
                 </details>
@@ -484,9 +491,11 @@ export default function ComparisonTable({
                     );
                   })}
 
-                  {/* מידע נוסף (perks) — only when the column exists. */}
+                  {/* מידע נוסף (perks) — only when the column exists. Capped width +
+                      break-words so a long benefit list wraps within the cell rather
+                      than stretching the whole table. */}
                   {hasPerksColumn ? (
-                    <td className="px-4 py-3 text-start text-[13px] text-muted">
+                    <td className="max-w-[20rem] break-words px-4 py-3 text-start text-[13px] text-muted">
                       {d.perks.length > 0 ? d.perks.join(" · ") : "—"}
                     </td>
                   ) : null}

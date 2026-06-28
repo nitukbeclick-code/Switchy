@@ -8,6 +8,7 @@ import SiteFooter from "@/components/SiteFooter";
 import ConsentBanner from "@/components/ConsentBanner";
 import AiConcierge from "@/components/AiConcierge";
 import PwaInstaller from "@/components/PwaInstaller";
+import CatalogueLiveRefresh from "@/components/CatalogueLiveRefresh";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
@@ -194,6 +195,16 @@ export default function RootLayout({
             the real catalogue; offers consented lead capture (§7b disclosure +
             mandatory consent) when a switch/contact intent is detected. */}
         <AiConcierge />
+
+        {/* Realtime catalogue freshness ON TOP of the server-rendered ISR HTML.
+            A SINGLE Supabase Realtime channel (site-wide) listens for owner edits
+            to public.plans and debounces a router.refresh so the catalogue
+            surfaces (compare / category / plan-detail) re-pull fresh DB prices
+            without a reload. Fail-soft (no env / no realtime ⇒ no-op, no errors)
+            and SEO-safe — the server HTML already carries the real prices + JSON-LD;
+            this only freshens for live users. Renders only a subtle "מתעדכן…" pill
+            while a refresh is in flight. */}
+        <CatalogueLiveRefresh />
       </body>
     </html>
   );

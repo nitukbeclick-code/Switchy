@@ -15,7 +15,7 @@
 | שדה / Field | ערך / Value |
 |-------------|-------------|
 | שם המאגר / Database name | Switch AI (חוסך) — לקוחות, פניות ושיווק / customers, leads & marketing |
-| בעל המאגר / Holder | `[[OWNER: registered legal entity]]`, ח.פ `[[OWNER: company number]]` |
+| בעל המאגר / Holder | אריאל תקשורת, עוסק מורשה 322253618, ליאו בק 64, נהריה |
 | מנהל המאגר / Database manager | `[[OWNER: name]]` (typically the owner/founder) |
 | מחזיק/מעבד / Processor of record | Supabase Inc. (managed Postgres) — see [`PROCESSOR_REGISTER.md`](./PROCESSOR_REGISTER.md) |
 | ממונה הגנת פרטיות / DPO | `[[OWNER: name + contact]]` — see [`DPO_CHARTER.md`](./DPO_CHARTER.md) |

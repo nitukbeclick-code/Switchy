@@ -1,14 +1,25 @@
 // Exports the app's plan catalogue.
 //
+// ⚠️ public.plans IS DB-AUTHORITATIVE — DO NOT CLOBBER OWNER EDITS. ⚠️
+//   The owner curates public.plans directly in the Supabase dashboard (prices,
+//   feats, fine_lines, notes, terms, specs, fees, highlight, rating, …) and the
+//   site/app/bot read those live. This export must therefore NEVER overwrite an
+//   existing plan row — it only INSERTS rows for ids the DB doesn't have yet
+//   (insert-only via on_conflict=id + resolution=ignore-duplicates). A re-run on
+//   an existing id is a no-op server-side, so a dashboard edit always survives.
+//   If you ever need to refresh a structural field on existing rows, do it with a
+//   targeted, column-scoped UPDATE — never widen this back to merge-duplicates.
+//
 // Two actions, both driven by the flutter test runner (the data layer pulls in
 // Flutter, so we run under `flutter test` rather than `dart run`):
 //
 //   1. JSON export → site/data/plans.json (the static site renders the real
 //      plans from this file). Always runs.
-//   2. UPSERT → public.plans (so the WhatsApp bot, which grounds on the live
-//      table, regains the post-promo price + flags). Only runs when both
-//      SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are present in the environment
-//      — otherwise it's skipped (so CI / a plain `flutter test` stays offline).
+//   2. INSERT-ONLY upsert → public.plans (seeds NEW plan ids the dashboard
+//      doesn't carry yet; existing ids are left untouched so owner edits stand).
+//      Only runs when both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are present
+//      in the environment — otherwise skipped (so CI / a plain `flutter test`
+//      stays offline).
 //
 // Run from the repo root:
 //   flutter test tool/export_plans.dart                      # JSON only
@@ -85,11 +96,15 @@ void main() {
   });
 }
 
-/// Maps every plan in [allPlans] into the `public.plans` row shape and UPSERTs
-/// them via the Supabase REST API (service role, on_conflict=id, merge so a
-/// re-run refreshes rows rather than failing on the PK). Column mapping mirrors
-/// what _shared/catalogue.ts plansFromRows() now reads (the explicit flags +
-/// post-promo price). Returns the number of rows sent.
+/// Maps every plan in [allPlans] into the `public.plans` row shape and INSERTs
+/// the ones the DB doesn't have yet via the Supabase REST API (service role,
+/// on_conflict=id, resolution=ignore-duplicates). public.plans is DB-authoritative
+/// (owner-curated in the dashboard), so on an id conflict we DO NOTHING — the
+/// existing row (and any owner edit to price/feats/fine_lines/notes/terms/specs/
+/// fees/highlight/rating/…) is preserved. Column mapping mirrors what
+/// _shared/catalogue.ts plansFromRows() reads (the structural identity + flags).
+/// Returns the number of rows sent (not necessarily the number inserted — the
+/// server silently skips existing ids).
 ///
 /// Secrets come from the caller (env) — never hardcode them here.
 Future<int> upsertPlansToSupabase(String url, String key) async {
@@ -103,8 +118,9 @@ Future<int> upsertPlansToSupabase(String url, String key) async {
     req.headers.set('Content-Type', 'application/json');
     req.headers.set('apikey', key);
     req.headers.set('Authorization', 'Bearer $key');
-    // merge-duplicates = UPSERT on the id conflict target; minimal = no body back.
-    req.headers.set('Prefer', 'resolution=merge-duplicates,return=minimal');
+    // ignore-duplicates = INSERT-ONLY on the id conflict target (DO NOTHING on an
+    // existing id) so owner dashboard edits are NEVER clobbered; minimal = no body.
+    req.headers.set('Prefer', 'resolution=ignore-duplicates,return=minimal');
     req.add(utf8.encode(jsonEncode(rows)));
     final resp = await req.close();
     final body = await resp.transform(utf8.decoder).join();

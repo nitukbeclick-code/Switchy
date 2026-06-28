@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 class Category {
@@ -116,6 +118,156 @@ class Plan {
 
   /// When this data was last verified (ISO date string).
   final String? updatedAt;
+
+  // ── public.plans row → Plan (live catalogue) ────────────────────────────────
+  //
+  // Parses ONE row from the live `public.plans` table (snake_case columns) into
+  // this Dart model — the typed mirror of web/lib/live-catalogue.ts normalizeRow.
+  // Used by SupabaseBackend.fetchCatalogue so the app shows owner-edited prices /
+  // benefits / fine-print without an App Store release, with the compiled const
+  // catalogue as the last-known-good fallback.
+  //
+  // Column map (DB → Dart): category→cat, title→plan, price_exact→priceExact,
+  // after/after_exact→after/afterExact, is_5g/no_commit/has_abroad→flags,
+  // price_unit→priceUnit, kind, specs/fees jsonb, terms text, and the AGREED
+  // SCHEMA CONTRACT owner-editable columns feats (jsonb string[]), fine_lines
+  // (jsonb string[]) and notes (text).
+  //
+  // TRUTH-ONLY: every field reads ONLY what the row actually holds. A missing /
+  // malformed cell is OMITTED (left at its default), never fabricated — callers
+  // overlay the bundled snapshot by id to fill qualitative gaps. Returns null for
+  // a row missing the load-bearing fields (id/provider/title/price) so a single
+  // bad row can't poison the catalogue.
+  static Plan? fromJson(Map<String, dynamic> r) {
+    final id = r['id'];
+    final provider = r['provider'];
+    final title = r['title'];
+    final cat = r['category'];
+    if (id is! String || id.isEmpty) return null;
+    if (provider is! String || provider.isEmpty) return null;
+    if (title is! String || title.isEmpty) return null;
+    if (cat is! String || cat.isEmpty) return null;
+
+    // Prefer the exact price columns (₪69.90) over the rounded headline, exactly
+    // like the bundled catalogue, which carries both price and priceExact.
+    final priceExactRaw = _numOrNull(r['price_exact']);
+    final priceRaw = priceExactRaw ?? _numOrNull(r['price']);
+    if (priceRaw == null) return null;
+
+    final afterExactRaw = _numOrNull(r['after_exact']);
+    final afterRaw = _numOrNull(r['after']);
+
+    // Reconstruct the flags list the app filters on from the explicit boolean
+    // columns (the Plan model derives is5G/noCommit/hasAbroad from `flags`).
+    final is5g = r['is_5g'] == true;
+    final noCommit = r['no_commit'] == true;
+    final hasAbroad = r['has_abroad'] == true;
+    final flags = <String>[
+      if (is5g) '5g',
+      if (noCommit) 'nocommit',
+      if (hasAbroad) 'abroad',
+    ];
+
+    final priceUnit = r['price_unit'];
+    final kind = r['kind'];
+    final terms = r['terms'];
+    final notes = r['notes'];
+
+    return Plan(
+      id: id,
+      cat: cat,
+      provider: provider,
+      // public.plans has no `net` column; derive a sensible token from the
+      // explicit 5G flag (cellular) so netLabel renders. The bundled snapshot
+      // overlay (by id) restores the precise net for known plans.
+      net: is5g ? '5g' : '',
+      plan: title,
+      price: priceRaw.round(),
+      priceExact: _fractionalOrNull(priceExactRaw),
+      after: afterRaw?.round(),
+      afterExact: _fractionalOrNull(afterExactRaw),
+      // Commitment months: noCommit ⇒ 0 so commitmentLabel reads "ללא התחייבות".
+      term: noCommit ? 0 : null,
+      flags: flags,
+      feats: _strList(r['feats']),
+      kind: (kind is String && kind.isNotEmpty) ? kind : 'regular',
+      priceUnit: (priceUnit is String && priceUnit.isNotEmpty) ? priceUnit : null,
+      specs: _strMap(r['specs']),
+      fineLines: _strList(r['fine_lines']),
+      fees: _strMap(r['fees']),
+      terms: _strList(terms),
+      notes: (notes is String && notes.trim().isNotEmpty) ? notes.trim() : null,
+      updatedAt: r['updated_at'] as String?,
+    );
+  }
+
+  /// Coerce a possibly-string numeric (PostgREST hands numerics back as strings
+  /// for `numeric` columns) to a finite double, or null.
+  static double? _numOrNull(Object? v) {
+    if (v == null) return null;
+    if (v is num) return v.isFinite ? v.toDouble() : null;
+    if (v is String) {
+      final n = double.tryParse(v.trim());
+      return (n != null && n.isFinite) ? n : null;
+    }
+    return null;
+  }
+
+  /// Keep an exact price only when it isn't a whole shekel — matches how the
+  /// bundled catalogue stores priceExact (null when the price is whole).
+  static double? _fractionalOrNull(double? v) {
+    if (v == null) return null;
+    return v == v.roundToDouble() ? null : v;
+  }
+
+  /// A clean `List<String>` from a jsonb array (or a single string / stringified
+  /// array), trimmed + non-empty. Empty/malformed → const [] (the bundled
+  /// snapshot overlay fills the gap by id). Mirrors live-catalogue.ts strArray.
+  static List<String> _strList(Object? v) {
+    Object? value = v;
+    if (value is String) {
+      final t = value.trim();
+      if (t.isEmpty) return const [];
+      if (t.startsWith('[')) {
+        try {
+          value = jsonDecode(t);
+        } catch (_) {
+          return const [];
+        }
+      } else {
+        return [t];
+      }
+    }
+    if (value is! List) return const [];
+    final out = <String>[
+      for (final x in value)
+        if (x is String && x.trim().isNotEmpty) x.trim(),
+    ];
+    return out;
+  }
+
+  /// A clean `Map<String, String>` from a jsonb object (or stringified object),
+  /// dropping null/empty values. Empty/malformed → const {} (truth-only).
+  static Map<String, String> _strMap(Object? v) {
+    Object? value = v;
+    if (value is String) {
+      final t = value.trim();
+      if (t.isEmpty || !t.startsWith('{')) return const {};
+      try {
+        value = jsonDecode(t);
+      } catch (_) {
+        return const {};
+      }
+    }
+    if (value is! Map) return const {};
+    final out = <String, String>{};
+    value.forEach((k, val) {
+      if (k == null) return;
+      final s = val?.toString().trim();
+      if (s != null && s.isNotEmpty) out[k.toString()] = s;
+    });
+    return out;
+  }
 
   bool get hasPromo => after != null && after! > price;
   bool get noCommit => term == null || term == 0;

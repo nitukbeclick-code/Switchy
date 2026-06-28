@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models.dart';
+import 'services/backend/backend.dart';
 import 'theme/app_theme.dart';
 import 'data/plans_cellular.dart';
 import 'data/plans_internet.dart';
@@ -59,14 +60,86 @@ const List<Plan> abroadPlans = [
   Plan(id: 'ab_019_world', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: '2GB גלישה חודשי', price: 19, priceUnit: 'month', rating: 3.8, reviews: 0, flags: ['nocommit'], feats: ['2GB גלישה', '60 דקות שיחות', '80+ מדינות', 'ניתן לביטול חודשי']),
 ];
 
-final List<Plan> allPlans = [
+/// The COMPILED catalogue baked into the binary — the immutable union of the
+/// real provider data (cellular / internet / TV / triple) plus the curated
+/// abroad + electricity seeds. This is the offline / cold-start value AND the
+/// last-known-good fallback: [allPlans] starts equal to this and is refreshed
+/// from the live `public.plans` table by [hydrateCatalogue]. Never mutated.
+final List<Plan> compiledPlans = List<Plan>.unmodifiable([
   ...cellularPlans,
   ...internetPlans,
   ...tvPlans,
   ...triplePlans,
   ...abroadPlans,
   ...electricityPlans,
-];
+]);
+
+/// The live plan catalogue the whole app reads (DealsEngine, filters, plan
+/// detail, search, ratings…). Seeded with [compiledPlans] so EVERY surface
+/// renders real data immediately at cold start (never blank), then refreshed
+/// in place by [hydrateCatalogue] from the live DB. Mutable-by-reassignment of
+/// its *contents* (see [hydrateCatalogue]); consumers hold the same list
+/// instance, so a refresh is visible without re-importing.
+///
+/// Kept as a single growable list (not reassigned) so the reference stays
+/// stable for any caller that captured it; [hydrateCatalogue] replaces the
+/// CONTENTS in place (clear + addAll), never the list instance.
+final List<Plan> allPlans = [...compiledPlans];
+
+/// Whether the live catalogue has been hydrated at least once this run. Lets a
+/// caller decide whether to await [hydrateCatalogue] or render the compiled
+/// snapshot immediately (it always renders the compiled snapshot meanwhile).
+bool catalogueHydrated = false;
+
+/// Refresh [allPlans] from the live `public.plans` catalogue via [backend],
+/// keeping the compiled snapshot as the immediate value + last-known-good
+/// fallback. Truth-only + never-blank by construction:
+///
+///  * On a successful, NON-EMPTY live read we MERGE the live rows over the
+///    compiled catalogue by id — live rows win (fresh price / benefits / fine
+///    print), compiled-only plans (an id the binary knows but the DB hasn't
+///    surfaced) are KEPT, and live-only plans (a brand-new id the DB added)
+///    are APPENDED. So no plan is ever DROPPED just because its id is unknown
+///    to the compiled binary, and the user never sees fewer plans than shipped.
+///  * On ANY error or an empty read we leave [allPlans] untouched — it stays at
+///    the last-known-good (compiled at cold start, or the previous live read).
+///
+/// Idempotent + safe to call repeatedly (e.g. on a realtime change). Returns
+/// true when a live snapshot was applied, false when the compiled fallback was
+/// kept.
+Future<bool> hydrateCatalogue(Backend backend) async {
+  try {
+    final live = await backend.fetchCatalogue();
+    if (live.isEmpty) return false; // keep last-known-good; never blank
+
+    // Merge: live wins by id; compiled-only plans survive; live-only appended.
+    // Preserve the compiled order first (stable UI), then append new live ids.
+    final liveById = {for (final p in live) p.id: p};
+    final merged = <Plan>[];
+    final usedLiveIds = <String>{};
+    for (final base in compiledPlans) {
+      final hit = liveById[base.id];
+      if (hit != null) {
+        merged.add(hit);
+        usedLiveIds.add(base.id);
+      } else {
+        merged.add(base); // compiled-only — never dropped
+      }
+    }
+    for (final p in live) {
+      if (!usedLiveIds.contains(p.id)) merged.add(p); // live-only — appended
+    }
+
+    allPlans
+      ..clear()
+      ..addAll(merged);
+    catalogueHydrated = true;
+    return true;
+  } catch (_) {
+    // Transport / parse / RLS failure → keep the last-known-good catalogue.
+    return false;
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

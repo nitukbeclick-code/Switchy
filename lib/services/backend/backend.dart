@@ -892,6 +892,26 @@ abstract interface class Backend {
   /// advisor widget treats as "fall back to local".
   Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body);
 
+  // ── Live catalogue (public.plans) ────────────────────────────────────────────
+  /// The CURRENT plan catalogue from the live `public.plans` table, normalised to
+  /// the [Plan] model. Lets the app show owner-edited prices / benefits /
+  /// fine-print WITHOUT an App Store release. [SupabaseBackend] reads the table
+  /// with the anon client (publicly-readable, anon-SELECT only) and overlays the
+  /// bundled qualitative fields (feats / fineLines / notes) by id; [LocalBackend]
+  /// returns the compiled const catalogue (the offline / cold-start last-known-
+  /// good). On a transport / RLS / empty-rows failure the Supabase implementation
+  /// returns an empty list so the caller keeps the last-known-good snapshot
+  /// (never blank, never fabricated).
+  Future<List<Plan>> fetchCatalogue();
+
+  /// Emits void whenever `public.plans` changes (the owner edited a price /
+  /// benefit / fine-print row). [LocalBackend] returns an empty stream (the
+  /// compiled catalogue is static offline); [SupabaseBackend] opens a Realtime
+  /// channel — added to the supabase_realtime publication with REPLICA IDENTITY
+  /// FULL — so the catalogue refreshes live, with the [RealtimePoller] heartbeat
+  /// as the polling fallback.
+  Stream<void> catalogueChanges();
+
   // ── Real-time deals (plan_price_history) ─────────────────────────────────────
   /// The most-recent price snapshots from `plan_price_history`, newest-first,
   /// capped at [limit]. The deals feed diffs consecutive snapshots per plan to

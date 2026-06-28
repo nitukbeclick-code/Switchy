@@ -14,8 +14,9 @@
 - **מותג / Brand:** Switch AI (חוסך)
 - **אתר קנוני / Canonical site:** https://app.switchy-ai.com
 - **יצירת קשר / Contact:** hello@chosech.co.il · WhatsApp 050-503-7537
-- **ישות משפטית רשומה / Registered legal entity:** `[[OWNER: legal entity name]]`
-- **ח.פ / מ.ע / Company no.:** `[[OWNER: company/registration number]]`
+- **ישות משפטית רשומה / Registered legal entity:** אריאל תקשורת
+- **עוסק מורשה / ע.מ / Business reg. no.:** 322253618
+- **כתובת רשומה / Registered address:** ליאו בק 64, נהריה
 - **ממונה על הגנת הפרטיות / DPO:** `[[OWNER: name + contact]]` — see
   [`DPO_CHARTER.md`](./DPO_CHARTER.md)
 

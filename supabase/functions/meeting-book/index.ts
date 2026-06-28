@@ -32,7 +32,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { resolveCfgCached } from "../_shared/config.ts";
 import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
-import { fetchRows, insertRow, patchCount } from "../_shared/db.ts";
+import { fetchRows, insertRow, patchCount, rpcRows } from "../_shared/db.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
 import { buildOtpEmailHtml } from "../_shared/meetings.ts";
 import { jlog } from "../_shared/log.ts";
@@ -40,7 +40,6 @@ import { captureError } from "../_shared/observability.ts";
 import {
   canonicalizeEmail,
   DEFAULT_OTP_RATE_LIMITS,
-  evaluateOtpRateLimit,
   evaluateOtpVerify,
   genCode,
   hashCode,
@@ -151,26 +150,6 @@ async function unconsumedOtps(email: string): Promise<OtpRow[]> {
   return rows ?? [];
 }
 
-// Recent SEND timestamps (epoch ms) for a column=value within the last
-// `sinceMs`, newest-first and capped, feeding the DURABLE OTP rate-limit. Every
-// row here is a code that was actually emailed, so this count is shared across
-// all Edge isolates (unlike the in-memory limiter). Returns [] on any query
-// failure — fail-soft, with the in-memory limiter remaining the floor.
-async function recentOtpTimestamps(
-  col: "email" | "email_canon" | "ip",
-  value: string,
-  sinceMs: number,
-  cap: number,
-): Promise<number[]> {
-  if (!value) return [];
-  const sinceIso = new Date(Date.now() - sinceMs).toISOString();
-  const q = `/rest/v1/meeting_email_otps?select=created_at&${col}=eq.${encodeURIComponent(value)}` +
-    `&created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.desc&limit=${cap}`;
-  const rows = await fetchRows<{ created_at: string }>(q);
-  if (!rows) return [];
-  return rows.map((r) => Date.parse(r.created_at)).filter((n) => Number.isFinite(n));
-}
-
 // ── request-code ──────────────────────────────────────────────────────────────
 async function handleRequestCode(body: Record<string, unknown>, ip: string, origin: string | null): Promise<Response> {
   const email = normalizeEmail(body.email);
@@ -196,37 +175,55 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
     return json({ ok: true }, 200, origin); // generic — don't leak the throttle
   }
 
-  // DURABLE rate limit (AUTHORITATIVE; shared across all isolates via Postgres).
-  // Pull this address's send history (24h) and this IP's (1h) from the OTP table
-  // and let the pure evaluator decide. Denied → generic { ok:true } with NO email
-  // and NO insert, so a flood costs neither a send nor a row. cap=40 > every
-  // configured max, so the windowed counts are exact. fetchRows failure → [] →
-  // fail-soft (the in-memory pre-filter above stays the floor). The per-address
-  // count keys on email_canon so all aliases of one mailbox share a single bucket.
+  // DURABLE rate limit (AUTHORITATIVE; shared across all isolates via Postgres),
+  // now ATOMIC. meeting_otp_try_send takes a per-mailbox advisory lock keyed on
+  // the CANONICAL address, RE-COUNTS the send history inside that lock, and inserts
+  // the new OTP row ONLY if still under every cap — all in one serialized DB call.
+  // This closes the read-then-insert TOCTOU: concurrent request-code calls for one
+  // mailbox can no longer each read an under-limit count and both insert/send.
+  //
+  // Returns:
+  //   true  → the row was inserted; SEND the mail (do NOT insertRow again).
+  //   false → a limit was hit; outcome-blind { ok:true } with NO send, NO insert.
+  //   null  → the RPC failed (no env / DB error). FAIL-SOFT-ALLOW: send ONE code so
+  //           a transient DB blip can't lock out a legitimate visitor. The in-memory
+  //           per-address pre-filter above is the floor in that degraded mode.
+  //
+  // All windows are passed in SECONDS (the RPC's integer-clean wire format),
+  // converted from DEFAULT_OTP_RATE_LIMITS' milliseconds here.
   const L = DEFAULT_OTP_RATE_LIMITS;
-  const emailTimestamps = await recentOtpTimestamps("email_canon", emailCanon, L.emailDayMs, 40);
-  const ipTimestamps = ip ? await recentOtpTimestamps("ip", ip, L.ipWindowMs, 40) : [];
-  const decision = evaluateOtpRateLimit({ now: Date.now(), emailTimestamps, ipTimestamps });
-  if (!decision.allowed) {
-    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", durable: true, reason: decision.reason, email_fp: canonFp });
+  const code = genCode();
+  const codeHash = await hashCode(code);
+  const rpc = await rpcRows<boolean>("meeting_otp_try_send", {
+    p_email: email,
+    p_email_canon: emailCanon,
+    p_ip: ip || null,
+    p_code_hash: codeHash,
+    p_ttl_seconds: Math.round(OTP_TTL_MS / 1000),
+    p_cooldown_seconds: Math.round(L.cooldownMs / 1000),
+    p_email_window_seconds: Math.round(L.emailWindowMs / 1000),
+    p_email_max: L.emailMax,
+    p_email_day_max: L.emailDayMax,
+    p_ip_window_seconds: Math.round(L.ipWindowMs / 1000),
+    p_ip_max: L.ipMax,
+  });
+  // rpcRows returns the scalar boolean wrapped in an array (PostgREST RPC shape);
+  // null = the call itself failed. Distinguish "denied" (false) from "errored" (null).
+  const allowed = rpc === null ? null : rpc[0] === true;
+
+  if (allowed === false) {
+    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", durable: true, atomic: true, email_fp: canonFp });
     return json({ ok: true }, 200, origin); // outcome-blind — never leak the throttle
   }
 
-  const code = genCode();
-  const codeHash = await hashCode(code);
-  // `email` stores the ORIGINAL normalized address (we send the code there);
-  // `email_canon` stores the alias-collapsed key the durable per-address count
-  // reads, so all aliases of one mailbox share a single rate-limit bucket.
-  const inserted = await insertRow("meeting_email_otps", {
-    email,
-    email_canon: emailCanon,
-    code_hash: codeHash,
-    expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
-    ip: ip || null,
-  });
+  // allowed === true  → the RPC already inserted the row; we only send.
+  // allowed === null  → fail-soft-allow: the RPC errored, so the row was NOT
+  //                     inserted; send once anyway (the in-memory floor still held).
+  const inserted = allowed === true;
 
-  // Send the code email — fully fail-soft and outcome-blind to the caller.
-  if (inserted) {
+  // Send the code email — fully fail-soft and outcome-blind to the caller. Sent on
+  // a real allow (row inserted) AND on the fail-soft-allow path (RPC errored).
+  if (allowed === true || allowed === null) {
     try {
       const cfg = await resolveCfgCached();
       await sendCustomerEmail(

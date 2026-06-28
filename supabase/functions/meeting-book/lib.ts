@@ -67,6 +67,41 @@ export function isValidEmail(s: unknown): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
+// Canonicalize an email for RATE-LIMIT KEYING ONLY (never for sending — we still
+// SEND to the raw normalized address). Collapses provider-equivalent aliases that
+// all deliver to one inbox, so a per-address cap can't be defeated by alias
+// rotation to email-bomb a single victim:
+//   • Gmail/Googlemail: a "+tag" suffix and ANY '.' in the local-part are ignored
+//     by Google, and googlemail.com is an alias of gmail.com. So
+//     victim+1@gmail.com, v.i.c.t.i.m@gmail.com, victim@googlemail.com all
+//     canonicalize to victim@gmail.com.
+//   • Every other provider: only the conventional "+tag" sub-addressing is
+//     stripped (dots are significant elsewhere, so they're preserved).
+// Pure + dependency-free. Splits at the LAST '@' (the local-part may not contain
+// an unescaped '@' for any address we accept, but the last-@ split is the safe
+// convention). Malformed input (no '@', empty local/domain) falls back to the
+// plain normalizeEmail so callers always get a stable, non-throwing string.
+export function canonicalizeEmail(raw: unknown): string {
+  const e = normalizeEmail(raw);
+  const at = e.lastIndexOf("@");
+  if (at <= 0 || at === e.length - 1) return e; // no '@', empty local, or empty domain
+
+  let local = e.slice(0, at);
+  let domain = e.slice(at + 1);
+
+  // "+tag" sub-addressing: drop everything from the first '+' in the local-part.
+  const plus = local.indexOf("+");
+  if (plus !== -1) local = local.slice(0, plus);
+
+  if (domain === "gmail.com" || domain === "googlemail.com") {
+    // Google ignores dots in the local-part and treats googlemail as gmail.
+    local = local.split(".").join("");
+    domain = "gmail.com";
+  }
+
+  return `${local}@${domain}`;
+}
+
 // ── Schedule validation — mirrors public.meetings_guard EXACTLY ──────────────
 
 export type SlotCheck = { ok: true } | { ok: false; error: string };

@@ -38,6 +38,7 @@ import { buildOtpEmailHtml } from "../_shared/meetings.ts";
 import { jlog } from "../_shared/log.ts";
 import { captureError } from "../_shared/observability.ts";
 import {
+  canonicalizeEmail,
   DEFAULT_OTP_RATE_LIMITS,
   evaluateOtpRateLimit,
   evaluateOtpVerify,
@@ -121,6 +122,11 @@ const OTP_TTL_MS = 15 * 60_000; // code lifetime
 const MAX_VERIFY_ATTEMPTS = 5; // per OTP row
 const BOOK_OTP_MAX_AGE_MS = 30 * 60_000; // verified OTP must be fresher than this to book
 
+// Carriers eligible for a booked consultation — MUST match the public.meetings_guard
+// whitelist (meetings-2026-06.sql) EXACTLY, or the insert is rejected with
+// 'provider not eligible'. Mirrors the static booking grid + the web BookClient.
+const MEETING_PROVIDERS = ["HOT", "yes", "פרטנר", "סלקום", "STING TV", "בזק", "הוט מובייל"];
+
 type OtpRow = {
   id: string;
   email: string;
@@ -151,7 +157,7 @@ async function unconsumedOtps(email: string): Promise<OtpRow[]> {
 // all Edge isolates (unlike the in-memory limiter). Returns [] on any query
 // failure — fail-soft, with the in-memory limiter remaining the floor.
 async function recentOtpTimestamps(
-  col: "email" | "ip",
+  col: "email" | "email_canon" | "ip",
   value: string,
   sinceMs: number,
   cap: number,
@@ -173,13 +179,20 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
   // prober. We simply do no work.
   if (!isValidEmail(email)) return json({ ok: true }, 200, origin);
 
+  // Canonical address for RATE-LIMIT KEYING (not for sending — we still mail the
+  // raw normalized `email`). Collapses provider-equivalent aliases (Gmail +tag /
+  // dot rotation, googlemail) into ONE bucket so the per-address caps can't be
+  // defeated to email-bomb a single inbox via alias rotation.
+  const emailCanon = canonicalizeEmail(email);
+
   // CHEAP PRE-FILTER — in-memory per-address limit (process-local). Sheds an
   // obvious flood on a hot isolate without touching the DB. NOT authoritative on
-  // serverless (isolates don't share this Map); the durable gate below is.
-  const emailFp = await secretFingerprint(email);
-  const perEmail = rateLimit(`mbk:req:${emailFp}`, 5, 15 * 60_000);
+  // serverless (isolates don't share this Map); the durable gate below is. Keyed
+  // on a fingerprint of the CANONICAL address so aliases collapse here too.
+  const canonFp = await secretFingerprint(emailCanon);
+  const perEmail = rateLimit(`mbk:req:${canonFp}`, 5, 15 * 60_000);
   if (!perEmail.allowed) {
-    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", email_fp: emailFp });
+    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", email_fp: canonFp });
     return json({ ok: true }, 200, origin); // generic — don't leak the throttle
   }
 
@@ -188,20 +201,25 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
   // and let the pure evaluator decide. Denied → generic { ok:true } with NO email
   // and NO insert, so a flood costs neither a send nor a row. cap=40 > every
   // configured max, so the windowed counts are exact. fetchRows failure → [] →
-  // fail-soft (the in-memory pre-filter above stays the floor).
+  // fail-soft (the in-memory pre-filter above stays the floor). The per-address
+  // count keys on email_canon so all aliases of one mailbox share a single bucket.
   const L = DEFAULT_OTP_RATE_LIMITS;
-  const emailTimestamps = await recentOtpTimestamps("email", email, L.emailDayMs, 40);
+  const emailTimestamps = await recentOtpTimestamps("email_canon", emailCanon, L.emailDayMs, 40);
   const ipTimestamps = ip ? await recentOtpTimestamps("ip", ip, L.ipWindowMs, 40) : [];
   const decision = evaluateOtpRateLimit({ now: Date.now(), emailTimestamps, ipTimestamps });
   if (!decision.allowed) {
-    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", durable: true, reason: decision.reason, email_fp: emailFp });
+    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", durable: true, reason: decision.reason, email_fp: canonFp });
     return json({ ok: true }, 200, origin); // outcome-blind — never leak the throttle
   }
 
   const code = genCode();
   const codeHash = await hashCode(code);
+  // `email` stores the ORIGINAL normalized address (we send the code there);
+  // `email_canon` stores the alias-collapsed key the durable per-address count
+  // reads, so all aliases of one mailbox share a single rate-limit bucket.
   const inserted = await insertRow("meeting_email_otps", {
     email,
+    email_canon: emailCanon,
     code_hash: codeHash,
     expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
     ip: ip || null,
@@ -223,7 +241,7 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
     }
   }
   // Log WITHOUT the code or the raw email.
-  jlog({ at: "request-code", email_fp: emailFp, inserted });
+  jlog({ at: "request-code", email_fp: canonFp, inserted });
   return json({ ok: true }, 200, origin);
 }
 
@@ -276,6 +294,7 @@ function mapGuardError(raw: string): { error: string; status: number } {
   if (m.includes("invalid slot")) return { error: "המועד שנבחר אינו זמין.", status: 400 };
   if (m.includes("invalid name")) return { error: "שם לא תקין.", status: 400 };
   if (m.includes("invalid phone")) return { error: "מספר טלפון לא תקין.", status: 400 };
+  if (m.includes("provider not eligible")) return { error: "החברה שנבחרה אינה זמינה לפגישת ייעוץ.", status: 400 };
   return { error: "אירעה שגיאה בקביעת הפגישה. נסו שוב.", status: 500 };
 }
 
@@ -289,6 +308,7 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
   const meetingDate = typeof body.meeting_date === "string" ? body.meeting_date.trim() : "";
   const slot = typeof body.slot === "string" ? body.slot.trim() : "";
   const category = typeof body.category === "string" ? body.category.trim().slice(0, 120) : "";
+  const provider = typeof body.provider === "string" ? body.provider.trim() : "";
   const consent = body.consent === true;
 
   // Mandatory consent (Spam Law §30A + Privacy) — reject without it.
@@ -298,6 +318,12 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
   if (!name || name.length < 2) return json({ ok: false, error: "שם מלא נדרש" }, 400, origin);
   if (!phone) return json({ ok: false, error: "מספר טלפון לא תקין" }, 400, origin);
   if (!isValidEmail(email)) return json({ ok: false, error: "כתובת מייל לא תקינה" }, 400, origin);
+  // Provider gate: a meeting may only be booked for an eligible carrier — the SAME
+  // seven the public.meetings_guard whitelist enforces. Reject early with a friendly
+  // message instead of letting the trigger raise a generic error.
+  if (!MEETING_PROVIDERS.includes(provider)) {
+    return json({ ok: false, error: "נא לבחור חברה לפגישה מתוך הרשימה" }, 400, origin);
+  }
 
   // EMAIL GATE: require a verified, unconsumed OTP for this address, fresh enough
   // that the verification is still trustworthy (< 30 min). Scan the SET (not just
@@ -327,7 +353,8 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
     email,
     meeting_date: meetingDate,
     slot,
-    ...(category ? { provider: category } : {}),
+    provider,
+    ...(category ? { notes: `שירות מבוקש: ${category}` } : {}),
     email_verified_at: nowIso,
     source: "site_book",
     terms_accepted_at: nowIso,

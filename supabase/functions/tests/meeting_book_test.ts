@@ -7,6 +7,7 @@
 
 import { assert, assertEquals, assertFalse, assertMatch } from "@std/assert";
 import {
+  canonicalizeEmail,
   DEFAULT_OTP_RATE_LIMITS,
   evaluateOtpRateLimit,
   evaluateOtpVerify,
@@ -102,6 +103,46 @@ Deno.test("isValidEmail rejects garbage and over-long input", () => {
   ]) {
     assertFalse(isValidEmail(bad), `expected invalid: ${JSON.stringify(bad)}`);
   }
+});
+
+// ── canonicalizeEmail — alias-collapse for the rate-limit key ─────────────────
+// Closes the email-bomb-via-alias vector: every alias that delivers to ONE inbox
+// must collapse to a single canonical key so the per-address cap can't be evaded.
+
+Deno.test("canonicalizeEmail collapses all Gmail aliases of one inbox to one key", () => {
+  for (const alias of [
+    "victim+1@gmail.com",
+    "victim+2@gmail.com",
+    "v.i.c.t.i.m@gmail.com",
+    "VICTIM@gmail.com",
+    "victim@googlemail.com",
+    "  Victim+anything.here@GoogleMail.com  ", // trim + lowercase + tag + dots + googlemail
+  ]) {
+    assertEquals(canonicalizeEmail(alias), "victim@gmail.com", `alias not collapsed: ${alias}`);
+  }
+});
+
+Deno.test("canonicalizeEmail strips +tag sub-addressing for any provider", () => {
+  assertEquals(canonicalizeEmail("foo+promo@outlook.com"), "foo@outlook.com");
+  assertEquals(canonicalizeEmail("user+anything@example.co.il"), "user@example.co.il");
+});
+
+Deno.test("canonicalizeEmail keeps dots for non-Gmail providers (dots are significant)", () => {
+  assertEquals(canonicalizeEmail("a.b.c@outlook.com"), "a.b.c@outlook.com");
+});
+
+Deno.test("canonicalizeEmail leaves a plain address unchanged", () => {
+  assertEquals(canonicalizeEmail("user@example.com"), "user@example.com");
+});
+
+Deno.test("canonicalizeEmail is safe on malformed input (no throw, stable fallback)", () => {
+  // No '@', empty local/domain, and non-string inputs all fall back to normalizeEmail.
+  assertEquals(canonicalizeEmail("plainstring"), "plainstring");
+  assertEquals(canonicalizeEmail("@nolocal.com"), "@nolocal.com");
+  assertEquals(canonicalizeEmail("nodomain@"), "nodomain@");
+  assertEquals(canonicalizeEmail(""), "");
+  assertEquals(canonicalizeEmail(null), "");
+  assertEquals(canonicalizeEmail(undefined), "");
 });
 
 // ── validBookingSlot — mirrors meetings_guard ─────────────────────────────────

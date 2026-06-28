@@ -3404,6 +3404,11 @@ ${navNoCta}
     <section class="section booking">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">תיאום פגישה</span><h2>בחרו ספק, יום ושעה</h2><p>הפגישה באורך כ-30 דקות. נדרשת הסכמה לתנאים ולמדיניות הפרטיות.</p></header>
+        <ol class="booking__steps" aria-hidden="true">
+          <li class="booking__step-dot is-active"><span class="booking__step-num">1</span>פרטים</li>
+          <li class="booking__step-dot"><span class="booking__step-num">2</span>ספק ושעה</li>
+          <li class="booking__step-dot"><span class="booking__step-num">3</span>אישור במייל</li>
+        </ol>
         <form id="bookForm" class="booking__form" novalidate>
           <div class="booking__row">
             <label class="booking__field" for="bookName">שם מלא

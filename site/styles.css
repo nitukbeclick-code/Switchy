@@ -1790,17 +1790,50 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    Anonymous video-consultation booking: provider chips → slot grid → contact
    fields → consent → submit. White card on the page, mirrors .advisor padding. */
 .booking {
-  max-width: 620px; margin-inline: auto;
+  position: relative; max-width: 640px; margin-inline: auto;
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 28px; box-shadow: var(--shadow);
+  padding: 32px 34px; box-shadow: var(--shadow); overflow: hidden;
 }
+/* A thin green ACTION rule across the top of the card — the same premium accent
+   the app cards carry; keeps the white surface from reading flat. */
+.booking::before {
+  content: ""; position: absolute; inset-block-start: 0; inset-inline: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-d));
+}
+
+/* Visual progress strip — purely decorative (no inputs), three labelled dots
+   that tell the visitor the shape of the flow before they start. */
+.booking__steps {
+  list-style: none; display: flex; align-items: center; gap: 10px;
+  margin: 0 0 24px; padding: 0; flex-wrap: wrap;
+}
+.booking__step-dot {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13px;
+  color: var(--ink-400); white-space: nowrap;
+}
+.booking__step-dot + .booking__step-dot::before {
+  content: ""; width: 18px; height: 2px; border-radius: 2px;
+  background: var(--line); margin-inline-end: 2px;
+}
+.booking__step-num {
+  display: grid; place-items: center; width: 26px; height: 26px;
+  border-radius: 999px; background: var(--cream); border: 1px solid var(--line);
+  font-size: 13px; font-weight: 800; color: var(--ink-400);
+}
+.booking__step-dot.is-active { color: var(--green-d); }
+.booking__step-dot.is-active .booking__step-num {
+  background: linear-gradient(140deg, var(--accent), var(--accent-d));
+  border-color: var(--accent-d); color: #fff; box-shadow: var(--glint), 0 3px 9px rgba(22,163,74,.28);
+}
+:root[data-theme="dark"] .booking__step-dot.is-active .booking__step-num { color: #0B0F14; }
 
 /* Form layout — one vertical stack of fields with comfortable, even rhythm.
    `.booking__row` lays two fields side-by-side on desktop and stacks them on
    mobile (see the breakpoint below). */
-.booking__form { display: grid; gap: 18px; }
+.booking__form { display: grid; gap: 20px; }
 .booking__row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start;
 }
 
 /* Field = a label that wraps its own control. The label text sits above the
@@ -1841,20 +1874,24 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .booking__providers { border: 0; padding: 0; margin: 0; min-width: 0; }
 .booking__providers legend {
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
-  color: var(--green-d); margin-bottom: 10px; padding: 0;
+  color: var(--green-d); margin-bottom: 12px; padding: 0;
 }
-.booking__providers-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Even auto-fit grid so the 7 carrier chips align in tidy rows (no ragged
+   wrap), each cell an equal-width pill with its logo + name. */
+.booking__providers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
 .booking__providers .provider-pick,
 .booking__providers-grid .booking__provider,
 .booking__providers .booking__provider {
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
-  gap: 8px; padding: 9px 16px; min-height: 44px; display: inline-flex; align-items: center;
+  gap: 9px; padding: 11px 14px; min-height: 50px; display: inline-flex; align-items: center; justify-content: center;
   background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
-  border-radius: 999px; cursor: pointer;
+  border-radius: var(--radius-sm); cursor: pointer; text-align: center;
   transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
 }
+.booking__providers .booking__provider img,
+.booking__providers .booking__provider svg { flex: 0 0 auto; }
 .booking__providers .provider-pick:hover,
-.booking__providers .booking__provider:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.booking__providers .booking__provider:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow-sm); }
 .booking__providers .provider-pick:active,
 .booking__providers .booking__provider:active { transform: scale(.97); }
 .booking__providers .provider-pick:focus-visible,
@@ -1863,8 +1900,8 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .booking__providers .provider-pick.is-chosen,
 .booking__providers .booking__provider[aria-pressed="true"],
 .booking__providers .booking__provider.is-chosen {
-  background: var(--accent-d); color: #fff; border-color: var(--accent-d);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
+  background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; border-color: var(--accent-d);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 6px 16px rgba(22,163,74,.30); transform: translateY(-1px);
 }
 
 /* Slot grid — responsive grid of 30-min time buttons. Chosen = green; taken or
@@ -1919,6 +1956,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 @media (prefers-reduced-motion: reduce) { .booking__step.is-active { animation: none; } }
 
 .booking__submit { margin-top: 22px; }
+.booking__form #bookSubmit { margin-top: 6px; width: 100%; }
 
 /* Email-OTP verification step — revealed after a code is requested. A calm,
    tinted panel so it reads as a distinct, deliberate gate rather than another
@@ -1956,8 +1994,13 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .booking__note.is-error { color: var(--error); }
 
 @media (max-width: 560px) {
-  .booking { padding: 20px; }
+  .booking { padding: 22px 20px; }
+  .booking__steps { gap: 8px; margin-bottom: 20px; }
+  .booking__step-dot { font-size: 12px; gap: 6px; }
+  .booking__step-num { width: 23px; height: 23px; font-size: 12px; }
+  .booking__step-dot + .booking__step-dot::before { width: 12px; }
   .booking__row { grid-template-columns: 1fr; gap: 18px; }
+  .booking__providers-grid { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 8px; }
   .booking__form #bookSubmit { width: 100%; }
   .community__join { padding: 16px; }
   .reply { margin-inline-start: 10px; }

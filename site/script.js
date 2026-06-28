@@ -613,7 +613,7 @@
       const ctaRow = `<tr class="cmp-cta-row"><th scope="row"></th>${chosen.map((p) =>
         `<td><a class="plan__cta" target="_blank" rel="noopener" href="${escHtml(wa(p))}">💬 מעוניין/ת ←</a></td>`).join('')}</tr>`;
       compareTable.innerHTML =
-        `<table class="cmp-table"><thead><tr><th></th>${cols}</tr></thead><tbody>${rows.join('')}${ctaRow}</tbody></table>`;
+        `<table class="cmp-table"><thead><tr><th scope="col"><span class="sr-only">קריטריון</span></th>${cols}</tr></thead><tbody>${rows.join('')}${ctaRow}</tbody></table>`;
     };
     // Initialise from URL params (?p0=id&p1=id&p2=id) so comparisons can be shared.
     const sp = new URLSearchParams(location.search);

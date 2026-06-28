@@ -46,6 +46,10 @@ describe("staticDesktopPath — desktop device-split routing", () => {
     expect(staticDesktopPath("/assets/logos/cellcom.webp")).toBe("/assets/logos/cellcom.webp");
     expect(staticDesktopPath("/favicon.ico")).toBe("/favicon.ico");
     expect(staticDesktopPath("/og-card.png")).toBe("/og-card.png");
+    // Media: the static homepage hero video (regression — omitting .mp4 404'd it).
+    expect(staticDesktopPath("/assets/videos/switchy-hero.mp4")).toBe("/assets/videos/switchy-hero.mp4");
+    expect(staticDesktopPath("/assets/videos/switchy-hero.webm")).toBe("/assets/videos/switchy-hero.webm");
+    expect(staticDesktopPath("/assets/audio/clip.mp3")).toBe("/assets/audio/clip.mp3");
   });
 
   it("returns null for Next-only routes (served by the Next app on desktop, never 404)", () => {

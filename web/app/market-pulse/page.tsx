@@ -7,12 +7,13 @@ import MarketPulseCharts, {
   type MarketPulseCategory,
 } from "@/components/MarketPulseCharts";
 import SmartTimer from "@/components/SmartTimer";
-import { priceStats, CATEGORY_HE } from "@/lib/data";
+import { priceStats, CATEGORY_HE, getPlans } from "@/lib/data";
 import {
   collectionPageSchema,
   breadcrumbSchema,
-  SITE_URL,
+  datasetSchema,
 } from "@/lib/schema";
+import { lastDataDate } from "@/lib/aeo";
 import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
@@ -119,36 +120,29 @@ function buildAuthority(rows: MarketPulseCategory[]): {
   return { answer, tableRows };
 }
 
-// ── Dataset JSON-LD (current-state snapshot). Built inline as a plain object —
-// it describes the REAL, current per-category price snapshot this page exposes.
-function datasetSchema(rows: MarketPulseCategory[]): Record<string, unknown> {
+// ── Dataset JSON-LD ("Switchy as the data source"). Wires the shared, prepared
+// datasetSchema() builder into a rich, truthful Dataset node describing the REAL
+// telecom price catalogue this page exposes. temporalCoverage is the REAL
+// catalogue month (YYYY-MM from lastDataDate()); distribution points at the
+// existing public JSON feed (/api/llm-feed.json, application/json).
+const DATA_FEED_PATH = "/api/llm-feed.json";
+
+function buildDataset(rows: MarketPulseCategory[]): Record<string, unknown> {
   const total = rows.reduce((n, r) => n + r.count, 0);
-  return {
-    "@context": "https://schema.org",
-    "@type": "Dataset",
-    name: "מצב שוק התקשורת בישראל — תמונת מחירים נוכחית",
+  // Real catalogue month (YYYY-MM) — derived from the genuine "data as of" date,
+  // never a fabricated range.
+  const temporalCoverage = lastDataDate(getPlans()).slice(0, 7);
+
+  return datasetSchema({
+    name: "מחירון תקשורת ישראל — Switchy",
     description:
-      `סטטיסטיקת מחירים נוכחית לכל קטגוריית תקשורת בישראל (מחיר ממוצע, מינימום, ` +
-      `מקסימום ומספר מסלולים), מתוך ${total} מסלולים בקטלוג. נתונים נוכחיים בלבד.`,
-    url: `${SITE_URL}${PAGE_PATH}`,
-    inLanguage: "he-IL",
-    dateModified: REVIEWED_AT,
-    creator: { "@type": "Organization", name: "Switchy AI", url: SITE_URL },
-    isAccessibleForFree: true,
-    measurementTechnique: "אגרגציה של מחירי מסלולים מקטלוג הספקים",
-    variableMeasured: [
-      { "@type": "PropertyValue", name: "מחיר ממוצע", unitText: "ILS" },
-      { "@type": "PropertyValue", name: "מחיר מינימום", unitText: "ILS" },
-      { "@type": "PropertyValue", name: "מחיר מקסימום", unitText: "ILS" },
-      { "@type": "PropertyValue", name: "מספר מסלולים", unitText: "מסלולים" },
-    ],
-    distribution: rows.map((r) => ({
-      "@type": "DataDownload",
-      name: r.label,
-      contentUrl: `${SITE_URL}/compare/${r.category}`,
-      encodingFormat: "text/html",
-    })),
-  };
+      `מחירון מסלולי התקשורת בישראל של Switchy: מחירים נוכחיים לפי ספק וקטגוריה ` +
+      `(סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל), כולל מחיר ממוצע, מינימום ` +
+      `ומקסימום בכל קטגוריה — מתוך ${total} מסלולים בקטלוג. נתונים נוכחיים בלבד.`,
+    url: PAGE_PATH,
+    temporalCoverage,
+    distributionUrl: DATA_FEED_PATH,
+  });
 }
 
 export default function MarketPulsePage() {
@@ -183,8 +177,8 @@ export default function MarketPulsePage() {
         }}
       />
 
-      {/* GEO structured data: Dataset (current snapshot) + CollectionPage + Breadcrumb. */}
-      <JsonLd data={datasetSchema(rows)} />
+      {/* GEO structured data: Dataset ("Switchy as the data source") + CollectionPage + Breadcrumb. */}
+      <JsonLd data={buildDataset(rows)} />
       <JsonLd
         data={collectionPageSchema({
           name: "מצב שוק התקשורת בישראל",

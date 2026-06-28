@@ -61,6 +61,57 @@ export const GENERAL_FAQ: QA[] = [
       "ניוד מספרים, שקיפות חיוב וזכויות מנויים. מומלץ לאמת תמיד את התנאים " +
       "המלאים מול הספק לפני התקשרות.",
   },
+  // ──────────────────────────────────────────────────────────────────────────
+  // Demand-driven entries: phrased from the MOST-FREQUENT real questions users
+  // actually asked the assistant (public.bot_question_log), answered factually
+  // from the catalogue + curated bot_knowledge. Truth-only: no fabricated
+  // "cheapest" winner (the comparison is usage-dependent and national), no
+  // invented stats. Appended here so they surface as visible <details> AND
+  // FAQPage JSON-LD on every page that consumes GENERAL_FAQ.
+  // ──────────────────────────────────────────────────────────────────────────
+  {
+    // Real top question: "מי אתם" (most frequent), "מה זה switchy", "זה אמיתי".
+    question: "מה זה Switchy ומי עומד מאחורי השירות?",
+    answer:
+      "Switchy הוא שירות ישראלי להשוואת מחירי תקשורת — סלולר, אינטרנט, " +
+      "טלוויזיה, חבילות משולבות וחבילות חו״ל — וליווי במעבר ספק. ההשוואה " +
+      "מתבצעת באתר, ואם בוחרים להשאיר פרטים אפשר לקבל ליווי אנושי בהמשך התהליך.",
+  },
+  {
+    // Real question: "איך זה עובד" / "איך מתחילים" (bot_knowledge top topic).
+    question: "איך תהליך ההשוואה והמעבר עובד?",
+    answer:
+      "ממלאים שאלון קצר על מה שמשלמים היום ומה חשוב לכם, ומקבלים השוואה בין " +
+      "המסלולים של החברות הרלוונטיות. אם תבחרו להתקדם, אפשר לקבל ליווי במעבר, " +
+      "כולל ניוד המספר. ההשוואה עצמה חינמית וללא התחייבות.",
+  },
+  {
+    // Real question: "אילו חברות אתם משווים", "סלקום", "מה המחירים של הוט ?".
+    question: "אילו חברות תקשורת נכללות בהשוואה?",
+    answer:
+      "ההשוואה כוללת ספקים מרכזיים בשוק הישראלי, בהם פלאפון, סלקום, פרטנר, " +
+      "HOT, הוט מובייל, גולן טלקום, 019 מובייל, רמי לוי, בזק ו-yes, על פני " +
+      "הקטגוריות השונות. הזמינות בפועל תלויה בקטגוריה ובמסלול.",
+  },
+  {
+    // Real questions: "מי החברה הכי זולה ?", "זול", "אני רוצה לדעת על מחירים".
+    // HONEST: no fabricated single "cheapest" provider — it depends on usage.
+    question: "איזו חברה הכי זולה?",
+    answer:
+      "אין חברה אחת שהיא הזולה ביותר לכולם — המחיר המשתלם תלוי בצורך שלכם: " +
+      "נפח הגלישה, מהירות האינטרנט, התחייבות וכו׳. לכן ההשוואה מציגה את " +
+      "המסלולים זה מול זה, כולל המחיר לאחר תקופת מבצע, כדי שתוכלו לבחור את " +
+      "הזול ביותר עבור השימוש הספציפי שלכם.",
+  },
+  {
+    // Real question: "אני רוצה לשמוע על ... חבילה משולבת" (general intent;
+    // the per-category triple FAQ covers the product, this covers comparing it).
+    question: "אפשר להשוות גם חבילות משולבות (אינטרנט, טלוויזיה וסלולר)?",
+    answer:
+      "כן. אפשר להשוות חבילות משולבות שמאגדות מספר שירותים אצל ספק אחד, וגם " +
+      "מסלולים בודדים בכל קטגוריה. ההשוואה מציגה את המחיר הכולל ואת המחיר " +
+      "לאחר תקופת מבצע, כדי שתשוו את החבילה מול רכישת השירותים בנפרד.",
+  },
 ];
 
 /** Per-category Q&A. Falls back to GENERAL_FAQ for categories without entries. */

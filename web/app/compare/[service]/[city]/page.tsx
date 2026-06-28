@@ -50,12 +50,12 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   placeSchema,
-  geoSchema,
   relatedLinksSchema,
   pageAggregateOfferSchema,
   speakableSchema,
 } from "@/lib/schema";
 import type { NavLink, QA } from "@/lib/schema";
+import { serviceCitySchema } from "@/lib/geo-schema-city";
 import { pageMetadata } from "@/lib/seo";
 import { ils, leadCategory } from "@/lib/format";
 import { getLivePlans } from "@/lib/live-catalogue";
@@ -375,8 +375,18 @@ export default async function ServiceCityPage({ params }: Params) {
     name: c.district,
     address: { "@type": "PostalAddress", addressCountry: "IL" },
   };
-  // Bare GeoCoordinates node (also embedded in place.geo) for engines that read it.
-  const geo = geoSchema({ lat: c.lat, lng: c.lng });
+  // LOCAL Service node: this page is a FREE telecom price-comparison service whose
+  // areaServed is THIS city (the `place` Place above) AND the national country —
+  // honest national framing (same plans/prices everywhere), isPartOf the service
+  // hub. Composed from the prepared placeSchema/Organization builders (schema.ts
+  // untouched) via the page-owned geo-schema-city helper.
+  const serviceLd = serviceCitySchema({
+    serviceLabel: svc.label,
+    cityName: c.name,
+    pageUrl: pagePath,
+    serviceSlug: service,
+    place,
+  });
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
@@ -414,7 +424,9 @@ export default async function ServiceCityPage({ params }: Params) {
         })}
       />
       <JsonLd data={place} />
-      <JsonLd data={geo} />
+      {/* LOCAL Service node (areaServed = this city Place + national IL), isPartOf
+          the service hub — mirrors the honest "זמין גם ב<עיר>" line below. */}
+      <JsonLd data={serviceLd} />
       <JsonLd data={itemListSchema(plans)} />
       {/* ONE FAQPage mirroring all visible Q&A (local FAQ + AEO Q&A, deduped). */}
       <JsonLd data={faqPageSchema(allFaqs)} />
@@ -609,6 +621,11 @@ export default async function ServiceCityPage({ params }: Params) {
           />
           מה כדאי לדעת על {c.name}
         </h2>
+        {/* Honest national-availability line — the visible counterpart of the
+            Service node's areaServed (this city + all of Israel). */}
+        <p className="mt-3 text-sm font-medium text-accent-text">
+          זמין גם ב{c.name} ({c.district}) — אותם מסלולים ומחירים כמו בכל הארץ.
+        </p>
         <p className="mt-3 text-[15px] leading-relaxed text-foreground">
           שוק התקשורת בישראל ארצי: אותם ספקים ומחירים ב{c.name} כמו בכל עיר.{" "}
           {isInfraDependent(svc)

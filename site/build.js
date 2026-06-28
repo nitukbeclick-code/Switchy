@@ -559,7 +559,7 @@ function providerLogo(name, size = 36) {
   if (file) {
     // width/height attrs give the browser the intrinsic ratio before CSS
     // loads, so lazy-loaded logos can't shift layout (CLS).
-    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="${esc(name)}" width="${size}" height="${size}" loading="lazy" decoding="async"></span>`;
+    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="" width="${size}" height="${size}" loading="lazy" decoding="async"></span>`;
   }
   let color = '#0F766E';
   let initials = name.trim().slice(0, 2);
@@ -767,19 +767,19 @@ const footer = `  <footer class="footer">
         <div class="footer__socials" aria-label="ערוצי קשר">${footerSocial}</div>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
-        <h4>קטגוריות</h4>
+        <h3>קטגוריות</h3>
         <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חבילות חו״ל</a><a href="plans.html">כל החבילות</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
-        <h4>כלים מומלצים</h4>
+        <h3>כלים מומלצים</h3>
         <a href="compare.html">השוואת מסלולים</a><a href="comparisons.html">השוואות ספקים</a><a href="community.html">קהילה ודירוגים</a><a href="book.html">תיאום פגישת וידאו</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="glossary.html">מילון מונחים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="חיפושים פופולריים">
-        <h4>חיפושים פופולריים</h4>
+        <h3>חיפושים פופולריים</h3>
         <a href="cellular-budget.html">סלולר מתחת ל-₪30</a><a href="cellular-5g.html">סלולר 5G</a><a href="internet-fiber-only.html">אינטרנט סיב אופטי</a><a href="internet-giga.html">אינטרנט גיגה</a><a href="plans-no-commitment.html">ללא התחייבות</a><a href="esim-abroad.html">eSIM לחו״ל</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="החברה">
-        <h4>החברה</h4>
+        <h3>החברה</h3>
         <a href="about.html">אודות</a><a href="how-it-works.html">איך זה עובד</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="faq.html">שאלות נפוצות</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a><a href="accessibility.html">הצהרת נגישות</a>
         <a href="https://wa.me/972505037537" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
@@ -813,7 +813,7 @@ const footer = `  <footer class="footer">
 // opt-in, never pre-ticked). Pass the page's own submit-button label.
 // NOTE: index.html is hand-written — keep its form's consent block in sync.
 const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
@@ -1362,7 +1362,7 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
   // are always kept; the table auto-grows columns once their data lands.
   const rowData = plans.map(row);
   const keep = head.map((_, ci) => ci < 3 || rowData.some((r) => r[ci] && r[ci] !== '—'));
-  const ths = head.map((h, i) => keep[i] ? `<th${i === 2 || i === 3 ? ' class="cmp__num"' : ''}>${esc(h)}</th>` : '').join('') + '<th class="cmp__cta" aria-label="פנייה"></th>';
+  const ths = head.map((h, i) => keep[i] ? `<th${i === 2 || i === 3 ? ' class="cmp__num"' : ''}>${esc(h)}</th>` : '').join('') + '<th class="cmp__cta" scope="col"><span class="sr-only">פנייה</span></th>';
   const trs = plans.map((p, i) => {
     const cells = rowData[i].map((cell, ci) => keep[ci] ? `<td data-th="${esc(head[ci])}"${ci === 2 || ci === 3 ? ' class="cmp__num"' : ''}>${cell}</td>` : '').join('');
     const cta = `<td class="cmp__cta"><a href="${waHref(p)}" target="_blank" rel="noopener" aria-label="${esc('מעוניין/ת ב' + p.provider + ' ' + p.plan + ' בוואטסאפ')}" title="פנייה בוואטסאפ">${svgIcon('chat')}</a></td>`;

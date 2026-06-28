@@ -1372,9 +1372,10 @@
       result.setAttribute('aria-live', 'polite');
       drop.appendChild(result);
     }
-    // Keyboard affordance: clicking the zone opens the picker; the zone is a
-    // labelled button for AT, the file input does the actual work.
-    if (!drop.hasAttribute('role')) drop.setAttribute('role', 'button');
+    // Keyboard affordance: the click + keydown handlers below open the picker;
+    // the <label for="billFile"> + aria-label name the zone for AT. Deliberately
+    // NO role here — a <label> must not carry role="button" (invalid ARIA that
+    // fails the Lighthouse "Accessibility tree is not well-formed" audit).
     if (!drop.hasAttribute('tabindex')) drop.setAttribute('tabindex', '0');
     if (!drop.hasAttribute('aria-label')) drop.setAttribute('aria-label', 'גררו לכאן צילום חשבון, או הקישו לבחירת קובץ');
     let busy = false;

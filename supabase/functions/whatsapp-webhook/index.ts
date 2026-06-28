@@ -286,13 +286,51 @@ export function buildCategoryPickerSections(): ListSection[] {
   }];
 }
 
-// The dynamic budget quick-reply buttons (≤ 3). Reuses the existing button path:
-// each id is "bud:<n>"/"bud:any" and routes to the recommend flow with the budget
-// seeded. Pure so the option set is testable.
-export function buildBudgetButtons(): { id: string; title: string }[] {
+// The static budget quick-reply fallback (≤ 3) — used when we don't (yet) know the
+// category, so we can't ground the ceilings in real prices. Each id is
+// "bud:<n>"/"bud:any" and routes to the recommend flow with the budget seeded.
+// Pure so the option set is testable.
+const STATIC_BUDGET_BUTTONS: { id: string; title: string }[] = [
+  { id: `${BUD_BTN_PREFIX}50`, title: "עד ₪50" },
+  { id: `${BUD_BTN_PREFIX}100`, title: "עד ₪100" },
+  { id: `${BUD_BTN_PREFIX}any`, title: "הכי משתלם" },
+];
+
+// Build the DYNAMIC budget quick-reply buttons (≤ 3) for a chosen category from
+// the REAL catalogue prices — so every offered ceiling is a price a customer can
+// actually hit in that category (truth-only: no invented round numbers). We take
+// the regular monthly plans in the category, sort by price, and offer two real
+// ceilings — one near the cheaper end (~25th percentile) and one mid-range
+// (~60th percentile) — plus the always-present "best value / no cap" option. The
+// two numeric ceilings are de-duplicated and rounded to a tidy ₪5 step (rounding
+// UP so the ceiling never excludes the plan that seeded it), and we never emit a
+// ceiling below the cheapest plan. Falls back to STATIC_BUDGET_BUTTONS when the
+// category is unknown or has too few priced plans to ground a tier. Pure + total
+// (never throws) so the derived option set can be pinned in tests.
+export function buildBudgetButtons(
+  plans?: Plan[],
+  category?: string,
+): { id: string; title: string }[] {
+  const cat = (category ?? "").trim();
+  if (!plans || !cat) return STATIC_BUDGET_BUTTONS;
+  const prices = plans
+    .filter((p) => p.cat === cat && (p.kind ?? "regular") === "regular")
+    .map((p) => p.price)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0)
+    .sort((a, b) => a - b);
+  // Need a real spread to offer two distinct grounded ceilings; otherwise the
+  // static set is a safer, non-misleading default.
+  if (prices.length < 3) return STATIC_BUDGET_BUTTONS;
+  // Round a price UP to the nearest ₪5 so the tidy ceiling still includes the
+  // plan it was derived from (a ceiling below its plan would be a lie).
+  const tidy = (n: number) => Math.max(5, Math.ceil(n / 5) * 5);
+  const at = (q: number) => prices[Math.min(prices.length - 1, Math.floor(q * (prices.length - 1)))];
+  const low = tidy(at(0.25));
+  let mid = tidy(at(0.6));
+  if (mid <= low) mid = tidy(low + 5); // keep the two ceilings distinct + ordered
   return [
-    { id: `${BUD_BTN_PREFIX}50`, title: "עד ₪50" },
-    { id: `${BUD_BTN_PREFIX}100`, title: "עד ₪100" },
+    { id: `${BUD_BTN_PREFIX}${low}`, title: `עד ₪${low}` },
+    { id: `${BUD_BTN_PREFIX}${mid}`, title: `עד ₪${mid}` },
     { id: `${BUD_BTN_PREFIX}any`, title: "הכי משתלם" },
   ];
 }
@@ -430,29 +468,28 @@ function breakLong(block: string, limit: number): string[] {
 // Send a (possibly long) text reply as one or more ordered bubbles, pausing
 // briefly between them so WhatsApp renders them in order. Returns the wamid of
 // the FIRST bubble (the one we store as the canonical outbound row) or null.
-// Each send goes through sendText, which already retries once on a 5xx; we add a
-// one-shot retry around the FIRST bubble specifically so the stored message is as
-// reliable as possible. Fail-soft throughout — a failed later chunk is logged,
-// never thrown.
+// Each send goes through sendText (which already retries once on a 5xx); on TOP
+// of that we add a one-shot retry around EVERY bubble whose first attempt comes
+// back null — so a transient failure the shared 5xx-retry didn't catch (e.g. a
+// network throw, or a non-5xx blip) gets one more chance on any chunk, not just
+// the canonical first one. Fail-soft throughout — a chunk that still fails after
+// its retry is logged, never thrown.
 async function sendChunkedText(to: string, body: string): Promise<string | null> {
   const parts = chunkReply(body);
   if (parts.length === 0) return null;
-  if (parts.length === 1) {
-    // Single bubble: send once, and retry once on a null (covers a transient
-    // failure the shared 5xx-retry didn't catch, e.g. a network throw).
-    let id = await sendText(to, parts[0]);
-    if (!id) id = await sendText(to, parts[0]);
+  // Send one bubble with a single retry on a null first attempt. Shared by the
+  // single- and multi-bubble paths so the retry-once contract is identical.
+  const sendOnce = async (part: string): Promise<string | null> => {
+    let id = await sendText(to, part);
+    if (!id) id = await sendText(to, part); // retry-once on a send failure
     return id;
-  }
+  };
+  if (parts.length === 1) return await sendOnce(parts[0]);
   let firstId: string | null = null;
   for (let i = 0; i < parts.length; i++) {
-    let id = await sendText(to, parts[i]);
-    if (i === 0) {
-      if (!id) id = await sendText(to, parts[i]); // protect the canonical bubble
-      firstId = id;
-    } else if (!id) {
-      jlog({ at: "wa.chunk", ok: false, idx: i, total: parts.length });
-    }
+    const id = await sendOnce(parts[i]);
+    if (i === 0) firstId = id; // the canonical stored bubble
+    else if (!id) jlog({ at: "wa.chunk", ok: false, idx: i, total: parts.length });
     // Brief inter-bubble gap so ordering holds; skip after the last one.
     if (i < parts.length - 1) {
       await new Promise((r) => setTimeout(r, CHUNK_GAP_MS));
@@ -1199,6 +1236,11 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   // reactive drill-downs of an action the user just chose, never proactive blasts.
   let withCategoryPicker = false;
   let withBudgetButtons = false;
+  // The budget quick-reply buttons to send when withBudgetButtons is true. Defaults
+  // to the static set; the category-chosen branch replaces it with ceilings derived
+  // from the REAL catalogue prices for the chosen category (truth-only, see
+  // buildBudgetButtons).
+  let budgetButtons = STATIC_BUDGET_BUTTONS;
   // When true, runWhatsappAgent already persisted ai_state (transcript + slots +
   // tool-call history nested under ai_state.agent). Step 6 must NOT then overwrite
   // ai_state with the bare top-level slots — that would drop the agent envelope.
@@ -1326,8 +1368,12 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
       if (pick.budget !== undefined && pick.budget !== null) mergedCtx.budget = pick.budget;
       intent = "recommend";
       if (pick.category && pick.budget === undefined) {
-        // Category chosen → ask budget via the dynamic buttons (reactive).
+        // Category chosen → ask budget via the dynamic buttons (reactive). The
+        // ceilings are derived from the REAL catalogue prices for THIS category so
+        // every offered amount is one a customer can actually hit (truth-only); it
+        // falls back to the static set if the category has too few priced plans.
         const heCat = CATEGORY_HE[pick.category] ?? pick.category;
+        budgetButtons = buildBudgetButtons(await getPlans(), pick.category);
         reply = `מעולה — ${heCat} 👍 מה התקציב החודשי? אפשר לבחור למטה, או פשוט לכתוב לי סכום.`;
         withBudgetButtons = true;
       } else {
@@ -1473,7 +1519,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   if (useMenu) {
     sentId = await sendButtons(from, reply); // the 3-action main menu
   } else if (useBudget) {
-    sentId = await sendButtons(from, reply, buildBudgetButtons()); // ≤3 → buttons
+    sentId = await sendButtons(from, reply, budgetButtons); // ≤3 → buttons (dynamic)
   } else if (usePicker) {
     // 5 categories > the 3-button cap → an interactive LIST. Degrade to the buttons
     // menu (then plain text) if Graph rejects the list, so the user is never stuck.

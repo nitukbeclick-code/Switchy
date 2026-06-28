@@ -47,6 +47,21 @@ void main() {
       expect(latest.meetingDate, '2026-06-16');
     });
 
+    test('email-OTP gate: request returns true, verify accepts a code, rejects empty', () async {
+      final b = LocalBackend();
+      // request-code: any non-empty address "sends" (offline no-op).
+      expect(await b.requestMeetingEmailCode('user@example.com', name: 'ישראל'), isTrue);
+      expect(await b.requestMeetingEmailCode('  '), isFalse);
+      // verify-code: any non-empty code checks out offline; empty is rejected
+      // with a friendly Hebrew reason.
+      final ok = await b.verifyMeetingEmailCode('user@example.com', '123456');
+      expect(ok.ok, isTrue);
+      expect(ok.error, isNull);
+      final bad = await b.verifyMeetingEmailCode('user@example.com', '   ');
+      expect(bad.ok, isFalse);
+      expect(bad.error, isNotNull);
+    });
+
     test('demo stream confirms the meeting with a placeholder Zoom link', () async {
       final b = LocalBackend()..demoConfirmDelay = Duration.zero;
       final events = <BookedMeeting>[];

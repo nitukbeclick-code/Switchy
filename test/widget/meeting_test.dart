@@ -113,37 +113,97 @@ void main() {
       await tester.pump(const Duration(seconds: 1)); // flush entrance animations
     });
 
-    testWidgets('blocks submit without consent and shows a hint', (tester) async {
-      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט')));
-      await tester.pump(const Duration(seconds: 1));
-
-      // Pick the first slot (scroll it into view first — it sits below the fold).
+    // Fills the three contact fields (name / phone / email) and selects the
+    // first slot — the shared prelude for the OTP-gated submit tests below.
+    Future<void> fillContactAndSlot(WidgetTester tester) async {
       await tester.ensureVisible(find.text('09:00').first);
       await tester.tap(find.text('09:00').first);
       await tester.pump();
-      // Fill mandatory contact fields.
       await tester.ensureVisible(find.byType(TextFormField).at(0));
       await tester.enterText(find.byType(TextFormField).at(0), 'ישראל ישראלי');
       await tester.enterText(find.byType(TextFormField).at(1), '0501234567');
+      await tester.enterText(find.byType(TextFormField).at(2), 'test@example.com');
+      await tester.pump();
+    }
 
+    // Clears every queued/visible SnackBar and pumps it off-screen so the
+    // floating toast can't intercept a tap on the bottom CTA, and a later
+    // validation SnackBar shows immediately instead of queuing.
+    Future<void> clearSnackBars(WidgetTester tester) async {
+      ScaffoldMessenger.of(tester.element(find.byType(MeetingWidget)))
+          .clearSnackBars();
+      await tester.pump();
+    }
+
+    // Runs the OTP gate (send code → enter 6 digits → verify). LocalBackend
+    // accepts any address + any 6-digit code, so this exercises the real UI flow.
+    Future<void> verifyEmail(WidgetTester tester) async {
+      await tester.ensureVisible(find.text('שלח קוד אימות'));
+      await tester.tap(find.text('שלח קוד אימות'));
+      await tester.pumpAndSettle();
+      // The 6-digit code field appears; enter a code and verify.
+      await tester.ensureVisible(find.byKey(const Key('meeting-otp-code')));
+      await tester.enterText(find.byKey(const Key('meeting-otp-code')), '123456');
+      await tester.pump();
+      await tester.ensureVisible(find.text('אימות'));
+      await tester.tap(find.text('אימות'));
+      await tester.pumpAndSettle();
+      // Dismiss any lingering SnackBars (the floating "code sent" / "verified"
+      // toasts sit over the bottom CTA and would otherwise eat the book tap).
+      await clearSnackBars(tester);
+    }
+
+    testWidgets('book button is disabled until the email is verified', (tester) async {
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט')));
+      await tester.pump(const Duration(seconds: 1));
+
+      await fillContactAndSlot(tester);
+
+      // Tick mandatory consent so only the OTP gate stands between us and book.
+      final boxes = find.byType(Checkbox);
+      await tester.ensureVisible(boxes.at(0));
+      await tester.tap(boxes.at(0));
+      await tester.tap(boxes.at(1));
+      await tester.pump();
+
+      // Tapping the (disabled) book button before verifying must NOT submit.
       await tester.ensureVisible(find.text('בקשו פגישת וידאו'));
       await tester.tap(find.text('בקשו פגישת וידאו'));
       await tester.pump();
+      expect(backend.submittedMeetings, isEmpty);
+
+      // After verifying, the same tap goes through.
+      await verifyEmail(tester);
+      await tester.ensureVisible(find.text('בקשו פגישת וידאו'));
+      await tester.tap(find.text('בקשו פגישת וידאו'));
+      await tester.pumpAndSettle();
+      expect(backend.submittedMeetings, hasLength(1));
+    });
+
+    testWidgets('blocks submit without consent even after verifying', (tester) async {
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט')));
+      await tester.pump(const Duration(seconds: 1));
+
+      await fillContactAndSlot(tester);
+      // Verify the email but leave consent UNticked.
+      await verifyEmail(tester);
+
+      await tester.ensureVisible(find.text('בקשו פגישת וידאו'));
+      await tester.tap(find.text('בקשו פגישת וידאו'));
+      await tester.pump(); // schedule the SnackBar
+      await tester.pump(const Duration(milliseconds: 800)); // let it animate in
       expect(find.textContaining('יש לאשר את תנאי השימוש'), findsOneWidget);
       expect(backend.submittedMeetings, isEmpty);
       await tester.pump(const Duration(seconds: 4)); // let the snackbar expire
     });
 
-    testWidgets('happy path submits, flips to status and demo-confirms', (tester) async {
+    testWidgets('happy path: request → verify → book, flips to status and demo-confirms',
+        (tester) async {
       await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט', source: 'plan')));
       await tester.pump(const Duration(seconds: 1));
 
-      await tester.ensureVisible(find.text('09:00').first);
-      await tester.tap(find.text('09:00').first);
-      await tester.pump();
-      await tester.ensureVisible(find.byType(TextFormField).at(0));
-      await tester.enterText(find.byType(TextFormField).at(0), 'ישראל ישראלי');
-      await tester.enterText(find.byType(TextFormField).at(1), '0501234567');
+      await fillContactAndSlot(tester);
+      await verifyEmail(tester);
 
       // Tick mandatory consent (terms + privacy are the first two checkboxes).
       final boxes = find.byType(Checkbox);
@@ -161,6 +221,7 @@ void main() {
       expect(m.provider, 'הוט');
       expect(m.slot, '09:00');
       expect(m.source, 'plan');
+      expect(m.email, 'test@example.com');
       // The bookable grid starts tomorrow.
       final firstDate = bookableMeetingDates().first;
       expect(m.meetingDate, meetingDateIso(firstDate));

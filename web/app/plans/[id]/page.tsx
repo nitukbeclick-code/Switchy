@@ -34,10 +34,15 @@ import FreshnessBadge from "@/components/FreshnessBadge";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import LeadForm from "@/components/LeadForm";
+import RelatedLinks from "@/components/RelatedLinks";
 import { getPlans, providerSlug, CATEGORY_HE } from "@/lib/data";
 import { planDetail } from "@/lib/plan-display";
 import { priceUnitLabel, ils, leadCategory } from "@/lib/format";
-import { productSchema, breadcrumbSchema } from "@/lib/schema";
+import { productSchema, breadcrumbSchema, relatedLinksSchema } from "@/lib/schema";
+import {
+  buildPlanRelatedGroups,
+  relatedNavLinks,
+} from "@/lib/related-links";
 import { pageMetadata } from "@/lib/seo";
 import type { Plan } from "@/lib/types";
 
@@ -135,6 +140,14 @@ export default async function PlanDetailPage({ params }: Params) {
 
   const similar = similarPlans(plan);
 
+  // Catalogue-derived hub-spoke cross-links: the plan's provider page, the full
+  // category /compare hub, the head-to-head /vs pages for this provider, the other
+  // providers in the category, and the category's guides. Deepens the crawlable
+  // entity graph; every href is a real on-site route. The relatedLinksSchema
+  // ItemList mirrors the rendered block (de-duped by url) and is omitted when empty.
+  const relatedGroups = buildPlanRelatedGroups(plan);
+  const relatedNav = relatedNavLinks(relatedGroups);
+
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "מחירון", url: "/plans" },
@@ -148,6 +161,15 @@ export default async function PlanDetailPage({ params }: Params) {
           real rating data (it does not today) — never fabricated. */}
       <JsonLd data={productSchema(plan)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
+      {/* Internal cross-links as a SiteNavigationElement list (mirrors the visible
+          RelatedLinks block below). relatedLinksSchema returns null on empty. */}
+      {(() => {
+        const nav = relatedLinksSchema({
+          name: "להמשך ההשוואה",
+          links: relatedNav,
+        });
+        return nav ? <JsonLd data={nav} /> : null;
+      })()}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -415,6 +437,16 @@ export default async function PlanDetailPage({ params }: Params) {
           </ul>
         </section>
       ) : null}
+
+      {/* ── Grouped hub-spoke cross-links (catalogue-derived, no dead-ends) ─────
+          Provider page + category /compare hub + head-to-head /vs pages + the
+          other providers in the category + the category guides. Deepens the
+          crawlable entity graph for SEO + answer engines. */}
+      <RelatedLinks
+        id="plan-related"
+        groups={relatedGroups}
+        className="mt-14"
+      />
     </main>
   );
 }

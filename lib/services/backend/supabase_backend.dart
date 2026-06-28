@@ -382,19 +382,21 @@ class SupabaseBackend implements Backend {
   }
 
   @override
-  Future<bool> requestMeetingEmailCode(String email, {String? name}) async {
+  Future<({bool ok, bool sent})> requestMeetingEmailCode(String email, {String? name}) async {
     try {
-      // The function always answers {ok:true} (it never reveals whether the
-      // address exists); only a transport / non-2xx failure should read as
-      // "couldn't send" so the UI can offer a retry.
-      await _meetingBook({
+      // The function answers {ok:true, sent:<bool>}. It never reveals whether the
+      // address exists (sent is absent on the rate-limit / invalid paths → treat
+      // as true); only an explicit sent:false means the email SEND failed (Resend
+      // down / sender domain unverified) so the UI can offer a WhatsApp fallback.
+      final data = await _meetingBook({
         'action': 'request-code',
         'email': email,
         if (name != null && name.isNotEmpty) 'name': name,
       });
-      return true;
+      return (ok: true, sent: data['sent'] != false);
     } catch (_) {
-      return false;
+      // A transport / non-2xx failure — the request didn't reach the backend.
+      return (ok: false, sent: false);
     }
   }
 

@@ -988,10 +988,19 @@ abstract interface class Backend {
   /// Step 1 of the email-gated booking: asks the `meeting-book` edge function to
   /// email a 6-digit verification code to [email] (the rep needs a reachable
   /// address before a slot is held). [name] personalises the email when known.
-  /// Returns true unless a transport error stopped the request from being sent —
-  /// the function always answers `{ok:true}` so we never leak whether the address
-  /// exists. [LocalBackend] accepts any address offline so the OTP UX still runs.
-  Future<bool> requestMeetingEmailCode(String email, {String? name});
+  ///
+  /// Returns `(ok, sent)`:
+  /// * `ok` — the request reached the backend (false only on a transport error).
+  /// * `sent` — the backend believes the email was sent. It answers `{ok:true,
+  ///   sent:<bool>}`; `sent` is absent (treated as true) on the rate-limit /
+  ///   invalid paths so we never leak whether the address exists, and is `false`
+  ///   only when the mail SEND itself failed (Resend down / sender domain not
+  ///   verified). The UI uses `ok && !sent` to offer a WhatsApp fallback instead
+  ///   of waiting for a code that will never arrive.
+  ///
+  /// [LocalBackend] returns `(ok:true, sent:true)` for any address offline so the
+  /// OTP UX still runs in demo mode and widget tests.
+  Future<({bool ok, bool sent})> requestMeetingEmailCode(String email, {String? name});
 
   /// Step 2: verifies the [code] the user typed against the one mailed in
   /// [requestMeetingEmailCode]. Returns `(ok:true)` when the code matches, or

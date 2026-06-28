@@ -49,9 +49,14 @@ void main() {
 
     test('email-OTP gate: request returns true, verify accepts a code, rejects empty', () async {
       final b = LocalBackend();
-      // request-code: any non-empty address "sends" (offline no-op).
-      expect(await b.requestMeetingEmailCode('user@example.com', name: 'ישראל'), isTrue);
-      expect(await b.requestMeetingEmailCode('  '), isFalse);
+      // request-code: any non-empty address "sends" (offline no-op) → (ok, sent)
+      // both true; an empty address is not ok and not sent.
+      final reqOk = await b.requestMeetingEmailCode('user@example.com', name: 'ישראל');
+      expect(reqOk.ok, isTrue);
+      expect(reqOk.sent, isTrue);
+      final reqEmpty = await b.requestMeetingEmailCode('  ');
+      expect(reqEmpty.ok, isFalse);
+      expect(reqEmpty.sent, isFalse);
       // verify-code: any non-empty code checks out offline; empty is rejected
       // with a friendly Hebrew reason.
       final ok = await b.verifyMeetingEmailCode('user@example.com', '123456');

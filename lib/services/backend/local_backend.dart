@@ -144,8 +144,8 @@ class LocalBackend implements Backend {
   // "code sent" and any non-empty code verifies. This keeps the full
   // request → verify → book UX exercisable in demo mode and in widget tests.
   @override
-  Future<bool> requestMeetingEmailCode(String email, {String? name}) async =>
-      email.trim().isNotEmpty;
+  Future<({bool ok, bool sent})> requestMeetingEmailCode(String email, {String? name}) async =>
+      (ok: email.trim().isNotEmpty, sent: email.trim().isNotEmpty);
 
   @override
   Future<({bool ok, String? error})> verifyMeetingEmailCode(String email, String code) async {

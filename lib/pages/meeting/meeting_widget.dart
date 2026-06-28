@@ -144,26 +144,35 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     }
     HapticFeedback.lightImpact();
     setState(() => _sendingCode = true);
-    bool ok;
+    ({bool ok, bool sent}) res;
     try {
-      ok = await appBackend
+      res = await appBackend
           .requestMeetingEmailCode(_emailText, name: _nameCtrl.text.trim())
           .timeout(const Duration(seconds: 10));
     } catch (_) {
-      ok = false;
+      res = (ok: false, sent: false);
     }
     if (!mounted) return;
+    // Only reveal the code field when the email was actually sent — otherwise the
+    // user would wait for a code that never arrives.
+    final accepted = res.ok && res.sent;
     setState(() {
       _sendingCode = false;
-      if (ok) {
+      if (accepted) {
         _codeSent = true;
         _verifiedEmail = _emailText; // bind the gate to this address
         _emailVerified = false;
         _codeCtrl.clear();
       }
     });
-    if (ok) {
+    if (accepted) {
       AppSnackBar.success(context, 'שלחנו קוד אימות בן 6 ספרות לכתובת $_emailText');
+    } else if (res.ok && !res.sent) {
+      // Reached the backend, but the email SEND failed (Resend down / sender
+      // domain not verified). Don't dead-end the user on a code that won't come —
+      // point them to WhatsApp, where the live agent can book them directly.
+      AppSnackBar.error(context,
+          'לא הצלחנו לשלוח כרגע מייל לכתובת זו. נסו שוב בעוד רגע, או דברו איתנו ישירות ב-WhatsApp ונסגור לכם פגישה.');
     } else {
       AppSnackBar.error(context, 'שליחת קוד האימות נכשלה — בדקו את החיבור ונסו שוב');
     }

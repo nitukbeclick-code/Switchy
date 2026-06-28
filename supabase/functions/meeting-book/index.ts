@@ -221,25 +221,34 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
   //                     inserted; send once anyway (the in-memory floor still held).
   const inserted = allowed === true;
 
-  // Send the code email — fully fail-soft and outcome-blind to the caller. Sent on
-  // a real allow (row inserted) AND on the fail-soft-allow path (RPC errored).
+  // Send the code email — still fail-soft (never throws into the caller), but NO
+  // LONGER blind about the SEND itself: we surface a `sent` flag so the app can
+  // tell a legit user "we couldn't email you — use WhatsApp" instead of waiting
+  // for a code that a Resend / unverified-domain failure silently dropped. There
+  // is NO enumeration risk here: any address may request an OTP, and `sent`
+  // reflects mail-infrastructure health, not whether the address exists. The
+  // actual Resend rejection reason is logged so "no email" is diagnosable fast.
+  let sent = true; // optimistic; only an attempted-and-failed send flips it false
   if (allowed === true || allowed === null) {
     try {
       const cfg = await resolveCfgCached();
-      await sendCustomerEmail(
+      const r = await sendCustomerEmail(
         cfg,
         email,
         "קוד אימות לקביעת שיחת ייעוץ — Switchy AI",
         buildOtpEmailHtml({ code, name: name || undefined }),
       );
+      sent = r.ok === true;
+      if (!r.ok) jlog({ at: "request-code", ok: false, error: r.error ?? "send failed" });
     } catch (e) {
+      sent = false;
       // never throw into the caller — log without the code/PII
       jlog({ at: "request-code", ok: false, error: String(e) });
     }
   }
   // Log WITHOUT the code or the raw email.
-  jlog({ at: "request-code", email_fp: canonFp, inserted });
-  return json({ ok: true }, 200, origin);
+  jlog({ at: "request-code", email_fp: canonFp, inserted, sent });
+  return json({ ok: true, sent }, 200, origin);
 }
 
 // ── verify-code ───────────────────────────────────────────────────────────────

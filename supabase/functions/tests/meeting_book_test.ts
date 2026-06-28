@@ -7,6 +7,10 @@
 
 import { assert, assertEquals, assertFalse, assertMatch } from "@std/assert";
 import {
+  canonicalizeEmail,
+  DEFAULT_OTP_RATE_LIMITS,
+  evaluateOtpRateLimit,
+  evaluateOtpVerify,
   genCode,
   hashCode,
   isValidEmail,
@@ -101,6 +105,46 @@ Deno.test("isValidEmail rejects garbage and over-long input", () => {
   }
 });
 
+// ── canonicalizeEmail — alias-collapse for the rate-limit key ─────────────────
+// Closes the email-bomb-via-alias vector: every alias that delivers to ONE inbox
+// must collapse to a single canonical key so the per-address cap can't be evaded.
+
+Deno.test("canonicalizeEmail collapses all Gmail aliases of one inbox to one key", () => {
+  for (const alias of [
+    "victim+1@gmail.com",
+    "victim+2@gmail.com",
+    "v.i.c.t.i.m@gmail.com",
+    "VICTIM@gmail.com",
+    "victim@googlemail.com",
+    "  Victim+anything.here@GoogleMail.com  ", // trim + lowercase + tag + dots + googlemail
+  ]) {
+    assertEquals(canonicalizeEmail(alias), "victim@gmail.com", `alias not collapsed: ${alias}`);
+  }
+});
+
+Deno.test("canonicalizeEmail strips +tag sub-addressing for any provider", () => {
+  assertEquals(canonicalizeEmail("foo+promo@outlook.com"), "foo@outlook.com");
+  assertEquals(canonicalizeEmail("user+anything@example.co.il"), "user@example.co.il");
+});
+
+Deno.test("canonicalizeEmail keeps dots for non-Gmail providers (dots are significant)", () => {
+  assertEquals(canonicalizeEmail("a.b.c@outlook.com"), "a.b.c@outlook.com");
+});
+
+Deno.test("canonicalizeEmail leaves a plain address unchanged", () => {
+  assertEquals(canonicalizeEmail("user@example.com"), "user@example.com");
+});
+
+Deno.test("canonicalizeEmail is safe on malformed input (no throw, stable fallback)", () => {
+  // No '@', empty local/domain, and non-string inputs all fall back to normalizeEmail.
+  assertEquals(canonicalizeEmail("plainstring"), "plainstring");
+  assertEquals(canonicalizeEmail("@nolocal.com"), "@nolocal.com");
+  assertEquals(canonicalizeEmail("nodomain@"), "nodomain@");
+  assertEquals(canonicalizeEmail(""), "");
+  assertEquals(canonicalizeEmail(null), "");
+  assertEquals(canonicalizeEmail(undefined), "");
+});
+
 // ── validBookingSlot — mirrors meetings_guard ─────────────────────────────────
 
 Deno.test("validBookingSlot accepts a valid Sun–Thu slot in range", () => {
@@ -158,4 +202,172 @@ Deno.test("validBookingSlot rejects a malformed or impossible date", () => {
   assertFalse(validBookingSlot("2026-02-30", "10:00", NOW).ok); // impossible day
   assertFalse(validBookingSlot("not-a-date", "10:00", NOW).ok);
   assertFalse(validBookingSlot("2026/06/11", "10:00", NOW).ok); // wrong separators
+});
+
+// ── evaluateOtpRateLimit (DURABLE OTP send throttle) ───────────────────────────
+// Pure decision used by request-code BEFORE emailing/inserting a code. A denial
+// is what stops email-bombing; the in-memory limiter is only a hot-isolate
+// pre-filter, so these are the tests that actually pin the anti-abuse contract.
+
+const T0 = Date.parse("2026-06-10T12:00:00.000Z");
+const MIN = 60_000;
+// A tiny, explicit limit set so the edge cases are unambiguous in the assertions.
+const LIMITS = {
+  cooldownMs: 45_000,
+  emailWindowMs: 15 * MIN,
+  emailMax: 4,
+  emailDayMs: 24 * 60 * MIN,
+  emailDayMax: 12,
+  ipWindowMs: 60 * MIN,
+  ipMax: 15,
+};
+
+Deno.test("otp-rl: a first-ever request is allowed (no history)", () => {
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps: [], ipTimestamps: [], limits: LIMITS });
+  assert(d.allowed);
+});
+
+Deno.test("otp-rl: cooldown blocks a resend that arrives too soon", () => {
+  // last send 20s ago < 45s cooldown → denied
+  const d = evaluateOtpRateLimit({
+    now: T0,
+    emailTimestamps: [T0 - 20_000],
+    ipTimestamps: [],
+    limits: LIMITS,
+  });
+  assertFalse(d.allowed);
+  if (!d.allowed) assertEquals(d.reason, "cooldown");
+});
+
+Deno.test("otp-rl: a resend after the cooldown elapses is allowed", () => {
+  // last send 50s ago > 45s cooldown, and only 1 in the window → allowed
+  const d = evaluateOtpRateLimit({
+    now: T0,
+    emailTimestamps: [T0 - 50_000],
+    ipTimestamps: [],
+    limits: LIMITS,
+  });
+  assert(d.allowed);
+});
+
+Deno.test("otp-rl: per-address burst cap blocks the (max+1)-th in the window", () => {
+  // 4 sends inside the last 15 min (all older than the 45s cooldown) → emailMax hit
+  const emailTimestamps = [2 * MIN, 5 * MIN, 9 * MIN, 13 * MIN].map((m) => T0 - m);
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps, ipTimestamps: [], limits: LIMITS });
+  assertFalse(d.allowed);
+  if (!d.allowed) assertEquals(d.reason, "email-window");
+});
+
+Deno.test("otp-rl: sends that aged out of the window don't count toward the burst cap", () => {
+  // 4 sends but all > 15 min ago → window count is 0 → allowed
+  const emailTimestamps = [16 * MIN, 20 * MIN, 40 * MIN, 90 * MIN].map((m) => T0 - m);
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps, ipTimestamps: [], limits: LIMITS });
+  assert(d.allowed);
+});
+
+Deno.test("otp-rl: per-address daily cap blocks even when the 15-min window is clear", () => {
+  // 12 sends spread across the last 24h, none in the last 15 min and none within
+  // cooldown → window OK, but daily cap (12) reached → denied.
+  const emailTimestamps = Array.from({ length: 12 }, (_, i) => T0 - (30 + i * 100) * MIN);
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps, ipTimestamps: [], limits: LIMITS });
+  assertFalse(d.allowed);
+  if (!d.allowed) assertEquals(d.reason, "email-day");
+});
+
+Deno.test("otp-rl: per-IP cap blocks bombing one mailbox via many aliases", () => {
+  // A fresh alias (no per-address history) but the IP already sent ipMax in the
+  // hour → the per-IP rule catches the +tag/dot bombing pattern.
+  const ipTimestamps = Array.from({ length: 15 }, (_, i) => T0 - (i + 1) * MIN);
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps: [], ipTimestamps, limits: LIMITS });
+  assertFalse(d.allowed);
+  if (!d.allowed) assertEquals(d.reason, "ip-window");
+});
+
+Deno.test("otp-rl: per-IP rule cannot apply when the IP is unknown (empty)", () => {
+  // Even with a huge implied IP flood, an empty ipTimestamps means no IP key —
+  // the address rules still govern, and here they're clear → allowed.
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps: [], ipTimestamps: [], limits: LIMITS });
+  assert(d.allowed);
+});
+
+Deno.test("otp-rl: decision is order-independent and ignores non-finite timestamps", () => {
+  const shuffled = [9 * MIN, 2 * MIN, 13 * MIN, 5 * MIN].map((m) => T0 - m);
+  const withJunk = [NaN, ...shuffled, Infinity];
+  const d = evaluateOtpRateLimit({ now: T0, emailTimestamps: withJunk, ipTimestamps: [], limits: LIMITS });
+  // 4 valid sends in the window → still the email-window denial, junk ignored.
+  assertFalse(d.allowed);
+  if (!d.allowed) assertEquals(d.reason, "email-window");
+});
+
+Deno.test("otp-rl: ships with sane production defaults", () => {
+  // Guard against an accidental edit that makes the shipped limits absurd.
+  assert(DEFAULT_OTP_RATE_LIMITS.emailMax >= 1 && DEFAULT_OTP_RATE_LIMITS.emailMax <= 10);
+  assert(DEFAULT_OTP_RATE_LIMITS.cooldownMs >= 10_000);
+  assert(DEFAULT_OTP_RATE_LIMITS.ipMax >= DEFAULT_OTP_RATE_LIMITS.emailMax);
+  // A legitimate single user (1 send, no prior history) is always allowed.
+  const ok = evaluateOtpRateLimit({ now: T0, emailTimestamps: [], ipTimestamps: [] });
+  assert(ok.allowed);
+});
+
+// ── evaluateOtpVerify (verify against ALL live codes) ──────────────────────────
+// Guards the production bug: after a "resend" an address holds several live
+// codes, and the user may enter the one from an EARLIER email — that must verify.
+
+const FAR = "2999-01-01T00:00:00.000Z"; // always-unexpired
+const PAST = "2000-01-01T00:00:00.000Z"; // always-expired
+const TV = Date.parse("2026-06-28T02:12:00.000Z");
+
+Deno.test("otp-verify: matches a code from an OLDER live row, not only the newest (the bug)", async () => {
+  // Reproduces the real incident: SHA-256("926748") matched the 2nd-newest row
+  // while a newer resend row existed; the old single-row check wrongly rejected.
+  const rows = [
+    { id: "row-new", code_hash: await hashCode("111111"), expires_at: FAR, attempts: 0 },
+    { id: "row-old", code_hash: await hashCode("926748"), expires_at: FAR, attempts: 0 },
+  ];
+  const out = evaluateOtpVerify(rows, await hashCode("926748"), TV, 5);
+  assertEquals(out.status, "match");
+  if (out.status === "match") assertEquals(out.matchedId, "row-old");
+});
+
+Deno.test("otp-verify: matches the newest row too", async () => {
+  const rows = [{ id: "a", code_hash: await hashCode("424242"), expires_at: FAR, attempts: 0 }];
+  assertEquals(evaluateOtpVerify(rows, await hashCode("424242"), TV, 5).status, "match");
+});
+
+Deno.test("otp-verify: a wrong code is a mismatch and charges the newest row", async () => {
+  const rows = [
+    { id: "new", code_hash: await hashCode("222222"), expires_at: FAR, attempts: 1 },
+    { id: "old", code_hash: await hashCode("333333"), expires_at: FAR, attempts: 0 },
+  ];
+  const out = evaluateOtpVerify(rows, await hashCode("999999"), TV, 5);
+  assertEquals(out.status, "mismatch");
+  if (out.status === "mismatch") {
+    assertEquals(out.chargeId, "new");
+    assertEquals(out.nextAttempts, 2);
+  }
+});
+
+Deno.test("otp-verify: empty set and all-expired both yield no-live", async () => {
+  assertEquals(evaluateOtpVerify([], await hashCode("000000"), TV, 5).status, "no-live");
+  const expired = [{ id: "x", code_hash: await hashCode("121212"), expires_at: PAST, attempts: 0 }];
+  assertEquals(evaluateOtpVerify(expired, await hashCode("121212"), TV, 5).status, "no-live");
+});
+
+Deno.test("otp-verify: an expired row is never matchable even if the code equals it", async () => {
+  const h = await hashCode("777777");
+  const rows = [
+    { id: "expired", code_hash: h, expires_at: PAST, attempts: 0 },
+    { id: "live", code_hash: await hashCode("888888"), expires_at: FAR, attempts: 0 },
+  ];
+  // The entered code equals ONLY the expired row → no live match → mismatch.
+  assertEquals(evaluateOtpVerify(rows, h, TV, 5).status, "mismatch");
+});
+
+Deno.test("otp-verify: attempt budget is summed across live codes → too-many", async () => {
+  const rows = [
+    { id: "a", code_hash: await hashCode("100000"), expires_at: FAR, attempts: 3 },
+    { id: "b", code_hash: await hashCode("200000"), expires_at: FAR, attempts: 2 },
+  ];
+  // sum = 5 >= maxAttempts 5 → locked out before any compare (even the right code).
+  assertEquals(evaluateOtpVerify(rows, await hashCode("100000"), TV, 5).status, "too-many");
 });

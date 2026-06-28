@@ -92,12 +92,18 @@ async function callMeetingBook(
   return data;
 }
 
+// The carriers Switchy books a Zoom consultation for. MUST stay in sync with the
+// public.meetings_guard whitelist (meetings-2026-06.sql) — an insert with any other
+// `provider` is rejected ('provider not eligible'). Mirrors the static booking grid.
+const MEETING_PROVIDERS = ["HOT", "yes", "פרטנר", "סלקום", "STING TV", "בזק", "הוט מובייל"] as const;
+
 export default function BookClient() {
   // ── Step 1 fields ──────────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [category, setCategory] = useState<ServiceCategory | "">("");
+  const [provider, setProvider] = useState<string>("");
   const [date, setDate] = useState("");
   const [slot, setSlot] = useState("");
   const [consent, setConsent] = useState(false);
@@ -146,6 +152,7 @@ export default function BookClient() {
     isValidIsraeliPhone(phone) &&
     emailValid &&
     category !== "" &&
+    provider !== "" &&
     date !== "" &&
     slot !== "" &&
     consent;
@@ -160,6 +167,7 @@ export default function BookClient() {
     if (!isValidIsraeliPhone(phone)) return setError("מספר הטלפון אינו תקין");
     if (!emailValid) return setError("כתובת המייל אינה תקינה");
     if (!category) return setError("נא לבחור שירות");
+    if (!provider) return setError("נא לבחור את החברה לפגישה");
     if (!date || !slot) return setError("נא לבחור יום ושעה לפגישה");
     if (!consent) return setError("יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך");
 
@@ -240,6 +248,7 @@ export default function BookClient() {
         meeting_date: date,
         slot,
         category,
+        provider,
         consent: true,
       });
       if (data?.ok) {
@@ -423,6 +432,28 @@ export default function BookClient() {
               {SERVICE_CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
                   {CATEGORY_HE[cat]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor={id("provider")}
+              className="mb-1 block text-sm font-medium text-foreground"
+            >
+              עם איזו חברה תרצו להיפגש?
+            </label>
+            <select
+              id={id("provider")}
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+              className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            >
+              <option value="">בחרו חברה…</option>
+              {MEETING_PROVIDERS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
                 </option>
               ))}
             </select>
@@ -664,6 +695,10 @@ export default function BookClient() {
               <dd className="font-medium text-foreground">
                 {category ? CATEGORY_HE[category] : ""}
               </dd>
+            </div>
+            <div className="flex justify-between gap-3 py-1">
+              <dt className="text-muted">חברה</dt>
+              <dd className="font-medium text-foreground">{provider}</dd>
             </div>
             <div className="flex justify-between gap-3 py-1">
               <dt className="text-muted">מועד</dt>

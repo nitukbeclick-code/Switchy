@@ -36,6 +36,7 @@ import PriceCaveat from "@/components/PriceCaveat";
 import LeadForm from "@/components/LeadForm";
 import RelatedLinks from "@/components/RelatedLinks";
 import { getPlans, providerSlug, CATEGORY_HE } from "@/lib/data";
+import { getLivePlans } from "@/lib/live-catalogue";
 import { planDetail } from "@/lib/plan-display";
 import { priceUnitLabel, ils, leadCategory } from "@/lib/format";
 import { productSchema, breadcrumbSchema, relatedLinksSchema } from "@/lib/schema";
@@ -47,17 +48,30 @@ import { pageMetadata } from "@/lib/seo";
 import type { Plan } from "@/lib/types";
 
 // Pre-render one page per catalogue plan id at build time. Unknown ids return a
-// real 404 (not a soft-200), so crawlers + users get the not-found page.
+// real 404 (not a soft-200), so crawlers + users get the not-found page. The set
+// of ids comes from the bundled catalogue (stable build-time params); the price /
+// detail BODY is read live per render (see below) so it matches /compare.
 export const dynamicParams = false;
 export function generateStaticParams() {
   return getPlans().map((p) => ({ id: p.id }));
 }
 
+// ISR: regenerate the static HTML hourly so the live DB catalogue (price, after,
+// fees, perks, fine-print + every JSON-LD block) stays fresh while still being
+// served instantly from cache. The <CatalogueLiveRefresh> client mount freshens
+// on top via realtime; the server HTML always carries the real prices for crawlers.
+export const revalidate = 3600;
+
 interface Params {
   params: Promise<{ id: string }>;
 }
 
-/** Resolve a plan by its catalogue id (no getPlanById in the data layer). */
+/** Resolve a plan by its catalogue id from a given plan list (live or bundled). */
+function planByIdIn(plans: Plan[], id: string): Plan | undefined {
+  return plans.find((p) => p.id === id);
+}
+
+/** Resolve a plan by its catalogue id from the BUNDLED snapshot (for metadata). */
 function planById(id: string): Plan | undefined {
   return getPlans().find((p) => p.id === id);
 }
@@ -91,8 +105,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  * price distance (cheaper-first on ties), so the suggestions are genuinely the
  * closest alternatives the buyer can compare side by side.
  */
-function similarPlans(plan: Plan, limit = 4): Plan[] {
-  return getPlans()
+function similarPlans(plan: Plan, all: Plan[], limit = 4): Plan[] {
+  return all
     .filter((p) => p.cat === plan.cat && p.id !== plan.id)
     .map((p) => ({
       p,
@@ -125,8 +139,18 @@ function AfterLine({ after }: { after: ReturnType<typeof planDetail>["after"] })
 
 export default async function PlanDetailPage({ params }: Params) {
   const { id } = await params;
-  const plan = planById(id);
+
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  // Read the live DB catalogue ONCE and resolve this plan + the "similar" set from
+  // the SAME list, so the detail price/after/fees/perks match /compare exactly. On
+  // any failure getLivePlans returns the bundled snapshot (never throws); if the
+  // live list lacks this id (e.g. a build-time-only id) we fall back to the bundled
+  // plan so the page is never blank for a valid pre-rendered id.
+  const { plans: catalogue, stale } = await getLivePlans();
+  const plan = planByIdIn(catalogue, id) ?? planById(id);
   if (!plan) notFound();
+
+  const all = catalogue.length ? catalogue : getPlans();
 
   // The full truth-only detail bundle — the one call that drives every block.
   const d = planDetail(plan);
@@ -138,7 +162,7 @@ export default async function PlanDetailPage({ params }: Params) {
   const shownPerks = new Set(d.perks);
   const extraFineLines = d.fineLines.filter((line) => !shownPerks.has(line));
 
-  const similar = similarPlans(plan);
+  const similar = similarPlans(plan, all);
 
   // Catalogue-derived hub-spoke cross-links: the plan's provider page, the full
   // category /compare hub, the head-to-head /vs pages for this provider, the other
@@ -229,6 +253,15 @@ export default async function PlanDetailPage({ params }: Params) {
             <FreshnessBadge date={d.updatedAt} />
           </div>
         ) : null}
+
+        {/* Honest staleness note: when the live DB read failed and we're serving
+            the last-known-good bundled snapshot, say so plainly (no fabrication,
+            never blank). */}
+        {stale ? (
+          <p className="mt-2 text-xs text-muted">
+            ייתכן שהמחירים מעט מאחור — מוצג עותק שמור של הקטלוג.
+          </p>
+        ) : null}
       </header>
 
       {/* ── Commission disclosure (Consumer Protection §7b) — near the price. ─ */}
@@ -263,7 +296,7 @@ export default async function PlanDetailPage({ params }: Params) {
                 >
                   ✓
                 </span>
-                <span className="min-w-0">{perk}</span>
+                <span className="min-w-0 break-words">{perk}</span>
               </li>
             ))}
           </ul>
@@ -281,7 +314,9 @@ export default async function PlanDetailPage({ params }: Params) {
           </h2>
           <ul className="mt-3 list-disc space-y-1.5 ps-5 text-sm leading-relaxed text-foreground">
             {d.terms.map((term, i) => (
-              <li key={i}>{term}</li>
+              <li key={i} className="break-words">
+                {term}
+              </li>
             ))}
           </ul>
         </section>
@@ -296,7 +331,7 @@ export default async function PlanDetailPage({ params }: Params) {
           >
             למי מתאים
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-foreground">
+          <p className="mt-2 break-words text-sm leading-relaxed text-foreground">
             {d.eligibility}
           </p>
         </section>
@@ -311,7 +346,7 @@ export default async function PlanDetailPage({ params }: Params) {
           >
             מידע נוסף
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-foreground">
+          <p className="mt-2 break-words text-sm leading-relaxed text-foreground">
             {d.notes}
           </p>
         </section>
@@ -319,7 +354,7 @@ export default async function PlanDetailPage({ params }: Params) {
 
       {/* ── Full fine-print ("אותיות קטנות") behind a native, no-JS disclosure ── */}
       {extraFineLines.length > 0 ? (
-        <details className="group mt-8 rounded-2xl border border-border/60 bg-surface p-4 sm:p-5">
+        <details className="group mt-8 overflow-hidden rounded-2xl border border-border/60 bg-surface p-4 sm:p-5">
           <summary className="interactive flex cursor-pointer list-none items-center gap-2 font-display text-sm font-semibold text-ink marker:hidden">
             אותיות קטנות
             <span
@@ -331,7 +366,9 @@ export default async function PlanDetailPage({ params }: Params) {
           </summary>
           <ul className="mt-3 list-disc space-y-1.5 ps-5 text-[13px] leading-relaxed text-foreground">
             {extraFineLines.map((line, i) => (
-              <li key={i}>{line}</li>
+              <li key={i} className="break-words">
+                {line}
+              </li>
             ))}
           </ul>
         </details>

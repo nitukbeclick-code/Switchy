@@ -14,6 +14,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../data.dart' show compiledPlans;
 import '../../models.dart';
 import 'backend.dart';
 
@@ -33,6 +34,9 @@ class SupabaseBackend implements Backend {
   RealtimeChannel? _priceHistoryChannel;
   StreamController<void>? _priceHistoryCtrl;
 
+  RealtimeChannel? _catalogueChannel;
+  StreamController<void>? _catalogueCtrl;
+
   // ── AI advisor (site-ai-chat edge agent) ─────────────────────────────────────
   @override
   Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body) async {
@@ -45,6 +49,98 @@ class SupabaseBackend implements Backend {
     // A 2xx with an unexpected body is as useless as an error — make the caller
     // fall back rather than render nothing.
     throw StateError('site-ai-chat returned no JSON body');
+  }
+
+  // ── Live catalogue (public.plans) ────────────────────────────────────────────
+  // public.plans is "publicly readable" (anon SELECT grant + RLS) — see
+  // schema.sql §grants and web/lib/live-catalogue.ts, which this mirrors in Dart.
+  // We read the owner-editable columns, normalise each row via Plan.fromJson, and
+  // overlay the bundled qualitative fields (feats / fineLines / notes) by id so a
+  // row the owner hasn't seeded keeps the committed perks/fine-print. Truth-only:
+  // we only TRANSPORT real rows; a failed / empty read returns [] so the caller
+  // keeps its last-known-good compiled snapshot (never blank, never fabricated).
+  @override
+  Future<List<Plan>> fetchCatalogue() async {
+    try {
+      final rows = await _db.from('plans').select(
+            'id,category,provider,title,subtitle,price,price_exact,after,'
+            'after_exact,is_5g,no_commit,has_abroad,price_unit,kind,specs,fees,'
+            'feats,fine_lines,terms,notes,updated_at',
+          );
+      final plans = <Plan>[
+        for (final r in (rows as List))
+          if (Plan.fromJson((r as Map).cast<String, dynamic>()) case final p?) p,
+      ];
+      // Zero valid rows after normalisation → empty so the caller keeps the
+      // last-known-good compiled catalogue rather than rendering fewer plans.
+      if (plans.isEmpty) return const [];
+      return _overlayBundledRichFields(plans);
+    } catch (_) {
+      // Transport / RLS / parse failure → empty; the caller keeps last-known-good.
+      return const [];
+    }
+  }
+
+  /// Overlay the QUALITATIVE rich fields (feats / fineLines / notes) from the
+  /// COMPILED catalogue onto live plans, matched by id — only filling a field the
+  /// live plan lacks, only from the SAME id (no cross-plan guessing). Also
+  /// restores the precise `net` token for known ids (public.plans has no `net`
+  /// column, so a live row only carries a coarse 5g/'' guess). Mirrors
+  /// web/lib/live-catalogue.ts mergeBundledRichFields. Truth-only.
+  List<Plan> _overlayBundledRichFields(List<Plan> live) {
+    final bundledById = {for (final p in compiledPlans) p.id: p};
+    return [
+      for (final p in live)
+        if (bundledById[p.id] case final b?)
+          Plan(
+            id: p.id,
+            cat: p.cat,
+            provider: p.provider,
+            // Live has no real net column; keep the precise bundled net.
+            net: p.net.isNotEmpty ? p.net : b.net,
+            plan: p.plan,
+            price: p.price,
+            priceExact: p.priceExact,
+            after: p.after,
+            afterExact: p.afterExact,
+            term: p.term,
+            intro: b.intro,
+            rating: b.rating,
+            reviews: b.reviews,
+            flags: p.flags.isNotEmpty ? p.flags : b.flags,
+            feats: p.feats.isNotEmpty ? p.feats : b.feats,
+            fine: b.fine,
+            highlight: b.highlight,
+            kind: p.kind,
+            priceUnit: p.priceUnit,
+            specs: p.specs.isNotEmpty ? p.specs : b.specs,
+            fineLines: p.fineLines.isNotEmpty ? p.fineLines : b.fineLines,
+            fees: p.fees.isNotEmpty ? p.fees : b.fees,
+            terms: p.terms.isNotEmpty ? p.terms : b.terms,
+            eligibility: b.eligibility,
+            notes: (p.notes != null && p.notes!.isNotEmpty) ? p.notes : b.notes,
+            sourceUrl: b.sourceUrl,
+            updatedAt: p.updatedAt ?? b.updatedAt,
+          )
+        else
+          p, // live-only plan (a brand-new id) — keep exactly its DB data
+    ];
+  }
+
+  @override
+  Stream<void> catalogueChanges() {
+    _catalogueCtrl ??= StreamController<void>.broadcast();
+    _catalogueChannel?.unsubscribe();
+    _catalogueChannel = _db
+        .channel('plans-catalogue')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'plans',
+          callback: (_) => _catalogueCtrl?.add(null),
+        )
+        .subscribe();
+    return _catalogueCtrl!.stream;
   }
 
   // ── Real-time deals (plan_price_history) ─────────────────────────────────────

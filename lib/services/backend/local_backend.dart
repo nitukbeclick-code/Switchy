@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../data.dart' show compiledPlans;
 import '../../models.dart';
 import '../meeting_slots.dart';
 import 'backend.dart';
@@ -35,6 +36,17 @@ class LocalBackend implements Backend {
   Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body) async {
     throw StateError('aiChat unavailable offline (LocalBackend)');
   }
+
+  // ── Live catalogue — the compiled snapshot offline ───────────────────────────
+  // Without Supabase there is no live `public.plans` table, so the catalogue is
+  // the compiled const lists baked into the binary (the offline / cold-start
+  // last-known-good). It never changes at runtime, so [catalogueChanges] is an
+  // empty stream.
+  @override
+  Future<List<Plan>> fetchCatalogue() async => compiledPlans;
+
+  @override
+  Stream<void> catalogueChanges() => const Stream<void>.empty();
 
   // ── Real-time deals — no price ledger offline ────────────────────────────────
   // The plan_price_history ledger only exists in Supabase, so offline the deals

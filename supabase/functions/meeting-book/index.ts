@@ -38,11 +38,13 @@ import { buildOtpEmailHtml } from "../_shared/meetings.ts";
 import { jlog } from "../_shared/log.ts";
 import { captureError } from "../_shared/observability.ts";
 import {
+  DEFAULT_OTP_RATE_LIMITS,
+  evaluateOtpRateLimit,
+  evaluateOtpVerify,
   genCode,
   hashCode,
   isValidEmail,
   normalizeEmail,
-  timingSafeEqualHex,
   validBookingSlot,
 } from "./lib.ts";
 
@@ -130,13 +132,37 @@ type OtpRow = {
   created_at: string;
 };
 
-// Newest live OTP row for an address (any state). Caller decides what "live"
-// means for its action. Returns null on a query failure (fail-soft).
-async function newestOtp(email: string): Promise<OtpRow | null> {
+// UNCONSUMED OTP rows for an address, newest first (capped). The verify + book
+// gates scan this SET — not just the single newest row — because "request a new
+// code" (resend) MINTS A FRESH ROW while the previous code is still valid: a user
+// who enters the code from an earlier email must still be honored instead of
+// being checked only against the latest row (which would wrongly say "invalid").
+// Returns [] on a query failure (fail-soft). Caller filters by expiry/verified.
+async function unconsumedOtps(email: string): Promise<OtpRow[]> {
   const q = `/rest/v1/meeting_email_otps?select=id,email,code_hash,expires_at,attempts,verified_at,consumed_at,created_at` +
-    `&email=eq.${encodeURIComponent(email)}&order=created_at.desc&limit=1`;
+    `&email=eq.${encodeURIComponent(email)}&consumed_at=is.null&order=created_at.desc&limit=8`;
   const rows = await fetchRows<OtpRow>(q);
-  return rows && rows.length ? rows[0] : null;
+  return rows ?? [];
+}
+
+// Recent SEND timestamps (epoch ms) for a column=value within the last
+// `sinceMs`, newest-first and capped, feeding the DURABLE OTP rate-limit. Every
+// row here is a code that was actually emailed, so this count is shared across
+// all Edge isolates (unlike the in-memory limiter). Returns [] on any query
+// failure — fail-soft, with the in-memory limiter remaining the floor.
+async function recentOtpTimestamps(
+  col: "email" | "ip",
+  value: string,
+  sinceMs: number,
+  cap: number,
+): Promise<number[]> {
+  if (!value) return [];
+  const sinceIso = new Date(Date.now() - sinceMs).toISOString();
+  const q = `/rest/v1/meeting_email_otps?select=created_at&${col}=eq.${encodeURIComponent(value)}` +
+    `&created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.desc&limit=${cap}`;
+  const rows = await fetchRows<{ created_at: string }>(q);
+  if (!rows) return [];
+  return rows.map((r) => Date.parse(r.created_at)).filter((n) => Number.isFinite(n));
 }
 
 // ── request-code ──────────────────────────────────────────────────────────────
@@ -147,13 +173,29 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
   // prober. We simply do no work.
   if (!isValidEmail(email)) return json({ ok: true }, 200, origin);
 
-  // Per-address limit: 5 codes / 15 min. Keyed by a fingerprint of the email so
-  // the raw address never lands in the bucket key (or the log).
+  // CHEAP PRE-FILTER — in-memory per-address limit (process-local). Sheds an
+  // obvious flood on a hot isolate without touching the DB. NOT authoritative on
+  // serverless (isolates don't share this Map); the durable gate below is.
   const emailFp = await secretFingerprint(email);
   const perEmail = rateLimit(`mbk:req:${emailFp}`, 5, 15 * 60_000);
   if (!perEmail.allowed) {
     jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", email_fp: emailFp });
     return json({ ok: true }, 200, origin); // generic — don't leak the throttle
+  }
+
+  // DURABLE rate limit (AUTHORITATIVE; shared across all isolates via Postgres).
+  // Pull this address's send history (24h) and this IP's (1h) from the OTP table
+  // and let the pure evaluator decide. Denied → generic { ok:true } with NO email
+  // and NO insert, so a flood costs neither a send nor a row. cap=40 > every
+  // configured max, so the windowed counts are exact. fetchRows failure → [] →
+  // fail-soft (the in-memory pre-filter above stays the floor).
+  const L = DEFAULT_OTP_RATE_LIMITS;
+  const emailTimestamps = await recentOtpTimestamps("email", email, L.emailDayMs, 40);
+  const ipTimestamps = ip ? await recentOtpTimestamps("ip", ip, L.ipWindowMs, 40) : [];
+  const decision = evaluateOtpRateLimit({ now: Date.now(), emailTimestamps, ipTimestamps });
+  if (!decision.allowed) {
+    jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", durable: true, reason: decision.reason, email_fp: emailFp });
+    return json({ ok: true }, 200, origin); // outcome-blind — never leak the throttle
   }
 
   const code = genCode();
@@ -192,27 +234,27 @@ async function handleVerifyCode(body: Record<string, unknown>, origin: string | 
   const bad = { ok: false, error: "קוד לא תקין או שפג" };
   if (!isValidEmail(email) || !/^\d{6}$/.test(code)) return json(bad, 200, origin);
 
-  const row = await newestOtp(email);
-  // No row, already consumed, or expired → generic "invalid or expired".
-  if (!row || row.consumed_at) return json(bad, 200, origin);
-  if (Date.parse(row.expires_at) <= Date.now()) return json(bad, 200, origin);
+  // Scan ALL unexpired, unconsumed codes for this address — not just the newest —
+  // so a resend (which mints a fresh row) doesn't reject a code the user already
+  // received and is still within its window. The pure evaluateOtpVerify decides;
+  // we apply its side effects.
+  const rows = await unconsumedOtps(email);
+  const enteredHash = await hashCode(code);
+  const outcome = evaluateOtpVerify(rows, enteredHash, Date.now(), MAX_VERIFY_ATTEMPTS);
 
-  // Count this attempt BEFORE comparing, so a brute-forcer can't get unlimited
-  // tries by abandoning the request mid-flight.
-  const nextAttempts = (row.attempts ?? 0) + 1;
-  await patchCount(`/rest/v1/meeting_email_otps?id=eq.${encodeURIComponent(row.id)}`, {
-    attempts: nextAttempts,
-  });
-  if (nextAttempts > MAX_VERIFY_ATTEMPTS) {
+  if (outcome.status === "no-live") return json(bad, 200, origin);
+  if (outcome.status === "too-many") {
     return json({ ok: false, error: "יותר מדי ניסיונות" }, 200, origin);
   }
-
-  const match = timingSafeEqualHex(await hashCode(code), row.code_hash);
-  if (!match) return json({ ok: false, error: "קוד לא תקין" }, 200, origin);
-
-  // First correct code → stamp verified_at (idempotent — a re-verify just
-  // re-stamps now()).
-  await patchCount(`/rest/v1/meeting_email_otps?id=eq.${encodeURIComponent(row.id)}`, {
+  if (outcome.status === "mismatch") {
+    // Charge the attempt to the newest live row (bounds brute force).
+    await patchCount(`/rest/v1/meeting_email_otps?id=eq.${encodeURIComponent(outcome.chargeId)}`, {
+      attempts: outcome.nextAttempts,
+    });
+    return json({ ok: false, error: "קוד לא תקין" }, 200, origin);
+  }
+  // match → stamp verified_at on the row whose code matched (idempotent).
+  await patchCount(`/rest/v1/meeting_email_otps?id=eq.${encodeURIComponent(outcome.matchedId)}`, {
     verified_at: new Date().toISOString(),
   });
   jlog({ at: "verify-code", ok: true });
@@ -257,14 +299,14 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
   if (!phone) return json({ ok: false, error: "מספר טלפון לא תקין" }, 400, origin);
   if (!isValidEmail(email)) return json({ ok: false, error: "כתובת מייל לא תקינה" }, 400, origin);
 
-  // EMAIL GATE: require a verified, unconsumed OTP for this address, fresh
-  // enough that the verification is still trustworthy (< 30 min).
-  const row = await newestOtp(email);
-  const verifiedFreshAndUnused = !!row &&
-    !!row.verified_at &&
-    !row.consumed_at &&
-    Date.parse(row.created_at) > Date.now() - BOOK_OTP_MAX_AGE_MS;
-  if (!verifiedFreshAndUnused) {
+  // EMAIL GATE: require a verified, unconsumed OTP for this address, fresh enough
+  // that the verification is still trustworthy (< 30 min). Scan the SET (not just
+  // the newest row) so the code the user actually verified — which may not be the
+  // latest after a resend — is honored. unconsumedOtps already excludes consumed.
+  const verifiedRow = (await unconsumedOtps(email)).find((r) =>
+    !!r.verified_at && Date.parse(r.created_at) > Date.now() - BOOK_OTP_MAX_AGE_MS
+  );
+  if (!verifiedRow) {
     return json({ ok: false, error: "יש לאמת את המייל קודם" }, 400, origin);
   }
 
@@ -301,8 +343,8 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
     return json({ ok: false, error: "אירעה שגיאה בקביעת הפגישה. נסו שוב." }, 500, origin);
   }
 
-  // Single-use: consume the OTP so it can't be replayed for another booking.
-  await patchCount(`/rest/v1/meeting_email_otps?id=eq.${encodeURIComponent(row!.id)}`, {
+  // Single-use: consume the verified OTP so it can't be replayed for another booking.
+  await patchCount(`/rest/v1/meeting_email_otps?id=eq.${encodeURIComponent(verifiedRow.id)}`, {
     consumed_at: nowIso,
   });
   jlog({ at: "book", ok: true });

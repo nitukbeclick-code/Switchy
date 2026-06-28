@@ -152,3 +152,139 @@ export function validBookingSlot(meeting_date: string, slot: string, nowMs: numb
 
   return { ok: true };
 }
+
+// ── OTP send rate-limit (DURABLE, DB-backed) ─────────────────────────────────
+// The in-memory rateLimit() in _shared/ratelimit.ts is process-local — on
+// Supabase Edge it only throttles a single HOT isolate, so a flood spread across
+// isolates (or one that survives a cold-start) can still email-bomb a victim and
+// run up real send cost. This evaluator is the DURABLE second layer: index.ts
+// feeds it the created_at timestamps of recent public.meeting_email_otps rows
+// (which record EVERY actually-sent code and are shared across all isolates via
+// Postgres) and it decides whether another send is allowed. Pure + clock-injected
+// so it unit-tests with no DB and no timers.
+
+export interface OtpRateLimits {
+  cooldownMs: number; // min gap between two sends to the SAME address
+  emailWindowMs: number; // sliding window for the per-address burst cap
+  emailMax: number; // max sends to one address within emailWindowMs
+  emailDayMs: number; // long window (≈24h) for the per-address daily cap
+  emailDayMax: number; // max sends to one address within emailDayMs
+  ipWindowMs: number; // sliding window for the per-IP cap
+  ipMax: number; // max sends from one IP within ipWindowMs (across all addresses)
+}
+
+// Conservative defaults. A real visitor needs 1–2 codes; these are generous
+// enough never to bite a legitimate booking, yet tight enough to make bombing
+// pointless — and to bound BOTH send cost and table growth, since a denied send
+// neither emails nor inserts a row.
+export const DEFAULT_OTP_RATE_LIMITS: OtpRateLimits = {
+  cooldownMs: 45_000, // 45s between resends to one address
+  emailWindowMs: 15 * 60_000, // 15 min
+  emailMax: 4, // ≤4 codes / 15 min / address
+  emailDayMs: 24 * 60 * 60_000, // 24 h
+  emailDayMax: 12, // ≤12 codes / day / address
+  ipWindowMs: 60 * 60_000, // 60 min
+  ipMax: 15, // ≤15 codes / hour / IP (across all addresses — stops +tag/dot bombing)
+};
+
+export type OtpRateDecision = { allowed: true } | { allowed: false; reason: string };
+
+// Decide whether another OTP email may be sent. `emailTimestamps` are the
+// created_at (epoch ms) of recent sends to THIS address; `ipTimestamps` the same
+// for THIS IP (empty when the IP is unknown — the per-IP rule then can't apply,
+// by design). Both are order-independent. The denial `reason` is for logging
+// only — it is NEVER surfaced to the caller (the handler stays outcome-blind).
+export function evaluateOtpRateLimit(args: {
+  now: number;
+  emailTimestamps: number[];
+  ipTimestamps: number[];
+  limits?: OtpRateLimits;
+}): OtpRateDecision {
+  const { now, emailTimestamps, ipTimestamps } = args;
+  const L = args.limits ?? DEFAULT_OTP_RATE_LIMITS;
+
+  // Cooldown: reject a resend that arrives sooner than cooldownMs after the most
+  // recent send to this address (the previous code is still valid for 15 min).
+  let newest = -Infinity;
+  for (const t of emailTimestamps) {
+    if (Number.isFinite(t) && t > newest) newest = t;
+  }
+  if (newest > -Infinity && now - newest < L.cooldownMs) {
+    return { allowed: false, reason: "cooldown" };
+  }
+
+  const countSince = (arr: number[], windowMs: number): number => {
+    const floor = now - windowMs;
+    let c = 0;
+    for (const t of arr) if (Number.isFinite(t) && t > floor) c++;
+    return c;
+  };
+
+  if (countSince(emailTimestamps, L.emailWindowMs) >= L.emailMax) {
+    return { allowed: false, reason: "email-window" };
+  }
+  if (countSince(emailTimestamps, L.emailDayMs) >= L.emailDayMax) {
+    return { allowed: false, reason: "email-day" };
+  }
+  // Per-IP cap only applies when we actually know the IP; it is the main defense
+  // against bombing one mailbox via plus-tag / dot aliases (each alias is a new
+  // "address" but shares the attacker's IP).
+  if (ipTimestamps.length && countSince(ipTimestamps, L.ipWindowMs) >= L.ipMax) {
+    return { allowed: false, reason: "ip-window" };
+  }
+  return { allowed: true };
+}
+
+// ── OTP verification over the FULL set of live codes ──────────────────────────
+// "Request a new code" (resend) mints a FRESH row while the previous code is
+// still valid, so an address can hold several unexpired codes at once. The verify
+// gate must therefore check the entered code against EVERY unexpired, unconsumed
+// row — not just the newest — or a user who enters the code from an earlier email
+// is wrongly told "invalid" (the production bug this fixes: SHA-256("926748")
+// matched the 2nd-newest row, but only the newest was checked). Brute force stays
+// bounded by the SUM of attempts across the live codes. Pure + clock-injected.
+
+export interface OtpCandidate {
+  id: string;
+  code_hash: string; // sha-256 hex of the issued code
+  expires_at: string; // ISO instant the code stops being valid
+  attempts: number; // failed verify attempts already charged to this row
+}
+
+export type OtpVerifyOutcome =
+  | { status: "no-live" } // nothing unexpired to check → generic invalid/expired
+  | { status: "too-many" } // attempt budget across live codes exhausted
+  | { status: "mismatch"; chargeId: string; nextAttempts: number } // wrong code
+  | { status: "match"; matchedId: string }; // code matched a live row
+
+/**
+ * Decide an OTP verification against ALL unconsumed rows for an address. The
+ * caller does the I/O: fetch the unconsumed rows (newest first), hash the entered
+ * code, then apply the side effects this returns — on "mismatch" set the charged
+ * row's attempts to `nextAttempts`; on "match" stamp `matchedId` verified.
+ *
+ * Pure: `now` and `maxAttempts` are injected; matching is constant-time per
+ * candidate (timingSafeEqualHex).
+ */
+export function evaluateOtpVerify(
+  rows: readonly OtpCandidate[],
+  enteredHash: string,
+  now: number,
+  maxAttempts: number,
+): OtpVerifyOutcome {
+  // Newest-first; drop expired so a stale code can never verify.
+  const live = rows.filter((r) => Date.parse(r.expires_at) > now);
+  if (!live.length) return { status: "no-live" };
+
+  // Bound brute force across every live code for the address.
+  const totalAttempts = live.reduce((s, r) => s + (r.attempts ?? 0), 0);
+  if (totalAttempts >= maxAttempts) return { status: "too-many" };
+
+  // Accept a match against ANY live code (the fix); else charge the newest row.
+  for (const r of live) {
+    if (timingSafeEqualHex(enteredHash, r.code_hash)) {
+      return { status: "match", matchedId: r.id };
+    }
+  }
+  return { status: "mismatch", chargeId: live[0].id, nextAttempts: (live[0].attempts ?? 0) + 1 };
+}

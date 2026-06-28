@@ -14,11 +14,16 @@ import {
   termsForCategory,
 } from "./data";
 
-/** Canonical site origin (no trailing slash). During the SUBDOMAIN-FIRST phase the
- * GEO app serves on app.switchy-ai.com and self-canonicals there so it can be indexed
- * and ranked now; at the eventual apex cutover, flip this to https://switchy-ai.com and
- * 301 app→apex. Drives canonicals/sitemap/robots/JSON-LD. */
-export const SITE_URL = "https://app.switchy-ai.com";
+/** Canonical site origin (no trailing slash). APEX CUTOVER (2026-06): consolidated
+ * onto the apex https://switchy-ai.com — the single brand domain Google indexes.
+ * Mobile-first crawling hits the Next app at the apex (device-split), so the app
+ * MUST self-canonical to the apex, not the app.* subdomain; otherwise the sitemap
+ * is cross-domain to the apex Search Console property and the deep pages never
+ * index under the brand. app.switchy-ai.com stays a working alias whose pages now
+ * canonical to the apex too. Drives canonicals/sitemap/robots/JSON-LD. The
+ * device-split middleware maps a desktop hit on a clean marketing path to its
+ * static .html twin so an indexed clean URL never 404s for a desktop visitor. */
+export const SITE_URL = "https://switchy-ai.com";
 /** Brand name as shown to users / engines (single canonical form everywhere). */
 export const SITE_NAME = "Switchy AI";
 /**

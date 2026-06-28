@@ -109,7 +109,7 @@ describe("llmDataFeed — compact machine-readable snapshot", () => {
     const feed = llmDataFeed(plans, {
       service: "cellular",
       city: "תל אביב",
-      url: "https://app.switchy-ai.com/compare/cellular",
+      url: "https://switchy-ai.com/compare/cellular",
       asOf: "2026-06-15",
       stale: false,
     });

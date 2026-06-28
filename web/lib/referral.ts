@@ -29,7 +29,7 @@
 // inline here so this CLIENT-imported module (used by <ReferralCard>) does NOT
 // pull in lib/schema → lib/data, which reads the bundled catalogue via node:fs and
 // would break the client bundle. If the canonical origin ever changes, update both.
-const SITE_URL = "https://app.switchy-ai.com";
+const SITE_URL = "https://switchy-ai.com";
 
 // ── Code format — MUST stay byte-for-byte aligned with _shared/referrals.ts ────
 // Unambiguous alphabet: no 0/O, 1/I/L — a human can read a code aloud / type it

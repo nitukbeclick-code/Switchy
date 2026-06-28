@@ -31,6 +31,23 @@ export const SITE_NAME = "Switchy AI";
 export const SITE_ALT_NAMES: readonly string[] = ["חוסך", "Switch AI", "Switchy"];
 const CURRENCY = "ILS";
 
+/**
+ * Stable `@id` for the brand Organization entity — the single canonical node every
+ * other graph references as creator/publisher (e.g. the Market-Pulse Dataset). A
+ * fragment on the site origin (not a standalone URL) so it resolves to the org
+ * that owns this site. KEEP in sync with {@link orgSchema}'s `@id`.
+ */
+export const ORG_ID = `${SITE_URL}#organization`;
+
+/**
+ * The brand's REAL, verified public profiles for `sameAs`. The ONLY entry is the
+ * owner-confirmed WhatsApp business profile (the same number surfaced on /about
+ * and in the compliance copy — 050-503-7537 / +972 50-503-7537). HONESTY: no
+ * social/Wikidata/marketing URLs are invented — a profile is listed here ONLY
+ * when it genuinely exists and is owned by the brand.
+ */
+const ORG_SAME_AS: readonly string[] = ["https://wa.me/972505037537"];
+
 type Json = Record<string, unknown>;
 
 // ── Organization ─────────────────────────────────────────────────────────────
@@ -57,14 +74,18 @@ const ORG_KNOWS_ABOUT: readonly string[] = [
  * HONESTY (E-E-A-T): `knowsAbout` lists only topics the site genuinely covers
  * (each maps to a real compare category / guide subject); `areaServed` is Israel
  * (the only market served); `publishingPrinciples` + `significantLink` point at
- * the REAL /transparency page that states our ranking/recommendation methodology.
- * No awards, ratings, `sameAs` social profiles or a fictitious founder are
- * invented — the brand stays the sole, truthful author of its own service.
+ * the REAL /transparency page that states our ranking/recommendation methodology;
+ * `sameAs` is ONLY the brand's genuine, owner-confirmed WhatsApp profile (see
+ * {@link ORG_SAME_AS}). No awards, ratings, invented social/Wikidata profiles or
+ * a fictitious founder — the brand stays the sole, truthful author of its service.
+ * The stable {@link ORG_ID} `@id` lets other nodes (e.g. the Market-Pulse Dataset)
+ * reference this exact entity as creator/publisher.
  */
 export function orgSchema(): Json {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": ORG_ID,
     name: SITE_NAME,
     alternateName: SITE_ALT_NAMES,
     url: SITE_URL,
@@ -78,6 +99,8 @@ export function orgSchema(): Json {
     // how "cheapest"/rankings/recommendations are derived (no covert scoring).
     publishingPrinciples: `${SITE_URL}/transparency`,
     significantLink: `${SITE_URL}/transparency`,
+    // Only the brand's genuine, owner-confirmed public profile(s) — never invented.
+    sameAs: [...ORG_SAME_AS],
   };
 }
 
@@ -733,8 +756,11 @@ export function placeSchema(args: {
 }
 
 /**
- * Bare GeoCoordinates helper (for embedding inside a Service `areaServed` or a
- * Place). Returns the coordinates object only.
+ * Bare GeoCoordinates helper. Returns the coordinates object ONLY (no
+ * `@context`), so it is valid ONLY when embedded inside another node — e.g. a
+ * Service `areaServed` or a `Place.geo`. Do NOT pass it to <JsonLd> as a
+ * standalone top-level block: a top-level JSON-LD document requires
+ * `@context: "https://schema.org"`, which this node deliberately omits.
  */
 export function geoSchema(args: { lat: number; lng: number }): Json {
   return {
@@ -779,13 +805,50 @@ export function webPageSchema(args: {
   return schema;
 }
 
-// ── Dataset (Market Pulse — current price snapshot) ──────────────────────────
+// ── Dataset ("Switchy as the data source" — telecom price catalogue) ─────────
 /**
- * Dataset schema for the Market Pulse current-market snapshot. Describes the
- * REAL, build-time per-category price statistics we publish (no fabricated trend
- * history). `variableMeasured` lists the genuine measures (avg/min/max/count) so
- * engines understand the dataset's columns. `temporalCoverage`, when given,
- * should be the real generation month (e.g. "2026-06") — never a fake range.
+ * The canonical English alternate name of the dataset entity (paired with the
+ * Hebrew `name` via `alternateName`) so non-Hebrew engines can resolve it.
+ */
+const DATASET_ALT_NAME_EN = "Israel Telecom Price Catalogue — Switchy";
+
+/**
+ * The REAL telecom topics the published price data covers — emitted as the
+ * Dataset's `keywords`. Each is a genuine catalogue category / market subject,
+ * not an invented SEO term.
+ */
+const DATASET_KEYWORDS: readonly string[] = [
+  "מחירי סלולר",
+  "מחירי אינטרנט",
+  "מחירי טלוויזיה",
+  "חבילות משולבות (Triple)",
+  "חבילות גלישה בחו״ל",
+  "השוואת מחירי תקשורת",
+  "שוק התקשורת בישראל",
+];
+
+/**
+ * Dataset schema positioning **Switchy as the authoritative data source** for the
+ * Israeli telecom price catalogue exposed on /market-pulse. It describes the REAL,
+ * build-time price catalogue/snapshot we publish (no fabricated trend history):
+ *
+ *  - bilingual `name` (Hebrew) + `alternateName` (English) for cross-language entity resolution,
+ *  - `creator` **and** `publisher` referencing the brand Organization via {@link ORG_ID},
+ *  - `temporalCoverage` = the REAL catalogue month (caller passes lastDataDate()'s
+ *    month, e.g. "2026-06") — never a fake range,
+ *  - `spatialCoverage` = Israel (the only market the catalogue covers),
+ *  - `isAccessibleForFree: true`, a sensible real `license` (defaults to the site
+ *    terms page), `keywords` (real telecom topics), and
+ *  - `variableMeasured` = the genuine measured variables (price / provider /
+ *    category, plus any extra measures the caller passes).
+ *
+ * `distribution` (a {@link DataDownload}) is emitted ONLY when the caller supplies
+ * a real public JSON endpoint (`distributionUrl`, e.g. the existing
+ * `/api/llm-feed.json` feed) — when none is available it is OMITTED rather than
+ * invented, keeping the node truthful.
+ *
+ * HONESTY: every field describes data the site genuinely publishes; nothing here
+ * fabricates coverage, freshness, access terms, or a download that does not exist.
  */
 export function datasetSchema(args: {
   name: string;
@@ -793,30 +856,56 @@ export function datasetSchema(args: {
   url: string;
   /** Real generation period, e.g. "2026-06". Omitted when unknown. */
   temporalCoverage?: string;
-  /** Measures present in the dataset (defaults to the price-stat measures). */
+  /** Measures present in the dataset (defaults to price / provider / category). */
   measures?: string[];
+  /**
+   * A REAL public JSON endpoint serving this data (e.g. "/api/llm-feed.json").
+   * When given, emitted as a DataDownload distribution (application/json). When
+   * absent, NO distribution is emitted — never invent a download URL.
+   */
+  distributionUrl?: string;
+  /** Real license URL (defaults to the site terms page). */
+  license?: string;
+  /** Override the English alternate name (defaults to {@link DATASET_ALT_NAME_EN}). */
+  alternateName?: string;
+  /** Override the dataset keywords (defaults to {@link DATASET_KEYWORDS}). */
+  keywords?: readonly string[];
 }): Json {
-  const measures = args.measures ?? [
-    "מחיר ממוצע",
-    "מחיר מינימלי",
-    "מחיר מקסימלי",
-    "מספר מסלולים",
-  ];
+  const measures = args.measures ?? ["מחיר", "ספק", "קטגוריה"];
+  const keywords = args.keywords ?? DATASET_KEYWORDS;
   const schema: Json = {
     "@context": "https://schema.org",
     "@type": "Dataset",
     name: args.name,
+    alternateName: args.alternateName ?? DATASET_ALT_NAME_EN,
     description: args.description,
     url: absUrl(args.url),
     inLanguage: "he-IL",
-    creator: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+    // The brand Organization is BOTH the creator and the publisher of this data;
+    // reference the canonical org node by @id (defined in orgSchema()).
+    creator: { "@id": ORG_ID },
+    publisher: { "@id": ORG_ID },
     isAccessibleForFree: true,
+    license: args.license ?? `${SITE_URL}/terms`,
+    keywords: [...keywords],
+    spatialCoverage: {
+      "@type": "Place",
+      name: "ישראל",
+      address: { "@type": "PostalAddress", addressCountry: "IL" },
+    },
     variableMeasured: measures.map((m) => ({
       "@type": "PropertyValue",
       name: m,
     })),
   };
   if (args.temporalCoverage) schema.temporalCoverage = args.temporalCoverage;
+  if (args.distributionUrl) {
+    schema.distribution = {
+      "@type": "DataDownload",
+      contentUrl: absUrl(args.distributionUrl),
+      encodingFormat: "application/json",
+    };
+  }
   return schema;
 }
 

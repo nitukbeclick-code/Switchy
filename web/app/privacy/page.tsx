@@ -19,7 +19,7 @@ import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of this policy. Bump when the policy text changes.
-const LAST_REVIEWED = "2026-06-23";
+const LAST_REVIEWED = "2026-06-28";
 
 // Consent version surfaced to the user (matches the backend consent_version
 // stamped on profiles/leads — supabase/legal-consent-2026-06.sql, default
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
         "Switchy AI הוא שירות מקוון להשוואת מסלולי תקשורת בישראל (סלולר, " +
           "אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל). מדיניות זו מסבירה אילו " +
           "פרטים אישיים אנו אוספים דרך האתר, למה, ומה הזכויות שלכם.",
-        "השירות מופעל על-ידי אריאל תקשורת (ח.פ/ע.מ 322253618), מרחוב ליאו " +
+        "השירות מופעל על-ידי אריאל תקשורת (עוסק מורשה 322253618), מרחוב ליאו " +
           "בק 64, נהריה — הגורם המשפטי האחראי לעיבוד המידע (“בעל מאגר " +
           "המידע”), הפועל תחת המותג Switchy AI. לפניות בנושאי פרטיות ניתן " +
           "ליצור קשר בכתובת hello@chosech.co.il או בוואטסאפ 050-503-7537.",

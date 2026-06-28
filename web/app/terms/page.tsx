@@ -18,7 +18,7 @@ import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of these terms. Bump when the text changes.
-const LAST_REVIEWED = "2026-06-23";
+const LAST_REVIEWED = "2026-06-28";
 
 export const metadata: Metadata = pageMetadata({
   title: "תנאי שימוש",
@@ -51,8 +51,9 @@ export default function TermsPage() {
       paras: [
         "ברוכים הבאים ל-Switchy AI (“השירות”, “האתר”, “אנחנו”). השימוש באתר " +
           "ובשירות כפוף לתנאים אלה. עצם השימוש מהווה הסכמה לתנאים; אם אינכם " +
-          "מסכימים — אנא הימנעו משימוש בשירות. השירות מופעל תחת המותג " +
-          "Switchy AI.",
+          "מסכימים — אנא הימנעו משימוש בשירות. השירות מופעל על-ידי אריאל " +
+          "תקשורת (עוסק מורשה 322253618), מרחוב ליאו בק 64, נהריה, תחת " +
+          "המותג Switchy AI.",
       ],
     },
     {

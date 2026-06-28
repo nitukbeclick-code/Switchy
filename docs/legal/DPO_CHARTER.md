@@ -15,7 +15,7 @@
   (public-facing privacy contact remains hello@chosech.co.il · WhatsApp
   050-503-7537 — routed to the DPO).
 - **מאשר/ממנה / Appointed by:** אריאל תקשורת,
-  ח.פ/ע.מ 322253618.
+  עוסק מורשה 322253618.
 - **תאריך מינוי / Appointment date:** `[[OWNER: date]]`.
 
 ## 2. תחומי אחריות / Duties

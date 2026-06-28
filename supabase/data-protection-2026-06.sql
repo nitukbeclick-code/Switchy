@@ -253,7 +253,7 @@ select cron.schedule(
 -- • [[OWNER: DPO / privacy contact name + role]] — publish on web/app/privacy as
 --   the address for data-subject requests, alongside hello@chosech.co.il.
 -- • Data controller of record (named in the privacy policy): אריאל תקשורת,
---   ח.פ/ע.מ 322253618, ליאו בק 64, נהריה.
+--   עוסק מורשה 322253618, ליאו בק 64, נהריה.
 -- • Israeli complaint path to publish in the privacy policy: the Privacy
 --   Protection Authority — הרשות להגנת הפרטיות — gov.il/he/departments/the_privacy_protection_authority
 --   (a person may complain to it if a request is not honoured).

@@ -958,7 +958,7 @@ class _OverpayCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: ffTheme.glassDecoration(alpha: 0.72).copyWith(
         border: Border.all(
-          color: isWorst ? ffTheme.primary.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.55),
+          color: isWorst ? ffTheme.primary.withValues(alpha: 0.35) : ffTheme.lineColor,
           width: isWorst ? 1.4 : 1,
         ),
       ),

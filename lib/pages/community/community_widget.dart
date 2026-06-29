@@ -338,8 +338,17 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     if (text.isEmpty && pendingData == null) return;
     HapticFeedback.lightImpact();
     final appState = Provider.of<AppState>(ctx, listen: false);
-    final author = appState.isLoggedIn ? appState.firstName : 'אורח';
-    final avatar = appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+    // Replies persist via RLS-protected inserts (user_id = auth.uid()), so an
+    // anon reply would be optimistically shown then silently rejected by the DB
+    // and vanish on refresh. Gate it the same way the post composer does.
+    if (!appState.isLoggedIn) {
+      AppSnackBar.info(ctx, 'יש להתחבר כדי להגיב',
+          action: SnackBarAction(
+              label: 'כניסה', onPressed: () => ctx.pushNamed('Auth')));
+      return;
+    }
+    final author = appState.firstName;
+    final avatar = appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
     appState.addCommunityReply(
       postId: postId,
       author: author,

@@ -179,8 +179,18 @@ class _AppButtonState extends State<AppButton> {
     // The "quiet" variants (white secondary / tinted ghost) default to an ink
     // label; everything else stays white-on-fill.
     final lightFill = widget.color == Colors.white || widget.color == AppColors.accent1;
+    // The const .secondary constructor pins a light-only white fill (and a
+    // light hairline border) that can't see the theme; remap it to the
+    // themable surface/line tokens here so it flips in dark mode.
+    final resolvedColor = widget.color == Colors.white
+        ? ffTheme.secondaryBackground
+        : (widget.color == AppColors.accent1 ? ffTheme.accent1 : widget.color);
+    final resolvedBorderSide =
+        widget.borderSide?.color == AppColors.alternate
+            ? widget.borderSide!.copyWith(color: ffTheme.lineColor)
+            : widget.borderSide;
     final foreground =
-        widget.textStyle?.color ?? (lightFill ? AppColors.primaryText : Colors.white);
+        widget.textStyle?.color ?? (lightFill ? ffTheme.primaryText : Colors.white);
     final labelStyle = widget.textStyle ??
         GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: foreground);
     final borderRadius = widget.borderRadius ?? BorderRadius.circular(ffTheme.radiusMd);
@@ -205,20 +215,20 @@ class _AppButtonState extends State<AppButton> {
       style: ElevatedButton.styleFrom(
         backgroundColor: useGradient
             ? Colors.transparent
-            : (_loading ? (widget.disabledColor ?? widget.color.withValues(alpha: 0.6)) : widget.color),
+            : (_loading ? (widget.disabledColor ?? resolvedColor.withValues(alpha: 0.6)) : resolvedColor),
         disabledBackgroundColor: useGradient
             ? Colors.transparent
-            : (widget.disabledColor ?? widget.color.withValues(alpha: 0.55)),
+            : (widget.disabledColor ?? resolvedColor.withValues(alpha: 0.55)),
         disabledForegroundColor: foreground.withValues(alpha: 0.7),
         foregroundColor: foreground,
         // Hover/press wash: a light veil over the gradient, an ink veil over
         // the quiet fills — distinct states on web/desktop too.
-        overlayColor: useGradient ? Colors.white : AppColors.primaryText,
+        overlayColor: useGradient ? Colors.white : ffTheme.primaryText,
         elevation: useGradient ? 0 : (widget.elevation ?? 0),
         shadowColor: useGradient ? Colors.transparent : null,
         shape: RoundedRectangleBorder(
           borderRadius: borderRadius,
-          side: widget.borderSide ?? BorderSide.none,
+          side: resolvedBorderSide ?? BorderSide.none,
         ),
         padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 20),
       ),

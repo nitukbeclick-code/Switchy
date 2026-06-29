@@ -305,7 +305,11 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
                 ),
                 child: Icon(
                   _playing ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
+                  // The circle is filled with theme.primary, which flips to a
+                  // near-white ink on dark — so a fixed white icon would vanish.
+                  // background is the inverse token (off-white on light,
+                  // near-black on dark), staying legible on the ink fill in both.
+                  color: theme.background,
                   size: 22,
                 ),
               ),

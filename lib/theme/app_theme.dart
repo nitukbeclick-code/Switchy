@@ -20,23 +20,27 @@ class AppColors {
   // Colour is carried by a disciplined two-accent system layered on top —
   // green = ACTION, amber = VALUE (see the accent block below); the ink/glass
   // base stays monochrome so those accents read clearly.
-  static const Color primary = Color(0xFF111827); // ink black — text, structure, borders
-  static const Color primaryDark = Color(0xFF000000); // true black — gradient depth
-  static const Color tertiary = Color(0xFF374151); // slate grey
-  static const Color secondary = Color(0xFFE5E7EB); // light-grey highlight (badges/chips)
-  static const Color sage = Color(0xFF6B7280); // muted grey for icons/accents
+  // GEIST neutrals — monochrome, border-defined. `primary` = near-black ink
+  // (Geist neutral-950) for text + flat black hero surfaces; structure is carried
+  // by 1px gray hairlines, not dark borders.
+  static const Color primary = Color(0xFF0A0A0A); // near-black ink / flat black surface
+  static const Color primaryDark = Color(0xFF000000); // true black
+  static const Color tertiary = Color(0xFF737373); // neutral-600 grey
+  static const Color secondary = Color(0xFFF5F5F5); // neutral-100 chip surface
+  static const Color sage = Color(0xFF737373); // neutral-600 muted grey (AA: 4.7:1)
 
-  // Surfaces — cool glass white; pure-white card surface.
-  static const Color background = Color(0xFFF5F7F8);
-  static const Color secondaryBackground = Color(0xFFFFFFFF);
+  // Surfaces — Geist: near-white canvas, pure-white card (separated by 1px border).
+  static const Color background = Color(0xFFFAFAFA); // neutral-50 canvas
+  static const Color secondaryBackground = Color(0xFFFFFFFF); // white card
 
-  // Text — near-black ink on glass white.
-  static const Color primaryText = Color(0xFF0B0F14);
-  static const Color secondaryText = Color(0xFF4B5563);
+  // Text — Geist neutral-900 ink on near-white.
+  static const Color primaryText = Color(0xFF171717); // neutral-900
+  static const Color secondaryText = Color(0xFF525252); // neutral-700 (AA 7:1)
 
-  // Lines & borders — crisp, formal dark borders + a subtle inner hairline.
-  static const Color alternate = Color(0xFF222A35); // formal near-black border
-  static const Color lineColor = Color(0xFFE4E8EC); // subtle inner divider
+  // Lines & borders — Geist 1px gray hairlines (NOT dark). `alternate` = the
+  // emphasis/input border; `lineColor` = the default hairline + dividers.
+  static const Color alternate = Color(0xFFE1E1E1); // neutral-300 border (inputs/emphasis)
+  static const Color lineColor = Color(0xFFEAEAEA); // neutral-200 hairline/divider
 
   // Status (kept functional — errors/warnings still need their semantic hue)
   static const Color error = Color(0xFFDC2626);
@@ -45,11 +49,11 @@ class AppColors {
   static const Color info = Color(0xFF374151);
 
   // Surface tints — neutral grey washes for tinted cards/chips (no color).
-  static const Color accent1 = Color(0xFFF0F2F4);
-  static const Color accent2 = Color(0xFFF2F4F6);
-  static const Color accent3 = Color(0xFFEEF0F3);
-  static const Color accent4 = Color(0xFFF0F3F5);
-  static const Color mint = Color(0xFFF0F2F4); // alias for accent1, semantic
+  static const Color accent1 = Color(0xFFF5F5F5); // neutral-100 tint surface
+  static const Color accent2 = Color(0xFFFAFAFA); // neutral-50
+  static const Color accent3 = Color(0xFFF5F5F5); // neutral-100
+  static const Color accent4 = Color(0xFFFAFAFA); // neutral-50
+  static const Color mint = Color(0xFFF5F5F5); // alias for accent1, semantic
 
   // Refined accent system — colour used with intent over the ink/glass base.
   // brandAccent (green) = ACTION: primary CTAs, active states, links, focus.
@@ -293,39 +297,21 @@ class AppTheme {
           BoxShadow(color: Color(0x090F1B22), blurRadius: 4, offset: Offset(0, 2)),
         ];
 
-  /// The default card shadow — gentle, cool, two-layer.
+  /// GEIST: cards are border-defined — only a whisper of shadow remains.
   List<BoxShadow> get shadowCard => dark
-      ? const [
-          BoxShadow(color: Color(0x59060A12), blurRadius: 28, offset: Offset(0, 10)),
-          BoxShadow(color: Color(0x33060A12), blurRadius: 6, offset: Offset(0, 2)),
-        ]
-      : const [
-          BoxShadow(color: Color(0x140F1B22), blurRadius: 24, offset: Offset(0, 8)),
-          BoxShadow(color: Color(0x0A0F1B22), blurRadius: 6, offset: Offset(0, 2)),
-        ];
+      ? const [BoxShadow(color: Color(0x33000000), blurRadius: 10, offset: Offset(0, 2))]
+      : const [BoxShadow(color: Color(0x0A000000), blurRadius: 8, offset: Offset(0, 1))];
 
-  /// Pronounced lift for heroes, FABs, modals.
+  /// Modest lift for sheets / modals / FABs (still restrained, single layer).
   List<BoxShadow> get shadowLifted => dark
-      ? const [
-          BoxShadow(color: Color(0x66060A12), blurRadius: 44, offset: Offset(0, 18)),
-          BoxShadow(color: Color(0x3D060A12), blurRadius: 10, offset: Offset(0, 4)),
-        ]
-      : const [
-          BoxShadow(color: Color(0x1F0F1B22), blurRadius: 40, offset: Offset(0, 16)),
-          BoxShadow(color: Color(0x0F0F1B22), blurRadius: 10, offset: Offset(0, 4)),
-        ];
+      ? const [BoxShadow(color: Color(0x4D000000), blurRadius: 18, offset: Offset(0, 5))]
+      : const [BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 4))];
 
   /// A soft ink shadow under the primary (black) CTA so it reads "tap me".
-  List<BoxShadow> get shadowPrimary => const [
-        BoxShadow(color: Color(0x26111827), blurRadius: 20, offset: Offset(0, 8)),
-      ];
+  // GEIST: primary/accent CTAs are FLAT — no drop shadow, no glow.
+  List<BoxShadow> get shadowPrimary => const [];
 
-  /// A soft green lift under the accent (CTA) so it reads tappable — toned DOWN
-  /// from the old neon glow to a restrained, bank-grade drop shadow.
-  List<BoxShadow> get shadowAccent => const [
-        BoxShadow(color: Color(0x2616A34A), blurRadius: 16, offset: Offset(0, 6)),
-        BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 1)),
-      ];
+  List<BoxShadow> get shadowAccent => const [];
 
   /// The "live" green ACTION glow — a 1px accent-tinted ring hugging the edge
   /// plus a soft accent-coloured drop — the Flutter mirror of the site's
@@ -334,29 +320,13 @@ class AppTheme {
   /// hue lifts to the brighter green and the alphas rise a touch so the glow
   /// still reads against slate. The ring is the `0 0 0 1px` layer
   /// (spread 1, blur 0); the soft drop is the `0 8px 28px` layer.
-  List<BoxShadow> get glowAccent => dark
-      ? const [
-          BoxShadow(color: Color(0x2E4ADE80), spreadRadius: 1), // ring: rgba(74,222,128,.18)
-          BoxShadow(color: Color(0x384ADE80), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(74,222,128,.22)
-        ]
-      : const [
-          BoxShadow(color: Color(0x1F16A34A), spreadRadius: 1), // ring: rgba(22,163,74,.12)
-          BoxShadow(color: Color(0x2916A34A), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(22,163,74,.16)
-        ];
+  List<BoxShadow> get glowAccent => const []; // GEIST: no glow
 
   /// The "live" amber VALUE glow — the same 1px ring + soft drop as
   /// [glowAccent], tinted to the amber VALUE accent. The Flutter mirror of the
   /// site's `--glow-value`; reach for it on a "best value"/savings surface that
   /// should glow warm. Theme-aware (lifts to amber 400 on dark).
-  List<BoxShadow> get glowValue => dark
-      ? const [
-          BoxShadow(color: Color(0x33FBBF24), spreadRadius: 1), // ring: rgba(251,191,36,.20)
-          BoxShadow(color: Color(0x3DFBBF24), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(251,191,36,.24)
-        ]
-      : const [
-          BoxShadow(color: Color(0x24F59E0B), spreadRadius: 1), // ring: rgba(245,158,11,.14)
-          BoxShadow(color: Color(0x2EF59E0B), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(245,158,11,.18)
-        ];
+  List<BoxShadow> get glowValue => const []; // GEIST: no glow
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
   List<BoxShadow> get shadowGlass => dark
@@ -396,31 +366,14 @@ class AppTheme {
   /// (see [GlassPanel]) for a few high-value surfaces (bottom nav, sticky
   /// headers, modals, hero overlays).
   BoxDecoration glassDecoration({double? alpha, Color? tint, double? radius}) {
-    final a = alpha ?? (dark ? 0.72 : 0.66);
-    final base = (tint ?? (dark ? AppColors.darkCard : Colors.white));
-    final fill = base.withValues(alpha: a);
-    // Glass-glint: a brighter sliver along the TOP edge picks up light (bright
-    // white on light, faint cool on dark), fading into the flat fill below — the
-    // signature dimensional tell. Expressed as the fill's own vertical gradient
-    // so a uniform [borderRadius] hairline still encloses the card cleanly
-    // ([BoxDecoration] forbids a non-uniform-coloured border with a radius).
+    // GEIST: a flat surface defined by a 1px hairline border — no blur, no glint
+    // gradient, no drop shadow. `alpha` is kept for API compatibility but a solid
+    // fill reads cleaner and crisper on the near-white canvas.
+    final fill = tint ?? cardSurface;
     return BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color.alphaBlend(glassGlint.withValues(alpha: glassGlint.a * 0.5), fill),
-          fill,
-        ],
-        stops: const [0, 0.08],
-      ),
+      color: fill,
       borderRadius: BorderRadius.circular(radius ?? radiusLg),
-      border: Border.all(
-        color: dark
-            ? AppColors.darkBorder.withValues(alpha: 0.9)
-            : Colors.white.withValues(alpha: 0.55),
-      ),
-      boxShadow: shadowGlass,
+      border: Border.all(color: dark ? AppColors.darkBorder : lineColor),
     );
   }
 
@@ -438,27 +391,14 @@ class AppTheme {
     bool elevated = false,
     Color? borderColor,
   }) {
-    final r = radius ?? radiusLg;
-    final fill = color ?? cardSurface;
+    // GEIST card: solid fill + 1px hairline border, FLAT. `elevated` adds only a
+    // whisper of shadow (sheets/popovers); resting cards are border-defined, no
+    // shadow — structure comes from the hairline, not float.
     return BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color.alphaBlend(glassGlint.withValues(alpha: glassGlint.a * 0.4), fill),
-          fill,
-        ],
-        stops: const [0, 0.07],
-      ),
-      borderRadius: BorderRadius.circular(r),
-      border: Border.all(
-        // A low-opacity ink hairline — structure without a harsh black edge.
-        color: borderColor ??
-            (dark
-                ? AppColors.darkBorder.withValues(alpha: 0.7)
-                : AppColors.primary.withValues(alpha: 0.06)),
-      ),
-      boxShadow: elevated ? shadowMd : shadowSoft,
+      color: color ?? cardSurface,
+      borderRadius: BorderRadius.circular(radius ?? radiusLg),
+      border: Border.all(color: borderColor ?? (dark ? AppColors.darkBorder : lineColor)),
+      boxShadow: elevated ? shadowSoft : null,
     );
   }
 
@@ -480,33 +420,35 @@ class AppTheme {
       );
 
   // ── Gradients — the brand washes used on heroes, headers, primary CTAs ──────
-  LinearGradient get brandGradient => const LinearGradient(
-        colors: [AppColors.primaryDark, AppColors.primary],
+  // GEIST: gradients are now FLAT solids (two identical stops) so callers that
+  // paint a `gradient:` get a crisp solid fill, not a wash. The ink hero is flat
+  // near-black (white foreground stays valid + is authentically Geist).
+  LinearGradient get brandGradient => LinearGradient(
+        colors: dark ? const [Color(0xFF141414), Color(0xFF141414)] : const [AppColors.primary, AppColors.primary],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
       );
 
-  /// An ink→slate wash for lighter hero surfaces.
-  LinearGradient get freshGradient => const LinearGradient(
-        colors: [AppColors.primary, AppColors.tertiary],
+  /// Flat near-black surface (was an ink→slate wash).
+  LinearGradient get freshGradient => LinearGradient(
+        colors: dark ? const [Color(0xFF141414), Color(0xFF141414)] : const [AppColors.primary, AppColors.primary],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
       );
 
-  /// A subtle slate→grey accent, for highlight ribbons and badges.
+  /// A flat neutral chip surface (was a slate→grey ribbon).
   LinearGradient get limeGradient => const LinearGradient(
-        colors: [AppColors.tertiary, AppColors.secondary],
+        colors: [AppColors.secondary, AppColors.secondary],
         begin: Alignment.centerRight,
         end: Alignment.centerLeft,
       );
 
-  /// The green ACTION gradient — primary CTAs. The single splash of colour
-  /// that guides the eye through the conversion flow over the ink/glass base.
-  /// Lifted on dark so the CTA stays vivid against slate surfaces.
+  /// The green ACTION fill — primary CTAs. Flat solid green (the single accent),
+  /// lifted on dark so the CTA stays vivid.
   LinearGradient get accentGradient => LinearGradient(
         colors: dark
-            ? const [AppColors.darkBrandAccent, AppColors.darkBrandAccentDark]
-            : const [AppColors.brandAccent, AppColors.brandAccentDark],
+            ? const [AppColors.darkBrandAccent, AppColors.darkBrandAccent]
+            : const [AppColors.brandAccent, AppColors.brandAccent],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
       );
@@ -515,12 +457,12 @@ class AppTheme {
   // Tightened to a crisp, professional rounding (bank-grade). The old 20-24
   // corners read soft/playful; 10-16 reads considered + serious while still
   // friendly. One change here re-corners every card/sheet/button app-wide.
-  double get radiusXs => 8; // small chips/flags
-  double get radiusSm => 10;
-  double get radiusMd => 12;
-  double get radiusLg => 14;
-  double get radiusCard => 16; // the canonical card/bento corner (was 24)
-  double get radiusXl => 20;
+  double get radiusXs => 6; // GEIST: chips/tags/small buttons
+  double get radiusSm => 8;
+  double get radiusMd => 8; // default button/input
+  double get radiusLg => 10; // cards
+  double get radiusCard => 12; // large containers/bento
+  double get radiusXl => 12; // sheets/modals (Geist never exceeds 12 for content)
   double get radiusPill => 999;
 
   // ── Motion — one shared vocabulary of durations + curves ────────────────────
@@ -583,12 +525,12 @@ class AppTheme {
   /// introducing any colour.
   LinearGradient get surfaceWash => dark
       ? const LinearGradient(
-          colors: [Color(0xFF131922), Color(0xFF0E1218)],
+          colors: [Color(0xFF0A0A0A), Color(0xFF0A0A0A)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         )
       : const LinearGradient(
-          colors: [Color(0xFFF7F9FA), Color(0xFFF1F4F6)],
+          colors: [AppColors.background, AppColors.background],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );

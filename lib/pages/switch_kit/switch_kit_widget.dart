@@ -349,12 +349,8 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
     final progress = _progress;
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusCard),
-        border: Border.all(color: t.alternate),
-        boxShadow: t.shadowSoft,
-      ),
+      // GEIST: flat bordered card (was a bespoke bordered card with a drop shadow).
+      decoration: t.cardDecoration(radius: t.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -535,12 +531,8 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
   Widget _rightsCard(SwitchKit kit, AppTheme t) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusCard),
-        border: Border.all(color: t.alternate),
-        boxShadow: t.shadowSoft,
-      ),
+      // GEIST: flat bordered card (was a bespoke bordered card with a drop shadow).
+      decoration: t.cardDecoration(radius: t.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -588,12 +580,8 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
   Widget _letterCard(SwitchKit kit, AppTheme t) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusCard),
-        border: Border.all(color: t.alternate),
-        boxShadow: t.shadowSoft,
-      ),
+      // GEIST: flat bordered card (was a bespoke bordered card with a drop shadow).
+      decoration: t.cardDecoration(radius: t.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -705,12 +693,8 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
         onTap: () => context.pushNamed('StreetPrice'),
         child: Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: t.cardSurface,
-            borderRadius: BorderRadius.circular(t.radiusCard),
-            border: Border.all(color: t.alternate),
-            boxShadow: t.shadowXs,
-          ),
+          // GEIST: flat bordered card (was a bespoke bordered card with a shadow).
+          decoration: t.cardDecoration(radius: t.radiusCard),
           child: Row(
             children: [
               Container(
@@ -779,20 +763,13 @@ class _Chip extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
+            // GEIST: flat. Selected = solid green (active state), no glow.
             color: selected ? t.brandAccent : t.cardSurface,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected ? t.brandAccent : t.alternate,
               width: selected ? 1.5 : 1,
             ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                        color: t.brandAccent.withValues(alpha: 0.28),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3))
-                  ]
-                : [],
           ),
           child: Text(
             label,

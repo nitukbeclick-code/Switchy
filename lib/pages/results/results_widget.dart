@@ -730,7 +730,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 color: ffTheme.cardSurface,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
-                                  side: BorderSide(color: ffTheme.brandAccent.withValues(alpha: 0.35)),
+                                  side: BorderSide(color: ffTheme.lineColor),
                                 ),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(20),

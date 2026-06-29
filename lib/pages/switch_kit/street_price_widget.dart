@@ -290,12 +290,8 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusCard),
-        border: Border.all(color: t.alternate),
-        boxShadow: t.shadowSoft,
-      ),
+      // GEIST: flat bordered card (was a bespoke bordered card with a drop shadow).
+      decoration: t.cardDecoration(radius: t.radiusCard),
       child: _aggregateBody(t),
     );
   }
@@ -420,12 +416,8 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   Widget _reportCard(AppTheme t) {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusCard),
-        border: Border.all(color: t.alternate),
-        boxShadow: t.shadowSoft,
-      ),
+      // GEIST: flat bordered card (was a bespoke bordered card with a drop shadow).
+      decoration: t.cardDecoration(radius: t.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -401,16 +401,15 @@ class _EmptyState extends StatelessWidget {
               width: 112,
               height: 112,
               decoration: BoxDecoration(
-                color: hasPlan
-                    ? ffTheme.primary.withValues(alpha: 0.08)
-                    : ffTheme.accent1,
+                // GEIST: neutral tint surface (was a decorative ink-tint backdrop).
+                color: ffTheme.accent1,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.compare_arrows_rounded,
                 size: 56,
                 color: hasPlan
-                    ? ffTheme.primary
+                    ? ffTheme.primaryText
                     : ffTheme.secondaryText,
               ),
             ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
@@ -1210,11 +1209,10 @@ class _WinnerSummaryCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [ffTheme.primaryDark, ffTheme.primary],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
+              // Flat ink hero — theme-locked near-black in BOTH themes (the
+              // bespoke [primaryDark, primary] wash inverted to off-white on
+              // dark, breaking the white-on-ink foreground).
+              gradient: ffTheme.freshGradient,
               borderRadius: BorderRadius.circular(ffTheme.radiusCard),
               boxShadow: ffTheme.shadowLifted,
             ),
@@ -1446,10 +1444,11 @@ class _PlanHeader extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: isWinner
           ? BoxDecoration(
+              // GEIST: flat amber VALUE win state — tint + 2px amber border, no
+              // glow (the bespoke amber drop-shadow contradicted the flat standard).
               color: ffTheme.saving.withValues(alpha: ffTheme.dark ? 0.16 : 0.10),
               borderRadius: BorderRadius.circular(ffTheme.radiusLg),
               border: Border.all(color: ffTheme.saving, width: 2),
-              boxShadow: [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.24), blurRadius: 14, offset: const Offset(0, 5))],
             )
           : ffTheme.cardDecoration(),
       child: Column(

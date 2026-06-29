@@ -96,7 +96,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
-                backgroundColor: ffTheme.primary,
+                // Flat ink hero — theme-locked near-black in BOTH themes (the
+                // theme-aware ffTheme.primary getter inverts to off-white on dark,
+                // which would hide the white app-bar icons).
+                backgroundColor: AppColors.primary,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
                   tooltip: 'חזרה',
@@ -128,11 +131,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [ffTheme.primary, ffTheme.primaryDark],
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                      ),
+                      // Flat ink hero, theme-locked near-black in BOTH themes (the
+                      // bespoke [primary, primaryDark] wash inverted to off-white on
+                      // dark, breaking the white-on-ink foreground).
+                      gradient: ffTheme.freshGradient,
                     ),
                     child: SafeArea(
                       child: Column(
@@ -824,10 +826,12 @@ class _FitPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: t.cardSurface.withValues(alpha: t.dark ? 0.85 : 0.72),
+        // GEIST: flat bordered content card — solid surface + neutral hairline
+        // (was a translucent glass with a decorative green-tinted border + glass
+        // shadow). The match-score ring carries the emphasis, not the frame.
+        color: t.cardSurface,
         borderRadius: BorderRadius.circular(t.radiusLg),
-        border: Border.all(color: t.brandAccent.withValues(alpha: 0.22)),
-        boxShadow: t.shadowGlass,
+        border: Border.all(color: t.lineColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

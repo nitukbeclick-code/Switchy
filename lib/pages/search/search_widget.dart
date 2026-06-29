@@ -1133,20 +1133,21 @@ class _Suggestions extends StatelessWidget {
               const SizedBox(height: 24),
             ],
 
-            // Help card.
+            // Help card. GEIST: neutral tint surface + hairline (was a decorative
+            // green-tinted backdrop) — this is an informational tip, not an
+            // active/success state.
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: ffTheme.brandAccentTint,
+                color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                border: Border.all(
-                    color: ffTheme.brandAccent.withValues(alpha: 0.15)),
+                border: Border.all(color: ffTheme.lineColor),
                 boxShadow: ffTheme.shadowXs,
               ),
               child: Row(
                 children: [
                   Icon(Icons.lightbulb_outline_rounded,
-                      size: 22, color: ffTheme.brandAccent),
+                      size: 22, color: ffTheme.secondaryText),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(

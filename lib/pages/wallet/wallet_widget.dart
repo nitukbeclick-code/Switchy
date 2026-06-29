@@ -53,7 +53,7 @@ class WalletWidget extends StatelessWidget {
             showBack: false,
             actions: [
               IconButton(
-                icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                icon: Icon(Icons.arrow_forward_ios_rounded, color: ffTheme.primaryText, size: 20),
                 tooltip: 'חזרה',
                 onPressed: () => context.safePop(),
               ),
@@ -115,24 +115,24 @@ class _RealizedHeroFigure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (wallet.hasRealizedSaving) {
-      // The hero figure rides on the brand GREEN sliver header. The big numeral
-      // is the lifted amber [saving] (amber 500/400) — a strong VALUE read that
-      // holds ≥3:1 at display size on green. Small chrome around it stays white
-      // so it clears AA (amber-on-green fails 4.5:1 as small text), keeping the
-      // amber reserved for the single focal figure.
+      // The hero figure rides on the flat WHITE Geist header. The big numeral
+      // is the amber [saving] (amber 500/400) — a strong VALUE read that holds
+      // at display size; the savings figure uses the AA-safe [savingText] ink
+      // for small chrome. The eyebrow/caption read in ink tokens so they clear
+      // AA on the white header, keeping amber reserved for the focal figure.
       final valueAmber = ffTheme.saving;
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // A small eyebrow so the figure reads as a realized win, not a
-          // forecast — white for AA on the green header; the icon carries the
-          // warm VALUE tint at icon size. NB: the header subtitle already prints
+          // forecast — ink on the white header; the icon carries the warm VALUE
+          // tint at icon size. NB: the header subtitle already prints
           // "כבר חסכת", so this uses a distinct phrase to avoid duplicating it.
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.savings_rounded, size: 14,
-                  color: Colors.white.withValues(alpha: 0.9)),
+                  color: ffTheme.savingText),
               const SizedBox(width: 6),
               Text(
                 'החיסכון שלך עד היום',
@@ -140,7 +140,7 @@ class _RealizedHeroFigure extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
-                    color: Colors.white.withValues(alpha: 0.9)),
+                    color: ffTheme.secondaryText),
               ),
             ],
           ),
@@ -166,7 +166,7 @@ class _RealizedHeroFigure extends StatelessWidget {
                 child: Text('לשנה',
                     style: GoogleFonts.assistant(
                         fontSize: 15,
-                        color: Colors.white.withValues(alpha: 0.8))),
+                        color: ffTheme.secondaryText)),
               ),
             ],
           ),
@@ -175,7 +175,7 @@ class _RealizedHeroFigure extends StatelessWidget {
             'כ-₪${wallet.monthlyEquivalent} בחודש שנשארים אצלך',
             style: GoogleFonts.assistant(
                 fontSize: 13,
-                color: Colors.white.withValues(alpha: 0.8)),
+                color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ),
         ],
@@ -187,7 +187,7 @@ class _RealizedHeroFigure extends StatelessWidget {
         Text(
           'עוד לא חסכת דרכנו',
           style: GoogleFonts.rubik(
-              fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+              fontSize: 22, fontWeight: FontWeight.w800, color: ffTheme.primaryText),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
@@ -196,7 +196,7 @@ class _RealizedHeroFigure extends StatelessWidget {
           style: GoogleFonts.assistant(
               fontSize: 13,
               height: 1.4,
-              color: Colors.white.withValues(alpha: 0.8)),
+              color: ffTheme.secondaryText),
           textAlign: TextAlign.center,
         ),
       ],

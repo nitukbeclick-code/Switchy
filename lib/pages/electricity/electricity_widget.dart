@@ -63,7 +63,7 @@ class ElectricityWidget extends StatelessWidget {
             showBack: false,
             actions: [
               IconButton(
-                icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                icon: Icon(Icons.arrow_forward_ios_rounded, color: ffTheme.primaryText, size: 20),
                 tooltip: 'חזרה',
                 onPressed: () => context.safePop(),
               ),
@@ -148,18 +148,18 @@ class _HeaderFigure extends StatelessWidget {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
+            color: ffTheme.accent1,
             borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           ),
-          child: const ExcludeSemantics(
-            child: Icon(Icons.bolt_rounded, color: Colors.white, size: 26),
+          child: ExcludeSemantics(
+            child: Icon(Icons.bolt_rounded, color: ffTheme.primaryText, size: 26),
           ),
         ),
         const SizedBox(width: 12),
         Text(
           '$supplierCount ספקים · $planCount מסלולים',
           style: ffTheme.labelLarge
-              .copyWith(color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w700),
+              .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700),
         ),
       ],
     );

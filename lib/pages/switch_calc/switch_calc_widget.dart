@@ -120,9 +120,8 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
       backgroundColor: ffTheme.background,
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-          ),
+          // GEIST: flat ink hero bar (was an ink→grey decorative wash).
+          decoration: BoxDecoration(color: ffTheme.primary),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,10 +159,12 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isActive ? ffTheme.brandAccent : Colors.white,
+                        // GEIST: flat. Active = solid green (active state); the
+                        // unselected fill is the themable card surface (was a
+                        // light-only hardcoded white) and carries no glow.
+                        color: isActive ? ffTheme.brandAccent : ffTheme.cardSurface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: isActive ? ffTheme.brandAccent : ffTheme.alternate),
-                        boxShadow: isActive ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : null,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -244,7 +245,9 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                       margin: const EdgeInsetsDirectional.only(end: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: active ? ffTheme.brandAccent : Colors.white,
+                        // Active = solid green (active state); unselected fill is
+                        // the themable card surface (was hardcoded white).
+                        color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
                       ),
@@ -442,14 +445,11 @@ class _RecommendedPlanCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [ffTheme.brandAccent.withValues(alpha: 0.08), ffTheme.brandAccentTint],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
+          // GEIST: flat. A solid green "recommended" tint + green hairline keeps
+          // the active/best-match read (was a green wash gradient with a glow).
+          color: ffTheme.brandAccentTint,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.10), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -516,7 +516,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                 children: topReasons.map((r) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: ffTheme.cardSurface,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),

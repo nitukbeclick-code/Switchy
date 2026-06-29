@@ -91,6 +91,15 @@ final List<Plan> allPlans = [...compiledPlans];
 /// snapshot immediately (it always renders the compiled snapshot meanwhile).
 bool catalogueHydrated = false;
 
+/// When the live `public.plans` snapshot was last successfully applied this run
+/// (UTC), or null if we are still on the compiled cold-start snapshot. Lets the
+/// sync layer SEE staleness — if this stays null (or far in the past) it means
+/// the app is serving the bundled last-known-good prices because the live read
+/// keeps failing (offline / RLS / empty), which is exactly the silent-staleness
+/// case we want surfaced. Read-time behaviour is unaffected; this is a beacon
+/// signal only.
+DateTime? catalogueSyncedAt;
+
 /// Refresh [allPlans] from the live `public.plans` catalogue via [backend],
 /// keeping the compiled snapshot as the immediate value + last-known-good
 /// fallback. Truth-only + never-blank by construction:
@@ -134,6 +143,7 @@ Future<bool> hydrateCatalogue(Backend backend) async {
       ..clear()
       ..addAll(merged);
     catalogueHydrated = true;
+    catalogueSyncedAt = DateTime.now().toUtc();
     return true;
   } catch (_) {
     // Transport / parse / RLS failure → keep the last-known-good catalogue.

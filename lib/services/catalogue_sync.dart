@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../app_state.dart';
 import '../data.dart';
 import 'backend/backend.dart';
@@ -56,7 +58,37 @@ class CatalogueSync {
     if (applied) {
       // Rebuild every catalogue-reading widget with the refreshed [allPlans].
       AppState().update(() {});
+    } else {
+      // No live snapshot applied this pass — we are serving the bundled
+      // last-known-good prices. That is correct (never-blank), but if it
+      // PERSISTS it means the live read keeps failing and users may see stale
+      // prices. Surface that quietly so we can SEE the staleness in logs; no
+      // server coupling, no user-visible effect.
+      _warnIfStale();
     }
+  }
+
+  /// How long the app may serve the bundled snapshot before a refresh failure
+  /// is worth flagging. The catalogue changes rarely, so a few days on the
+  /// compiled fallback is unremarkable; beyond this we want visibility.
+  static const Duration _staleAfter = Duration(days: 3);
+
+  /// Emit a quiet debug beacon when a refresh kept the bundled fallback AND we
+  /// have no fresh live snapshot within [_staleAfter] (either never synced this
+  /// run, or the last successful sync is older than the threshold). Debug-only
+  /// (`debugPrint`) so it never reaches users and needs no edge-function
+  /// allowlist change.
+  static void _warnIfStale() {
+    if (!kDebugMode) return;
+    final syncedAt = catalogueSyncedAt;
+    final age = syncedAt == null
+        ? null
+        : DateTime.now().toUtc().difference(syncedAt);
+    if (age != null && age <= _staleAfter) return; // recently fresh — nothing to flag
+    final detail = syncedAt == null
+        ? 'never synced this run'
+        : 'last live sync ${age!.inHours}h ago';
+    debugPrint('catalogue: serving bundled fallback ($detail) — live read failing');
   }
 
   /// Whether [start] has run this session (exposed for tests / diagnostics).

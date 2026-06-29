@@ -494,16 +494,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     final saveYear = planSaveYear(plan, bill);
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ffTheme.accent1, ffTheme.cardSurface],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.12)),
-        boxShadow: ffTheme.shadowMd,
-      ),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: Column(
         children: [
           Row(

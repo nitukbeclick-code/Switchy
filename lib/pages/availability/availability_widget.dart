@@ -153,7 +153,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       decoration: BoxDecoration(
         // Fixed ink hero (premium dark) — const ink tokens stay dark in both
         // themes so the white content keeps its contrast.
-        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary]),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(18),
         boxShadow: ffTheme.shadowLifted,
       ),
@@ -454,7 +454,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         LogoWidget(provider: isp.name, size: 42),
                         if (!isAvailable)
                           Positioned.fill(child: Container(
-                            decoration: BoxDecoration(color: Colors.white54, borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: ffTheme.cardSurface.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(8)),
                           )),
                       ],
                     ),
@@ -531,7 +531,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary]),
+        color: AppColors.primary,
         borderRadius: BorderRadius.circular(14),
         boxShadow: ffTheme.shadowCard,
       ),

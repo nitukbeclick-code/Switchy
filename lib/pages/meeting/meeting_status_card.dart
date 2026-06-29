@@ -131,11 +131,11 @@ class MeetingStatusCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: t.brandAccentTint,
+                  color: t.accent1,
                   borderRadius: BorderRadius.circular(t.radiusMd),
-                  border: Border.all(color: t.brandAccent.withValues(alpha: 0.18)),
+                  border: Border.all(color: t.lineColor),
                 ),
-                child: Icon(Icons.videocam_rounded, size: 22, color: t.brandAccent),
+                child: Icon(Icons.videocam_rounded, size: 22, color: t.secondaryText),
               ),
               const SizedBox(width: 12),
               Expanded(

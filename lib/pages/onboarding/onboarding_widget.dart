@@ -315,7 +315,7 @@ class _Page2 extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: p.$3,
+                  color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: p.$2.withValues(alpha: 0.25)),
                 ),
@@ -372,11 +372,7 @@ class _Page3 extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [ffTheme.primaryDark, ffTheme.primary],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
+              gradient: ffTheme.brandGradient,
               borderRadius: BorderRadius.circular(ffTheme.radiusCard),
               boxShadow: ffTheme.shadowLifted,
             ),

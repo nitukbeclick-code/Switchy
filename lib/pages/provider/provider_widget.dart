@@ -1555,7 +1555,7 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
                       fontWeight: FontWeight.w700,
                     ),
                     backgroundColor: ffTheme.background,
-                    selectedColor: ffTheme.primary,
+                    selectedColor: AppColors.primary,
                     side: BorderSide(
                         color: selected
                             ? Colors.transparent

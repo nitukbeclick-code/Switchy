@@ -844,11 +844,11 @@ class _ThreadViewState extends State<_ThreadView> {
           children: [
             Text(title,
                 style: GoogleFonts.rubik(
-                    fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    fontSize: 16, fontWeight: FontWeight.w700, color: t.primaryText)),
             Text(subtitle,
                 style: GoogleFonts.assistant(
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.7))),
+                    color: t.secondaryText)),
           ],
         ),
       ),

@@ -75,7 +75,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: AppColors.primary,
         elevation: 0,
         title: Text(
           'מעקב חידושים',
@@ -150,7 +150,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
             AppButton(
               text: 'הוסף מסלול',
               icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-              color: ffTheme.primary,
+              color: AppColors.primary,
               textStyle: GoogleFonts.rubik(
                   fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
               onPressed: () async => _showAddSheet(context),
@@ -659,7 +659,7 @@ class _EmptyState extends StatelessWidget {
         AppButton(
           text: 'הוסף מסלול ראשון',
           icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
-          color: ffTheme.primary,
+          color: AppColors.primary,
           textStyle: GoogleFonts.rubik(
               fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
           onPressed: () async => onAdd(),
@@ -934,11 +934,11 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: selected ? ffTheme.primary : ffTheme.accent1,
+                        color: selected ? AppColors.primary : ffTheme.accent1,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected
-                              ? ffTheme.primary
+                              ? AppColors.primary
                               : ffTheme.alternate,
                         ),
                       ),
@@ -1110,7 +1110,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
 
               AppButton(
                 text: 'שמור מסלול',
-                color: ffTheme.primary,
+                color: AppColors.primary,
                 textStyle: GoogleFonts.rubik(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,

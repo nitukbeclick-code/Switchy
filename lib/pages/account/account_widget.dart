@@ -606,10 +606,10 @@ class _QuickLink extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: ffTheme.brandAccentTint,
+                  color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
-                child: Icon(icon, color: ffTheme.brandAccent, size: 22),
+                child: Icon(icon, color: ffTheme.secondaryText, size: 22),
               ),
               const SizedBox(height: 8),
               Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText)),
@@ -648,10 +648,10 @@ class _ActionTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: ffTheme.brandAccentTint,
+                color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
-              child: ExcludeSemantics(child: Icon(icon, color: ffTheme.brandAccent, size: 22)),
+              child: ExcludeSemantics(child: Icon(icon, color: ffTheme.secondaryText, size: 22)),
             ),
             const SizedBox(width: 14),
             Expanded(

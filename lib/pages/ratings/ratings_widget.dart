@@ -961,7 +961,7 @@ class _LeaderboardSkeleton extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: t.cardSurface,
               borderRadius: BorderRadius.circular(t.radiusMd),
               border: Border.all(color: t.alternate.withValues(alpha: 0.4)),
             ),

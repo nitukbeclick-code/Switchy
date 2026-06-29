@@ -440,8 +440,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-                              child: Text('${replies.length}', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(10)),
+                              child: Text('${replies.length}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),
@@ -917,7 +917,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           // Fixed ink header (const tokens) so white title/subtitle keep their
           // contrast in BOTH themes.
           decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [AppColors.primary, AppColors.tertiary]),
+            color: AppColors.primary,
           ),
         ),
         title: Column(
@@ -971,7 +971,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 _StatPill(
                   value: '${_posts.fold(0, (s, p) => s + p.likes)}',
                   label: 'לייקים',
-                  color: Colors.red.shade400,
+                  color: ffTheme.error,
                 ),
                 const Spacer(),
                 Container(

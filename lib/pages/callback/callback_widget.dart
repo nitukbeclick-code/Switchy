@@ -396,7 +396,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-              boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
             ),
             child: Text(t, style: ffTheme.labelMedium.copyWith(
               color: active ? Colors.white : ffTheme.primaryText,
@@ -472,7 +471,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                  boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
                 ),
                 child: Column(
                   children: [

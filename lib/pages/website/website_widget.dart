@@ -103,11 +103,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           SliverToBoxAdapter(
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primaryDark, ffTheme.primary, ffTheme.tertiary],
-                ),
+                gradient: ffTheme.brandGradient,
               ),
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 48),
               child: Column(
@@ -458,7 +454,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             child: Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
+                gradient: ffTheme.brandGradient,
               ),
               child: Column(
                 children: [

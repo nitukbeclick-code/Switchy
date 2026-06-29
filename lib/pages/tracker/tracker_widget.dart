@@ -109,7 +109,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
                     width: double.infinity,
                     height: 52,
-                    color: ffTheme.primary,
+                    color: AppColors.primary,
                     textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                     borderRadius: BorderRadius.circular(14),
 
@@ -159,10 +159,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 AppButton(
                   text: 'מצא מסלול →',
                   onPressed: () async => context.goNamed('Results'),
-                  
+
                     width: double.infinity,
                     height: 52,
-                    color: ffTheme.primary,
+                    color: AppColors.primary,
                     textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                     borderRadius: BorderRadius.circular(14),
                   
@@ -177,7 +177,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
     // Completion state
     if (step >= 4) {
       return Scaffold(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: AppColors.primary,
         appBar: AppBar(
           title: const Text('מעקב מעבר'),
           backgroundColor: Colors.transparent,
@@ -280,7 +280,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               decoration: BoxDecoration(
                 color: ffTheme.secondary,
                 borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                boxShadow: ffTheme.shadowXs,
+                border: Border.all(color: ffTheme.lineColor),
               ),
               child: Row(
                 children: [
@@ -422,7 +422,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: s.done ? ffTheme.primary : ffTheme.alternate,
+                              color: s.done ? AppColors.primary : ffTheme.alternate,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(s.icon, size: 20, color: s.done ? Colors.white : ffTheme.secondaryText),
@@ -454,7 +454,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                               children: [
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(6)),
+                                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6)),
                                   child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ),
                                 const SizedBox(width: 8),
@@ -539,7 +539,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     ),
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
                       child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
                     ),
                   ],
@@ -555,10 +555,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 HapticFeedback.lightImpact();
                 context.pushNamed('Chat');
               },
-              
+
                 width: double.infinity,
                 height: 52,
-                color: ffTheme.primary,
+                color: AppColors.primary,
                 textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
               
@@ -686,7 +686,7 @@ class _StepConfirmButton extends StatelessWidget {
                   Navigator.pop(ctx);
                   onConfirm();
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: ffTheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                 child: const Text('אישור'),
               ),
             ],

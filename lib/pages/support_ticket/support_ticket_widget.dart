@@ -332,19 +332,19 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: theme.brandAccent.withValues(alpha: 0.18),
+                    color: theme.brandAccentTint,
                     borderRadius: BorderRadius.circular(theme.radiusPill),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                    border: Border.all(color: theme.brandAccent.withValues(alpha: 0.30)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.headset_mic_rounded, size: 13, color: Colors.white),
+                      Icon(Icons.headset_mic_rounded, size: 13, color: theme.brandAccentText),
                       const SizedBox(width: 5),
                       Text(
                         'מחובר לנציג',
                         style: theme.labelSmall.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w700),
+                            color: theme.brandAccentText, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),

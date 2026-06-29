@@ -419,11 +419,11 @@ class PlanCardWidget extends StatelessWidget {
                     runSpacing: 6,
                     children: [
                       if (plan.is5G)
-                        _FlagChip(label: '5G', color: ffTheme.info, ffTheme: ffTheme),
+                        _FlagChip(label: '5G', ffTheme: ffTheme),
                       if (plan.noCommit)
-                        _FlagChip(label: 'ללא התחייבות', color: ffTheme.success, ffTheme: ffTheme),
+                        _FlagChip(label: 'ללא התחייבות', ffTheme: ffTheme),
                       if (plan.hasAbroad)
-                        _FlagChip(label: 'כולל חו"ל', color: ffTheme.tertiary, ffTheme: ffTheme),
+                        _FlagChip(label: 'כולל חו"ל', ffTheme: ffTheme),
                       ...plan.feats.take(3).map((feat) => Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
@@ -751,26 +751,28 @@ class _EquipChip extends StatelessWidget {
 }
 
 class _FlagChip extends StatelessWidget {
-  const _FlagChip({required this.label, required this.color, required this.ffTheme});
+  const _FlagChip({required this.label, required this.ffTheme});
   final String label;
-  final Color color;
   final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
+    // GEIST: feature flags are decorative, so they read as neutral mono chips
+    // (accent1 fill, hairline border, secondary ink) — the green/amber accents
+    // stay reserved for genuine ACTION/VALUE, not info badges.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: ffTheme.accent1,
         borderRadius: BorderRadius.circular(ffTheme.radiusXs),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
+        border: Border.all(color: ffTheme.lineColor),
       ),
       child: Text(
         label,
         style: GoogleFonts.assistant(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: color,
+          color: ffTheme.secondaryText,
         ),
       ),
     );

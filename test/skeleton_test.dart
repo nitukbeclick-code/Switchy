@@ -42,7 +42,7 @@ void main() {
       expect(decoration.borderRadius, BorderRadius.circular(10));
     });
 
-    testWidgets('uses a white base on light and a slate base on dark',
+    testWidgets('uses a light-grey base on light and a slate base on dark',
         (tester) async {
       // MaterialApp wraps its theme in an AnimatedTheme: re-pumping with a new
       // brightness starts a ~200ms lerp, so a single frame still reads the OLD
@@ -53,7 +53,9 @@ void main() {
       var decoration =
           tester.widget<Container>(find.byType(Container)).decoration
               as BoxDecoration;
-      expect(decoration.color, Colors.white);
+      // Geist: a light-grey base, not pure white — a white skeleton would vanish
+      // against the near-white (#FAFAFA) canvas / white cards it sits on.
+      expect(decoration.color, const Color(0xFFE9EDF0));
 
       await _pump(tester, const SkeletonBox(), brightness: Brightness.dark);
       await tester.pumpAndSettle();

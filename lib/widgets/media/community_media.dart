@@ -155,7 +155,13 @@ class _MediaImageBubbleState extends State<MediaImageBubble> {
           borderRadius: BorderRadius.circular(14),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxHeight: widget.maxHeight),
-            child: SizedBox(width: double.infinity, child: imageChild),
+            // The CachedNetworkImage/Image.memory carries no semantic label of
+            // its own; flag it as a community image for screen readers.
+            child: Semantics(
+              image: true,
+              label: 'תמונת קהילה',
+              child: SizedBox(width: double.infinity, child: imageChild),
+            ),
           ),
         ),
       ),

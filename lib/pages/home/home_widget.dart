@@ -420,15 +420,20 @@ class _HomeWidgetState extends State<HomeWidget> {
             return PositionedDirectional(
               top: 6,
               end: 6,
-              child: Container(
-                width: 16,
-                height: 16,
-                // Amber VALUE dot — the unread badge pops against the now-white
-                // Geist header and reads as "needs attention" in both themes.
-                // The separating ring follows the header surface so the dot reads
-                // as a discrete badge (was Colors.white on the old green header).
-                decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: ffTheme.cardSurface, width: 1.5)),
-                child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
+              // The badge renders a number only visually; expose the count to
+              // screen readers so the bell announces "<N> new notifications".
+              child: Semantics(
+                label: '$count התראות חדשות',
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  // Amber VALUE dot — the unread badge pops against the now-white
+                  // Geist header and reads as "needs attention" in both themes.
+                  // The separating ring follows the header surface so the dot reads
+                  // as a discrete badge (was Colors.white on the old green header).
+                  decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: ffTheme.cardSurface, width: 1.5)),
+                  child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
+                ),
               ),
             );
           }),
@@ -1215,17 +1220,22 @@ class _HomeWidgetState extends State<HomeWidget> {
                         Positioned(
                           top: -6,
                           left: -6,
-                          child: Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(
-                              // Amber VALUE badge — a cheaper alternative exists.
-                              color: ffTheme.saving,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: ffTheme.cardSurface, width: 1.5),
-                              boxShadow: ffTheme.shadowSoft,
+                          // Icon-only amber badge — flag its meaning to screen
+                          // readers (a cheaper alternative is available).
+                          child: Semantics(
+                            label: 'נמצאה עסקה משתלמת יותר',
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                // Amber VALUE badge — a cheaper alternative exists.
+                                color: ffTheme.saving,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: ffTheme.cardSurface, width: 1.5),
+                                boxShadow: ffTheme.shadowSoft,
+                              ),
+                              child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.onSaving)),
                             ),
-                            child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.onSaving)),
                           ),
                         ),
                     ],

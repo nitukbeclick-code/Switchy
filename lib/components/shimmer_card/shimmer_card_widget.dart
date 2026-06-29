@@ -16,10 +16,16 @@ class ShimmerCardWidget extends StatelessWidget {
     final baseColor = ffTheme.alternate;
     final highlightColor = ffTheme.dark ? ffTheme.secondaryBackground : Colors.white;
 
-    return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
-      child: Container(
+    // The skeleton is pure chrome: hide it from the semantics tree so screen
+    // readers don't announce a tree of empty placeholder boxes. The shimmer
+    // runs its own continuous animation, so isolate it behind a RepaintBoundary
+    // — a parent rebuild then can't restart or repaint the sweep.
+    return ExcludeSemantics(
+      child: RepaintBoundary(
+        child: Shimmer.fromColors(
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+          child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -73,6 +79,8 @@ class ShimmerCardWidget extends StatelessWidget {
             const SizedBox(height: 12),
             Container(height: 36, width: double.infinity, decoration: BoxDecoration(color: block, borderRadius: BorderRadius.circular(10))),
           ],
+        ),
+      ),
         ),
       ),
     );

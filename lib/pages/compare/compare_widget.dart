@@ -61,14 +61,15 @@ class CompareWidget extends StatelessWidget {
       return Scaffold(
         backgroundColor: ffTheme.background,
         appBar: AppBar(
-          backgroundColor: ffTheme.primary,
-          foregroundColor: Colors.white,
+          // Geist white header: flat surface + dark ink foreground (was ink hero).
+          backgroundColor: ffTheme.cardSurface,
+          foregroundColor: ffTheme.primaryText,
           title: Text('השוואת מסלולים',
-              style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+              style: ffTheme.titleLarge.copyWith(color: ffTheme.primaryText)),
           actions: [
             if (plans.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
+                icon: Icon(Icons.ios_share_rounded, color: ffTheme.primaryText),
                 tooltip: 'שתף',
                 onPressed: () => Share.share(_quickShareText(plans)),
               ),
@@ -77,7 +78,7 @@ class CompareWidget extends StatelessWidget {
                 onPressed: appState.clearCompare,
                 child: Text('נקה הכל',
                     style: ffTheme.labelMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.85))),
+                        color: ffTheme.secondaryText)),
               ),
           ],
         ),
@@ -117,7 +118,7 @@ class CompareWidget extends StatelessWidget {
                       onPressed: appState.clearCompare,
                       child: Text('נקה הכל',
                           style: ffTheme.labelMedium.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9))),
+                              color: ffTheme.secondaryText)),
                     ),
                 ],
                 flexibleChild: heroSave > 0
@@ -159,7 +160,8 @@ class CompareWidget extends StatelessWidget {
 // ── Hero saving figure (header flexibleChild) ──────────────────────────────────
 
 /// The big "₪X/שנה" the collapsing [AppSliverHeader] carries for a 2+ compare —
-/// the winner's annual saving vs the user's bill, set on the green ACTION wash.
+/// the winner's annual saving vs the user's bill, dark-on-white on the Geist
+/// header (value figure in savingText, caption in secondaryText).
 class _HeroSaving extends StatelessWidget {
   const _HeroSaving({required this.saving, required this.ffTheme});
   final int saving;
@@ -175,7 +177,7 @@ class _HeroSaving extends StatelessWidget {
           style: GoogleFonts.rubik(
             fontSize: 34,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: ffTheme.savingText,
             letterSpacing: -1,
             height: 1.0,
             fontFeatures: const [FontFeature.tabularFigures()],
@@ -187,7 +189,7 @@ class _HeroSaving extends StatelessWidget {
           style: GoogleFonts.assistant(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.85),
+            color: ffTheme.secondaryText,
           ),
         ),
       ],
@@ -353,10 +355,11 @@ class _ShareMenuState extends State<_ShareMenu> {
 
   @override
   Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
     // Busy: the in-flight PDF/print spinner sits where the share button was so
     // the header doesn't reflow (>=48dp tap-target footprint preserved).
     if (_busy) {
-      return const SizedBox(
+      return SizedBox(
         width: kMinTapTarget,
         height: kMinTapTarget,
         child: Center(
@@ -364,13 +367,13 @@ class _ShareMenuState extends State<_ShareMenu> {
             width: 18,
             height: 18,
             child: CircularProgressIndicator(
-                strokeWidth: 2, color: Colors.white),
+                strokeWidth: 2, color: ffTheme.primaryText),
           ),
         ),
       );
     }
     return IconButton(
-      icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
+      icon: Icon(Icons.ios_share_rounded, color: ffTheme.primaryText),
       tooltip: 'שתף',
       onPressed: _openShareSheet,
     );

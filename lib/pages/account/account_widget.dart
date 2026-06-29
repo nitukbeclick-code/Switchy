@@ -43,7 +43,7 @@ class AccountWidget extends StatelessWidget {
             actions: [
               if (appState.isLoggedIn)
                 IconButton(
-                  icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                  icon: Icon(Icons.settings_rounded, color: ffTheme.primaryText),
                   tooltip: 'הגדרות פרופיל',
                   onPressed: () => context.pushNamed('Settings'),
                 )
@@ -70,7 +70,7 @@ class AccountWidget extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: ffTheme.accent1,
                 shape: BoxShape.circle,
               ),
               child: Center(
@@ -78,9 +78,9 @@ class AccountWidget extends StatelessWidget {
                   child: appState.isLoggedIn && appState.firstName.isNotEmpty
                       ? Text(
                           appState.firstName[0],
-                          style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white),
+                          style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, color: ffTheme.primaryText),
                         )
-                      : const Icon(Icons.person_rounded, size: 30, color: Colors.white),
+                      : Icon(Icons.person_rounded, size: 30, color: ffTheme.primaryText),
                 ),
               ),
             ),

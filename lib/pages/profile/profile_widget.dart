@@ -335,7 +335,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         'עד ₪$total בשנה',
         textAlign: TextAlign.center,
         style: ffTheme.displaySmall.copyWith(
-          color: Colors.white,
+          color: ffTheme.savingText,
           fontWeight: FontWeight.w800,
         ),
       );
@@ -346,7 +346,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         'הפרטים שלך מעודכנים',
         textAlign: TextAlign.center,
         style: ffTheme.titleMedium.copyWith(
-          color: Colors.white,
+          color: ffTheme.primaryText,
           fontWeight: FontWeight.w700,
         ),
       );
@@ -357,7 +357,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         'התחילו למלא פרטים כדי לראות חיסכון',
         textAlign: TextAlign.center,
         style: ffTheme.titleSmall.copyWith(
-          color: Colors.white.withValues(alpha: 0.92),
+          color: ffTheme.secondaryText,
           fontWeight: FontWeight.w700,
         ),
       );

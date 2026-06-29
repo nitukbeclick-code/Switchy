@@ -278,11 +278,12 @@ class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      // Geist flat white header: a near-white surface with a 1px bottom hairline
+      // (no more dark green hero block). Header content flips to dark ink.
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ffTheme.primary, ffTheme.primaryDark],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
+        color: ffTheme.cardSurface,
+        border: Border(
+          bottom: BorderSide(color: ffTheme.lineColor),
         ),
       ),
       child: SafeArea(
@@ -293,35 +294,30 @@ class _HeroHeader extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_rounded,
-                      color: Colors.white),
+                  icon: Icon(Icons.arrow_back_ios_rounded,
+                      color: ffTheme.primaryText),
                   tooltip: 'חזרה',
                   onPressed: onBack,
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.ios_share_rounded,
-                      color: Colors.white),
+                  icon: Icon(Icons.ios_share_rounded,
+                      color: ffTheme.primaryText),
                   tooltip: 'שתף',
                   onPressed: () => Share.share(shareText),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // Logo on a white chip so per-provider brand colours read cleanly
-            // against the green hero (the logo itself is never recoloured).
+            // Logo on a Geist white chip so per-provider brand colours read
+            // cleanly (the logo itself is never recoloured). On the white header
+            // we rely on a 1px border instead of a bespoke heavy shadow.
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ffTheme.cardSurface,
                 borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: ffTheme.lineColor),
               ),
               child: LogoWidget(provider: providerName, size: 56),
             )
@@ -330,15 +326,15 @@ class _HeroHeader extends StatelessWidget {
             const SizedBox(height: 14),
             Text(
               providerName,
-              style: ffTheme.headlineMedium
-                  .copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+              style: ffTheme.headlineMedium.copyWith(
+                  color: ffTheme.primaryText, fontWeight: FontWeight.w800),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             Text(
               '$planCount מסלולים ב-$catCount קטגוריות',
               style: ffTheme.bodyMedium
-                  .copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                  .copyWith(color: ffTheme.secondaryText),
               textAlign: TextAlign.center,
             ),
             if (rating.hasData) ...[
@@ -356,20 +352,21 @@ class _HeroHeader extends StatelessWidget {
                               ? Icons.star_half_rounded
                               : Icons.star_outline_rounded,
                       size: 18,
-                      color: ffTheme.saving,
+                      // Amber stars on the now-white header → dark amber (AA).
+                      color: ffTheme.savingText,
                     );
                   }),
                   const SizedBox(width: 6),
                   Text(
                     rating.stars.toStringAsFixed(1),
                     style: ffTheme.titleSmall.copyWith(
-                        color: Colors.white, fontWeight: FontWeight.w800),
+                        color: ffTheme.primaryText, fontWeight: FontWeight.w800),
                   ),
                   if (rating.reviewCount > 0)
                     Text(
                       ' · ${rating.reviewCount} ביקורות',
                       style: ffTheme.labelSmall
-                          .copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                          .copyWith(color: ffTheme.secondaryText),
                     ),
                 ],
               ),
@@ -395,14 +392,18 @@ class _EmptyState extends StatelessWidget {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
+        // Geist white header: white surface, dark ink, 1px bottom hairline.
+        backgroundColor: ffTheme.cardSurface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        shape: Border(bottom: BorderSide(color: ffTheme.lineColor)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios_rounded, color: ffTheme.primaryText),
           tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: Text(providerName,
-            style: ffTheme.titleMedium.copyWith(color: Colors.white)),
+            style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
       ),
       body: Center(
         child: Padding(

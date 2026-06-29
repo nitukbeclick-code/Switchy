@@ -63,13 +63,13 @@ class MatchesWidget extends StatelessWidget {
       return Scaffold(
         backgroundColor: ffTheme.background,
         appBar: AppBar(
-          backgroundColor: AppColors.brandAccentDark,
-          foregroundColor: Colors.white,
+          backgroundColor: ffTheme.cardSurface,
+          foregroundColor: ffTheme.primaryText,
           elevation: 0,
           // Framework-default leading back affordance — RTL-mirrored automatically.
           title: Text(
             'ההתאמות שלי',
-            style: ffTheme.titleLarge.copyWith(color: Colors.white),
+            style: ffTheme.titleLarge.copyWith(color: ffTheme.primaryText),
           ),
           centerTitle: true,
         ),
@@ -238,8 +238,7 @@ class MatchesWidget extends StatelessWidget {
         Text(
           totalSaving > 0 ? 'חיסכון פוטנציאלי שנתי' : 'התאמות לפי הפרופיל שלך',
           textAlign: TextAlign.center,
-          style: ffTheme.bodySmall
-              .copyWith(color: Colors.white.withValues(alpha: 0.78)),
+          style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
         ),
         const SizedBox(height: 4),
         Row(
@@ -258,7 +257,7 @@ class MatchesWidget extends StatelessWidget {
                   return Text(
                     personalized ? disp : '~$disp',
                     style: ffTheme.displaySmall.copyWith(
-                      color: Colors.white,
+                      color: ffTheme.savingText,
                       fontWeight: FontWeight.bold,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
@@ -269,7 +268,7 @@ class MatchesWidget extends StatelessWidget {
               Text(
                 savingDisplay,
                 style: ffTheme.displaySmall.copyWith(
-                  color: Colors.white,
+                  color: ffTheme.primaryText,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -281,13 +280,14 @@ class MatchesWidget extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.20),
+                    color: ffTheme.cardSurface,
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: ffTheme.lineColor),
                   ),
                   child: Text(
                     'הערכה',
                     style: ffTheme.labelSmall.copyWith(
-                      color: Colors.white,
+                      color: ffTheme.secondaryText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -306,8 +306,7 @@ class MatchesWidget extends StatelessWidget {
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: ffTheme.bodySmall
-              .copyWith(color: Colors.white.withValues(alpha: 0.65)),
+          style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
         ),
       ],
     );

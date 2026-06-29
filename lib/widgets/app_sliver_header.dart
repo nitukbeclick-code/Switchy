@@ -110,7 +110,7 @@ class AppSliverHeader extends StatelessWidget {
     // Always light-on-dark: the background is the saturated green wash or the
     // ink surface in BOTH themes, so foreground content reads white either way
     // (mirrors the permanently-dark heroes that use AppTheme.light tokens).
-    const onHeader = Colors.white;
+    final onHeader = ffTheme.primaryText;
 
     return SliverAppBar(
       pinned: true,
@@ -119,9 +119,11 @@ class AppSliverHeader extends StatelessWidget {
       // The flat surface colour the pinned bar settles on once collapsed; it
       // matches the bottom of the expanded ink gradient so the transition is
       // seamless. Always the premium ink (no more saturated-green hero bar).
-      backgroundColor: ffTheme.primary,
+      backgroundColor: ffTheme.background,
       foregroundColor: onHeader,
       elevation: 0,
+      scrolledUnderElevation: 0,
+      shape: Border(bottom: BorderSide(color: ffTheme.lineColor)),
       actions: actions,
       flexibleSpace: FlexibleSpaceBar(
         // Start-anchored title: under RTL this hugs the right edge, and at the
@@ -140,7 +142,7 @@ class AppSliverHeader extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           // Title style comes from the appBarTheme (Rubik); only the colour is
           // forced white so it reads on the coloured/ink background.
-          style: const TextStyle(color: onHeader),
+          style: TextStyle(color: onHeader),
         ),
         background: _HeaderBackground(
           ffTheme: ffTheme,
@@ -182,8 +184,7 @@ class _HeaderBackground extends StatelessWidget {
       decoration: BoxDecoration(
         // Premium ink hero (charcoal) — the bank-grade replacement for the old
         // saturated-green ACTION wash. Green now lives only on CTAs/accents.
-        gradient: gradient ? ffTheme.brandGradient : null,
-        color: gradient ? null : ffTheme.primary,
+        color: ffTheme.background,
       ),
       child: SafeArea(
         bottom: false,

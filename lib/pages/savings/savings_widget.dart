@@ -66,13 +66,13 @@ class _SavingsWidgetState extends State<SavingsWidget> {
             showBack: false,
             actions: [
               IconButton(
-                icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                icon: Icon(Icons.arrow_forward_ios_rounded, color: ffTheme.primaryText, size: 20),
                 tooltip: 'חזרה',
                 onPressed: () => context.safePop(),
               ),
               if (personalized && summary.totalAnnualPotential > 0)
                 IconButton(
-                  icon: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+                  icon: Icon(Icons.ios_share_rounded, color: ffTheme.primaryText, size: 22),
                   tooltip: 'שתף את החיסכון',
                   onPressed: () => Share.share(
                     'גיליתי שאפשר לחסוך עד ₪${summary.totalAnnualPotential} בשנה על חשבונות התקשורת — בדקו גם אתם עם Switchy AI',
@@ -226,10 +226,9 @@ class _HeroFigure extends StatelessWidget {
           builder: (_, value, __) => Text(
             hasBill ? '₪$value' : '₪—',
             style: ffTheme.displaySmall.copyWith(
-                // Amber VALUE for a real figure; a legible white-alpha dash for
-                // the placeholder (the old `secondary` token went dark slate on
-                // dark, vanishing on the ink hero).
-                color: hasBill ? ffTheme.saving : Colors.white.withValues(alpha: 0.55),
+                // Dark amber VALUE (AA on the now-white Geist header) for a real
+                // figure; a muted dark dash for the placeholder.
+                color: hasBill ? ffTheme.savingText : ffTheme.secondaryText,
                 fontWeight: FontWeight.bold,
                 // Fixed-width digits — the count-up doesn't jitter sideways.
                 fontFeatures: const [FontFeature.tabularFigures()]),
@@ -240,7 +239,7 @@ class _HeroFigure extends StatelessWidget {
           hasBill
               ? 'לפי המסלולים שאנחנו ממליצים'
               : 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק',
-          style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+          style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
           textAlign: TextAlign.center,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

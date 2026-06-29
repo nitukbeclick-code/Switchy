@@ -407,7 +407,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         alignment: Alignment.center,
         children: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+            icon: Icon(Icons.notifications_outlined, color: ffTheme.primaryText, size: 22),
             tooltip: 'התראות',
             onPressed: () {
               HapticFeedback.lightImpact();
@@ -423,9 +423,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               child: Container(
                 width: 16,
                 height: 16,
-                // Amber VALUE dot — the unread badge pops against the green
-                // header and reads as "needs attention" in both themes.
-                decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                // Amber VALUE dot — the unread badge pops against the now-white
+                // Geist header and reads as "needs attention" in both themes.
+                // The separating ring follows the header surface so the dot reads
+                // as a discrete badge (was Colors.white on the old green header).
+                decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: ffTheme.cardSurface, width: 1.5)),
                 child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
               ),
             );
@@ -456,23 +458,25 @@ class _HomeWidgetState extends State<HomeWidget> {
             constraints: const BoxConstraints(minHeight: kMinTapTarget),
             padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 12, 12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
+              // Light Geist field on the now-white header: white surface + 1px
+              // hairline (was a translucent white pill that vanished on white).
+              color: ffTheme.cardSurface,
               borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+              border: Border.all(color: ffTheme.lineColor),
             ),
             child: Row(
               children: [
-                const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+                Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'חפש ספק או מסלול...',
-                    style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                    style: AppTheme.of(context).bodySmall.copyWith(color: ffTheme.secondaryText),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                Icon(Icons.chevron_left_rounded, color: Colors.white.withValues(alpha: 0.85), size: 20),
+                Icon(Icons.chevron_left_rounded, color: ffTheme.secondaryText, size: 20),
               ],
             ),
           ),

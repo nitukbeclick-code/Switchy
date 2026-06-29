@@ -33,6 +33,7 @@ on:
           - renewal-reminders
           - meeting-book
           - referral-issue
+          - street-price
           - all
   push:
     branches:
@@ -84,7 +85,7 @@ jobs:
           }
 
           if [ "$target" = "all" ]; then
-            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat savings-watch renewal-reminders telegram-webhook meeting-book referral-issue; do
+            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat savings-watch renewal-reminders telegram-webhook meeting-book referral-issue street-price; do
               deploy_one "$fn"
             done
           else

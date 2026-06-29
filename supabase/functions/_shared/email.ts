@@ -17,6 +17,7 @@
 // that renders consistently across Gmail / Apple Mail / Outlook.
 
 import { jlog } from "./log.ts";
+import { captureError } from "./observability.ts";
 
 // ── HTML escaping (attribute-safe) ───────────────────────────────────────────
 // The shared telegram.ts `esc` escapes &<> only — fine for text nodes but NOT
@@ -350,17 +351,31 @@ async function resendSend(
   html: string,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!cfg.resend || !cfg.resendFrom || !to) return { ok: false, error: "resend not configured" };
-  try {
-    const r = await fetch("https://api.resend.com/emails", {
+  const post = () =>
+    fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${cfg.resend}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: cfg.resendFrom, to: [to], subject, html }),
     });
+  try {
+    let r = await post();
+    // Retry ONCE on a 5xx only — a transient Resend hiccup. A 4xx is a real
+    // client error (bad address/payload); re-posting it would just fail again.
+    if (r.status >= 500 && r.status < 600) {
+      jlog({ at: "sendEmail", ok: false, status: r.status, retry: true });
+      r = await post();
+    }
     const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
-    if (!r.ok) jlog({ at: "sendEmail", ok: false, status: r.status, error: j?.message ?? j?.name });
-    return { ok: r.ok, error: (j?.message ?? j?.name) as string | undefined };
+    const error = (j?.message ?? j?.name) as string | undefined;
+    if (!r.ok) {
+      jlog({ at: "sendEmail", ok: false, status: r.status, error });
+      // Surface the final failure to Sentry when a DSN is configured (dark otherwise).
+      await captureError(error ?? `resend ${r.status}`, { fn: "resendSend", status: r.status });
+    }
+    return { ok: r.ok, error };
   } catch (e) {
     jlog({ at: "sendEmail", ok: false, error: String(e) });
+    await captureError(e, { fn: "resendSend" });
     return { ok: false, error: String(e) };
   }
 }

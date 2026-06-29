@@ -5,6 +5,7 @@
 
 import type { Cfg, Lead, TriageResult } from "../_shared/types.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 
 const EMPTY: TriageResult = { line: "", score: 0, draft: "" };
 
@@ -60,6 +61,7 @@ export async function aiTriage(cfg: Cfg, lead: Lead): Promise<TriageResult> {
         return parseTriage(String(j.choices?.[0]?.message?.content ?? ""));
       }
       jlog({ at: "aiTriage", provider: "openai", ok: false, status: r.status });
+      captureError(`triage HTTP ${r.status}`, { fn: "notify-lead", context: "triage_failed", provider: "openai", status: r.status });
     } else if (cfg.anthropic) {
       const r = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -76,9 +78,11 @@ export async function aiTriage(cfg: Cfg, lead: Lead): Promise<TriageResult> {
         return parseTriage(String(j.content?.[0]?.text ?? ""));
       }
       jlog({ at: "aiTriage", provider: "anthropic", ok: false, status: r.status });
+      captureError(`triage HTTP ${r.status}`, { fn: "notify-lead", context: "triage_failed", provider: "anthropic", status: r.status });
     }
   } catch (e) {
     jlog({ at: "aiTriage", ok: false, error: String(e) });
+    captureError(e, { fn: "notify-lead", context: "triage_failed" });
   }
   return EMPTY;
 }

@@ -327,9 +327,10 @@ async function handle(req: Request): Promise<Response> {
     sendEmail(cfg, "🔔 פנייה חדשה — Switchy AI", buildHtml(lead, triage)),
     appendRow(cfg, "Leads!A:K", buildLeadSheetRow(lead)),
   ]);
-  // stamp only on Telegram success: an email-only delivery has no interactive
-  // card, so the sweep should keep retrying the chat path
-  if (tg.ok) await markNotified("leads", lead.id);
+  // stamp when EITHER channel delivered: a lead reaching the team by Telegram or
+  // email is "notified", so the sweep must not re-send it forever. (Telegram is
+  // still the preferred interactive card; email is the fallback reach.)
+  if (tg.ok || email.ok) await markNotified("leads", lead.id);
   jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, sheet: sheet.ok, hot: triage.score >= 4 });
 
   return json({ ok: tg.ok || email.ok, telegram: { ok: tg.ok, error: tg.error }, email });

@@ -17,6 +17,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { CATEGORY_HE } from "@/lib/categories";
 import { fireLeadConversion, trackEvent } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
+import { referralCodeFromQuery } from "@/lib/referral";
 import {
   MARKETING_CHANNELS,
   MARKETING_OPTIN_HEADING,
@@ -151,6 +152,15 @@ export default function LeadForm({
 
   async function onSubmit(values: LeadFormValues) {
     setServerError(null);
+    // Referral attribution: a referee who landed from a share link arrives with
+    // ?ref=SW-XXXXXX. Read it from the URL at submit time and forward it only when
+    // it's a well-formed code (the helper normalizes + validates, returning null
+    // for junk/spoofed values). Guarded for SSR — `window` is browser-only and
+    // this only runs on submit. It NEVER affects the consent/suppression gate.
+    const referrerCode =
+      typeof window !== "undefined"
+        ? referralCodeFromQuery(window.location.search)
+        : null;
     try {
       const res = await fetch("/api/lead", {
         method: "POST",
@@ -161,6 +171,9 @@ export default function LeadForm({
           city: values.city.trim(),
           category: values.category || undefined,
           source,
+          // Optional referral attribution (null when the visitor didn't arrive
+          // via a share link). The server re-validates with isReferralCode.
+          referrer_code: referrerCode || undefined,
           // Mandatory consent — the server re-stamps the timestamps itself.
           consent: values.consent,
           // OPTIONAL granular marketing opt-ins (Spam Law) — each maps to a

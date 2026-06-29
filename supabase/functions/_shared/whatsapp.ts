@@ -21,6 +21,7 @@
 // degraded Graph call never breaks the reply path.
 
 import { jlog } from "./log.ts";
+import { captureError } from "./observability.ts";
 
 const TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
 const PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") ?? "1202423646285095";
@@ -129,11 +130,21 @@ export async function sendText(
       const msg = await res.text().catch(() => "");
       _lastSendOutside24hWindow = looksLike24hWindow(res.status, msg);
       jlog({ at: "wa.sendText", ok: false, status: res.status, msg });
+      // Surface the final failure (after the 5xx retry) to Sentry when a DSN is
+      // configured — dark/no-op otherwise. The 24h-window side-channel above is
+      // unchanged. We pass the boolean classification (not the raw body) so no
+      // customer PII from the message reaches the event.
+      await captureError(`wa.sendText ${res.status}`, {
+        fn: "sendText",
+        status: res.status,
+        outside24hWindow: _lastSendOutside24hWindow,
+      });
       return null;
     }
     return await wamidOf(res);
   } catch (e) {
     jlog({ at: "wa.sendText", ok: false, error: String(e) });
+    await captureError(e, { fn: "sendText" });
     return null;
   }
 }

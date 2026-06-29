@@ -8,6 +8,7 @@
 
 import type { Cfg, Lead } from "./types.ts";
 import { jlog } from "./log.ts";
+import { captureError } from "./observability.ts";
 import { deriveCategory, scoreLead } from "./lead_quality.ts";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -147,23 +148,39 @@ export async function getSheetsToken(cfg: Cfg): Promise<string | null> {
 // miss must never change the lead's Telegram/email outcome.
 export async function appendRow(cfg: Cfg, tab: string, values: string[]): Promise<{ ok: boolean }> {
   if (!sheetsConfigured(cfg)) return { ok: false };
-  const token = await getSheetsToken(cfg);
+  let token = await getSheetsToken(cfg);
   if (!token) return { ok: false };
-  try {
-    const url = `${SHEETS_BASE}/${encodeURIComponent(cfg.googleSpreadsheetId)}/values/${encodeURIComponent(tab)}:append?valueInputOption=USER_ENTERED`;
-    const r = await fetch(url, {
+  const url = `${SHEETS_BASE}/${encodeURIComponent(cfg.googleSpreadsheetId)}/values/${encodeURIComponent(tab)}:append?valueInputOption=USER_ENTERED`;
+  const post = (tok: string) =>
+    fetch(url, {
       method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { "Authorization": `Bearer ${tok}`, "Content-Type": "application/json" },
       body: JSON.stringify({ values: [values] }),
     });
+  try {
+    let r = await post(token);
+    // A 401 means the memoized token was revoked/rotated mid-life (the ~50min
+    // memo would otherwise keep replaying the dead token). Invalidate the cache,
+    // mint a fresh token, and retry ONCE before giving up.
+    if (r.status === 401) {
+      jlog({ at: "gsheets.appendRow", ok: false, status: 401, retry: true });
+      tokenCache = null;
+      const fresh = await getSheetsToken(cfg);
+      if (!fresh) return { ok: false };
+      token = fresh;
+      r = await post(token);
+    }
     if (!r.ok) {
       const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
-      jlog({ at: "gsheets.appendRow", ok: false, status: r.status, error: (j.error as Record<string, unknown>)?.message ?? j.error });
+      const error = (j.error as Record<string, unknown>)?.message ?? j.error;
+      jlog({ at: "gsheets.appendRow", ok: false, status: r.status, error });
+      await captureError(error ?? `sheets ${r.status}`, { fn: "appendRow", status: r.status });
       return { ok: false };
     }
     return { ok: true };
   } catch (e) {
     jlog({ at: "gsheets.appendRow", ok: false, error: String(e) });
+    await captureError(e, { fn: "appendRow" });
     return { ok: false };
   }
 }

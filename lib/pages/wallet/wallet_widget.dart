@@ -9,6 +9,7 @@ import '../../services/wallet_summary.dart';
 import '../../services/savings_summary.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/saving_pill.dart';
 
 /// "ארנק התקשורת" (Telecom Wallet) — a PERSONAL realized-savings view plus an
 /// HONEST aggregate social-proof block.
@@ -160,6 +161,10 @@ class _RealizedHeroFigure extends StatelessWidget {
                   color: valueAmber,
                   letterSpacing: -1,
                   height: 1,
+                  // Tabular figures so the hero realized total aligns with the
+                  // shared savings treatment (the eyebrow above carries the
+                  // savings glyph). Kept a numeral as the page's main stat.
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 8),
@@ -296,23 +301,26 @@ class _PotentialNudge extends StatelessWidget {
                 Icon(Icons.savings_outlined, size: 22, color: ffTheme.savingDark),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: RichText(
-                    text: TextSpan(
-                      style: ffTheme.bodySmall.copyWith(
-                          color: ffTheme.primaryText,
-                          fontWeight: FontWeight.w700,
-                          height: 1.4),
-                      children: [
-                        const TextSpan(text: 'יש לך עוד פוטנציאל חיסכון של '),
-                        TextSpan(
-                          text: '₪$potential/שנה',
-                          style: ffTheme.bodySmall.copyWith(
-                              color: ffTheme.savingText,
-                              fontWeight: FontWeight.w800),
-                        ),
-                        const TextSpan(text: ' — בוא נראה איפה'),
-                      ],
-                    ),
+                  // The potential figure moves into the shared VALUE pill (tint
+                  // bg + savings glyph + tabular figures) so it reads as the same
+                  // savings category as everywhere else, instead of plain green
+                  // text mid-sentence. TRUTH-ONLY: same real potential figure.
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'יש לך עוד פוטנציאל חיסכון — בוא נראה איפה',
+                        style: ffTheme.bodySmall.copyWith(
+                            color: ffTheme.primaryText,
+                            fontWeight: FontWeight.w700,
+                            height: 1.4),
+                      ),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SavingPill(text: '₪$potential/שנה'),
+                      ),
+                    ],
                   ),
                 ),
                 Icon(Icons.arrow_back_ios_rounded,

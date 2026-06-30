@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/saving_pill.dart';
 import '../logo_widget/logo_widget.dart';
 
 class PlanCardWidget extends StatelessWidget {
@@ -31,8 +33,8 @@ class PlanCardWidget extends StatelessWidget {
   final int? matchPct;
 
   /// Overrides the catalogue `plan.highlight` flag for the "best match"
-  /// treatment (amber VALUE ring + floating badge) — e.g. the smart-sort top
-  /// pick in results.
+  /// treatment (flat 2px green VALUE border + flat floating badge, no glow) —
+  /// e.g. the smart-sort top pick in results.
   final bool? bestMatch;
 
   String? _quizMatch(AppState appState) {
@@ -84,15 +86,16 @@ class PlanCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-        // Crisp formal frame; the best match wears the VALUE accent — a 2px
-        // amber ring + warm glow, mirroring the site's `.plan--best`.
+        // Crisp formal frame; the best match is expressed by ONLY the flat 2px
+        // green border (+ the flat 'ההתאמה הכי טובה' badge below) — consistent
+        // with the app's flat, border-defined thesis. The Geist redesign
+        // removed glows; we do not re-introduce one here, so the best-match
+        // card keeps the same flat [shadowCard] as its siblings.
         border: Border.all(
           color: isBest ? ffTheme.saving : ffTheme.alternate,
           width: isBest ? 2 : 1,
         ),
-        boxShadow: isBest
-            ? [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 8))]
-            : ffTheme.shadowCard,
+        boxShadow: ffTheme.shadowCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -248,7 +251,10 @@ class PlanCardWidget extends StatelessWidget {
                             fill: isWatching ? ffTheme.warning.withValues(alpha: 0.1) : ffTheme.background,
                             borderColor: isWatching ? ffTheme.warning : ffTheme.alternate,
                             iconColor: isWatching ? ffTheme.warning : ffTheme.secondaryText,
-                            onTap: () => appState.toggleWatch(plan.id),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              appState.toggleWatch(plan.id);
+                            },
                           ),
                           _CardIconButton(
                             semanticLabel: inCompare ? 'בהשוואה — הסר' : 'הוסף להשוואה',
@@ -259,7 +265,10 @@ class PlanCardWidget extends StatelessWidget {
                             fill: inCompare ? ffTheme.primary : ffTheme.background,
                             borderColor: inCompare ? ffTheme.primary : ffTheme.alternate,
                             iconColor: inCompare ? (ffTheme.dark ? ffTheme.background : Colors.white) : ffTheme.secondaryText,
-                            onTap: () => appState.toggleCompare(plan.id),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              appState.toggleCompare(plan.id);
+                            },
                           ),
                         ],
                       ),
@@ -380,26 +389,14 @@ class PlanCardWidget extends StatelessWidget {
                     ),
                     const Spacer(),
                     if (isBest && savings > 0)
-                      // De-pushed: the "חוסך ₪X בשנה" amber chip prints ONLY on
+                      // De-pushed: the "חוסך ₪X בשנה" VALUE pill prints ONLY on
                       // the single best-match card now (not on every list row),
                       // so the list reads as a calm price comparison. When shown
-                      // it's still the REAL saving (currentBill − price) × 12.
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: ffTheme.saving,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        ),
-                        child: Text(
-                          'חוסך ₪$savings בשנה',
-                          style: GoogleFonts.rubik(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: ffTheme.onSaving,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ),
+                      // it's still the REAL saving (currentBill − price) × 12,
+                      // rendered through the shared [SavingPill] so savings get
+                      // the one consistent VALUE treatment (pale-green tint +
+                      // green text + savings glyph + tabular figures).
+                      SavingPill(text: 'חוסך ₪$savings בשנה'),
                   ],
                 ),
 
@@ -477,8 +474,11 @@ class PlanCardWidget extends StatelessWidget {
         ],
       ),
           ),
-          // Floating amber "best match" pill overhanging the top edge — the
-          // same VALUE anchor the site uses for its lowest-price badge.
+          // Floating green "best match" pill overhanging the top edge — the
+          // same VALUE anchor the site uses for its lowest-price badge. FLAT,
+          // no shadow: 'best match' is expressed by the 2px green border + this
+          // badge alone, per the app's flat, border-defined thesis (the Geist
+          // redesign removed the badge glow).
           if (isBest)
             PositionedDirectional(
               top: -10,
@@ -488,7 +488,6 @@ class PlanCardWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ffTheme.saving,
                   borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  boxShadow: [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.34), blurRadius: 16, offset: const Offset(0, 6))],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

@@ -69,8 +69,14 @@ class _LeadWidgetState extends State<LeadWidget> {
   /// [_submitFailed] so the persistent recovery panel appears.
   Future<void> _submitLead(Plan? plan) async {
     if (_isSubmitting) return;
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      // Field-level validation blocked the submit — a heavier tap marks the
+      // committed-but-rejected outcome (distinct from the button's tap click).
+      HapticFeedback.heavyImpact();
+      return;
+    }
     if (!_acceptTerms || !_acceptPrivacy) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
       return;
     }
@@ -125,6 +131,9 @@ class _LeadWidgetState extends State<LeadWidget> {
         _isSubmitting = false;
         _submitFailed = true;
       });
+      // The lead never reached the team — a heavy buzz so the failure is felt,
+      // not only read (pairs with the persistent recovery panel below).
+      HapticFeedback.heavyImpact();
       AppSnackBar.error(context, 'שליחת הפנייה נכשלה — בדקו את החיבור ונסו שוב');
       return;
     }

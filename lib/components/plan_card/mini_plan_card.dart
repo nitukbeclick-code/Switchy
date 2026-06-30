@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models.dart';
 import '../../data.dart';
+import '../../widgets/saving_pill.dart';
 import '../logo_widget/logo_widget.dart';
 
 /// The compact plan row reused across home (hot deal / quiz match / top pick /
@@ -21,13 +22,13 @@ class MiniPlanCard extends StatelessWidget {
 
   final Plan plan;
 
-  /// ₪/year savings badge; null hides the amber VALUE badge entirely.
+  /// ₪/year savings figure; null hides the VALUE pill entirely.
   final int? savingsPerYear;
   final VoidCallback? onTap;
   final String ctaLabel;
   final bool showCta;
 
-  /// De-push gate: the "חוסך ₪X/שנה" amber badge prints ONLY when this is the
+  /// De-push gate: the "חוסך ₪X/שנה" VALUE pill prints ONLY when this is the
   /// single best-match / curated card. Generic list rows (watchlist, account,
   /// profile) leave this false so they show price only and the saving figure is
   /// not repeated on every card. When shown, savingsPerYear is the REAL saving.
@@ -72,22 +73,14 @@ class MiniPlanCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis),
                     if (showBadge) ...[
                       const SizedBox(height: 6),
-                      // Savings wear the VALUE accent (amber) — same treatment
-                      // as the full plan card and the site.
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: ffTheme.saving,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        ),
-                        child: Text(
-                          'חוסך ₪$savingsPerYear/שנה',
-                          style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.onSaving,
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
+                      // Savings wear the one shared VALUE treatment — the
+                      // [SavingPill] (pale-green tint + green text + savings
+                      // glyph + tabular figures) — same as the full plan card,
+                      // so savings read as a recognizable category, not a
+                      // competing green button. Truth-only: the REAL saving.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SavingPill(text: 'חוסך ₪$savingsPerYear/שנה'),
                       ),
                     ],
                   ],

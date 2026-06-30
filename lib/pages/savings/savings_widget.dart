@@ -13,6 +13,7 @@ import '../../services/renewal_report.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/saving_pill.dart';
 
 /// A whole-app savings dashboard: total potential, the biggest opportunity, a
 /// per-category breakdown, near renewals, and what the user has already saved.
@@ -228,15 +229,28 @@ class _HeroFigure extends StatelessWidget {
           tween: IntTween(begin: reduceMotion ? total : 0, end: total),
           duration: const Duration(milliseconds: 1000),
           curve: Curves.easeOutCubic,
-          builder: (_, value, __) => Text(
-            hasBill ? '₪$value' : '₪—',
-            style: ffTheme.displaySmall.copyWith(
-                // Dark amber VALUE (AA on the now-white Geist header) for a real
-                // figure; a muted dark dash for the placeholder.
-                color: hasBill ? ffTheme.savingText : ffTheme.secondaryText,
-                fontWeight: FontWeight.bold,
-                // Fixed-width digits — the count-up doesn't jitter sideways.
-                fontFeatures: const [FontFeature.tabularFigures()]),
+          builder: (_, value, __) => Row(
+            mainAxisSize: MainAxisSize.min,
+            // The hero stays a big numeral (it's the page's main stat), but
+            // carries the same savings GLYPH as the shared SavingPill so every
+            // savings surface reads as one recognizable category.
+            children: [
+              if (hasBill) ...[
+                Icon(Icons.savings_rounded,
+                    size: 22, color: ffTheme.savingText),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                hasBill ? '₪$value' : '₪—',
+                style: ffTheme.displaySmall.copyWith(
+                    // Green VALUE (AA on the now-white Geist header) for a real
+                    // figure; a muted dark dash for the placeholder.
+                    color: hasBill ? ffTheme.savingText : ffTheme.secondaryText,
+                    fontWeight: FontWeight.bold,
+                    // Fixed-width digits — the count-up doesn't jitter sideways.
+                    fontFeatures: const [FontFeature.tabularFigures()]),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 2),
@@ -410,7 +424,12 @@ class _RealizedCard extends StatelessWidget {
                   const TextSpan(text: 'כבר חסכת '),
                   TextSpan(
                       text: '₪$amount',
-                      style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.brandAccentText,
+                          fontWeight: FontWeight.w800,
+                          // Tabular figures — the realized total aligns with the
+                          // shared savings treatment.
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                   const TextSpan(text: ' דרך Switchy AI'),
                 ],
               ),
@@ -481,11 +500,15 @@ class _TopOpportunityCard extends StatelessWidget {
                       Text('ההזדמנות הכי גדולה שלך · $categoryName',
                           style: ffTheme.labelMedium
                               .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 3),
-                      Text(savingText,
-                          style: GoogleFonts.rubik(
-                              fontSize: 19, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 5),
+                      // The headline saving is the recognizable VALUE category:
+                      // tint pill + savings glyph + tabular figures, not plain
+                      // green text. TRUTH-ONLY: same real figure, only restyled.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SavingPill(text: savingText),
+                      ),
+                      const SizedBox(height: 4),
                       Text(providerAndPlan,
                           style: ffTheme.bodySmall.copyWith(
                               color: ffTheme.primaryText, fontWeight: FontWeight.w600),
@@ -597,7 +620,12 @@ class _PotentialDonutCard extends StatelessWidget {
                                   style: GoogleFonts.rubik(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      color: ffTheme.savingText)),
+                                      color: ffTheme.savingText,
+                                      // Tabular figures so the donut total stays
+                                      // aligned with the savings-category style.
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures()
+                                      ])),
                               Text('לשנה',
                                   style: ffTheme.labelSmall
                                       .copyWith(color: ffTheme.secondaryText)),
@@ -675,9 +703,10 @@ class _LegendRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis),
         ),
         const SizedBox(width: 6),
-        Text(personalized ? '₪$amount' : '~₪$amount',
-            style: ffTheme.labelMedium
-                .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
+        // VALUE category treatment: the per-slice saving rides in the shared
+        // tint pill (glyph + tabular figures) instead of plain green text, so
+        // the legend matches every other savings surface. Real figure kept.
+        SavingPill(text: personalized ? '₪$amount' : '~₪$amount'),
       ],
     );
   }
@@ -927,16 +956,14 @@ class _CategoryRow extends StatelessWidget {
                   ),
                 ),
                 if (opportunity)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: ffTheme.saving.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
-                        style: GoogleFonts.rubik(
-                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
-                  )
+                  // The per-category saving is the shared VALUE pill: tint bg +
+                  // savings glyph + tabular figures. Replaces the hand-rolled
+                  // green-text badge so every savings figure reads as one
+                  // category. TRUTH-ONLY: the real annual figure is unchanged.
+                  SavingPill(
+                      text: personalized
+                          ? '₪${saving.annualSaving}/שנה'
+                          : '~₪${saving.annualSaving}/שנה')
                 else if (has)
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1022,25 +1049,23 @@ class _RenewalRow extends StatelessWidget {
                       Text('$provider · $planName',
                           style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          if (timing != null) ...[
-                            Flexible(
-                              child: Text(timing,
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
-                            Text(' · ', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
-                          ],
-                          Text('חוסך ₪$saving/שנה',
-                              style: ffTheme.labelSmall.copyWith(
-                                  color: ffTheme.savingText, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
+                      // Timing reads on its own line; the saving moves to the
+                      // shared trailing VALUE pill so it matches every other
+                      // savings surface (mirrors the category row's layout).
+                      if (timing != null) ...[
+                        const SizedBox(height: 2),
+                        Text(timing,
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                // VALUE pill: tint bg + savings glyph + tabular figures. Real
+                // annual saving kept verbatim, only restyled.
+                SavingPill(text: 'חוסך ₪$saving/שנה'),
+                const SizedBox(width: 4),
                 Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.secondaryText),
               ],
             ),

@@ -149,6 +149,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   /// whether the address exists, so a true return just means "request sent".
   Future<void> _sendCode() async {
     if (!_emailLooksValid) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'הזינו כתובת אימייל תקינה לקבלת קוד האימות');
       return;
     }
@@ -178,12 +179,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     if (accepted) {
       AppSnackBar.success(context, 'שלחנו קוד אימות בן 6 ספרות לכתובת $_emailText');
     } else if (res.ok && !res.sent) {
+      HapticFeedback.heavyImpact();
       // Reached the backend, but the email SEND failed (Resend down / sender
       // domain not verified). Don't dead-end the user on a code that won't come —
       // point them to WhatsApp, where the live agent can book them directly.
       AppSnackBar.error(context,
           'לא הצלחנו לשלוח כרגע מייל לכתובת זו. נסו שוב בעוד רגע, או דברו איתנו ישירות ב-WhatsApp ונסגור לכם פגישה.');
     } else {
+      HapticFeedback.heavyImpact();
       AppSnackBar.error(context, 'שליחת קוד האימות נכשלה — בדקו את החיבור ונסו שוב');
     }
   }
@@ -194,6 +197,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   Future<void> _verifyCode() async {
     final code = _codeCtrl.text.trim();
     if (code.length < 6) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'הזינו את קוד האימות בן 6 הספרות');
       return;
     }
@@ -217,25 +221,35 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       HapticFeedback.mediumImpact();
       AppSnackBar.success(context, 'האימייל אומת — אפשר לקבוע את הפגישה');
     } else {
+      // Wrong/expired code — heavy buzz pairs with the honest rejection copy.
+      HapticFeedback.heavyImpact();
       AppSnackBar.error(context, res.error ?? 'הקוד שגוי או שפג תוקפו — נסו שוב');
     }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      // A field is invalid — heavy buzz marks the rejected booking attempt.
+      HapticFeedback.heavyImpact();
+      return;
+    }
     if (_provider == null) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'בחרו ספק לפגישה');
       return;
     }
     if (_slot == null) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'בחרו שעה לפגישה');
       return;
     }
     if (!_acceptTerms || !_acceptPrivacy) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
       return;
     }
     if (!_emailVerified || _emailText != _verifiedEmail) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'אמתו את כתובת האימייל לפני קביעת הפגישה');
       return;
     }
@@ -267,8 +281,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           .timeout(const Duration(seconds: 10));
     } catch (e) {
       // The request never reached the team — keep the form so the user can
-      // retry. The guard trigger's rejections get specific, honest copy.
+      // retry. The guard trigger's rejections get specific, honest copy. A
+      // heavy buzz marks the failed booking outcome before the honest message.
       if (!mounted) return;
+      HapticFeedback.heavyImpact();
       final msg = e.toString();
       if (msg.contains('meeting already pending')) {
         // There IS an open booking server-side (e.g. cleared local state) —

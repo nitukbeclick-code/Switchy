@@ -1397,10 +1397,12 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
     final catId = _catId;
     final price = double.tryParse(_priceCtrl.text.trim().replaceAll(',', '.'));
     if (catId == null) {
+      HapticFeedback.heavyImpact();
       setState(() => _error = 'בחרו קטגוריה');
       return;
     }
     if (price == null || price <= 0) {
+      HapticFeedback.heavyImpact();
       setState(() => _error = 'הזינו מחיר חודשי תקין');
       return;
     }
@@ -1414,12 +1416,17 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
 
     if (!report.accepted) {
       // Honest rejection: the number is held out of the aggregate, and we say so
-      // — we never silently fabricate or silently drop.
+      // — we never silently fabricate or silently drop. Heavy buzz marks the
+      // rejected report.
+      HapticFeedback.heavyImpact();
       setState(() => _error =
           'המחיר שהוזן חורג מהטווח הסביר ולכן לא ייכלל בממוצע. בדקו את הסכום ונסו שוב.');
       return;
     }
 
+    // The report was accepted into the real aggregate — a medium buzz confirms
+    // the committed outcome (pairs with the thank-you snackbar below).
+    HapticFeedback.mediumImpact();
     final catName = categoryById(catId)?.name ?? catId;
     final needed = StreetPriceService.reportsNeeded(widget.providerName, catId);
     final msg = needed > 0

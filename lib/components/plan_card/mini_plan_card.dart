@@ -16,6 +16,7 @@ class MiniPlanCard extends StatelessWidget {
     this.onTap,
     this.ctaLabel = 'בחר',
     this.showCta = true,
+    this.isBest = false,
   });
 
   final Plan plan;
@@ -26,10 +27,16 @@ class MiniPlanCard extends StatelessWidget {
   final String ctaLabel;
   final bool showCta;
 
+  /// De-push gate: the "חוסך ₪X/שנה" amber badge prints ONLY when this is the
+  /// single best-match / curated card. Generic list rows (watchlist, account,
+  /// profile) leave this false so they show price only and the saving figure is
+  /// not repeated on every card. When shown, savingsPerYear is the REAL saving.
+  final bool isBest;
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final showBadge = (savingsPerYear ?? 0) > 0;
+    final showBadge = isBest && (savingsPerYear ?? 0) > 0;
 
     return Semantics(
       button: onTap != null,

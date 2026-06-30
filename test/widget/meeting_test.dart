@@ -26,7 +26,9 @@ BookedMeeting _meeting({MeetingStatus status = MeetingStatus.pending, String? jo
     BookedMeeting(
       id: 'm1',
       status: status,
-      provider: 'הוט',
+      // A Zoom-supported catalogue id (provider_capabilities) so the wizard gate
+      // shows the booking form, not the "not supported" state.
+      provider: 'HOT',
       meetingDate: '2026-06-16',
       slot: '14:30',
       startsAt: DateTime.utc(2026, 6, 16, 11, 30),
@@ -154,7 +156,7 @@ void main() {
     }
 
     testWidgets('book button is disabled until the email is verified', (tester) async {
-      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט')));
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'HOT')));
       await tester.pump(const Duration(seconds: 1));
 
       await fillContactAndSlot(tester);
@@ -181,7 +183,7 @@ void main() {
     });
 
     testWidgets('blocks submit without consent even after verifying', (tester) async {
-      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט')));
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'HOT')));
       await tester.pump(const Duration(seconds: 1));
 
       await fillContactAndSlot(tester);
@@ -199,7 +201,7 @@ void main() {
 
     testWidgets('happy path: request → verify → book, flips to status and demo-confirms',
         (tester) async {
-      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט', source: 'plan')));
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'HOT', source: 'plan')));
       await tester.pump(const Duration(seconds: 1));
 
       await fillContactAndSlot(tester);
@@ -218,7 +220,7 @@ void main() {
 
       expect(backend.submittedMeetings, hasLength(1));
       final m = backend.submittedMeetings.single;
-      expect(m.provider, 'הוט');
+      expect(m.provider, 'HOT');
       expect(m.slot, '09:00');
       expect(m.source, 'plan');
       expect(m.email, 'test@example.com');

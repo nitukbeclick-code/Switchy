@@ -178,18 +178,21 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('home savings hero is honest about estimate vs personalized', (tester) async {
+  testWidgets('home hero: no pushed figure for a guest, personalized after a real bill', (tester) async {
     await _bootApp(tester);
     _go(tester, '/home');
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    // Fresh user hasn't entered a bill → the figure is framed as an estimate.
-    expect(find.textContaining('הערכה'), findsWidgets);
+    // De-push + truth-only: a fresh guest (no personalised bills) sees NO ₪
+    // savings figure — just a calm comparison invite. We never estimate a
+    // saving for someone who hasn't entered their bills.
+    expect(find.text('השוו מחירים והתחילו לחסוך'), findsOneWidget);
+    expect(find.textContaining('חיסכון פוטנציאלי עד'), findsNothing);
 
-    // Enter a real bill → the hero switches to the personalized framing.
+    // Enter a real bill → the hero switches to the personalised, bill-based line.
     AppState().setCurrentBill('cellular', 200);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('מחושב לפי החשבונות שלך'), findsOneWidget);
+    expect(find.textContaining('מחושב לפי החשבונות שלך'), findsOneWidget);
   });
 }

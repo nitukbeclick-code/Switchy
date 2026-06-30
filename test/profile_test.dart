@@ -98,10 +98,12 @@ void main() {
       expect(find.text('חידוש קרוב'), findsOneWidget);
       expect(find.textContaining('המבצע מסתיים בעוד'), findsOneWidget);
 
-      // Saving-potential card (amber VALUE) — default bills are non-zero so the
-      // whole-app opportunity is positive.
+      // Saving-potential card — de-pushed: it keeps its section title and links
+      // to /savings, but the big ₪/year figure was removed (that headline now
+      // lives only on the home hero + the /savings dashboard). The card now
+      // carries a calm comparison-framed one-liner instead.
       expect(find.text('פוטנציאל החיסכון שלך'), findsOneWidget);
-      expect(find.textContaining('בשנה'), findsWidgets);
+      expect(find.textContaining('השוו מסלולים מתאימים'), findsWidgets);
 
       // Tracked-plans section header + its "מעקב חידושים" action link.
       expect(find.text('המסלולים שלי'), findsOneWidget);

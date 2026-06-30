@@ -550,26 +550,26 @@ class AppTheme {
   TextStyle _ink(TextStyle s) => dark ? s.copyWith(color: AppColors.darkPrimaryText) : s;
   TextStyle _muted(TextStyle s) => dark ? s.copyWith(color: AppColors.darkSecondaryText) : s;
 
-  // Display — dialled DOWN from the old 35-58px / w900 "exaggerated" scale to a
-  // restrained 26-40px / w700. Big numerals still read as the hero, but
-  // considered, not shouting (the #1 fix for the "loud/childish" feel).
-  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 40, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.04, color: AppColors.primaryText);
-  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.05, color: AppColors.primaryText);
-  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.07, color: AppColors.primaryText);
+  // Display — tightened again (owner: text feels too large / loud) from 26-40px
+  // to a restrained 22-32px / w700. Big numerals still read as the hero, but
+  // confident and calm rather than shouting.
+  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.05, color: AppColors.primaryText);
+  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.06, color: AppColors.primaryText);
+  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.08, color: AppColors.primaryText);
   TextStyle get displayLarge => _ink(_displayLarge);
   TextStyle get displayMedium => _ink(_displayMedium);
   TextStyle get displaySmall => _ink(_displaySmall);
 
   // Headlines
-  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
-  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 19, fontWeight: FontWeight.w600, letterSpacing: -0.005, color: AppColors.primaryText);
+  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
+  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.005, color: AppColors.primaryText);
   static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: 0, color: AppColors.primaryText);
   TextStyle get headlineLarge => _ink(_headlineLarge);
   TextStyle get headlineMedium => _ink(_headlineMedium);
   TextStyle get headlineSmall => _ink(_headlineSmall);
 
   // Titles
-  static final TextStyle _titleLarge = GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText);
+  static final TextStyle _titleLarge = GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryText);
   static final TextStyle _titleMedium = GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primaryText);
   static final TextStyle _titleSmall = GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primaryText);
   TextStyle get titleLarge => _ink(_titleLarge);
@@ -577,7 +577,7 @@ class AppTheme {
   TextStyle get titleSmall => _ink(_titleSmall);
 
   // Body — Assistant, the Hebrew-first reading face
-  static final TextStyle _bodyLarge = GoogleFonts.assistant(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.primaryText);
+  static final TextStyle _bodyLarge = GoogleFonts.assistant(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.primaryText);
   static final TextStyle _bodyMedium = GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.primaryText);
   static final TextStyle _bodySmall = GoogleFonts.assistant(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.secondaryText);
   TextStyle get bodyLarge => _ink(_bodyLarge);

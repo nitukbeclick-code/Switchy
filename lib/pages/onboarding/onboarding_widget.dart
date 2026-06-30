@@ -250,7 +250,7 @@ class _Page1 extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'מחירים שקופים מכל הספקים, ללא עמלות נסתרות — אתם מחליטים מה הכי משתלם.',
+                    'מחירים שקופים מכל הספקים, ללא עמלות נסתרות — אתם משווים ומחליטים בעצמכם.',
                     style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
                   ),
                 ),

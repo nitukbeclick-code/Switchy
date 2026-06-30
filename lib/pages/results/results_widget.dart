@@ -178,14 +178,15 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
+          // Tighter category band (~40px) — calmer chrome above the results.
+          preferredSize: const Size.fromHeight(44),
           child: Container(
             color: headerColor,
             child: SizedBox(
-              height: 52,
+              height: 44,
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 children: _categories.map((c) {
                   final active = appState.selectedCat == c.$1;
                   // The budget filter from the quiz silently applies to its own
@@ -205,17 +206,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         duration: ffTheme.motionFast,
                         curve: ffTheme.easeOut,
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
+                            horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
+                          // Active = green ACTION fill (the only state cue);
+                          // inactive is a flat glass chip with NO border, so the
+                          // active chip is distinguished by fill, not a double
+                          // border outline.
                           color: active
                               ? ffTheme.brandAccent
                               : onHeader.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: active
-                                ? ffTheme.brandAccent
-                                : onHeader.withValues(alpha: 0.30),
-                          ),
                           boxShadow: active ? ffTheme.shadowAccent : null,
                         ),
                         child: Row(

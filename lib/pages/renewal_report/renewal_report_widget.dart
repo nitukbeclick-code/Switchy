@@ -295,7 +295,7 @@ class _Hero extends StatelessWidget {
                         const SizedBox(width: 6),
                         Text(
                           days < 0
-                              ? 'המבצע הסתיים — כדאי לבדוק עכשיו'
+                              ? 'המבצע הסתיים — שווה לבדוק עכשיו'
                               : days == 0
                                   ? 'המבצע מסתיים היום!'
                                   : 'המבצע מסתיים בעוד $days ימים',
@@ -453,7 +453,7 @@ class _NoSaverNote extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'המחיר שלך ב$provider עדיין מהתחרותיים בשוק — אבל כדאי לוודא מול הטבלה למטה',
+              'המחיר שלך ב$provider עדיין מהתחרותיים בשוק — שווה לוודא מול הטבלה למטה',
               style: ffTheme.bodySmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600),
             ),
           ),

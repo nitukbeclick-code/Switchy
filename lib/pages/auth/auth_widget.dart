@@ -189,7 +189,7 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
       _Mode.emailCode => 'כניסה עם קוד',
     };
     final sub = switch (_mode) {
-      _Mode.login => 'התחברו כדי לראות את החיסכון שלכם',
+      _Mode.login => 'התחברו כדי להשוות מסלולים מתאימים',
       _Mode.signup => 'נרשמים פעם אחת — חוסכים תמיד',
       _Mode.choose => 'התחברו כדי לשמור מסלולים, לעקוב ולדרג',
       _Mode.emailCode => _codeSent ? 'הזינו את הקוד שנשלח למייל' : 'נשלח לכם קוד חד-פעמי למייל',

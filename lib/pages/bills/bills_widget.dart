@@ -433,23 +433,19 @@ class _BillsWidgetState extends State<BillsWidget> {
                   Text('₪$total', style: GoogleFonts.rubik(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5)),
                   Text('לחודש בכל הקטגוריות', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
                   if (totalSavings > 0) ...[
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: ffTheme.saving.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.45)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.lightbulb_rounded, size: 16, color: ffTheme.saving),
-                          const SizedBox(width: 8),
-                          Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
-                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.saving)),
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    // De-pushed: the ₪/year saving figure is shown where it's
+                    // earned (the per-category breakdown below + /savings). On
+                    // the spend hero we keep a calm, comparison-framed one-liner
+                    // instead of a second green sales badge.
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.compare_arrows_rounded, size: 15, color: Colors.white70),
+                        const SizedBox(width: 6),
+                        Text('יש מסלולים מתאימים להשוואה למטה',
+                            style: GoogleFonts.assistant(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white70)),
+                      ],
                     ),
                   ],
                 ],
@@ -903,21 +899,14 @@ class _SavingsRing extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall),
+                Text('פילוח ההוצאה שלכם', style: ffTheme.titleSmall),
                 const SizedBox(height: 10),
+                // Honest monthly split (real figures), no shouted ₪/year hero —
+                // that headline lives on /savings. The pill below was removed in
+                // the de-push so the bills page stays a calm spend overview.
                 _RingLegendRow(color: ffTheme.saving, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
                 const SizedBox(height: 6),
                 _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
-                  ),
-                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
-                ),
               ],
             ),
           ),
@@ -1010,7 +999,7 @@ class _OverpayCard extends StatelessWidget {
                               color: ffTheme.saving,
                               borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                             ),
-                            child: Text('הכי כדאי',
+                            child: Text('מומלץ',
                                 style: ffTheme.labelSmall.copyWith(color: ffTheme.onSaving, fontWeight: FontWeight.w800, fontSize: 10)),
                           ),
                         ],

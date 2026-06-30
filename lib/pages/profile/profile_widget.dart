@@ -351,10 +351,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         ),
       );
     } else {
-      // No data at all — honest invitation rather than a hollow "₪0".
-      subtitle = 'כמה אפשר לחסוך?';
+      // No data at all — honest, comparison-framed invitation rather than a
+      // hollow "₪0" or a savings-promise.
+      subtitle = 'השוואת מסלולים';
       figure = Text(
-        'התחילו למלא פרטים כדי לראות חיסכון',
+        'מלאו פרטים כדי להשוות מסלולים מתאימים',
         textAlign: TextAlign.center,
         style: ffTheme.titleSmall.copyWith(
           color: ffTheme.secondaryText,
@@ -613,7 +614,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   /// The total annual saving potential across the user's bills (amber = VALUE),
   /// with the top opportunity called out. Links to the per-category breakdown.
   Widget _buildSavingsCard(BuildContext context, AppTheme ffTheme) {
-    final total = _savings.totalAnnualPotential;
     final top = _savings.topOpportunity;
     final topLabel = top == null ? null : categoryById(top.categoryId)?.name;
     return Pressable(
@@ -641,16 +641,17 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 children: [
                   Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 2),
+                  // De-pushed: the headline ₪ figure lives on the home hero and
+                  // inside /savings — here we keep a calm, comparison-framed
+                  // one-liner so the section stays an entry point, not a repeated
+                  // sales number. (topLabel/total stay real, just not shouted.)
                   Text(
                     topLabel != null
-                        ? 'הכי משתלם להחליף ב$topLabel'
-                        : 'לפי החשבונות שעדכנת',
+                        ? 'השוו מסלולים מתאימים ב$topLabel'
+                        : 'השוו מסלולים מתאימים לחשבונות שלכם',
                     style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
-                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  Text('עד ₪$total בשנה',
-                      style: ffTheme.titleMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                 ],
               ),
             ),

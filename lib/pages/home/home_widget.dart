@@ -105,8 +105,6 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final activeCat = appState.selectedCat;
-    final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
     final savings = _savingsFor(appState);
@@ -116,48 +114,35 @@ class _HomeWidgetState extends State<HomeWidget> {
       body: Stack(
         children: [
           // ── Main scrollable content ────────────────────────────────────────
-          // Pull-to-refresh (bouncing physics) over the whole home feed; the
-          // gesture clears the memoised savings/cheapest derivations and re-builds.
+          // Calmer single-column home. The order reads top-to-bottom as a
+          // hierarchy: header → one hero → one recommendations carousel → one
+          // activity row → category browse → renewal alert → a short tools row →
+          // AI advisor → (bottom) community + a thin provider line. Every former
+          // feature stays reachable; this is regrouping for calm, not deletion.
           RefreshableScroll(
             controller: _scrollController,
             onRefresh: _onRefresh,
             slivers: [
-              // ── 1. Collapsing brand header ─────────────────────────────────
+              // ── 1. Header (greeting + search + bell) ───────────────────────
               _buildHeader(context, ffTheme, appState),
 
-              // ════════════════════════════════════════════════════════════════
-              // ABOVE THE FOLD — the user's personal, high-value content first:
-              // what's about to renew, how much they can save, their top pick,
-              // and the plans they're already tracking / just viewed. This is the
-              // "your money right now" band — it earns the first scroll.
-              // ════════════════════════════════════════════════════════════════
+              // ── 2. ONE primary hero (single calm CTA, quiet savings sub-line)
+              SliverToBoxAdapter(child: _buildHero(context, ffTheme, appState, savings)),
 
-              // ── 2. Renewal Radar alert (personal, time-critical) ───────────
+              // ── 3. ONE "המלצות" carousel (top-pick + quiz-match + hot-deal) ─
+              SliverToBoxAdapter(child: _buildRecommendations(context, ffTheme, appState)),
+
+              // ── 4. ONE "הפעילות שלך" row (watchlist + recently-viewed) ──────
+              if (appState.watchedPlans.isNotEmpty || appState.recentlyViewed.isNotEmpty)
+                SliverToBoxAdapter(child: _buildActivity(context, ffTheme, appState)),
+
+              // ── 5. Category grid (browse) ──────────────────────────────────
+              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
+
+              // ── 6. Renewal alert (real urgency, calmer) ────────────────────
               _buildRenewalAlert(context, ffTheme, appState),
 
-              // ── 3. Savings hero card (personal headline figure) ────────────
-              SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme, savings)),
-
-              // ── 4. Top pick for you (personal recommendation) ──────────────
-              SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
-
-              // ── 5. Quiz match (personal, when quiz completed) ──────────────
-              if (appState.quizCompleted)
-                SliverToBoxAdapter(child: _buildQuizMatch(context, ffTheme, appState)),
-
-              // ── 6. Hot deal card (a real saving on the active category) ────
-              if (deal != null)
-                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
-
-              // ── 7. Watchlist quick view (plans the user tracks) ────────────
-              if (appState.watchedPlans.isNotEmpty)
-                SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
-
-              // ── 8. Recently viewed (the user's own trail) ──────────────────
-              if (appState.recentlyViewed.isNotEmpty)
-                SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
-
-              // ── 9. Booked video meeting status (actionable, personal) ──────
+              // ── Booked video meeting status (actionable, personal) ─────────
               if (_showMeetingCard(appState))
                 SliverToBoxAdapter(
                   child: Padding(
@@ -169,34 +154,24 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
                 ),
 
-              // ════════════════════════════════════════════════════════════════
-              // BELOW THE FOLD — secondary / browse content, de-emphasised so it
-              // doesn't dominate the scroll: category browse, a compact tools
-              // row, the AI-advisor promo, community, and the provider strip.
-              // Everything stays present + navigable (de-emphasise, not remove).
-              // ════════════════════════════════════════════════════════════════
-
-              // ── 10. Category grid (browse) ─────────────────────────────────
-              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
-
-              // ── 11. Tools quick-action row (compact) ───────────────────────
+              // ── 7. Tools row (demoted to 4 high-value entry points) ────────
               SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
 
-              // ── 12. AI advisor promo (compact) ─────────────────────────────
+              // ── 8. AI advisor (compact) ────────────────────────────────────
               SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
 
-              // ── 13. Community highlights (compact) ─────────────────────────
+              // ── 9. Community highlights (demoted to the very bottom) ────────
               SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
 
-              // ── 14. Brand trust strip ──────────────────────────────────────
-              SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
+              // ── Thin provider line (collapsed from the 18-logo strip) ──────
+              SliverToBoxAdapter(child: _buildProviderLine(context, ffTheme)),
 
-              // ── 15. Bottom padding for nav + FAB ──────────────────────────
+              // ── Bottom padding for nav + FAB ──────────────────────────────
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
 
-          // ── 9. Callback FAB ────────────────────────────────────────────────
+          // ── Callback FAB (kept; no entrance animation) ─────────────────────
           Positioned(
             bottom: 24,
             left: 20,
@@ -220,7 +195,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             ),
           ),
 
-          // ── Compare tray ───────────────────────────────────────────────────
+          // ── Compare tray (kept; no entrance animation) ─────────────────────
           if (appState.comparePlans.isNotEmpty)
             Positioned(
               bottom: 24,
@@ -253,7 +228,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ],
                   ),
                 ),
-              ).animate().slideY(begin: 1, end: 0, duration: 250.ms, curve: Curves.easeOutCubic),
+              ),
             ),
         ],
       ),
@@ -270,34 +245,26 @@ class _HomeWidgetState extends State<HomeWidget> {
 
     final days = r.daysUntilRenewal!;
     final isExpired = days <= 0;
+    // Calmer, non-manipulative copy: a factual heads-up, no "act now or the
+    // price jumps" pressure line.
     final mainText = isExpired
-        ? 'המבצע שלך הסתיים — כדאי להשוות עכשיו'
-        : '⏰ המבצע שלך ב${r.provider} מסתיים בעוד $days ימים';
-    final subText = isExpired ? '' : 'השווה עכשיו ותחסוך לפני שהמחיר קופץ';
+        ? 'המבצע שלך ב${r.provider} הסתיים'
+        : 'המבצע שלך ב${r.provider} מסתיים בעוד $days ימים';
 
-    // Urgency: red-tinted when ≤7 days, amber-tinted otherwise. The badge/CTA
-    // gradient keeps its semantic urgency hue (fixed, legible on its own fill);
-    // the CARD surface + text are theme-aware so the alert reads correctly on
-    // both the glass-white and the slate-dark canvas.
+    // Real urgency, calmer surface: a soft amber/red tint, a 1px border (no
+    // saturated gradient badge, no drop shadow). Hue still signals urgency
+    // (red ≤7 days, amber otherwise) and stays legible in both themes.
     final isUrgent = days <= 7;
     final accent = isUrgent ? const Color(0xFFE53935) : const Color(0xFFFFB300);
-    final gradientColors = isUrgent
-        ? [const Color(0xFF7B1E1E), const Color(0xFFB33030)]
-        : [const Color(0xFF7B5E00), const Color(0xFFB38A00)];
     final bgColor = Color.alphaBlend(
-        accent.withValues(alpha: ffTheme.dark ? 0.16 : 0.08), ffTheme.cardSurface);
+        accent.withValues(alpha: ffTheme.dark ? 0.14 : 0.06), ffTheme.cardSurface);
     final textColor = ffTheme.dark
         ? ffTheme.primaryText
         : (isUrgent ? const Color(0xFF7B1E1E) : const Color(0xFF5F4000));
-    final subColor = ffTheme.dark
-        ? ffTheme.secondaryText
-        : (isUrgent ? const Color(0xFF9E2020) : const Color(0xFF7A5500));
-    final borderColor = accent.withValues(alpha: isUrgent ? 0.35 : 0.45);
+    final borderColor = accent.withValues(alpha: isUrgent ? 0.30 : 0.40);
 
     return SliverToBoxAdapter(
       child: Pressable(
-        // Callback fires its own (stronger) lightImpact, so silence the
-        // Pressable's default selection haptic to avoid a double-buzz.
         haptic: false,
         onTap: () {
           HapticFeedback.lightImpact();
@@ -305,78 +272,37 @@ class _HomeWidgetState extends State<HomeWidget> {
         },
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-            border: Border.all(color: borderColor, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: accent.withValues(alpha: 0.15),
-                blurRadius: 12,
-                offset: const Offset(0, 3),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+            border: Border.all(color: borderColor, width: 1),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Icon badge
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: gradientColors,
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
-                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                ),
-                child: const Center(
-                  child: Icon(Icons.access_time_rounded, size: 22, color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 14),
+              Icon(Icons.access_time_rounded, size: 20, color: accent),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      mainText,
-                      style: ffTheme.titleSmall.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13.5,
-                      ),
-                    ),
-                    if (subText.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        subText,
-                        style: ffTheme.bodySmall.copyWith(
-                          color: subColor,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  mainText,
+                  style: ffTheme.titleSmall.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: gradientColors, begin: Alignment.topRight, end: Alignment.bottomLeft),
-                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                ),
-                child: Text(
-                  'השווה ←',
-                  style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+              Text(
+                'השווה ←',
+                style: ffTheme.labelMedium.copyWith(
+                  color: ffTheme.brandAccentText,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-        ).animate().fadeIn(duration: 320.ms).slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
+        ),
       ),
     );
   }
@@ -385,12 +311,13 @@ class _HomeWidgetState extends State<HomeWidget> {
   /// large title that shrinks on scroll, the notification bell rides in the
   /// trailing actions, and the search affordance lives in the expanded
   /// [flexibleChild] as a clearly-a-button pill. Home is a root tab, so there's
-  /// nothing to pop: [showBack] is false.
+  /// nothing to pop: [showBack] is false. Tightened expandedHeight so the header
+  /// band reads compact.
   Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return AppSliverHeader(
       title: '${_greeting()} ${appState.firstName}',
       showBack: false,
-      expandedHeight: 176,
+      expandedHeight: 160,
       actions: [_buildNotificationBell(context, ffTheme, appState)],
       flexibleChild: _buildHeaderSearch(context, ffTheme),
     );
@@ -490,231 +417,337 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme, SavingsSummary savings) {
-    final appState = Provider.of<AppState>(context, listen: false);
-    // Shared summary (same engine the /savings dashboard uses), so tapping the
-    // hero never lands on a screen showing a different number.
+  /// ONE primary hero with a SINGLE calm CTA. The potential-savings figure is a
+  /// quiet sub-line (small label), never a giant numeral — this is the only
+  /// potential-savings figure on the browse surfaces. The CTA routes to Results
+  /// when bills are set, else the Quiz, with one fixed label per state.
+  Widget _buildHero(BuildContext context, AppTheme ffTheme, AppState appState, SavingsSummary savings) {
+    // Shared summary (same engine the /savings dashboard uses), so the quiet
+    // figure never disagrees with the dashboard. Real value only — when there
+    // is nothing computed yet we simply omit the figure (no fabricated number).
     final totalSave = savings.totalAnnualPotential;
+    final personalized = appState.billsPersonalized;
+    final ctaLabel = personalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←';
 
     return Pressable(
-      // The CTA below fires its own lightImpact; keep the card-level press silent.
+      // The CTA fires its own lightImpact; keep the card-level press silent.
       haptic: false,
       onTap: () {
         HapticFeedback.lightImpact();
-        context.pushNamed('Savings');
+        personalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
       },
       child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: ffTheme.brandGradient,
-        borderRadius: BorderRadius.circular(ffTheme.radiusXl),
-        boxShadow: ffTheme.shadowLifted,
-      ),
-      child: Column(
-        children: [
-          Text(
-            'חיסכון פוטנציאלי שנתי',
-            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.75)),
-          ),
-          const SizedBox(height: 8),
-          // Real figure only — when no bill is set we show a dash and prompt the
-          // quiz, never a fabricated "potential saving" number. Mirrors the
-          // /savings dashboard's honest empty state.
-          if (totalSave > 0)
-            TweenAnimationBuilder<int>(
-              tween: IntTween(begin: 0, end: totalSave),
-              duration: const Duration(milliseconds: 1800),
-              curve: Curves.easeOutCubic,
-              builder: (_, value, __) {
-                final disp = value > 1000 ? '₪${(value / 1000).toStringAsFixed(1)}K' : '₪$value';
-                return Text(
-                  disp,
-                  style: ffTheme.displaySmall.copyWith(
-                    color: ffTheme.saving,
-                    fontWeight: FontWeight.bold,
-                    // Fixed-width digits — the count-up doesn't jitter sideways.
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                );
-              },
-            )
-          else
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: ffTheme.brandGradient,
+          borderRadius: BorderRadius.circular(ffTheme.radiusXl),
+          boxShadow: ffTheme.shadowLifted,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              '₪—',
-              style: ffTheme.displaySmall.copyWith(
-                color: Colors.white.withValues(alpha: 0.65),
-                fontWeight: FontWeight.bold,
+              personalized ? 'המסלולים שמתאימים לך' : 'בואו נמצא לך מסלול משתלם',
+              style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            // Quiet potential-savings SUB-LINE (small label, not a hero numeral).
+            // Truth-only + de-push: show a ₪ figure ONLY when the user has
+            // personalised bills (a REAL saving). A fresh guest gets a neutral,
+            // non-pushy line — we never estimate a saving for someone who hasn't
+            // entered their bills.
+            Text(
+              (personalized && totalSave > 0)
+                  ? 'חיסכון פוטנציאלי עד ₪$totalSave בשנה — מחושב לפי החשבונות שלך'
+                  : 'השוו מחירים והתחילו לחסוך',
+              style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+            ),
+            const SizedBox(height: 16),
+            // SINGLE calm green ACTION CTA — the only conversion cue on the hero.
+            Semantics(
+              button: true,
+              label: personalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
+              child: Pressable(
+                haptic: false,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  personalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  ),
+                  child: Text(
+                    ctaLabel,
+                    style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                  ),
+                ),
               ),
             ),
-          const SizedBox(height: 4),
-          Text(
-            appState.billsPersonalized
-                ? 'מחושב לפי החשבונות שלך'
-                : 'הערכה — ענו על השאלון לחישוב מדויק',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.75)),
-          ),
-          const SizedBox(height: 20),
-          Semantics(
-            button: true,
-            label: appState.billsPersonalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
-            child: Pressable(
-              haptic: false,
-              onTap: () {
-                HapticFeedback.lightImpact();
-                // Push (not go) so the hardware/gesture back returns to home.
-                appState.billsPersonalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
-                decoration: BoxDecoration(
-                  // Green ACTION pill on the ink hero — the single conversion cue
-                  // that guides the eye, with its accent glow.
-                  gradient: ffTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  boxShadow: ffTheme.shadowAccent,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                ),
-                child: Text(
-                  appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
-                  style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     )
         .animate()
-        .fadeIn(duration: 600.ms)
-        .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0));
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic);
   }
 
-  Widget _buildHotDeal(BuildContext context, AppTheme ffTheme, Plan deal, AppState appState) {
-    final bill = appState.currentBill(deal.cat);
-    // Real saving only — derived from the user's own bill. When no bill is set
-    // the saving is 0 and MiniPlanCard hides the badge (no assumed bill).
-    final saving = planSaveYear(deal, bill);
+  /// ONE "המלצות" carousel — merges the former Top-Pick, Quiz-Match and Hot-Deal
+  /// sections into a single horizontal scroll of at most 3 lighter cards. Each
+  /// card keeps its REAL computed annual saving (passed straight to
+  /// [MiniPlanCard], which hides the badge when the saving is 0). No section is
+  /// lost: every card still routes to PlanDetail / Results as before.
+  Widget _buildRecommendations(BuildContext context, AppTheme ffTheme, AppState appState) {
+    final recs = <_Rec>[];
+
+    // 1) Top personal pick across active categories (real annual saving only).
+    final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
+    final searchCats = activeCats.isNotEmpty ? activeCats.map((c) => c.id).toList() : [appState.selectedCat];
+    PlanMatch? topMatch;
+    for (final catId in searchCats) {
+      final m = RecommendationEngine.bestMatch(MatchProfile.fromAppState(appState, catId));
+      if (m == null) continue;
+      if (topMatch == null ||
+          m.annualSaving > topMatch.annualSaving ||
+          (m.annualSaving == topMatch.annualSaving && m.score > topMatch.score)) {
+        topMatch = m;
+      }
+    }
+    if (topMatch != null && topMatch.annualSaving > 0) {
+      recs.add(_Rec(
+        tag: 'המלצה אישית',
+        plan: topMatch.plan,
+        saving: topMatch.annualSaving,
+        cta: 'בחר',
+      ));
+    }
+
+    // 2) Quiz match (when the quiz is completed and yields a plan).
+    if (appState.quizCompleted) {
+      final cat = appState.quizCat;
+      final budget = appState.quizBudget;
+      if (categoryById(cat) != null && budget > 0) {
+        final matched = filteredPlans(
+          cat: cat, sort: 'match', filters: [], query: '',
+          budget: budget, currentBill: appState.currentBill(cat),
+        ).take(1).toList();
+        if (matched.isNotEmpty) {
+          final plan = matched.first;
+          if (!recs.any((r) => r.plan.id == plan.id)) {
+            final save = planSaveYear(plan, appState.currentBill(cat));
+            recs.add(_Rec(
+              tag: 'התאמת השאלון',
+              plan: plan,
+              saving: save > 0 ? save : 0,
+              cta: 'בחר',
+            ));
+          }
+        }
+      }
+    }
+
+    // 3) Hot deal on the active category (a real saving derived from the bill).
+    final activeCat = appState.selectedCat;
+    final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
+    if (deal != null && !recs.any((r) => r.plan.id == deal.id)) {
+      final saving = planSaveYear(deal, appState.currentBill(deal.cat));
+      recs.add(_Rec(
+        tag: 'עסקה חמה',
+        plan: deal,
+        saving: saving > 0 ? saving : 0,
+        cta: 'ראה עסקה',
+      ));
+    }
+
+    if (recs.isEmpty) return const SizedBox.shrink();
+    final cards = recs.take(3).toList();
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 0, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Icon(Icons.local_fire_department_rounded, size: 18, color: ffTheme.primary),
-                const SizedBox(width: 6),
-                Text('עסקה חמה היום', style: ffTheme.titleLarge),
-              ],
-            ),
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text('המלצות', style: ffTheme.titleLarge),
           ),
-          MiniPlanCard(
-            plan: deal,
-            savingsPerYear: saving,
-            ctaLabel: 'ראה עסקה',
-            onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': deal.id}),
+          SizedBox(
+            height: 188,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: cards.length,
+              padding: const EdgeInsetsDirectional.only(end: 16),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final rec = cards[i];
+                return SizedBox(
+                  width: 268,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(rec.tag, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        child: MiniPlanCard(
+                          plan: rec.plan,
+                          savingsPerYear: rec.saving > 0 ? rec.saving : null,
+                          // Curated best-match recommendations — these keep the
+                          // saving badge (the de-push only strips it from generic
+                          // list rows, which leave isBest false).
+                          isBest: true,
+                          ctaLabel: rec.cta,
+                          onTap: () {
+                            appState.viewPlan(rec.plan.id);
+                            context.pushNamed('PlanDetail', pathParameters: {'planId': rec.plan.id});
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuizMatch(BuildContext context, AppTheme ffTheme, AppState appState) {
-    final cat = appState.quizCat;
-    final budget = appState.quizBudget;
-    final catInfo = categoryById(cat);
-    if (catInfo == null || budget <= 0) return const SizedBox();
+  /// ONE "הפעילות שלך" row — merges the former Watchlist and Recently-Viewed
+  /// sections into a single horizontal scroll. Watched plans come first (and
+  /// keep the "better deal available" amber flag); recently-viewed (that aren't
+  /// already watched) follow. Both still route to PlanDetail.
+  Widget _buildActivity(BuildContext context, AppTheme ffTheme, AppState appState) {
+    final watched = appState.watchedPlans;
+    final watchedSet = watched.toSet();
+    final recent = appState.recentlyViewed.where((id) => !watchedSet.contains(id)).toList();
 
-    final matched = filteredPlans(
-      cat: cat, sort: 'match', filters: [], query: '',
-      budget: budget, currentBill: appState.currentBill(cat),
-    ).take(1).toList();
-    if (matched.isEmpty) return const SizedBox();
-
-    final plan = matched.first;
-    final save = planSaveYear(plan, appState.currentBill(cat));
+    final items = <_ActivityItem>[
+      for (final id in watched) _ActivityItem(id: id, watched: true),
+      for (final id in recent) _ActivityItem(id: id, watched: false),
+    ];
+    if (items.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 16, 0, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.adjust, size: 16, color: ffTheme.primary),
-              const SizedBox(width: 6),
-              Expanded(child: Text('התאמת השאלון — ${catInfo.name} עד ₪$budget', style: ffTheme.titleLarge)),
-              GestureDetector(
-                onTap: () {
-                  appState.setCategory(cat);
-                  context.goNamed('Results');
-                },
-                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 16),
+                child: Text('הפעילות שלך', style: ffTheme.titleLarge),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsetsDirectional.only(end: 8),
+                child: Semantics(
+                  button: true,
+                  label: 'הצג את כל המסלולים שבמעקב',
+                  child: InkWell(
+                    onTap: () => context.pushNamed('Account'),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          MiniPlanCard(
-            plan: plan,
-            savingsPerYear: save > 0 ? save : null,
-            ctaLabel: 'בחר',
-            onTap: () {
-              appState.viewPlan(plan.id);
-              context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});
-            },
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopPick(BuildContext context, AppTheme ffTheme, AppState appState) {
-    // Build profile helper
-    MatchProfile profileFor(String cat) => MatchProfile.fromAppState(appState, cat);
-
-    // Find the single best match across active categories (bill > 0); fall back to selectedCat
-    final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
-    final searchCats = activeCats.isNotEmpty ? activeCats.map((c) => c.id).toList() : [appState.selectedCat];
-
-    PlanMatch? topMatch;
-    String? topCatName;
-    for (final catId in searchCats) {
-      final m = RecommendationEngine.bestMatch(profileFor(catId));
-      if (m == null) continue;
-      if (topMatch == null || m.annualSaving > topMatch.annualSaving || (m.annualSaving == topMatch.annualSaving && m.score > topMatch.score)) {
-        topMatch = m;
-        topCatName = categoryById(catId)?.name ?? catId;
-      }
-    }
-    // Only surface the personal pick when it represents a real saving —
-    // preserves the prior behaviour of hiding the card otherwise.
-    if (topMatch == null || topMatch.annualSaving <= 0) return const SizedBox();
-
-    final match = topMatch;
-    final plan = match.plan;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.adjust, size: 16, color: ffTheme.primary),
-              const SizedBox(width: 6),
-              Text('המלצה אישית ל$topCatName', style: ffTheme.titleLarge),
-            ],
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 90,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: items.length,
+              padding: const EdgeInsetsDirectional.only(end: 16),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final item = items[i];
+                final plan = planById(item.id);
+                if (plan == null) return const SizedBox();
+                final better = item.watched ? _betterDealFor(plan, appState) : null;
+                return Pressable(
+                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 148,
+                        padding: const EdgeInsets.all(12),
+                        // A better-deal card wears a thin amber VALUE ring; the
+                        // rest get the standard card hairline.
+                        decoration: better != null
+                            ? ffTheme.cardDecoration(radius: ffTheme.radiusLg).copyWith(
+                                border: Border.all(
+                                    color: ffTheme.saving.withValues(alpha: 0.55),
+                                    width: 1.5),
+                              )
+                            : ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                LogoWidget(provider: plan.provider, size: 24),
+                                const SizedBox(width: 6),
+                                Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                if (item.watched) ...[
+                                  // Green active "tracking" cue.
+                                  Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
+                                  const SizedBox(width: 4),
+                                  Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 10, fontWeight: FontWeight.w700)),
+                                ] else
+                                  Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (better != null)
+                        Positioned(
+                          top: -6,
+                          left: -6,
+                          // Icon-only amber badge — flag its meaning to screen
+                          // readers (a cheaper alternative is available).
+                          child: Semantics(
+                            label: 'נמצאה עסקה משתלמת יותר',
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                // Amber VALUE badge — a cheaper alternative exists.
+                                color: ffTheme.saving,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: ffTheme.cardSurface, width: 1.5),
+                                boxShadow: ffTheme.shadowSoft,
+                              ),
+                              child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.onSaving)),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ),
-          const SizedBox(height: 10),
-          MiniPlanCard(
-            plan: plan,
-            savingsPerYear: match.annualSaving > 0 ? match.annualSaving : null,
-            ctaLabel: 'בחר',
-            onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
         ],
       ),
     );
@@ -742,21 +775,23 @@ class _HomeWidgetState extends State<HomeWidget> {
           return catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
         });
 
+    // Tightened band: no extra top padding so the title + grid read as one
+    // group; tighter inter-cell spacing and a flatter aspect ratio.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('השוואה לפי קטגוריה', style: ffTheme.titleLarge),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.6,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 1.85,
             ),
             itemCount: categories.length,
             itemBuilder: (context, i) {
@@ -787,7 +822,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     // Active card sits on a subtle green-tinted ground; the rest
                     // on the plain card surface — both theme-aware.
@@ -811,7 +846,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Row(
                         children: [
-                          Icon(categoryIconData(cat.id), size: 22,
+                          Icon(categoryIconData(cat.id), size: 20,
                               color: isActive ? ffTheme.brandAccent : ffTheme.primaryText),
                           if (isPersonalized) ...[
                             const Spacer(),
@@ -831,9 +866,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ],
                   ),
                 )
-                    .animate(delay: (i.clamp(0, 6) * 80).ms)
+                    .animate(delay: (i.clamp(0, 6) * 70).ms)
                     .fadeIn()
-                    .slideY(begin: 0.2, end: 0),
+                    .slideY(begin: 0.15, end: 0),
               );
             },
           ),
@@ -852,18 +887,14 @@ class _HomeWidgetState extends State<HomeWidget> {
         context.pushNamed('AIAdvisor');
       },
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: ffTheme.freshGradient,
-          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-          boxShadow: ffTheme.shadowSoft,
-        ),
+        margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        padding: const EdgeInsets.all(14),
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 // Green chip glyph — the brand "AI" mark, decorative.
                 color: ffTheme.brandAccent,
@@ -871,7 +902,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
               child: const Center(
                 child: ExcludeSemantics(
-                  child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+                  child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 18),
                 ),
               ),
             ),
@@ -881,15 +912,15 @@ class _HomeWidgetState extends State<HomeWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '✦ Switchy AI · שאלו אותנו הכל',
-                    style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                    'Switchy AI · שאלו אותנו הכל',
+                    style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     'זמין 24/7 · עונה תוך שניות',
-                    style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.60)),
+                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -901,7 +932,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ],
         ),
       ),
-    ).animate().fadeIn(delay: 400.ms);
+    );
   }
 
   Widget _buildCommunityHighlights(BuildContext context, AppTheme ffTheme) {
@@ -910,8 +941,8 @@ class _HomeWidgetState extends State<HomeWidget> {
     // invented like/reply counts. Consistent with the honestly-empty Community
     // page: until someone actually posts, we show a single "join the discussion"
     // CTA instead of pretending there's a buzzing feed.
-    // Secondary section — cap the preview at 2 posts (was 3) so the browse band
-    // stays compact; the "all ←" link carries the user into the full feed.
+    // Secondary section — cap the preview at 2 posts so the bottom band stays
+    // compact; the "all ←" link carries the user into the full feed.
     final realPosts = appState.communityPosts
         .map((p) => _CommunityPreview(
               user: (p['author'] as String? ?? 'א')[0],
@@ -923,7 +954,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         .toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -953,9 +984,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           if (realPosts.isEmpty)
             _buildCommunityCta(context, ffTheme)
           else
-            ...realPosts.asMap().entries.map((e) {
-              final i = e.key;
-              final post = e.value;
+            ...realPosts.map((post) {
               return Pressable(
                 onTap: () => context.goNamed('Community'),
                 child: Container(
@@ -1014,12 +1043,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ],
                   ),
-                ).animate(delay: (i.clamp(0, 6) * 60).ms).fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0),
+                ),
               );
             }),
         ],
       ),
-    ).animate().fadeIn(delay: 420.ms);
+    );
   }
 
   Widget _buildCommunityCta(BuildContext context, AppTheme ffTheme) {
@@ -1066,321 +1095,100 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
+  /// Tools row — DEMOTED to four high-value entry points (פגישה, מבצעים, יועץ
+  /// AI, מחשבון). The rest of the toolbox remains reachable from the bottom nav
+  /// and their own routes; it no longer competes for attention on home. No promo
+  /// urgency copy.
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
-    final tools = [
-      const _Tool(icon: Icons.local_fire_department_rounded, label: 'מבצעים חמים', route: 'Deals'),
-      const _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
-      const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
-      const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
-      const _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),
-      const _Tool(icon: Icons.location_on_rounded, label: 'בדיקת כיסוי', route: 'Availability'),
-      const _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
-      const _Tool(icon: Icons.receipt_long_rounded, label: 'ניהול חשבון', route: 'Bills'),
-      const _Tool(icon: Icons.swap_horiz_rounded, label: 'ניוד מספר', route: 'Porting'),
-      const _Tool(icon: Icons.star_rounded, label: 'דירוגי ספקים', route: 'Ratings'),
-      const _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
+    const tools = [
+      _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
+      _Tool(icon: Icons.local_fire_department_rounded, label: 'מבצעים', route: 'Deals'),
+      _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
+      _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
     ];
 
-    // Secondary browse — a compact horizontal rail (tighter cards + smaller
-    // glyphs than the personal cards above) so the full toolbox is one swipe
-    // away without dominating the scroll. Every route stays reachable.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 0, 4),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 0, bottom: 10),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Text('כלים שימושיים', style: ffTheme.titleLarge),
           ),
-          SizedBox(
-            height: 84,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: tools.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, i) {
-                final tool = tools[i];
-                return Pressable(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    context.pushNamed(tool.route);
-                  },
-                  child: Container(
-                    width: 100,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    decoration: ffTheme.cardDecoration(),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(tool.icon, size: 22, color: ffTheme.primaryText),
-                        const SizedBox(height: 6),
-                        Text(
-                          tool.label,
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWatchlist(BuildContext context, AppTheme ffTheme, AppState appState) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
           Row(
             children: [
-              Icon(Icons.notifications_active_rounded, color: ffTheme.warning, size: 18),
-              const SizedBox(width: 6),
-              Text('מסלולים במעקב', style: ffTheme.titleLarge),
-              const Spacer(),
-              // Match the file's other "see all" links: green link text, an
-              // arrow affordance, and a comfortable hit area (≥44px) so it isn't
-              // a tiny text-link trap.
-              Semantics(
-                button: true,
-                label: 'הצג את כל המסלולים במעקב',
-                child: InkWell(
-                  onTap: () => context.pushNamed('Account'),
-                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                    child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 90,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: appState.watchedPlans.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) {
-                final plan = planById(appState.watchedPlans[i]);
-                if (plan == null) return const SizedBox();
-                final better = _betterDealFor(plan, appState);
-                return Pressable(
-                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 148,
-                        padding: const EdgeInsets.all(12),
-                        // A better-deal card wears a thicker amber VALUE ring;
-                        // the rest get the standard premium card hairline.
-                        decoration: better != null
-                            ? ffTheme.cardDecoration(radius: ffTheme.radiusLg).copyWith(
-                                border: Border.all(
-                                    color: ffTheme.saving.withValues(alpha: 0.55),
-                                    width: 1.5),
-                              )
-                            : ffTheme.cardDecoration(radius: ffTheme.radiusLg),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                LogoWidget(provider: plan.provider, size: 24),
-                                const SizedBox(width: 6),
-                                Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 3),
-                            Row(
-                              children: [
-                                // Green active "tracking" cue.
-                                Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
-                                const SizedBox(width: 4),
-                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 10, fontWeight: FontWeight.w700)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (better != null)
-                        Positioned(
-                          top: -6,
-                          left: -6,
-                          // Icon-only amber badge — flag its meaning to screen
-                          // readers (a cheaper alternative is available).
-                          child: Semantics(
-                            label: 'נמצאה עסקה משתלמת יותר',
-                            child: Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                // Amber VALUE badge — a cheaper alternative exists.
-                                color: ffTheme.saving,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: ffTheme.cardSurface, width: 1.5),
-                                boxShadow: ffTheme.shadowSoft,
-                              ),
-                              child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.onSaving)),
-                            ),
+              for (var i = 0; i < tools.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  child: Pressable(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.pushNamed(tools[i].route);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+                      decoration: ffTheme.cardDecoration(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(tools[i].icon, size: 20, color: ffTheme.primaryText),
+                          const SizedBox(height: 6),
+                          Text(
+                            tools[i].label,
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
                           ),
-                        ),
-                    ],
-                  ),
-                ).animate(delay: (i.clamp(0, 6) * 50).ms).fadeIn(duration: 250.ms);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentlyViewed(BuildContext context, AppTheme ffTheme, AppState appState) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.history_rounded, color: ffTheme.secondaryText, size: 18),
-              const SizedBox(width: 6),
-              Text('ראית לאחרונה', style: ffTheme.titleLarge),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 90,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: appState.recentlyViewed.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) {
-                final plan = planById(appState.recentlyViewed[i]);
-                if (plan == null) return const SizedBox();
-                return Pressable(
-                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-                  child: Container(
-                    width: 148,
-                    padding: const EdgeInsets.all(12),
-                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            LogoWidget(provider: plan.provider, size: 24),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 3),
-                        Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                ).animate(delay: (i.clamp(0, 6) * 40).ms).fadeIn(duration: 200.ms);
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme) {
-    final providers = [
-      const _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
-      const _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
-      const _Provider('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
-      const _Provider('הוט מובייל', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-      const _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
-      const _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
-      const _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
-      const _Provider('WeCom', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
-      const _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
-      const _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
-      const _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
-      const _Provider('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
-      const _Provider('HOT', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-      const _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
-      const _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
-      const _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
-      const _Provider('STING TV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
-      const _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
-    ];
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 0, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text('כל הספקים הגדולים', style: ffTheme.titleLarge),
-          ),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: providers.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final p = providers[i];
-                // Per-provider brand HUE is preserved (rule: never recolor the
-                // carrier brand). Only the chip SURFACE adapts to the theme — on
-                // dark the pale brand wash becomes a faint tint of the provider's
-                // own colour over the dark card, with a lifted text shade so the
-                // same hue still pops on slate.
-                final chipBg = ffTheme.dark
-                    ? Color.alphaBlend(p.color.withValues(alpha: 0.20), AppColors.darkCard)
-                    : p.bg;
-                final chipFg = ffTheme.dark
-                    ? Color.alphaBlend(p.color.withValues(alpha: 0.85), Colors.white)
-                    : p.color;
-                return Pressable(
-                  onTap: () => context.pushNamed(
-                    'Provider',
-                    pathParameters: {'name': p.name},
-                  ),
-                  child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: chipBg,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                    border: Border.all(color: p.color.withValues(alpha: ffTheme.dark ? 0.45 : 0.25)),
-                  ),
-                  child: Text(
-                    p.name,
-                    style: ffTheme.labelMedium.copyWith(
-                      color: chipFg,
-                      fontWeight: FontWeight.w700,
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                );
-              },
-            ),
+              ],
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Provider trust — collapsed from the 18-logo strip to one thin muted line so
+  /// it reassures without dominating the bottom of the feed. Tapping it opens the
+  /// full provider list (Search), so every provider stays reachable.
+  Widget _buildProviderLine(BuildContext context, AppTheme ffTheme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Semantics(
+        button: true,
+        label: 'הצג את כל הספקים',
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.pushNamed('Search');
+          },
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.verified_outlined, size: 16, color: ffTheme.secondaryText),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'משווים בין כל הספקים הגדולים בישראל',
+                    style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.secondaryText),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1403,11 +1211,20 @@ class _Tool {
   final String route;
 }
 
-class _Provider {
-  const _Provider(this.name, this.color, this.bg);
-  final String name;
-  final Color color;
-  final Color bg;
+/// One merged-carousel recommendation (top-pick / quiz-match / hot-deal).
+class _Rec {
+  const _Rec({required this.tag, required this.plan, required this.saving, required this.cta});
+  final String tag;
+  final Plan plan;
+  final int saving;
+  final String cta;
+}
+
+/// One merged "activity" tile (a watched or recently-viewed plan id).
+class _ActivityItem {
+  const _ActivityItem({required this.id, required this.watched});
+  final String id;
+  final bool watched;
 }
 
 class _CommunityPreview {

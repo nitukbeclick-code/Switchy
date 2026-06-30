@@ -81,13 +81,27 @@ void main() {
     expect(find.text('לחבילה'), findsOneWidget);
   });
 
-  testWidgets('shows savings badge when currentBill is higher than plan price', (tester) async {
+  testWidgets('shows savings badge on the BEST-MATCH card when currentBill is higher than plan price', (tester) async {
     await tester.pumpWidget(_wrap(
-      const PlanCardWidget(plan: _testPlan, currentBill: 200),
+      // De-push: the "חוסך ₪X בשנה" chip now prints ONLY on the best-match
+      // card, so the badge assertion must flag this card as the best match.
+      const PlanCardWidget(plan: _testPlan, currentBill: 200, bestMatch: true),
     ));
     await tester.pump();
     // savings = (200 - 79) * 12 = 1452
     expect(find.textContaining('חוסך'), findsOneWidget);
+  });
+
+  testWidgets('generic (non-best) list card hides the savings chip even when beatable', (tester) async {
+    await tester.pumpWidget(_wrap(
+      // Same beatable bill, but a plain list row (not best-match) — the chip is
+      // de-pushed away so the list reads as a calm price comparison.
+      const PlanCardWidget(plan: _testPlan, currentBill: 200, bestMatch: false),
+    ));
+    await tester.pump();
+    expect(find.textContaining('חוסך'), findsNothing);
+    // The price is still present — only the saving figure was de-pushed.
+    expect(find.text('₪79'), findsOneWidget);
   });
 
   testWidgets('icon-only watch/compare buttons expose accessible labels', (tester) async {

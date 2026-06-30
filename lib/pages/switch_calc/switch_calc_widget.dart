@@ -89,7 +89,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
       case SwitchVerdict.smallSaving:
         return 'יש חיסכון קטן';
       case SwitchVerdict.notWorthIt:
-        return 'לא כדאי לעבור כרגע';
+        return 'אין יתרון כספי לעבור כרגע';
     }
   }
 

@@ -146,15 +146,18 @@ class _SavingsWidgetState extends State<SavingsWidget> {
                     const SizedBox(height: 20),
                   ],
 
-                  // Per-category breakdown
+                  // Per-category breakdown — grouped into ONE subtle card so the
+                  // rows cluster into a single block instead of reading as a wall
+                  // of separate bordered cards. Rows are borderless inside, split
+                  // by hairline dividers.
                   _SectionHeader(title: 'לפי קטגוריה', ffTheme: ffTheme),
-                  const SizedBox(height: 10),
-                  ...summary.categories.asMap().entries.map((e) {
-                    final cs = e.value;
-                    final cat = categoryById(cs.categoryId);
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _CategoryRow(
+                  const SizedBox(height: 8),
+                  _GroupCard(
+                    ffTheme: ffTheme,
+                    children: summary.categories.asMap().entries.map((e) {
+                      final cs = e.value;
+                      final cat = categoryById(cs.categoryId);
+                      return _CategoryRow(
                         saving: cs,
                         catId: cs.categoryId,
                         name: cat?.name ?? cs.categoryId,
@@ -168,27 +171,29 @@ class _SavingsWidgetState extends State<SavingsWidget> {
                             context.pushNamed('Bills');
                           }
                         },
-                      ).animate(delay: (e.key * 50 + 80).ms).fadeIn(duration: 260.ms),
-                    );
-                  }),
+                      ).animate(delay: (e.key * 50 + 80).ms).fadeIn(duration: 260.ms);
+                    }).toList(),
+                  ),
 
-                  // Renewals
+                  // Renewals — same single-block grouping.
                   if (renewals.isNotEmpty) ...[
                     const SizedBox(height: 20),
                     _SectionHeader(title: 'חידושים מתקרבים', ffTheme: ffTheme),
-                    const SizedBox(height: 10),
-                    ...renewals.map((e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _RenewalRow(
-                            provider: e.tp.provider,
-                            planName: e.tp.planName,
-                            saving: e.saver!.annualSaving,
-                            days: e.tp.daysUntilRenewal,
-                            ffTheme: ffTheme,
-                            onTap: () => context.pushNamed('RenewalReport',
-                                pathParameters: {'trackedId': e.tp.id}),
-                          ),
-                        )),
+                    const SizedBox(height: 8),
+                    _GroupCard(
+                      ffTheme: ffTheme,
+                      children: renewals
+                          .map((e) => _RenewalRow(
+                                provider: e.tp.provider,
+                                planName: e.tp.planName,
+                                saving: e.saver!.annualSaving,
+                                days: e.tp.daysUntilRenewal,
+                                ffTheme: ffTheme,
+                                onTap: () => context.pushNamed('RenewalReport',
+                                    pathParameters: {'trackedId': e.tp.id}),
+                              ))
+                          .toList(),
+                    ),
                   ],
 
                   const SizedBox(height: 32),
@@ -322,6 +327,45 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(title, style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
       ],
+    );
+  }
+}
+
+// ── Grouped block card ──────────────────────────────────────────────────────
+
+/// Clusters a list of rows into ONE subtle card (pale 1px hairline + the soft
+/// card surface) with thin dividers between rows — so a section reads as a
+/// single calm block instead of a wall of separate bordered cards. The child
+/// rows are borderless; this owns the frame and the dividers.
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({required this.children, required this.ffTheme});
+  final List<Widget> children;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < children.length; i++) {
+      rows.add(children[i]);
+      if (i != children.length - 1) {
+        rows.add(Divider(
+          height: 1,
+          thickness: 1,
+          indent: 14,
+          endIndent: 14,
+          color: ffTheme.lineColor.withValues(alpha: 0.6),
+        ));
+      }
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+      child: Container(
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rows,
+        ),
+      ),
     );
   }
 }
@@ -853,10 +897,11 @@ class _CategoryRow extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           child: Container(
-            padding: const EdgeInsets.all(15),
-            // Premium card hairline (low-opacity ink) + soft shadow, replacing
-            // the old full-strength border.
-            decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
+            // Borderless inside the grouped block — the parent _GroupCard owns
+            // the hairline frame and the per-row dividers, so the rows cluster
+            // into one calm block instead of N separate bordered cards.
+            padding: const EdgeInsets.all(14),
+            color: Colors.transparent,
             child: Row(
               children: [
                 Container(
@@ -954,9 +999,10 @@ class _RenewalRow extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           child: Container(
-            padding: const EdgeInsets.all(15),
-            // Premium card hairline + soft shadow, replacing the old border.
-            decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
+            // Borderless inside the grouped block — the parent _GroupCard frames
+            // the cluster and draws the dividers.
+            padding: const EdgeInsets.all(14),
+            color: Colors.transparent,
             child: Row(
               children: [
                 Container(

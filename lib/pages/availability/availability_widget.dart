@@ -661,9 +661,12 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                             )).toList(),
                           ),
                         ],
+                        // Single best-match card → the saving may stay (it's the
+                        // earned figure), but de-pushed to a calm neutral caption
+                        // rather than a loud green VALUE line. Real value kept.
                         if (match.annualSaving > 0) ...[
                           const SizedBox(height: 4),
-                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
+                          Text('חיסכון מוערך: ₪${match.annualSaving} בשנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
                         ],
                       ],
                     ),

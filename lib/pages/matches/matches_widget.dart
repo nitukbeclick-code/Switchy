@@ -39,7 +39,6 @@ class MatchesWidget extends StatelessWidget {
       ));
     }
 
-    final totalAnnualSaving = summary.totalAnnualPotential;
     final analyzedCount = summary.categories.where((c) => c.hasBill).length;
     final personalized = appState.billsPersonalized;
 
@@ -100,8 +99,8 @@ class MatchesWidget extends StatelessWidget {
               AppSliverHeader(
                 title: 'ההתאמות שלי',
                 expandedHeight: 220,
-                flexibleChild: _buildHeroFigure(context, ffTheme,
-                    totalAnnualSaving, analyzedCount, personalized),
+                flexibleChild:
+                    _buildHeroFigure(context, ffTheme, analyzedCount),
               ),
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(
@@ -216,93 +215,33 @@ class MatchesWidget extends StatelessWidget {
     );
   }
 
-  /// The expanded-header hero: the headline saving figure, layered above the
-  /// header's green ACTION wash via [AppSliverHeader.flexibleChild]. Same single
-  /// source of truth as the home hero / /savings dashboard (computeSavings), with
-  /// the count-up, the personalized prefix and the honest "הערכה" badge intact.
+  /// The expanded-header hero. De-pushed: the big animated ₪/year saving figure
+  /// (a duplicate of the home hero / /savings dashboard) was removed so this
+  /// page reads as a calm comparison tool. The header now states what the page
+  /// IS plus an honest one-line of what we analyzed — the real saving still
+  /// lives on the per-category match cards (the top-saver card) and on /savings.
   Widget _buildHeroFigure(
     BuildContext context,
     AppTheme ffTheme,
-    int totalSaving,
     int analyzedCount,
-    bool personalized,
   ) {
-    final savingDisplay = totalSaving > 1000
-        ? '₪${(totalSaving / 1000).toStringAsFixed(1)}K'
-        : '₪$totalSaving';
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
-          totalSaving > 0 ? 'חיסכון פוטנציאלי שנתי' : 'התאמות לפי הפרופיל שלך',
+          'מסלולים מתאימים לפרופיל שלכם',
           textAlign: TextAlign.center,
-          style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+          style: ffTheme.titleMedium.copyWith(
+            color: ffTheme.primaryText,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            if (totalSaving > 0)
-              TweenAnimationBuilder<int>(
-                tween: IntTween(begin: 0, end: totalSaving),
-                duration: const Duration(milliseconds: 1400),
-                curve: Curves.easeOutCubic,
-                builder: (_, value, __) {
-                  final disp = value > 1000
-                      ? '₪${(value / 1000).toStringAsFixed(1)}K'
-                      : '₪$value';
-                  return Text(
-                    personalized ? disp : '~$disp',
-                    style: ffTheme.displaySmall.copyWith(
-                      color: ffTheme.savingText,
-                      fontWeight: FontWeight.bold,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  );
-                },
-              )
-            else
-              Text(
-                savingDisplay,
-                style: ffTheme.displaySmall.copyWith(
-                  color: ffTheme.primaryText,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            if (!personalized && totalSaving > 0) ...[
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: ffTheme.lineColor),
-                  ),
-                  child: Text(
-                    'הערכה',
-                    style: ffTheme.labelSmall.copyWith(
-                      color: ffTheme.secondaryText,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
-          !personalized && totalSaving > 0
-              ? 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק'
-              : analyzedCount > 0
-                  ? 'ניתחנו $analyzedCount קטגוריות עבורך'
-                  : 'ניתחנו את כל הקטגוריות עבורך',
+          analyzedCount > 0
+              ? 'השווינו $analyzedCount קטגוריות עבורכם'
+              : 'השווינו את כל הקטגוריות עבורכם',
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,

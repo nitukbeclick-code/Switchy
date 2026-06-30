@@ -62,10 +62,13 @@ class PlanCardWidget extends StatelessWidget {
     final matchLabel = _quizMatch(appState);
 
     // One-line summary read out by screen readers before the inner controls.
+    // The saving line is announced only on the best-match card — the same place
+    // the visible badge now appears (de-pushed: generic list rows show price
+    // only, so "חוסך ₪X" is no longer repeated on every card).
     final cardLabel = [
       '${plan.provider} — ${plan.plan}',
       '₪${plan.priceText} ${priceUnitShort(plan)}',
-      if (savings > 0) 'חוסך ₪$savings בשנה',
+      if (isBest && savings > 0) 'חוסך ₪$savings בשנה',
     ].join(', ');
 
     return Semantics(
@@ -376,9 +379,11 @@ class PlanCardWidget extends StatelessWidget {
                       ],
                     ),
                     const Spacer(),
-                    if (savings > 0)
-                      // Savings wear the VALUE accent (amber), matching the
-                      // site's savings figures — never the grey highlight.
+                    if (isBest && savings > 0)
+                      // De-pushed: the "חוסך ₪X בשנה" amber chip prints ONLY on
+                      // the single best-match card now (not on every list row),
+                      // so the list reads as a calm price comparison. When shown
+                      // it's still the REAL saving (currentBill − price) × 12.
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                         decoration: BoxDecoration(

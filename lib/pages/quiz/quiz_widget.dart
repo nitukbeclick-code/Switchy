@@ -884,7 +884,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('זה המסלול הכי משתלם בשבילך',
+                child: Text('המסלול שמתאים לפרופיל שלך',
                     style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
               ),
             ],

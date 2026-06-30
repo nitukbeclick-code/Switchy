@@ -149,11 +149,13 @@ class _RealizedHeroFigure extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              // The realized figure is the VALUE headline → amber.
+              // The realized figure is the VALUE headline → amber. Capped at 30
+              // (was 44) so the hero reads calm, not shouty — the figure itself
+              // is KEPT, only the size is dialed down.
               Text(
                 '₪${wallet.realizedSaving}',
                 style: GoogleFonts.rubik(
-                  fontSize: 44,
+                  fontSize: 30,
                   fontWeight: FontWeight.w800,
                   color: valueAmber,
                   letterSpacing: -1,

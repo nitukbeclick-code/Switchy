@@ -68,25 +68,27 @@ void main() {
       expect(greetings.any((g) => find.textContaining(g).evaluate().isNotEmpty),
           isTrue, reason: 'expected a Hebrew time-of-day greeting');
 
-      // The savings hero label + its honest CTA are fixed copy. A fresh guest is
-      // not bills-personalized, so the CTA invites the quiz rather than claiming
+      // The restructured hero leads with a calm headline and a SINGLE green CTA.
+      // A fresh guest is not bills-personalized, so the headline invites the
+      // quiz and the CTA reads "check how much you'll save" rather than claiming
       // a confirmed saving.
-      expect(find.text('חיסכון פוטנציאלי שנתי'), findsOneWidget);
+      expect(find.text('בואו נמצא לך מסלול משתלם'), findsOneWidget);
       expect(find.text('בדקו כמה תחסכו ←'), findsOneWidget);
     });
   });
 
-  testWidgets('savings figure for a fresh guest is framed as an estimate',
+  testWidgets('the hero never fabricates a savings figure for a fresh guest',
       (tester) async {
     await _ignoringOverflow(() async {
       await _bootApp(tester);
       _go(tester, '/home');
       await _settle(tester);
 
-      // Until the quiz/bills are personalized the hero subtitle explicitly says
-      // the number is an estimate — never "you saved X".
-      expect(find.text('הערכה — ענו על השאלון לחישוב מדויק'), findsOneWidget);
-      expect(find.text('מחושב לפי החשבונות שלך'), findsNothing);
+      // A fresh guest has no bills, so the engine has no real saving to report.
+      // The hero must NOT invent a ₪ figure — it shows the neutral prompt and
+      // never the personalized "potential saving up to ₪X" line.
+      expect(find.text('השוו מחירים והתחילו לחסוך'), findsOneWidget);
+      expect(find.textContaining('חיסכון פוטנציאלי עד'), findsNothing);
     });
   });
 

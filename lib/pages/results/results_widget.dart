@@ -10,6 +10,7 @@ import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../widgets/legal_disclosure.dart';
 import '../../widgets/price_text.dart';
+import '../../widgets/empty_state.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});
@@ -457,7 +458,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               ),
 
               // Savings baseline banner — makes the comparison's reference point
-              // legible: every "תחסוך ₪X" figure is computed against THIS bill.
+              // legible: every "חיסכון של ₪X" figure is computed against THIS bill.
               // When the bill is still the default (not personalized), nudge the
               // user to enter their real bill so the savings reflect reality.
               if (bill > 0)
@@ -687,7 +688,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'תחסוך ₪$topSave בשנה',
+                                        // De-pushed: the descriptive "חיסכון של"
+                                        // (honest comparison figure) instead of the
+                                        // second-person "תחסוך" hard sell.
+                                        'חיסכון של ₪$topSave בשנה',
                                         style: ffTheme.bodySmall.copyWith(
                                             color: ffTheme.savingText,
                                             fontWeight: FontWeight.w800),
@@ -706,65 +710,52 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
 
-              // Plan list or empty state
+              // No-match / empty state — the shared [EmptyState] (warm honest
+              // copy + ONE clear next action), with a "switch category" helper
+              // row beneath it as a calm secondary path. Three honest variants:
+              //   • search has a query  → clear the search
+              //   • filters are active  → clear the filters
+              //   • category is just empty (no query, no filters) → no primary
+              //     CTA; the category row below is the action.
               if (plans.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.fromLTRB(8, 16, 8, 24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent1,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.08), width: 1.5),
-                            boxShadow: ffTheme.shadowMd,
-                          ),
-                          child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.primary.withValues(alpha: 0.55)),
-                        ).animate().fadeIn(duration: 350.ms).scale(
-                              begin: const Offset(0.85, 0.85),
-                              end: const Offset(1, 1),
-                              duration: 350.ms,
-                              curve: Curves.easeOutBack,
-                            ),
-                        const SizedBox(height: 20),
-                        Text(
-                          appState.searchQuery.isNotEmpty ? 'אין תוצאות לחיפוש' : 'לא נמצאו מסלולים',
-                          style: ffTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          appState.searchQuery.isNotEmpty
-                            ? 'לא מצאנו תוצאות עבור "${appState.searchQuery}"'
-                            : appState.activeFilters.isNotEmpty
-                              ? 'הסינונים שבחרת מצמצמים מדי — נסה להסיר חלקם'
-                              : 'אין מסלולים בקטגוריה זו כרגע',
-                          style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 28),
                         if (appState.searchQuery.isNotEmpty)
-                          _ActionChip(
-                            label: 'נקה חיפוש',
-                            icon: Icons.clear_rounded,
-                            onTap: () { _searchController.clear(); appState.setSearch(''); },
-                            ffTheme: ffTheme,
-                          ),
-                        if (appState.activeFilters.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _ActionChip(
-                            label: 'נקה את כל הסינונים',
+                          EmptyState(
+                            icon: Icons.search_off_rounded,
+                            headline: 'לא נמצאו תוצאות',
+                            subtitle:
+                                'לא מצאנו מסלולים שתואמים ל"${appState.searchQuery}".\nנסו מילה אחרת או נקו את החיפוש.',
+                            ctaLabel: 'נקו חיפוש',
+                            onCtaTap: () async {
+                              _searchController.clear();
+                              appState.setSearch('');
+                            },
+                          )
+                        else if (appState.activeFilters.isNotEmpty)
+                          EmptyState(
                             icon: Icons.filter_alt_off_rounded,
-                            onTap: appState.clearFilters,
-                            ffTheme: ffTheme,
+                            headline: 'אין מסלולים בסינון הזה',
+                            subtitle:
+                                'הסינונים שבחרתם מצמצמים מדי. נקו אותם ותראו שוב את כל המסלולים בקטגוריה.',
+                            ctaLabel: 'נקו סינון',
+                            onCtaTap: () async => appState.clearFilters(),
+                          )
+                        else
+                          const EmptyState(
+                            icon: Icons.search_off_rounded,
+                            headline: 'אין מסלולים בקטגוריה הזו',
+                            subtitle: 'כרגע אין כאן מסלולים זמינים להצגה.',
                           ),
-                        ],
-                        const SizedBox(height: 28),
-                        Text('נסה קטגוריה אחרת', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
+                        const SizedBox(height: 8),
+                        Text('אפשר גם לעבור קטגוריה',
+                            style: ffTheme.labelMedium
+                                .copyWith(color: ffTheme.secondaryText)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -901,7 +892,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 child: Row(
                   children: [
                     Text(
-                      'השווה ${appState.comparePlans.length} מסלולים',
+                      // Plural imperative to match the app's "ענו / בחרו / נסו"
+                      // voice (was the singular "השווה").
+                      'השוו ${appState.comparePlans.length} מסלולים',
                       style: ffTheme.titleSmall.copyWith(color: Colors.white),
                     ),
                     const Spacer(),
@@ -1286,45 +1279,6 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               ),
               const SizedBox(height: 8),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({required this.label, required this.icon, required this.onTap, required this.ffTheme});
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final AppTheme ffTheme;
-
-  @override
-  Widget build(BuildContext context) {
-    // Pill-shaped recovery CTA (was a 22 literal) — the full-round pill token.
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-        boxShadow: ffTheme.shadowAccent,
-      ),
-      child: Material(
-        // Green ACTION — the empty-state recovery CTA.
-        color: ffTheme.brandAccent,
-        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 16, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(label, style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-              ],
-            ),
           ),
         ),
       ),

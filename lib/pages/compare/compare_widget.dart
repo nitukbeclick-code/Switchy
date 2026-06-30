@@ -389,7 +389,7 @@ class _ShareMenuState extends State<_ShareMenu> {
 /// Compare screen empty / single-plan state. Delegates the icon + copy + CTA to
 /// the shared [EmptyState] (80dp icon, headline in primaryText, CTA right under
 /// the copy) — TOP-aligned in a scroll view rather than vertically centred, so
-/// there's no cavernous whitespace and the "חזרה לתוצאות" CTA can never fall
+/// there's no cavernous whitespace and the "לרשימת המסלולים" CTA can never fall
 /// off-screen. When one plan is already in the basket, its card is shown ABOVE
 /// the prompt and the CTA invites adding a second.
 class _EmptyState extends StatelessWidget {
@@ -400,13 +400,17 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Warm, honest, plural-voice copy (the app speaks in "בחרו / הוסיפו / נסו").
+    // ONE clear next action in both states: go back to the results list to pick
+    // plans for the basket — the CTA names that true destination rather than
+    // implying it adds a plan in-place.
     final emptyState = EmptyState(
       icon: Icons.compare_arrows_rounded,
-      headline: hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
+      headline: hasPlan ? 'מסלול אחד בהשוואה' : 'בחרו מסלולים להשוואה',
       subtitle: hasPlan
-          ? 'הוסף מסלול נוסף להשוואה — לחץ + בכרטיס מסלול'
-          : 'לחץ על + בכרטיס של כל מסלול\nלהוספה לסל ההשוואה',
-      ctaLabel: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
+          ? 'כדי להשוות, הוסיפו עוד מסלול אחד או שניים — הקישו + בכרטיס מסלול ברשימה.'
+          : 'הקישו + בכרטיס של כל מסלול שתרצו להשוות, ונציג אותם זה מול זה.',
+      ctaLabel: hasPlan ? 'הוסיפו עוד מסלול ←' : 'לרשימת המסלולים ←',
       onCtaTap: () async => context.goNamed('Results'),
     );
 

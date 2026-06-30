@@ -179,7 +179,11 @@ class _DealsWidgetState extends State<DealsWidget> {
             headline: 'אין ירידות מחיר כרגע',
             subtitle:
                 'אנחנו עוקבים אחרי מחירי המסלולים מסביב לשעון. ברגע שמסלול יוזל — הוא יופיע כאן.',
-            ctaLabel: 'עיינו במסלולים',
+            // Canonical BROWSE verb ("השוו מסלולים") — this opens the catalogue to
+            // browse, it does not convert. Keeping it consistent with the home /
+            // results / profile browse CTAs fixes the "verb changes at every step"
+            // finding (was the outlier "עיינו במסלולים").
+            ctaLabel: 'השוו מסלולים',
             onCtaTap: () async => context.pushNamed('Results'),
           ),
         ],

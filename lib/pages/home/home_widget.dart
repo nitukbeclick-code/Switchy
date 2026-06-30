@@ -453,7 +453,10 @@ class _HomeWidgetState extends State<HomeWidget> {
     // is nothing computed yet we simply omit the figure (no fabricated number).
     final totalSave = savings.totalAnnualPotential;
     final personalized = appState.billsPersonalized;
-    final ctaLabel = personalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←';
+    // BROWSE moment (routes to Results / Quiz, never submits a lead) — a calm
+    // browse verb per the canonical CRO decision, NOT a savings-pushy promise.
+    // Both states use the same honest "compare plans" framing.
+    final ctaLabel = personalized ? 'השוו מסלולים ←' : 'חפשו חבילות ←';
 
     return Pressable(
       // The CTA fires its own lightImpact; keep the card-level press silent.
@@ -499,7 +502,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             // label and the outer card Pressable stays silent (haptic: false).
             Semantics(
               button: true,
-              label: personalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
+              label: personalized ? 'השוו מסלולים' : 'חפשו חבילות',
               child: AppButton(
                 text: ctaLabel,
                 color: AppColors.brandAccent,
@@ -547,7 +550,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         tag: 'המלצה אישית',
         plan: topMatch.plan,
         saving: topMatch.annualSaving,
-        cta: 'בחר',
+        // Opens the plan detail (browse, not convert) — the card's normal
+        // primary action, so it reads "פרטים", not a conversion verb.
+        cta: 'פרטים',
       ));
     }
 
@@ -568,7 +573,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               tag: 'התאמת השאלון',
               plan: plan,
               saving: save > 0 ? save : 0,
-              cta: 'בחר',
+              cta: 'פרטים',
             ));
           }
         }
@@ -584,7 +589,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         tag: 'עסקה חמה',
         plan: deal,
         saving: saving > 0 ? saving : 0,
-        cta: 'ראה עסקה',
+        cta: 'פרטים',
       ));
     }
 
@@ -844,8 +849,10 @@ class _HomeWidgetState extends State<HomeWidget> {
               final isPersonalized = hasActual[cat.id] == true;
               final save = isPersonalized ? actualSavings[cat.id]! : 0;
               final cheapest = cheapestIn(cat.id);
+              // De-push: a stated FACT ("a ₪X/year saving"), not a second-person
+              // command ("you'll save"). Honest comparison framing, never a sell.
               final savingsText = isPersonalized
-                  ? (save > 0 ? 'תחסוך ₪$save בשנה' : 'מחיר תחרותי')
+                  ? (save > 0 ? 'חיסכון של ₪$save בשנה' : 'מחיר תחרותי')
                   : (cheapest > 0 ? 'מסלולים מ-₪$cheapest' : 'השוואת מחירים');
               // Amber = VALUE (personalised saving); neutral ink otherwise.
               final savingsColor = isPersonalized && save > 0 ? ffTheme.savingDark : ffTheme.secondaryText;

@@ -304,7 +304,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       // §7b commission disclosure + §17 price caveat — directly
                       // under the headline price so the paid-relationship and the
                       // VAT/verify caveat sit with the price (and above the
-                      // "עברו למסלול" CTA in the sticky bar). Approved shared copy.
+                      // "קבלו ליווי אישי" lead CTA in the sticky bar). Approved
+                      // shared copy.
                       const SizedBox(height: 10),
                       const LegalDisclosure(),
 
@@ -621,7 +622,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'עקוב אחר שינויי מחיר',
+                                    // Section row reads as a noun label (was the
+                                    // imperative "עקוב אחר…"), consistent with
+                                    // the other card headers on the page.
+                                    'מעקב אחר שינויי מחיר',
                                     style: ffTheme.bodyMedium,
                                   ),
                                 ),
@@ -753,7 +757,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   children: [
                     Expanded(
                       child: AppButton(
-                        text: 'עברו למסלול הזה — נציג יסייע ←',
+                        // The page's single conversion moment — it submits a
+                        // lead. Use the one committed conversion promise
+                        // ("קבלו ליווי אישי"), not a sales verb like "בדקו כמה
+                        // תחסכו"; every other action on this page stays a calm
+                        // browse/compare verb so the accent is spent only here.
+                        text: 'קבלו ליווי אישי ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
 
@@ -1266,7 +1275,18 @@ class _ValueAnchor extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Bold ₪ saving anchor (VALUE = amber) vs the user's real bill.
+          // De-push: framed as an honest noun statement ("חיסכון שנתי") rather
+          // than the imperative promise "תחסכו" — a calm comparison figure, not
+          // a hard sell. The number itself stays the REAL engine figure.
           if (hasSaving) ...[
+            Text(
+              'חיסכון שנתי',
+              style: t.bodyMedium.copyWith(
+                color: t.secondaryText,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
             Text.rich(
               TextSpan(
                 // AA-safe amber ink for the savings figure on the light card —
@@ -1278,7 +1298,6 @@ class _ValueAnchor extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
                 children: [
-                  const TextSpan(text: 'תחסכו '),
                   TextSpan(text: '₪$saveYear'),
                   TextSpan(
                     text: '/שנה',
@@ -1313,7 +1332,9 @@ class _ValueAnchor extends StatelessWidget {
             Text(
               bill > 0
                   ? 'במחיר דומה לחשבון הנוכחי שלכם — הנה מה שמייחד אותו'
-                  : 'הוסיפו את החשבון הנוכחי כדי לראות כמה תחסכו',
+                  // De-push: honest helper, not "כמה תחסכו". We invite the
+                  // comparison rather than promise a saving we can't yet back.
+                  : 'הוסיפו את החשבון הנוכחי כדי להשוות אותו למסלול הזה',
               style: t.bodySmall.copyWith(color: t.secondaryText),
             ),
           ],

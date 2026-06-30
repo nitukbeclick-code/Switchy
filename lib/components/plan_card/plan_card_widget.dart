@@ -519,9 +519,11 @@ class PlanCardWidget extends StatelessWidget {
   }
 }
 
-/// The card's "בחירה" CTA. The best match carries the green ACTION gradient
-/// (the one splash of colour per list); regular cards stay formal ink. Both
-/// give ripple feedback and meet the 44px touch-target minimum.
+/// The card's "פרטים" action — it OPENS the plan detail, it does not convert,
+/// so it stays the card's calm primary action (not a conversion CTA). The best
+/// match carries the green ACTION gradient (the one splash of colour per list);
+/// regular cards stay formal ink. Both give ripple feedback and meet the 44px
+/// touch-target minimum.
 class _ChooseButton extends StatelessWidget {
   const _ChooseButton({
     required this.isBest,
@@ -544,9 +546,11 @@ class _ChooseButton extends StatelessWidget {
         ? Colors.white
         : (ffTheme.dark ? ffTheme.background : Colors.white);
     final label = Text(
-      'בחירה',
-      // CTA label: nearest Rubik token is titleLarge (15/w700); 14px + the
-      // on-fill labelColor are the genuine deltas.
+      'פרטים',
+      // Action label: nearest Rubik token is titleLarge (15/w700); 14px + the
+      // on-fill labelColor are the genuine deltas. "פרטים" (not "בחירה") — the
+      // button opens the plan detail, it doesn't convert, so the verb stays a
+      // calm browse action and the conversion accent is spent only at the lead.
       style: ffTheme.titleLarge.copyWith(
         fontSize: 14,
         color: labelColor,

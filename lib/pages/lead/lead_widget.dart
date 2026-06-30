@@ -724,7 +724,9 @@ class _LeadWidgetState extends State<LeadWidget> {
                   ),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText)),
+                      // De-push: a calm noun ("savings"), not the second-person
+                      // "חוסך" command — the figure is a real computed value.
+                      Text('חיסכון', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText)),
                       // Savings money token — [PriceText] pins ₪ before the
                       // digits (stable LTR bidi) so the real figure never
                       // re-orders; titleSmall/green/w800 override preserved.
@@ -751,7 +753,9 @@ class _LeadWidgetState extends State<LeadWidget> {
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
-                      'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
+                      // De-push: a calm monthly equivalent of the real annual
+                      // figure — no exclamation, no "act now" urgency.
+                      'כ-₪${(saveYear / 12).round()} חיסכון בחודש, בממוצע',
                       style: ffTheme.labelMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),

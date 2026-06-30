@@ -70,10 +70,10 @@ void main() {
 
       // The restructured hero leads with a calm headline and a SINGLE green CTA.
       // A fresh guest is not bills-personalized, so the headline invites the
-      // quiz and the CTA reads "check how much you'll save" rather than claiming
-      // a confirmed saving.
+      // quiz and the CTA is a calm BROWSE verb ("find packages") — never a
+      // savings-pushy promise at this browse-only moment (canonical CRO copy).
       expect(find.text('בואו נמצא לך מסלול משתלם'), findsOneWidget);
-      expect(find.text('בדקו כמה תחסכו ←'), findsOneWidget);
+      expect(find.text('חפשו חבילות ←'), findsOneWidget);
     });
   });
 

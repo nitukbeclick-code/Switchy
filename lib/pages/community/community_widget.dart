@@ -498,8 +498,11 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     child: replies.isEmpty
                         ? const EmptyState(
                             icon: Icons.chat_bubble_outline_rounded,
-                            headline: 'אין תגובות עדיין',
-                            subtitle: 'היה הראשון לענות!',
+                            headline: 'עדיין אין תגובות',
+                            // Plural, calm voice — matches the feed's empty state
+                            // ("היו הראשונים לשתף") instead of the old
+                            // masculine-singular exclamatory nudge.
+                            subtitle: 'היו הראשונים להגיב',
                           )
                         : ListView.builder(
                             controller: scrollCtrl,

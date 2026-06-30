@@ -16,7 +16,11 @@ class MiniPlanCard extends StatelessWidget {
     required this.plan,
     this.savingsPerYear,
     this.onTap,
-    this.ctaLabel = 'בחר',
+    // Opens the plan detail (it does not convert) → the calm browse label
+    // "פרטים", consistent with the full plan card. Callers that need a different
+    // verb still override it, but the default never spends a conversion verb on
+    // a non-conversion tap.
+    this.ctaLabel = 'פרטים',
     this.showCta = true,
     this.isBest = false,
   });

@@ -217,7 +217,7 @@ class _Page1 extends StatelessWidget {
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
-            'Switchy AI משווה לכם את החבילות של כל הספקים על סלולר, אינטרנט וטלוויזיה – בשניות.',
+            'סלולר, אינטרנט וטלוויזיה — כל החבילות מכל הספקים, מסודרות במקום אחד וברורות להשוואה.',
             style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
@@ -248,7 +248,7 @@ class _Page1 extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'מחירים שקופים מכל הספקים, ללא עמלות נסתרות — אתם משווים ומחליטים בעצמכם.',
+                    'מחירים שקופים, בלי עמלות נסתרות — אתם משווים ומחליטים בעצמכם.',
                     style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -298,7 +298,7 @@ class _Page2 extends StatelessWidget {
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
-            'השוואה מלאה בין כל מובילי התקשורת — מחירים, תנאים, ביקורות — הכל שקוף.',
+            'מחירים, תנאים וביקורות של כל מובילי התקשורת — צד לצד, בלי הפתעות.',
             style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
@@ -360,7 +360,7 @@ class _Page3 extends StatelessWidget {
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
-            'אנחנו מלווים אתכם בכל שלב — מהבחירה ועד ניוד הקו, ללא עלויות נסתרות.',
+            'ליווי אישי בכל שלב — מהבחירה ועד ניוד הקו. אתם בוחרים, אנחנו מסדרים את השאר.',
             style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),

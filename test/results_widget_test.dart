@@ -115,8 +115,8 @@ void main() {
 
       // The "{n} מסלולים" count line renders and is non-empty for cellular.
       expect(find.textContaining('מסלולים'), findsWidgets);
-      // Not the empty state.
-      expect(find.text('לא נמצאו מסלולים'), findsNothing);
+      // Not the empty state (its shared-EmptyState headline is absent).
+      expect(find.text('לא נמצאו תוצאות'), findsNothing);
 
       await tester.pumpAndSettle();
       tester.takeException();
@@ -140,11 +140,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('אין תוצאות לחיפוש'), findsOneWidget);
-      expect(find.textContaining('לא מצאנו תוצאות עבור'), findsOneWidget);
-      // Recovery CTA + the "try another category" suggestions both exist.
-      expect(find.text('נקה חיפוש'), findsWidgets);
-      expect(find.text('נסה קטגוריה אחרת'), findsOneWidget);
+      // The shared EmptyState renders the search variant: honest headline +
+      // subtitle naming the query, with the single "נקו חיפוש" recovery CTA.
+      expect(find.text('לא נמצאו תוצאות'), findsOneWidget);
+      expect(find.textContaining('לא מצאנו מסלולים שתואמים'), findsOneWidget);
+      // Recovery CTA + the "switch category" helper both exist.
+      expect(find.text('נקו חיפוש'), findsWidgets);
+      expect(find.text('אפשר גם לעבור קטגוריה'), findsOneWidget);
 
       await tester.pumpAndSettle();
       tester.takeException();

@@ -171,7 +171,9 @@ class _QuizWidgetState extends State<QuizWidget> {
                 // edit answers) are demoted into a low-emphasis "עוד אפשרויות"
                 // row that opens an AppSheet, so the reveal has one obvious CTA.
                 AppButton(
-                  text: 'רוצה את המסלול הזה — השאירו פרטים ←',
+                  // CONVERSION moment — enters the lead funnel. One committed
+                  // promise from the canonical family, never a savings-pushy verb.
+                  text: 'קבלו ליווי אישי ←',
                   onPressed: () async {
                     HapticFeedback.lightImpact();
                     context.pushNamed('Lead',
@@ -397,8 +399,8 @@ class _QuizWidgetState extends State<QuizWidget> {
         if (_cat == 'internet') {
           return _StepCard(
             step: 3,
-            title: 'מה עוד חשוב לך?',
-            subtitle: 'מעבר למהירות שבחרת',
+            title: 'מה עוד חשוב לכם?',
+            subtitle: 'מעבר למהירות שבחרתם',
             ffTheme: ffTheme,
             child: Column(
               children: [
@@ -419,8 +421,8 @@ class _QuizWidgetState extends State<QuizWidget> {
         if (_cat == 'tv') {
           return _StepCard(
             step: 3,
-            title: 'מה עוד חשוב לך?',
-            subtitle: 'מעבר לתוכן שבחרת',
+            title: 'מה עוד חשוב לכם?',
+            subtitle: 'מעבר לתוכן שבחרתם',
             ffTheme: ffTheme,
             child: Column(
               children: [
@@ -441,8 +443,8 @@ class _QuizWidgetState extends State<QuizWidget> {
         if (_cat == 'abroad') {
           return _StepCard(
             step: 3,
-            title: 'מה הכי חשוב לך בחו"ל?',
-            subtitle: 'בחר את הדבר הכי חשוב בנסיעות',
+            title: 'מה הכי חשוב לכם בחו"ל?',
+            subtitle: 'בחרו את מה שהכי משנה לכם בנסיעות',
             ffTheme: ffTheme,
             child: Column(
               children: [
@@ -486,7 +488,9 @@ class _QuizWidgetState extends State<QuizWidget> {
         return _StepCard(
           step: 4,
           title: _cat == 'abroad' ? 'כמה הוצאתם על גלישה בנסיעה האחרונה?' : 'כמה אתם משלמים היום?',
-          subtitle: 'לפי זה נחשב בדיוק כמה תוכלו לחסוך',
+          // Helpful, not a promise: this is the baseline the comparison is
+          // measured against — state the purpose, don't pitch a saving.
+          subtitle: 'זה הבסיס שלפיו נשווה לכם את המסלולים',
           ffTheme: ffTheme,
           child: Column(
             children: [
@@ -765,7 +769,7 @@ class _QuizWidgetState extends State<QuizWidget> {
         ),
         AppSheetAction(
           icon: Icons.tune_rounded,
-          label: 'ערוך תשובות',
+          label: 'עריכת התשובות',
           onTap: () {
             if (mounted) setState(() => _revealed = false);
           },
@@ -961,7 +965,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('תחסכו עד',
+                                Text('חיסכון שנתי מוערך',
                                     style: ffTheme.labelSmall
                                         .copyWith(color: ffTheme.savingText)),
                                 Text('₪${top.annualSaving} בשנה',

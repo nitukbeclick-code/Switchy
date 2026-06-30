@@ -181,6 +181,54 @@ class SettingsWidget extends StatelessWidget {
 
             const SizedBox(height: 24),
 
+            // ── Section: Legal & account deletion ─────────────────────────
+            // Google Play requires apps that support accounts to surface the
+            // privacy policy AND a clear account/data-deletion path INSIDE the
+            // app (not only on the store listing). These open the canonical web
+            // pages (privacy / terms / account-deletion) via the external browser.
+            _SectionHeader(title: 'משפטי ומחיקת חשבון', subtitle: 'מדיניות, תנאים ומחיקת המידע שלך', ffTheme: ffTheme),
+            _Card(
+              ffTheme: ffTheme,
+              child: Column(
+                children: [
+                  _RowReveal(index: 0, child:
+                    _ActionRow(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'מדיניות פרטיות',
+                      subtitle: 'איזה מידע נאסף וכיצד הוא מטופל',
+                      iconColor: ffTheme.secondaryText,
+                      onTap: () => _openUrl(context, 'https://switchy-ai.com/privacy'),
+                      ffTheme: ffTheme,
+                    ),
+                  ),
+                  _Divider(ffTheme: ffTheme),
+                  _RowReveal(index: 1, child:
+                    _ActionRow(
+                      icon: Icons.description_outlined,
+                      title: 'תנאי שימוש',
+                      subtitle: 'התנאים לשימוש בשירות',
+                      iconColor: ffTheme.secondaryText,
+                      onTap: () => _openUrl(context, 'https://switchy-ai.com/terms'),
+                      ffTheme: ffTheme,
+                    ),
+                  ),
+                  _Divider(ffTheme: ffTheme),
+                  _RowReveal(index: 2, child:
+                    _ActionRow(
+                      icon: Icons.delete_forever_outlined,
+                      title: 'מחיקת חשבון ונתונים',
+                      subtitle: 'איך לבקש מחיקה של החשבון והמידע',
+                      iconColor: ffTheme.error,
+                      onTap: () => _openUrl(context, 'https://switchy-ai.com/account-deletion'),
+                      ffTheme: ffTheme,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 180.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+
+            const SizedBox(height: 24),
+
             // ── Appearance: theme mode (system / light / dark) ────────────
             _SectionHeader(title: 'מראה', subtitle: 'איך האפליקציה נראית', ffTheme: ffTheme),
             _Card(
@@ -267,7 +315,7 @@ class SettingsWidget extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
                         ),
-                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                        child: Text('1.0.4', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -410,6 +458,18 @@ class SettingsWidget extends StatelessWidget {
   void _showSnack(BuildContext context, String message) {
     if (!context.mounted) return;
     AppSnackBar.info(context, message, duration: const Duration(seconds: 2));
+  }
+
+  /// Open a canonical legal/deletion web page in the external browser. Used by
+  /// the privacy / terms / account-deletion rows (Play compliance: these must be
+  /// reachable from inside the app).
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      AppSnackBar.error(context, 'לא ניתן לפתוח את הקישור');
+    }
   }
 }
 

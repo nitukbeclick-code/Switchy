@@ -780,7 +780,7 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="החברה">
         <h3>החברה</h3>
-        <a href="about.html">אודות</a><a href="how-it-works.html">איך זה עובד</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="faq.html">שאלות נפוצות</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a><a href="accessibility.html">הצהרת נגישות</a>
+        <a href="about.html">אודות</a><a href="how-it-works.html">איך זה עובד</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="faq.html">שאלות נפוצות</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a><a href="account-deletion.html">מחיקת חשבון</a><a href="accessibility.html">הצהרת נגישות</a>
         <a href="https://wa.me/972505037537" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </nav>
@@ -2428,6 +2428,42 @@ const staticPages = [
       { h2: 'קניין רוחני', p: ['התכנים, העיצוב והסימנים באתר הם בבעלות SWITCHY או מי מטעמה, ואין לעשות בהם שימוש ללא רשות בכתב.'] },
       { h2: 'הגבלת אחריות', p: ['השירות ניתן כפי שהוא ("as is"). בכפוף לדין, SWITCHY לא תישא באחריות לנזק עקיף הנובע מהסתמכות על המידע או מהמעבר בין ספקים.'] },
       { h2: 'דין חל', p: ['על תנאים אלה יחולו דיני מדינת ישראל, וסמכות השיפוט הבלעדית נתונה לבתי המשפט המוסמכים בישראל.'] },
+    ],
+  },
+  {
+    // Dedicated account/data-deletion page. Google Play requires apps that let
+    // users create an account to provide a reachable URL where deletion can be
+    // requested (declared in Play Console → App content → Data deletion). The
+    // in-app Settings → "מחיקת חשבון ונתונים" row links here.
+    slug: 'account-deletion',
+    title: 'מחיקת חשבון ומידע — SWITCHY',
+    desc: 'איך לבקש מחיקה של חשבון Switchy AI והמידע האישי המשויך אליו — מה נמחק, מה נשמר לפי דין, ותוך כמה זמן.',
+    h1: 'מחיקת חשבון ומידע',
+    intro: 'עודכן לאחרונה: 30 ביוני 2026',
+    sections: [
+      { h2: 'על מי חל', p: ['עמוד זה מסביר כיצד לבקש מחיקה של חשבון באפליקציית Switchy AI (מזהה il.co.chosech) ובאתר SWITCHY, ושל המידע האישי המשויך אליו. השירות מופעל על-ידי אריאל תקשורת (עוסק מורשה 322253618), מרחוב ליאו בק 64, נהריה.'] },
+      { h2: 'איך מבקשים מחיקה', ul: [
+        'באפליקציה: היכנסו ל"הגדרות" ← "מחיקת חשבון ונתונים", ועקבו אחר ההנחיות.',
+        'בדוא״ל: שלחו בקשה לכתובת hello@chosech.co.il מהכתובת שאיתה נרשמתם, עם הנושא "מחיקת חשבון".',
+        'בוואטסאפ: כתבו לנו ל-050-503-7537 ובקשו מחיקת חשבון ומידע.',
+      ] },
+      { h2: 'איזה מידע יימחק', p: ['לאחר אימות זהותכם נמחק את המידע האישי הקשור לחשבונכם, ובכלל זה:'], ul: [
+        'פרטי החשבון וההזדהות (Auth).',
+        'פרטי הפרופיל שמסרתם: שם, טלפון, אימייל, עיר וקטגוריה מבוקשת.',
+        'סכומי החשבונות החודשיים שהזנתם וההעדפות שבחרתם.',
+        'היסטוריית פניות ובקשות שיצרתם דרכנו.',
+        'מסלולים שצפיתם בהם, רשימת מעקב והתראות מחיר.',
+        'פוסטים, תגובות ומדיה שהעליתם לקהילה.',
+        'היסטוריית שיחות עם התמיכה ועם עוזר ה-AI ששמורה בחשבון.',
+        'קישור לחשבון טלגרם, אם חיברתם.',
+      ] },
+      { h2: 'מידע שאנו עשויים לשמור (לפי דין)', p: ['חלק מהמידע נשמר גם לאחר מחיקת החשבון, רק במידה הנדרשת על פי דין ולמשך התקופה הקבועה בו:'], ul: [
+        'רשומות הסכמה ורישומי הסרה מדיוור (Opt-out) — כראיה משפטית לפי סעיף 30א לחוק התקשורת.',
+        'מידע שאנו חייבים לשמור לפי חובות חשבונאיות או חוקיות אחרות.',
+        'נתונים מצרפיים ואנונימיים שאינם מזהים אתכם.',
+      ] },
+      { h2: 'תוך כמה זמן', p: ['נטפל בבקשה ונשלים את המחיקה בתוך 30 יום ממועד אימות הבקשה, ללא תשלום (למעט מקרים חריגים הקבועים בדין). לצורך אבטחת המידע ייתכן שנבקש פרטים לאימות זהותכם לפני ביצוע המחיקה.'] },
+      { h2: 'יצירת קשר', p: ['לכל שאלה בנושא מחיקת חשבון או מידע: hello@chosech.co.il או בוואטסאפ 050-503-7537. ראו גם את מדיניות הפרטיות המלאה שלנו לפירוט הזכויות שלכם.'] },
     ],
   },
   {
@@ -4598,6 +4634,7 @@ const locs = [
   ...providerNames.map((n) => ({ loc: `${SITE}/provider-${providerSlug(n)}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   { loc: `${SITE}/privacy.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
   { loc: `${SITE}/terms.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/account-deletion.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
   { loc: `${SITE}/accessibility.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
 ];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

@@ -36,6 +36,13 @@ class _LeadWidgetState extends State<LeadWidget> {
 
   String _callbackTime = 'now'; // 'now' | 'noon' | 'evening' | 'tomorrow'
   bool _isSubmitting = false;
+  // Progressive disclosure: the secondary inputs (preferred callback time,
+  // email, the "what happens next" timeline + availability/trust extras) live
+  // collapsed under a 'הוסיפו פרטים (לא חובה)' expander BELOW the consent gate,
+  // so the first screen is just plan → name → phone → consent → submit. The
+  // fields stay fully functional + submitted; they're no longer a wall before
+  // the CTA. Collapsed by default (CRO minimal first ask).
+  bool _extrasExpanded = false;
   // True once a submit reached the network but failed — surfaces a PERSISTENT
   // recovery panel (retry + WhatsApp + support) instead of relying on a
   // transient snackbar the user may miss, so the form never silently dead-ends.
@@ -207,11 +214,13 @@ class _LeadWidgetState extends State<LeadWidget> {
             child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Honest availability note — no fake countdown.
-              _buildAvailabilityBanner(ffTheme),
-              const SizedBox(height: 20),
+              // ── ABOVE THE FOLD: the minimal first ask ──────────────────────
+              // CRO minimal ask: the first screen is plan + savings → name →
+              // phone → §7b/§30A consent → (pinned) submit, plus one short trust
+              // micro-row. Everything secondary moved into the expander below.
 
-              // Plan summary card
+              // Plan summary card — kept above the fold: the SavingPill figure
+              // motivates the ask.
               if (plan != null) ...[
                 _buildPlanCard(plan, appState, ffTheme),
                 const SizedBox(height: 20),
@@ -247,61 +256,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                     AppState.isValidIlPhone(v ?? '') ? null : 'מספר טלפון לא תקין',
               ).animate(delay: 120.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
 
-              // Data-use reassurance — directly under the phone field, where the
-              // hesitation lives. Complements (doesn't duplicate) the
-              // availability banner + the "what happens next" timeline.
-              _buildPhonePrivacyNote(ffTheme),
-
-              const SizedBox(height: 14),
-
-              // Email field (optional)
-              _FieldLabel(label: 'אימייל (אופציונלי)', ffTheme: ffTheme),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                textDirection: TextDirection.ltr,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.email],
-                decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
-                // Optional, but if filled it must look like an email — a typo'd
-                // address silently breaks the only written follow-up channel.
-                validator: (v) {
-                  final s = (v ?? '').trim();
-                  if (s.isEmpty) return null;
-                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) ? null : 'כתובת אימייל לא תקינה';
-                },
-              ).animate(delay: 160.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
-
-              const SizedBox(height: 20),
-
-              // Preferred callback time
-              _FieldLabel(label: 'מתי נחזור אליכם?', ffTheme: ffTheme),
-              const SizedBox(height: 10),
-              _buildCallbackTimePicker(ffTheme),
-
-              const SizedBox(height: 24),
-
-              // What happens next timeline
-              _buildNextStepsCard(ffTheme),
-
-              const SizedBox(height: 20),
-
-              // Trust badges
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _TrustBadge(icon: Icons.lock_outline_rounded, label: 'מאובטח', ffTheme: ffTheme),
-                  const SizedBox(width: 20),
-                  _TrustBadge(icon: Icons.list_alt_rounded, label: '100+ מסלולים', ffTheme: ffTheme),
-                  const SizedBox(width: 20),
-                  _TrustBadge(icon: Icons.payments_outlined, label: 'ללא עלות', ffTheme: ffTheme),
-                ],
-              ).animate(delay: 250.ms).fadeIn(),
-
-              const SizedBox(height: 20),
               // §7b commission disclosure at the lead-capture moment — honest,
               // owner-approved wording mirrored from the web app (lib/legal.ts):
               // the service is free, we are paid a referral fee by the provider,
@@ -309,6 +265,13 @@ class _LeadWidgetState extends State<LeadWidget> {
               _buildCommissionDisclosure(ffTheme),
               const SizedBox(height: 16),
               _consentPanel(ffTheme),
+              const SizedBox(height: 16),
+
+              // Short trust micro-row above the fold — the two reassurances that
+              // matter at the consent moment (won't contact without permission /
+              // HTTPS-encrypted). The fuller reassurance list + trust badges live
+              // in the extras section below.
+              _buildTrustMicroRow(ffTheme),
               const SizedBox(height: 16),
 
               // Persistent recovery panel — only after a failed submit. Gives
@@ -319,6 +282,14 @@ class _LeadWidgetState extends State<LeadWidget> {
                 _buildRecoveryPanel(ffTheme, plan),
                 const SizedBox(height: 16),
               ],
+
+              // ── BELOW THE CTA: progressive disclosure (optional extras) ─────
+              // Collapsed by default so they never wall off the submit CTA. The
+              // fields stay fully functional + submitted — just no longer a
+              // 6-field wall before the first screen's primary action.
+              _buildExtrasSection(ffTheme),
+
+              const SizedBox(height: 16),
 
               // Prefer to talk now? A direct WhatsApp channel as an alternative
               // to leaving details — same green ACTION CTA.
@@ -477,9 +448,174 @@ class _LeadWidgetState extends State<LeadWidget> {
     ).animate().fadeIn(duration: 350.ms);
   }
 
-  // Three honest reassurances next to the phone field: no sharing with
-  // providers, callback via WhatsApp/phone, data encrypted. Marked decorative
-  // (icon-only) so screen readers hear only the copy.
+  // Short, two-line trust micro-row shown above the fold, right under the
+  // consent gate: the two reassurances that matter at the submit moment — we
+  // won't contact without permission, and the transport is HTTPS-encrypted.
+  // Icons are decorative (ExcludeSemantics) so screen readers hear only the
+  // copy. The fuller 3-item reassurance list lives in the extras section.
+  Widget _buildTrustMicroRow(AppTheme ffTheme) {
+    final items = [
+      (Icons.shield_outlined, 'לא נפנה אליכם ללא אישורכם'),
+      (Icons.lock_outline_rounded, 'מאובטח בהצפנת HTTPS'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(item.$1, size: 14, color: ffTheme.secondaryText),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    item.$2,
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ).animate(delay: 200.ms).fadeIn();
+  }
+
+  // Progressive-disclosure block BELOW the CTA: the secondary inputs and
+  // reassurances that used to wall off the submit button. Collapsed by default
+  // behind a 'הוסיפו פרטים (לא חובה)' header; all fields stay fully functional
+  // and are submitted exactly as before — only their on-screen placement moved.
+  // What's inside: the fuller phone-privacy reassurance, the optional email
+  // field, the preferred-callback-time picker, the availability banner, the
+  // "what happens next" timeline, and the trust badges.
+  Widget _buildExtrasSection(AppTheme ffTheme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: ffTheme.cardSurface,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tappable header — flips _extrasExpanded. A real >=44px control with
+          // a rotating chevron; announced as a button with its expanded state.
+          Semantics(
+            button: true,
+            expanded: _extrasExpanded,
+            label: 'הוסיפו פרטים (לא חובה)',
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _extrasExpanded = !_extrasExpanded);
+              },
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      ExcludeSemantics(
+                        child: Icon(Icons.tune_rounded, size: 18, color: ffTheme.secondaryText),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'הוסיפו פרטים (לא חובה)',
+                          style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      ExcludeSemantics(
+                        child: AnimatedRotation(
+                          turns: _extrasExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(Icons.keyboard_arrow_down_rounded, color: ffTheme.secondaryText),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Body — only mounted when expanded so the collapsed default keeps the
+          // CTA the first thing after consent.
+          if (_extrasExpanded) ...[
+            Divider(height: 1, color: ffTheme.alternate),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Fuller data-use reassurance (3 items).
+                  _buildPhonePrivacyNote(ffTheme),
+                  const SizedBox(height: 16),
+
+                  // Email field (optional)
+                  _FieldLabel(label: 'אימייל (אופציונלי)', ffTheme: ffTheme),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _emailCtrl,
+                    keyboardType: TextInputType.emailAddress,
+                    textDirection: TextDirection.ltr,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.email],
+                    decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
+                    // Optional, but if filled it must look like an email — a typo'd
+                    // address silently breaks the only written follow-up channel.
+                    validator: (v) {
+                      final s = (v ?? '').trim();
+                      if (s.isEmpty) return null;
+                      return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) ? null : 'כתובת אימייל לא תקינה';
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Preferred callback time
+                  _FieldLabel(label: 'מתי נחזור אליכם?', ffTheme: ffTheme),
+                  const SizedBox(height: 10),
+                  _buildCallbackTimePicker(ffTheme),
+
+                  const SizedBox(height: 20),
+
+                  // Honest availability note — no fake countdown.
+                  _buildAvailabilityBanner(ffTheme),
+
+                  const SizedBox(height: 20),
+
+                  // What happens next timeline
+                  _buildNextStepsCard(ffTheme),
+
+                  const SizedBox(height: 20),
+
+                  // Trust badges
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _TrustBadge(icon: Icons.lock_outline_rounded, label: 'מאובטח', ffTheme: ffTheme),
+                      const SizedBox(width: 20),
+                      _TrustBadge(icon: Icons.list_alt_rounded, label: '100+ מסלולים', ffTheme: ffTheme),
+                      const SizedBox(width: 20),
+                      _TrustBadge(icon: Icons.payments_outlined, label: 'ללא עלות', ffTheme: ffTheme),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    ).animate(delay: 220.ms).fadeIn();
+  }
+
+  // Three honest reassurances: no sharing with providers, callback via
+  // WhatsApp/phone, data encrypted. Now lives inside the extras section. Marked
+  // decorative (icon-only) so screen readers hear only the copy.
   Widget _buildPhonePrivacyNote(AppTheme ffTheme) {
     final items = [
       (Icons.shield_outlined, 'לא נפנה אליכם ללא אישורכם'),

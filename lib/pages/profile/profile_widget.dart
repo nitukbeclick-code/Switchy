@@ -82,6 +82,14 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     const SizedBox(height: 20),
                   ],
 
+                  // Community quick-link — WAVE 4 removed "קהילה" from the
+                  // primary bottom-tab bar, so the profile surfaces an explicit
+                  // entry point into the (still fully-reachable) community branch.
+                  // goNamed switches the shell branch, matching Home's community
+                  // section and the Account screen's "קהילה" quick-link.
+                  _buildCommunityLink(context, ffTheme),
+                  const SizedBox(height: 20),
+
                   // Upcoming renewal alert — surfaces the soonest promo end from
                   // the renewal radar so a deal about to expire never hides on
                   // the tracker screen. Taps into the full comparison report.
@@ -605,6 +613,47 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               ),
             ),
             Icon(Icons.arrow_back_ios_rounded, color: ffTheme.secondaryText, size: 14),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08);
+  }
+
+  /// A compact entry point into the community branch — added in WAVE 4 when
+  /// "קהילה" left the primary bottom-tab bar so it never becomes unreachable
+  /// from the profile. [goNamed] switches the shell branch (the route stays
+  /// fully intact); the icon/labels use tokens for light+dark parity and the
+  /// row is RTL-correct (leading icon, trailing chevron points end→start).
+  Widget _buildCommunityLink(BuildContext context, AppTheme ffTheme) {
+    return Pressable(
+      onTap: () => context.goNamed('Community'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: ExcludeSemantics(
+                child: Icon(Icons.chat_bubble_outline_rounded, color: ffTheme.secondaryText, size: 20),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('קהילה', style: ffTheme.titleSmall),
+                  Text('שאלות, חוויות וטיפים ממשתמשים אחרים', style: ffTheme.bodySmall),
+                ],
+              ),
+            ),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
           ],
         ),
       ),

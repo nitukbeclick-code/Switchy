@@ -250,7 +250,10 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
   }
 
   Future<void> _openLegal(String page) async {
-    final uri = Uri.parse('https://chosech.co.il/$page');
+    // Live legal pages on the production site (Next routes /terms, /privacy,
+    // /rights — see web/app/* + sitemap). The old chosech.co.il/*.html paths
+    // 404, so point at the real switchy-ai.com equivalents.
+    final uri = Uri.parse('https://switchy-ai.com/$page');
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
@@ -320,13 +323,13 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
             onChanged: (v) => setState(() => _acceptTerms = v ?? false),
             lead: 'קראתי ואני מסכים/ה ל',
             link: 'תנאי השימוש',
-            page: 'terms.html'),
+            page: 'terms'),
         _consentRow(t,
             value: _acceptPrivacy,
             onChanged: (v) => setState(() => _acceptPrivacy = v ?? false),
             lead: 'קראתי ואני מסכים/ה ל',
             link: 'מדיניות הפרטיות',
-            page: 'privacy.html'),
+            page: 'privacy'),
         _consentRow(t,
             value: _acceptMarketing,
             onChanged: (v) => setState(() => _acceptMarketing = v ?? false),

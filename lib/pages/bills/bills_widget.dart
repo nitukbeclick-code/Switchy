@@ -297,6 +297,27 @@ class _BillsWidgetState extends State<BillsWidget> {
                 _uploadBillPhoto(fromCamera: false);
               },
             ),
+            // Honest privacy note (verified against the site-bill-analyzer edge
+            // fn): the photo is sent to AI for one-time reading only — the image
+            // itself is not saved, only the detected amount and provider.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.lock_outline_rounded, size: 14, color: ffTheme.secondaryText),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'התמונה נשלחת לניתוח חכם (AI) לקריאת הסכום והספק בלבד — '
+                      'התמונה עצמה אינה נשמרת.',
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, height: 1.4),
+                      textAlign: TextAlign.start,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 8),
           ],
         ),

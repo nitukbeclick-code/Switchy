@@ -46,9 +46,15 @@ class _ReferralWidgetState extends State<ReferralWidget> {
     }
   }
 
+  /// The invite link carries the referral code as `?ref=<code>` (the canonical
+  /// shape the web lead form reads → leads.referrer_code) so a friend arriving
+  /// from the link is attributable, not just those who paste the plain code.
+  String get _shareLink =>
+      'https://chosech.co.il/?ref=${Uri.encodeComponent(_code)}';
+
   String get _shareText =>
       'מצאתי אפליקציה שעוזרת לחסוך בחשבונות הסלולר, האינטרנט והטלוויזיה — '
-      'השוואה חינמית ושקופה. הקוד שלי: $_code\nSwitchy AI — https://chosech.co.il';
+      'השוואה חינמית ושקופה. הקוד שלי: $_code\nSwitchy AI — $_shareLink';
 
   void _copyCode() {
     Clipboard.setData(ClipboardData(text: _code));

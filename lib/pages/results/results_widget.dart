@@ -8,6 +8,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../widgets/legal_disclosure.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});
@@ -53,6 +54,28 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     super.dispose();
   }
 
+  /// Honest freshness label derived from the global [catalogueSyncedAt] (UTC of
+  /// the last successful live catalogue sync). Returns null when we have never
+  /// synced this run (still on the bundled snapshot) so the caller HIDES the
+  /// badge rather than claiming a freshness we can't back. Truth-only:
+  ///   • synced today  → "עודכן היום"
+  ///   • 1 day ago     → "עודכן אתמול"
+  ///   • N days ago    → "עודכן לפני N ימים"
+  static String? _freshnessLabel() {
+    final syncedAt = catalogueSyncedAt;
+    if (syncedAt == null) return null; // never synced — don't claim freshness
+    // Compare calendar days in local time so "today" matches the user's day.
+    final now = DateTime.now();
+    final syncedLocal = syncedAt.toLocal();
+    final today = DateTime(now.year, now.month, now.day);
+    final syncedDay =
+        DateTime(syncedLocal.year, syncedLocal.month, syncedLocal.day);
+    final days = today.difference(syncedDay).inDays;
+    if (days <= 0) return 'עודכן היום';
+    if (days == 1) return 'עודכן אתמול';
+    return 'עודכן לפני $days ימים';
+  }
+
   void _switchCategory(AppState appState, String cat) {
     HapticFeedback.selectionClick();
     setState(() { _providerFilter = ''; });
@@ -83,6 +106,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     final profile = MatchProfile.fromAppState(appState, cat);
 
     final effectiveSort = _smartSort ? 'match' : appState.sortMode;
+
+    // Honest, data-driven catalogue-freshness label (null = hide the badge).
+    final freshnessLabel = _freshnessLabel();
 
     final rawPlans = filteredPlans(
       cat: cat,
@@ -287,35 +313,42 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       // Info row
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              // Green "fresh/live" cue — the catalogue is current.
-                              color: ffTheme.brandAccent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                  color: ffTheme.brandAccent.withValues(alpha: 0.25)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: BoxDecoration(
-                                    color: ffTheme.brandAccent,
-                                    shape: BoxShape.circle,
+                          // Honest freshness badge — driven by the real last live
+                          // sync ([catalogueSyncedAt]). Shows "עודכן היום" only
+                          // when the catalogue actually synced today, an honest
+                          // relative label otherwise, and is HIDDEN entirely when
+                          // we've never synced this run (serving the bundled
+                          // snapshot) so we never claim a freshness we can't back.
+                          if (freshnessLabel != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                // Green "fresh/live" cue — the catalogue is current.
+                                color: ffTheme.brandAccent.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: ffTheme.brandAccent.withValues(alpha: 0.25)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: BoxDecoration(
+                                      color: ffTheme.brandAccent,
+                                      shape: BoxShape.circle,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 5),
-                                Text('עודכן היום',
-                                    style: ffTheme.labelSmall.copyWith(
-                                        color: ffTheme.brandAccentText,
-                                        fontWeight: FontWeight.w700)),
-                              ],
+                                  const SizedBox(width: 5),
+                                  Text(freshnessLabel,
+                                      style: ffTheme.labelSmall.copyWith(
+                                          color: ffTheme.brandAccentText,
+                                          fontWeight: FontWeight.w700)),
+                                ],
+                              ),
                             ),
-                          ),
                           const Spacer(),
                           Text('${plans.length} מסלולים',
                               style: ffTheme.labelMedium.copyWith(
@@ -756,7 +789,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                  // Bottom inset is supplied by the legal-disclosure sliver that
+                  // follows (it clears the sticky compare bar), so the list keeps
+                  // only a small gap before it.
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
@@ -800,6 +836,17 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       },
                       childCount: plans.length,
                     ),
+                  ),
+                ),
+
+              // §7b commission disclosure + §17 price caveat — placed beneath the
+              // priced results (the price context) so the paid-relationship + the
+              // VAT/verify caveat sit next to the prices and the compare CTA.
+              if (plans.isNotEmpty)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 140),
+                    child: LegalDisclosure(),
                   ),
                 ),
             ],

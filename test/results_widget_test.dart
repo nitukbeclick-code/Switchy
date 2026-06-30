@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
+import 'package:chosech/data.dart' show catalogueSyncedAt;
 
 /// Widget tests for the results / catalogue-browse screen
 /// (lib/pages/results/results_widget.dart): the category tab bar + sort chips
@@ -18,6 +19,9 @@ Future<void> _bootApp(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
   AppState.reset();
   await AppState().initializePersistedState();
+  // The freshness badge is now data-driven on the live-sync timestamp; pin it so
+  // "עודכן היום" renders deterministically here (no live sync runs in the test).
+  catalogueSyncedAt = DateTime.now().toUtc();
   await tester.pumpWidget(
     ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()),
   );

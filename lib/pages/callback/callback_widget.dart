@@ -176,14 +176,15 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                       duration: const Duration(seconds: 2));
                   return;
                 }
-                final phoneDigits = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
-                if (phoneDigits.length < 9 || phoneDigits.length > 10 || !phoneDigits.startsWith('0')) {
+                // Shared IL-phone validator (accepts +972/972/national forms) so
+                // the callback + lead forms agree on what's valid.
+                if (!AppState.isValidIlPhone(_phoneCtrl.text)) {
                   AppSnackBar.error(context, 'מספר טלפון אינו תקין',
                       duration: const Duration(seconds: 2));
                   return;
                 }
                 final name = _nameCtrl.text.trim();
-                final phone = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
+                final phone = AppState.normalizeIlPhone(_phoneCtrl.text);
                 // Map timing chips to callback_time keys used in leads table.
                 final callbackMap = {'בהקדם': 'now', 'בוקר': 'noon', 'אחה"צ': 'evening', 'ערב': 'tomorrow'};
                 final st = AppState();

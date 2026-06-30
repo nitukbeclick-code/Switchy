@@ -10,6 +10,7 @@ import '../../widgets/app_snackbar.dart';
 import '../../widgets/consent_panel.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../legal.dart';
 import '../../models.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -227,10 +228,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.telephoneNumber],
                 decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
-                validator: (v) {
-                  final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
-                  return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
-                },
+                // Shared IL-phone validator (handles +972/972/national forms) so
+                // the lead + callback forms agree on what's valid.
+                validator: (v) =>
+                    AppState.isValidIlPhone(v ?? '') ? null : 'מספר טלפון לא תקין',
               ).animate(delay: 120.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 8),
@@ -288,6 +289,12 @@ class _LeadWidgetState extends State<LeadWidget> {
               ).animate(delay: 250.ms).fadeIn(),
 
               const SizedBox(height: 20),
+              // §7b commission disclosure at the lead-capture moment — honest,
+              // owner-approved wording mirrored from the web app (lib/legal.ts):
+              // the service is free, we are paid a referral fee by the provider,
+              // and it does not change the price the user pays.
+              _buildCommissionDisclosure(ffTheme),
+              const SizedBox(height: 16),
               _consentPanel(ffTheme),
               const SizedBox(height: 16),
 
@@ -349,7 +356,7 @@ class _LeadWidgetState extends State<LeadWidget> {
             const SizedBox(width: 5),
             Flexible(
               child: Text(
-                'נציג יחזור אליכם היום • ללא התחייבות • חינם',
+                'בדרך כלל נחזור אליכם תוך שעה, בשעות הפעילות • ללא התחייבות • חינם',
                 style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                 textAlign: TextAlign.center,
               ),
@@ -442,7 +449,7 @@ class _LeadWidgetState extends State<LeadWidget> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'שלחו פרטים ונציג יחזור אליכם בהקדם — בימי א׳–ה׳, 9:00–21:00',
+              'בדרך כלל נחזור אליכם תוך שעה, בשעות הפעילות — בימי א׳–ה׳, 9:00–21:00',
               style: ffTheme.labelMedium.copyWith(
                 color: ffTheme.brandAccentText,
                 fontWeight: FontWeight.w700,
@@ -459,9 +466,9 @@ class _LeadWidgetState extends State<LeadWidget> {
   // (icon-only) so screen readers hear only the copy.
   Widget _buildPhonePrivacyNote(AppTheme ffTheme) {
     final items = [
-      (Icons.shield_outlined, 'לא נשתף את המספר עם ספקים'),
+      (Icons.shield_outlined, 'לא נפנה אליכם ללא אישורכם'),
       (Icons.chat_bubble_outline_rounded, 'נחזור בוואטסאפ או בטלפון'),
-      (Icons.lock_outline_rounded, 'הנתונים מוצפנים'),
+      (Icons.lock_outline_rounded, 'מאובטח בהצפנת HTTPS'),
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -487,6 +494,47 @@ class _LeadWidgetState extends State<LeadWidget> {
           ),
       ],
     ).animate(delay: 140.ms).fadeIn();
+  }
+
+  // §7b commission disclosure shown at the lead-capture moment, just above the
+  // consent gate. Wording is the verbatim mirror of the web disclosure
+  // (lib/legal.dart ← web/lib/legal.ts) — truth-only, no invented figures.
+  Widget _buildCommissionDisclosure(AppTheme ffTheme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ffTheme.cardSurface,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Icon(Icons.info_outline_rounded, size: 16, color: ffTheme.secondaryText),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$kCommissionDisclosureLead ',
+                    style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.secondaryText, fontWeight: FontWeight.w700),
+                  ),
+                  TextSpan(
+                    text: kCommissionDisclosureBody,
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate(delay: 260.ms).fadeIn();
   }
 
   Widget _buildPlanCard(Plan plan, AppState appState, AppTheme ffTheme) {
@@ -626,7 +674,7 @@ class _LeadWidgetState extends State<LeadWidget> {
         children: [
           Text('מה קורה אחרי שתשלחו?', style: ffTheme.titleSmall),
           const SizedBox(height: 14),
-          _TimelineStep(step: 1, title: 'נציג יחזור אליכם תוך שעה', sub: 'בימי א׳–ה׳, 9:00–21:00', ffTheme: ffTheme),
+          _TimelineStep(step: 1, title: 'בדרך כלל נחזור אליכם תוך שעה, בשעות הפעילות', sub: 'בימי א׳–ה׳, 9:00–21:00', ffTheme: ffTheme),
           _TimelineStep(step: 2, title: 'אישור המסלול יחד', sub: 'נבדוק יחד שהכל מתאים לכם', ffTheme: ffTheme),
           _TimelineStep(step: 3, title: 'ניוד המספר', sub: 'תוך 1–3 ימי עסקים', ffTheme: ffTheme, isLast: true),
         ],

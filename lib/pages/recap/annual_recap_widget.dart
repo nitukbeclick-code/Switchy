@@ -8,6 +8,8 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/savings_summary.dart';
+import '../../services/referral_code.dart';
+import '../../services/backend/local_backend.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
 
@@ -54,11 +56,11 @@ class AnnualRecapWidget extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.ios_share_rounded, color: ffTheme.primaryText, size: 22),
               tooltip: 'שתף את הסיכום',
-              onPressed: () => Share.share(_shareText(
+              onPressed: () => _share(
                 total: total,
                 realized: realized,
                 personalized: personalized,
-              )),
+              ),
             ),
         ],
       ),
@@ -70,11 +72,11 @@ class AnnualRecapWidget extends StatelessWidget {
               personalized: personalized,
               opportunities: opportunities,
               ffTheme: ffTheme,
-              onShare: () => Share.share(_shareText(
+              onShare: () => _share(
                 total: total,
                 realized: realized,
                 personalized: personalized,
-              )),
+              ),
               onActOnTop: opportunities.isNotEmpty
                   ? () {
                       // Jump to the largest opportunity's category so the user
@@ -91,11 +93,38 @@ class AnnualRecapWidget extends StatelessWidget {
     );
   }
 
+  /// Mint a REAL, persisted referral code (fail-soft to a local one — sharing
+  /// must never dead-end) and share the recap with an attributable invite link.
+  /// Mirrors the /referral screen so a friend arriving from the link is credited.
+  Future<void> _share({
+    required int total,
+    required int realized,
+    required bool personalized,
+  }) async {
+    String? code;
+    try {
+      final c = await appBackend.issueReferralCode();
+      if (ReferralCode.isValid(c)) code = ReferralCode.normalize(c);
+    } catch (_) {
+      // no code → share without the ?ref= link (still a valid recap share).
+    }
+    await Share.share(_shareText(
+      total: total,
+      realized: realized,
+      personalized: personalized,
+      refCode: code,
+    ));
+  }
+
   /// Build the share copy from the rendered figures — never re-derives savings.
+  /// When a [refCode] is supplied, an attributable invite link (`?ref=<code>`,
+  /// the canonical shape the web lead form reads) is appended so a friend who
+  /// follows the link is credited.
   String _shareText({
     required int total,
     required int realized,
     required bool personalized,
+    String? refCode,
   }) {
     final buf = StringBuffer('הסיכום השנתי שלי ב-Switchy AI 📊\n');
     if (total > 0) {
@@ -108,6 +137,9 @@ class AnnualRecapWidget extends StatelessWidget {
       buf.write('וכבר חסכתי ₪$realized דרך Switchy AI');
     }
     buf.write('\nבדקו גם אתם עם Switchy AI!');
+    if (refCode != null) {
+      buf.write('\nhttps://chosech.co.il/?ref=${Uri.encodeComponent(refCode)}');
+    }
     return buf.toString();
   }
 }

@@ -83,7 +83,7 @@ void main() {
 
       expect(find.byType(LeadWidget), findsOneWidget);
       // The honest availability banner and the primary CTA copy are present.
-      expect(find.textContaining('נציג יחזור אליכם'), findsWidgets);
+      expect(find.textContaining('נחזור אליכם'), findsWidgets);
       // WhatsApp is always offered as an alternative to leaving details.
       expect(find.textContaining('וואטסאפ'), findsWidgets);
       expect(tester.takeException(), isNull);

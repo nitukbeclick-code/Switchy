@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
@@ -7,6 +9,8 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../services/referral_code.dart';
+import '../../services/backend/local_backend.dart';
 
 class SuccessWidget extends StatefulWidget {
   const SuccessWidget({super.key});
@@ -35,6 +39,33 @@ class _SuccessWidgetState extends State<SuccessWidget> {
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     setState(() => _checked[2] = true);
+  }
+
+  /// Share Switchy AI at the success moment — the highest-intent point to invite
+  /// a friend. Mints a REAL, persisted referral code (fail-soft to a local one —
+  /// sharing must never dead-end) and embeds it as `?ref=<code>`, the canonical
+  /// shape the web lead form reads, so a friend who follows the link is credited.
+  ///
+  /// HONESTY / §30A: sharing the tool is the user's OWN choice (no marketing TO
+  /// anyone), and there is NO advertised reward — the framing is share-the-tool.
+  Future<void> _shareReferral() async {
+    HapticFeedback.lightImpact();
+    String? code;
+    try {
+      final c = await appBackend.issueReferralCode();
+      if (ReferralCode.isValid(c)) code = ReferralCode.normalize(c);
+    } catch (_) {
+      // no code → share the tool without the ?ref= link (still a valid share).
+    }
+    final link = code != null
+        ? 'https://chosech.co.il/?ref=${Uri.encodeComponent(code)}'
+        : 'https://chosech.co.il';
+    final buf = StringBuffer(
+        'מצאתי אפליקציה שעוזרת לחסוך בחשבונות הסלולר, האינטרנט והטלוויזיה — '
+        'השוואה חינמית ושקופה.');
+    if (code != null) buf.write('\nהקוד שלי: $code');
+    buf.write('\nSwitchy AI — $link');
+    await Share.share(buf.toString(), subject: 'עזרו לחבר לחסוך בתקשורת');
   }
 
   @override
@@ -192,7 +223,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     const SizedBox(height: 10),
                     _CheckItem(
                       checked: _checked[1],
-                      text: 'נציג יחזור אליך תוך שעה',
+                      text: 'בדרך כלל נחזור אליכם תוך שעה, בשעות הפעילות',
                       ffTheme: ffTheme,
                     ),
                     const SizedBox(height: 10),
@@ -233,7 +264,22 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 
               ).animate().fadeIn(delay: 800.ms),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
+
+              // Referral growth loop at the highest-intent moment: invite a
+              // friend to the (free, transparent) tool. Share-the-tool framing,
+              // no advertised reward — the user's own choice (§30A-safe).
+              TextButton.icon(
+                onPressed: _shareReferral,
+                icon: const Icon(Icons.card_giftcard_rounded, size: 18, color: Colors.white),
+                label: Text(
+                  'עזרו לחבר לחסוך — שתפו את Switchy AI',
+                  style: ffTheme.bodyMedium.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ).animate().fadeIn(delay: 850.ms),
+
+              const SizedBox(height: 4),
 
               TextButton(
                 onPressed: () => context.goNamed('Home'),

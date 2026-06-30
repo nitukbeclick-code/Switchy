@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,13 +9,14 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../core/nav.dart';
 import '../../data.dart';
 import '../../services/backend/backend.dart';
-import '../../services/backend/local_backend.dart';
+import '../../services/backend/local_backend.dart'; // global `appBackend` lives here
 import '../../services/meeting_slots.dart';
 import '../../services/meeting_sync.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/consent_panel.dart';
+import '../../widgets/legal_disclosure.dart';
 import '../../widgets/pressable.dart';
 import 'meeting_status_card.dart';
 
@@ -351,7 +353,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           _SuccessHeader(t: t).animate().fadeIn(duration: 350.ms),
           const SizedBox(height: 16),
         ],
-        if (appBackend is LocalBackend) ...[
+        // Demo banner is for the local dev build ONLY — gate on kDebugMode, not
+        // on the backend type. A prod build that falls back to LocalBackend must
+        // never tell a paying customer "האישור מדומה".
+        if (kDebugMode) ...[
           _DemoBanner(t: t),
           const SizedBox(height: 12),
         ],
@@ -389,7 +394,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
         children: [
           _buildHero(t).animate().fadeIn(duration: 350.ms),
           const SizedBox(height: 20),
-          if (appBackend is LocalBackend) ...[
+          // Demo banner is for the local dev build ONLY — gate on kDebugMode,
+          // not on the backend type, so a prod LocalBackend fallback never
+          // tells a real customer the booking is simulated.
+          if (kDebugMode) ...[
             _DemoBanner(t: t),
             const SizedBox(height: 16),
           ],
@@ -492,6 +500,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             onPrivacyChanged: (v) => setState(() => _acceptPrivacy = v),
             onMarketingChanged: (v) => setState(() => _acceptMarketing = v),
           ),
+          const SizedBox(height: 16),
+
+          // §7b / §17 — the same honest commission + price caveat shown on the
+          // web at the hand-off moment: the service is free, we are paid a
+          // referral fee by the provider on a switch (does NOT change the price
+          // you pay), prices include VAT and should be verified with the
+          // provider. Shared verbatim copy via [LegalDisclosure].
+          const LegalDisclosure(),
           const SizedBox(height: 16),
 
           AppButton(

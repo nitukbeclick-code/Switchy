@@ -87,7 +87,7 @@ void main() {
       // The "what happens next" checklist + all three steps.
       expect(find.text('מה קורה עכשיו?'), findsOneWidget);
       expect(find.text('הבקשה נקלטה במערכת'), findsOneWidget);
-      expect(find.text('נציג יחזור אליך תוך שעה'), findsOneWidget);
+      expect(find.text('בדרך כלל נחזור אליכם תוך שעה, בשעות הפעילות'), findsOneWidget);
       expect(find.text('ניוד המספר תוך 1–3 ימי עסקים'), findsOneWidget);
 
       // Both forward navigations are offered.

@@ -27,7 +27,10 @@ class ConsentPanel extends StatelessWidget {
 
   Future<void> _openLegal(BuildContext context, String page) async {
     try {
-      await launchUrl(Uri.parse('https://chosech.co.il/$page'),
+      // Live legal pages on the production site (Next routes /terms, /privacy,
+      // /rights — see web/app/* + sitemap). The old chosech.co.il/*.html paths
+      // 404, so point at the real switchy-ai.com equivalents.
+      await launchUrl(Uri.parse('https://switchy-ai.com/$page'),
           mode: LaunchMode.externalApplication);
     } catch (_) {
       if (context.mounted) AppSnackBar.info(context, 'לא ניתן לפתוח את המסמך כרגע');
@@ -91,13 +94,13 @@ class ConsentPanel extends StatelessWidget {
             onChanged: onTermsChanged,
             lead: 'קראתי ואני מסכים/ה ל',
             link: 'תנאי השימוש',
-            page: 'terms.html'),
+            page: 'terms'),
         _row(context, t,
             value: acceptPrivacy,
             onChanged: onPrivacyChanged,
             lead: 'קראתי ואני מסכים/ה ל',
             link: 'מדיניות הפרטיות',
-            page: 'privacy.html'),
+            page: 'privacy'),
         _row(context, t,
             value: acceptMarketing,
             onChanged: onMarketingChanged,

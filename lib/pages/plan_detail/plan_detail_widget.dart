@@ -14,6 +14,7 @@ import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
+import '../../widgets/legal_disclosure.dart';
 
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
@@ -295,6 +296,13 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       delayMs: 0,
                       durationMs: 350,
                     ),
+
+                      // §7b commission disclosure + §17 price caveat — directly
+                      // under the headline price so the paid-relationship and the
+                      // VAT/verify caveat sit with the price (and above the
+                      // "עברו למסלול" CTA in the sticky bar). Approved shared copy.
+                      const SizedBox(height: 10),
+                      const LegalDisclosure(),
 
                       // ── Post-promo price badge ───────────────────────────
                       // A clear "מחיר עכשיו → מחיר אחרי המבצע" badge built only

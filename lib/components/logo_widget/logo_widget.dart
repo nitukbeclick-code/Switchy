@@ -142,6 +142,13 @@ class LogoWidget extends StatelessWidget {
             'assets/providers/$file',
             fit: BoxFit.contain,
             filterQuality: FilterQuality.medium,
+            // Source PNGs are 10–60× oversized (e.g. yes.png is 3840×1536 →
+            // ~24 MB decoded). The largest on-screen logo is size:64, drawn
+            // inside ~74% of the tile, so the image box never exceeds ~47 dp
+            // (~141 px @3× DPR). Decode at a 256 px cap (≈2× the largest use,
+            // headroom for high-DPR) instead of full resolution: same crisp
+            // result, a fraction of the memory, across all 22 screens.
+            cacheWidth: 256,
             errorBuilder: (_, __, ___) => _initialsBadge(color, label),
           ),
         ),

@@ -1035,8 +1035,29 @@ abstract interface class Backend {
 
   // ── Renewal radar — tracked plans ────────────────────────────────────────────
   Future<List<TrackedPlan>> fetchTrackedPlans();
-  Future<void> addTrackedPlan(TrackedPlan plan);
+
+  /// Persists a tracked plan for the signed-in user. When [watchOptIn] is true
+  /// the row is flagged `watch_opt_in=true` — the §30A consent signal the
+  /// `savings-watch` edge engine selects on — and [plan.planId] is written to
+  /// `plan_id` so the engine can re-derive the live market price. Pass
+  /// [watchOptIn] true ONLY on a genuine user opt-in; it must never default true.
+  /// Inserting the same `(user_id, plan_id)` again replaces the prior row rather
+  /// than duplicating it. [LocalBackend] keeps this in-memory.
+  Future<void> addTrackedPlan(TrackedPlan plan, {bool watchOptIn = false});
+
   Future<void> removeTrackedPlan(String id);
+
+  /// Removes the signed-in user's watched row for catalogue [planId] (the
+  /// un-watch path): deletes the `(user_id, plan_id)` row so the engine stops
+  /// alerting on it. No-op when no such row exists. [LocalBackend] mirrors this
+  /// in-memory. Fails soft is the caller's responsibility.
+  Future<void> removeTrackedPlanByPlanId(String planId);
+
+  /// Withdraws §30A price-watch consent across ALL of the signed-in user's
+  /// tracked rows by clearing `watch_opt_in` (set to [optIn], normally false),
+  /// so the `savings-watch` engine immediately stops selecting them. Backs
+  /// [AppState.clearWatchConsent]. [LocalBackend] mirrors this in-memory.
+  Future<void> setAllWatchOptIn(bool optIn);
 
   // ── Provider reviews ─────────────────────────────────────────────────────────
   Future<void> upsertReview(ReviewInput review);

@@ -7,6 +7,7 @@ import 'data.dart' show planById;
 import 'models.dart' show TrackedPlan;
 import 'services/backend/backend.dart'
     show BookedMeeting, MeetingStatus, meetingStatusFromDb, meetingStatusToDb;
+import 'services/backend/local_backend.dart' show appBackend;
 import 'services/savings_summary.dart' show savingsCreditedOnLead;
 
 /// Outcome of [AppState.saveProfile] — lets the edit-profile UI pick the right
@@ -756,15 +757,55 @@ class AppState extends ChangeNotifier {
   /// persisted consent record before any price-watch notification is sent. The
   /// caller is responsible for showing the consent microcopy beside the toggle.
   void toggleWatch(String planId) {
-    if (_watchedPlans.contains(planId)) {
-      _watchedPlans.remove(planId);
-    } else {
+    final turningOn = !_watchedPlans.contains(planId);
+    if (turningOn) {
       _watchedPlans.add(planId);
       // First-ever opt-in → record explicit consent (Spam-Law §30A).
       _watchOptInAt ??= DateTime.now().toIso8601String();
+    } else {
+      _watchedPlans.remove(planId);
     }
     notifyListeners();
     _persist();
+    // Mirror the watch to public.tracked_plans so the `savings-watch` edge
+    // engine (which selects WHERE watch_opt_in=true) can act on it. Signed-in
+    // users only — anon/offline stays purely local. Fire-and-forget: a DB
+    // failure must never undo the local toggle above.
+    _syncWatch(planId, turningOn);
+  }
+
+  /// Fire-and-forget §30A mirror of a single watch toggle to the backend.
+  /// ON  → upsert a tracked row with `watch_opt_in=true` + `plan_id` so the
+  ///        engine can re-derive the live market price for a real opt-in.
+  /// OFF → remove that catalogue plan's tracked row (withdraws the alert).
+  /// No-op for anon sessions; never throws into the caller.
+  void _syncWatch(String planId, bool turningOn) {
+    try {
+      if (userId == null) return; // anon/offline → local-only, nothing to sync
+      if (turningOn) {
+        final p = planById(planId);
+        if (p == null) return; // unknown catalogue id → nothing to persist
+        appBackend
+            .addTrackedPlan(
+              TrackedPlan(
+                id: '', // server mints the row id
+                category: p.cat,
+                provider: p.provider,
+                planName: p.plan,
+                monthlyPrice: p.price,
+                planId: planId,
+              ),
+              watchOptIn: true, // genuine §30A opt-in — the toggle just stamped it
+            )
+            .catchError((_) {});
+      } else {
+        appBackend.removeTrackedPlanByPlanId(planId).catchError((_) {});
+      }
+    } catch (_) {
+      // Fire-and-forget: a synchronous failure (e.g. reading `userId` when
+      // Supabase isn't initialized, as in unit tests) must never break the
+      // local toggle that already ran above.
+    }
   }
 
   /// Withdraw price-watch consent entirely: clears every watched plan AND the
@@ -776,6 +817,16 @@ class AppState extends ChangeNotifier {
     _watchOptInAt = null;
     notifyListeners();
     _persist();
+    // Withdrawing §30A consent MUST stop proactive alerts: clear watch_opt_in
+    // on every one of the user's tracked rows so `savings-watch` no longer
+    // selects them. Signed-in users only; fire-and-forget, fail-soft.
+    try {
+      if (userId != null) {
+        appBackend.setAllWatchOptIn(false).catchError((_) {});
+      }
+    } catch (_) {
+      // Supabase not initialized (unit tests) → the local clear above stands.
+    }
   }
 
   // Recent search queries (most-recent-first, deduped, capped)

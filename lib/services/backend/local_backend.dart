@@ -198,14 +198,29 @@ class LocalBackend implements Backend {
       List.unmodifiable(_tracked);
 
   @override
-  Future<void> addTrackedPlan(TrackedPlan plan) async {
-    _tracked.removeWhere((p) => p.id == plan.id);
+  Future<void> addTrackedPlan(TrackedPlan plan, {bool watchOptIn = false}) async {
+    // Mirror the server's (user_id, plan_id) replace: a re-watch of the same
+    // catalogue plan supersedes the prior in-memory row rather than stacking.
+    _tracked.removeWhere((p) =>
+        p.id == plan.id ||
+        (plan.planId != null && p.planId == plan.planId));
     _tracked.insert(0, plan); // newest first, like the server's created_at desc
   }
 
   @override
   Future<void> removeTrackedPlan(String id) async {
     _tracked.removeWhere((p) => p.id == id);
+  }
+
+  @override
+  Future<void> removeTrackedPlanByPlanId(String planId) async {
+    _tracked.removeWhere((p) => p.planId == planId);
+  }
+
+  @override
+  Future<void> setAllWatchOptIn(bool optIn) async {
+    // No watch_opt_in column to mirror in-memory; the on-device backend doesn't
+    // feed the edge engine, so withdrawing consent is a no-op here.
   }
 
   @override

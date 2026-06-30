@@ -483,6 +483,7 @@ class TrackedPlan {
     required this.monthlyPrice,
     this.promoEndDate,
     this.joinedViaUs = false,
+    this.planId,
   });
 
   final String id;
@@ -492,6 +493,12 @@ class TrackedPlan {
   final int monthlyPrice;
   final String? promoEndDate; // ISO 'yyyy-MM-dd', or null if unknown
   final bool joinedViaUs;
+
+  /// The catalogue plan id this row mirrors (`public.plans.id`), when the row
+  /// was created from a watched catalogue plan. Null for hand-entered tracked
+  /// plans that don't correspond to a catalogue entry. Lets the `savings-watch`
+  /// engine re-derive the current market price for a §30A-consented watch.
+  final String? planId;
 
   DateTime? get promoEnd => promoEndDate == null ? null : DateTime.tryParse(promoEndDate!);
 
@@ -513,6 +520,7 @@ class TrackedPlan {
         'monthlyPrice': monthlyPrice,
         'promoEndDate': promoEndDate,
         'joinedViaUs': joinedViaUs,
+        'planId': planId,
       };
 
   factory TrackedPlan.fromJson(Map<String, dynamic> j) => TrackedPlan(
@@ -523,6 +531,7 @@ class TrackedPlan {
         monthlyPrice: (j['monthlyPrice'] as num).toInt(),
         promoEndDate: j['promoEndDate'] as String?,
         joinedViaUs: j['joinedViaUs'] as bool? ?? false,
+        planId: j['planId'] as String?, // absent in pre-watch JSON → null
       );
 }
 

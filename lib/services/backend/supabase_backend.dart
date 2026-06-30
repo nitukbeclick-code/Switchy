@@ -510,11 +510,23 @@ class SupabaseBackend implements Backend {
           monthlyPrice: (r['monthly_price'] as num).toInt(),
           promoEndDate: r['promo_end_date'] as String?,
           joinedViaUs: r['joined_via_us'] as bool? ?? false,
+          planId: r['plan_id'] as String?,
         )).toList();
   }
 
   @override
-  Future<void> addTrackedPlan(TrackedPlan p) async {
+  Future<void> addTrackedPlan(TrackedPlan p, {bool watchOptIn = false}) async {
+    // Avoid duplicating a watched catalogue plan: if this row carries a
+    // catalogue plan_id, clear any existing (user_id, plan_id) row first so a
+    // re-watch replaces rather than stacks. (Safe whether or not a DB unique
+    // constraint on (user_id, plan_id) exists.)
+    if (p.planId != null) {
+      await _db
+          .from('tracked_plans')
+          .delete()
+          .eq('user_id', _uid!)
+          .eq('plan_id', p.planId!);
+    }
     await _db.from('tracked_plans').insert({
       'user_id': _uid,
       'category': p.category,
@@ -523,12 +535,31 @@ class SupabaseBackend implements Backend {
       'monthly_price': p.monthlyPrice,
       'promo_end_date': p.promoEndDate,
       'joined_via_us': p.joinedViaUs,
+      'plan_id': p.planId,
+      // §30A: true ONLY when the caller passes a genuine opt-in.
+      'watch_opt_in': watchOptIn,
     });
   }
 
   @override
   Future<void> removeTrackedPlan(String id) async {
     await _db.from('tracked_plans').delete().eq('id', id);
+  }
+
+  @override
+  Future<void> removeTrackedPlanByPlanId(String planId) async {
+    await _db
+        .from('tracked_plans')
+        .delete()
+        .eq('user_id', _uid!)
+        .eq('plan_id', planId);
+  }
+
+  @override
+  Future<void> setAllWatchOptIn(bool optIn) async {
+    await _db
+        .from('tracked_plans')
+        .update({'watch_opt_in': optIn}).eq('user_id', _uid!);
   }
 
   // ── Provider reviews ─────────────────────────────────────────────────────────

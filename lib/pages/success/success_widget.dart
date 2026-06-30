@@ -13,26 +13,57 @@ import '../../services/referral_code.dart';
 import '../../services/backend/local_backend.dart';
 
 class SuccessWidget extends StatefulWidget {
-  const SuccessWidget({super.key});
+  const SuccessWidget({super.key, this.leadAccepted});
+
+  /// Whether we arrived here on a REAL accepted lead. Passed as the route
+  /// `extra` from the lead flow, which only navigates here after the backend
+  /// accepted the submission. When null (e.g. a direct/deep navigation), we
+  /// fall back to "is there a real lead recorded in AppState?" — so the first
+  /// checkmark is only ever shown as done when an accepted lead actually
+  /// exists, never as theatre.
+  final bool? leadAccepted;
 
   @override
   State<SuccessWidget> createState() => _SuccessWidgetState();
 }
 
 class _SuccessWidgetState extends State<SuccessWidget> {
-  // Staggered reveal for checklist items
+  // Staggered reveal for checklist items.
   final List<bool> _checked = [false, false, false];
+
+  // True only when arrival is backed by a real accepted lead. Drives BOTH the
+  // honest first checkmark (shown done immediately, no fake timer) and the
+  // one-shot celebration burst — we never celebrate an unaccepted lead.
+  bool _leadAccepted = false;
 
   @override
   void initState() {
     super.initState();
+    // Resolve the real signal: the explicit route flag wins; otherwise check
+    // whether AppState actually holds a submitted lead (submitLead runs only
+    // after the backend accepted it). listen:false — read once at mount.
+    final hasRealLead =
+        Provider.of<AppState>(context, listen: false).leadPlanId != null;
+    _leadAccepted = widget.leadAccepted ?? hasRealLead;
     _runChecklist();
   }
 
   Future<void> _runChecklist() async {
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() => _checked[0] = true);
+    if (_leadAccepted) {
+      // HONEST: the lead was genuinely accepted before we navigated here, so
+      // the first step ("הבקשה נקלטה במערכת") is already TRUE — reflect that
+      // immediately instead of pretending to "process" it on a 900ms timer.
+      if (!mounted) return;
+      setState(() => _checked[0] = true);
+    } else {
+      // No accepted lead in evidence (e.g. a deep navigation) — don't claim
+      // the request was received. Reveal the first step on the prior cadence.
+      await Future.delayed(const Duration(milliseconds: 900));
+      if (!mounted) return;
+      setState(() => _checked[0] = true);
+    }
+    // The remaining steps are forward-looking expectations ("we'll call you",
+    // "porting takes 1–3 days") — those animate in as a staggered reveal.
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     setState(() => _checked[1] = true);
@@ -73,6 +104,13 @@ class _SuccessWidgetState extends State<SuccessWidget> {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
+    // Reduced-motion gate (rule 13): under disableAnimations we DROP the
+    // celebration burst entirely — the static checkmark + ink hero already
+    // read as success without any transform.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // The ONE honest celebration: fire only on a real accepted lead, and only
+    // when motion is allowed. A single expanding+fading ring behind the check.
+    final celebrate = _leadAccepted && !reduceMotion;
 
     return Scaffold(
       // Celebration hero stays a premium INK surface in both themes — the const
@@ -89,6 +127,30 @@ class _SuccessWidgetState extends State<SuccessWidget> {
               Stack(
                 alignment: Alignment.center,
                 children: [
+                  // One-shot celebration BURST — a single accent ring that
+                  // expands out and fades away behind the checkmark. Restrained
+                  // (one play, no loop) and HONEST: only present when a real
+                  // accepted lead brought us here. Dropped under reduced motion.
+                  if (celebrate)
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                            color: ffTheme.brandAccent.withValues(alpha: 0.6),
+                            width: 3),
+                      ),
+                    )
+                        .animate()
+                        .scale(
+                          begin: const Offset(0.7, 0.7),
+                          end: const Offset(1.6, 1.6),
+                          duration: 700.ms,
+                          curve: Curves.easeOut,
+                        )
+                        .fadeOut(duration: 700.ms, curve: Curves.easeOut),
+
                   // Outer halo ring — expands in once behind the checkmark.
                   Container(
                     width: 120,

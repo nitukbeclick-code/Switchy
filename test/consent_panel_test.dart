@@ -42,12 +42,53 @@ void main() {
     // Three checkboxes: terms, privacy, marketing.
     expect(find.byType(Checkbox), findsNWidgets(3));
 
-    // Mandatory legal links carry tappable Semantics labels.
-    expect(find.bySemanticsLabel('פתח תנאי השימוש'), findsOneWidget);
-    expect(find.bySemanticsLabel('פתח מדיניות הפרטיות'), findsOneWidget);
+    // Each row is now a single screen-reader-toggleable node whose label is the
+    // FULL consent sentence (lead + legal-link words), so the §30A/§7b wording
+    // is announced verbatim.
+    expect(find.bySemanticsLabel('קראתי ואני מסכים/ה לתנאי השימוש'),
+        findsOneWidget);
+    expect(find.bySemanticsLabel('קראתי ואני מסכים/ה למדיניות הפרטיות'),
+        findsOneWidget);
 
     // The optional marketing row is plain copy (no legal link).
     expect(find.textContaining('דיוור שיווקי'), findsOneWidget);
+  });
+
+  testWidgets('each consent row exposes a checkable, button semantics node',
+      (tester) async {
+    await tester.pumpWidget(_wrap(_panel(terms: true)));
+    await tester.pump();
+
+    // The terms row's semantics node reflects the checked state and is a button,
+    // so VoiceOver/TalkBack announce it as a checkable consent control.
+    final node = tester.getSemantics(
+        find.bySemanticsLabel('קראתי ואני מסכים/ה לתנאי השימוש'));
+    expect(node.flagsCollection.isButton, isTrue);
+    // `isChecked` is a tri-state CheckedState enum (true/false/none); assert the
+    // checked state without importing the dart:ui enum name directly.
+    expect(node.flagsCollection.isChecked.toString(), contains('isTrue'));
+  });
+
+  testWidgets('tapping the marketing row body toggles only that row\'s consent',
+      (tester) async {
+    var termsCalls = 0;
+    var privacyCalls = 0;
+    bool? marketing;
+    await tester.pumpWidget(_wrap(_panel(
+      onTerms: (_) => termsCalls++,
+      onPrivacy: (_) => privacyCalls++,
+      onMarketing: (v) => marketing = v,
+    )));
+    await tester.pump();
+
+    // The marketing row has no legal link, so its whole body is the >=44px
+    // toggle target. Tapping the copy flips marketing on and fires nothing else.
+    await tester.tap(find.textContaining('דיוור שיווקי'));
+    await tester.pump();
+
+    expect(marketing, isTrue);
+    expect(termsCalls, 0);
+    expect(privacyCalls, 0);
   });
 
   testWidgets('reflects checked state from props', (tester) async {

@@ -321,25 +321,25 @@ class AppTheme {
       ? const [BoxShadow(color: Color(0x4D000000), blurRadius: 18, offset: Offset(0, 5))]
       : const [BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 4))];
 
-  /// A soft ink shadow under the primary (black) CTA so it reads "tap me".
-  // GEIST: primary/accent CTAs are FLAT — no drop shadow, no glow.
+  // GEIST: primary/accent CTAs are FLAT — no drop shadow, no glow. The three
+  // getters below all resolve to an EMPTY shadow list (they render nothing), so
+  // they are functionally dead. They are intentionally RETAINED — not deleted —
+  // because each still has live call sites across ~20 screens outside this
+  // file's ownership (e.g. plan_card, results, app_button, home, profile…).
+  // Removing the tokens would break those call sites' compilation for zero
+  // visual change; the truly-dead, ZERO-reference sibling (`glowValue`) has been
+  // removed. Real elevation is carried by [shadowCard] (the resting card) and
+  // [shadowLifted] (sheets/modals/FABs); reach for those when a surface needs
+  // genuine depth.
+  /// FLAT (empty) — the primary (ink) CTA carries no drop shadow under GEIST.
   List<BoxShadow> get shadowPrimary => const [];
 
+  /// FLAT (empty) — green ACTION surfaces carry no drop shadow under GEIST.
   List<BoxShadow> get shadowAccent => const [];
 
-  /// The "live" green ACTION glow — a 1px accent-tinted ring hugging the edge
-  /// plus a soft accent-coloured drop — the Flutter mirror of the site's
-  /// `--glow-accent`. Use on the surface a primary CTA wants to feel energised
-  /// (the green button, an active "best match" tile). Theme-aware: on dark the
-  /// hue lifts to the brighter green and the alphas rise a touch so the glow
-  /// still reads against slate. The ring is the `0 0 0 1px` layer
-  /// (spread 1, blur 0); the soft drop is the `0 8px 28px` layer.
-  List<BoxShadow> get glowAccent => const []; // GEIST: no glow
-
-  /// The "live" VALUE glow — historically the amber sibling of [glowAccent], now
-  /// the same single green accent (VALUE shares ACTION's hue). Disabled under
-  /// GEIST anyway (flat, no glow); kept as a token so call sites stay stable.
-  List<BoxShadow> get glowValue => const []; // GEIST: no glow
+  /// FLAT (empty) — the green ACTION "glow" is disabled under GEIST (no glow).
+  /// Kept (vs. deleted) only because it has live call sites outside this file.
+  List<BoxShadow> get glowAccent => const [];
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
   List<BoxShadow> get shadowGlass => dark
@@ -587,9 +587,15 @@ class AppTheme {
   // Display — tightened again (owner: text feels too large / loud) from 26-40px
   // to a restrained 22-32px / w700. Big numerals still read as the hero, but
   // confident and calm rather than shouting.
-  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.05, color: AppColors.primaryText);
-  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.06, color: AppColors.primaryText);
-  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.08, color: AppColors.primaryText);
+  //
+  // HEBREW TRACKING: these are HEBREW-TEXT (display headline) tokens, so they
+  // carry ZERO letterSpacing. Negative (Latin-tuned) tracking pinches Hebrew
+  // letterforms — the gaps that Hebrew relies on for legibility collapse — so
+  // it is intentionally removed here. (Negative tracking stays ONLY on the
+  // NUMERIC tokens below, where it is correct for numerals.)
+  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.05, color: AppColors.primaryText);
+  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.06, color: AppColors.primaryText);
+  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.08, color: AppColors.primaryText);
   TextStyle get displayLarge => _ink(_displayLarge);
   TextStyle get displayMedium => _ink(_displayMedium);
   TextStyle get displaySmall => _ink(_displaySmall);
@@ -617,9 +623,11 @@ class AppTheme {
   TextStyle get numericLarge => _ink(_numericLarge);
   TextStyle get numericMedium => _ink(_numericMedium);
 
-  // Headlines
-  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
-  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.005, color: AppColors.primaryText);
+  // Headlines — HEBREW-TEXT tokens: ZERO letterSpacing (negative Latin tracking
+  // pinches Hebrew; see the display-token note above). Numeric tokens keep their
+  // negative tracking.
+  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 0, color: AppColors.primaryText);
+  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0, color: AppColors.primaryText);
   static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: 0, color: AppColors.primaryText);
   TextStyle get headlineLarge => _ink(_headlineLarge);
   TextStyle get headlineMedium => _ink(_headlineMedium);

@@ -241,13 +241,15 @@ class _HeroFigure extends StatelessWidget {
               ],
               Text(
                 hasBill ? '₪$value' : '₪—',
-                style: ffTheme.displaySmall.copyWith(
-                    // Green VALUE (AA on the now-white Geist header) for a real
-                    // figure; a muted dark dash for the placeholder.
-                    color: hasBill ? ffTheme.savingText : ffTheme.secondaryText,
-                    fontWeight: FontWeight.bold,
-                    // Fixed-width digits — the count-up doesn't jitter sideways.
-                    fontFeatures: const [FontFeature.tabularFigures()]),
+                // The hero count-up IS a stat headline numeral → sourced from the
+                // numeric scale (Rubik / w800 / tabular figures), the same token
+                // the wallet hero uses, so every savings hero reads identically.
+                // The genuine deltas (the prior 22px size + the VALUE-green
+                // colour, with a muted dark dash for the placeholder) ride via
+                // copyWith. TRUTH-ONLY: the real $value figure is unchanged.
+                style: ffTheme.numericLarge.copyWith(
+                    fontSize: 22,
+                    color: hasBill ? ffTheme.savingText : ffTheme.secondaryText),
               ),
             ],
           ),

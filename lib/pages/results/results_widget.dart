@@ -9,6 +9,7 @@ import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../widgets/legal_disclosure.dart';
+import '../../widgets/price_text.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});
@@ -415,9 +416,14 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text('₪$bill',
+                                        // Money token — [PriceText] pins the ₪
+                                        // before the digits (stable LTR bidi) in
+                                        // the RTL stepper. Style override keeps
+                                        // the titleMedium/ink numeral; priceDisplay
+                                        // already carries tabular figures.
+                                        PriceText('₪$bill',
                                             style: ffTheme.titleMedium
-                                                .copyWith(color: ffTheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
+                                                .copyWith(color: ffTheme.primary)),
                                         const SizedBox(width: 4),
                                         Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
                                       ],
@@ -1101,7 +1107,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   children: [
                     const TextSpan(text: 'החיסכון מחושב מול '),
                     TextSpan(
-                      text: '₪$bill$unit',
+                      // LTR isolate (U+2066 … U+2069) around the money run so the
+                      // ₪+digits+unit keep a stable order inside this RTL Hebrew
+                      // sentence (PriceText's bidi technique, applied inline where
+                      // a TextSpan can't host a Directionality). Truth-only: the
+                      // real ₪$bill$unit is rendered verbatim.
+                      text: '\u{2066}₪$bill$unit\u{2069}',
                       style: ffTheme.labelSmall.copyWith(
                           color: ffTheme.primaryText,
                           fontWeight: FontWeight.w700,

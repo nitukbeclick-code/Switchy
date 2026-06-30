@@ -16,6 +16,7 @@ import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/whatsapp_button.dart';
+import '../../widgets/price_text.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class LeadWidget extends StatefulWidget {
@@ -158,7 +159,10 @@ class _LeadWidgetState extends State<LeadWidget> {
     // Tactile confirmation that the lead actually reached the team.
     HapticFeedback.mediumImpact();
     if (!mounted) return;
-    context.goNamed('Success');
+    // Pass the REAL accepted signal: the backend already accepted this lead
+    // above (submitLead ran), so the success screen can show its first
+    // checkmark as genuinely done and fire its one-shot celebration honestly.
+    context.goNamed('Success', extra: true);
   }
 
   @override
@@ -567,7 +571,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
                     Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
+                    // Money token — [PriceText] keeps ₪+digits+/unit in a stable
+                    // LTR bidi order inside the RTL card; titleMedium/ink override
+                    // preserved (priceDisplay base supplies tabular figures).
+                    PriceText('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
                   ],
                 ),
               ),
@@ -582,7 +589,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                   child: Column(
                     children: [
                       Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText)),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
+                      // Savings money token — [PriceText] pins ₪ before the
+                      // digits (stable LTR bidi) so the real figure never
+                      // re-orders; titleSmall/green/w800 override preserved.
+                      PriceText('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),

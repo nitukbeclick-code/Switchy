@@ -203,7 +203,7 @@ GoRouter createRouter() {
           routes: [
             GoRoute(path: '/tracker', name: 'Tracker', builder: (_, __) => const TrackerWidget()),
             GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!, source: s.uri.queryParameters['source'] ?? 'form')),
-            GoRoute(path: '/success', name: 'Success', builder: (_, __) => const SuccessWidget()),
+            GoRoute(path: '/success', name: 'Success', builder: (_, s) => SuccessWidget(leadAccepted: s.extra as bool?)),
             GoRoute(path: '/chat', name: 'Chat', builder: (_, __) => const ChatWidget()),
             GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
             GoRoute(
@@ -410,8 +410,11 @@ class _BottomNavBar extends StatelessWidget {
                                       : ffTheme.motionFast,
                                   curve: ffTheme.easeOut,
                                   tween: ColorTween(
+                                    // AA-safe darker green for the active glyph
+                                    // (the lighter brandAccent fill only ~3:1
+                                    // on white — fails AA). 24px glyph.
                                     end: active
-                                        ? ffTheme.brandAccent
+                                        ? ffTheme.brandAccentText
                                         : ffTheme.secondaryText,
                                   ),
                                   builder: (_, color, __) => Icon(
@@ -456,8 +459,11 @@ class _BottomNavBar extends StatelessWidget {
                             fontSize: 10.5,
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
+                            // AA-safe darker green for the active label (the
+                            // lighter brandAccent fill is only ~3:1 on white —
+                            // fails AA small-text contrast).
                             color: active
-                                ? ffTheme.brandAccent
+                                ? ffTheme.brandAccentText
                                 : ffTheme.secondaryText,
                           ),
                           child: Text(tab.label),

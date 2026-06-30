@@ -17,10 +17,12 @@ import 'package:chosech/pages/success/success_widget.dart';
 /// app through GoRouter exactly like the sibling harnesses
 /// (test/results_widget_test.dart, test/lead_widget_test.dart).
 ///
-/// NOTE: this page runs persistent flutter_animate effects (the checkmark
-/// shake) plus a staggered checklist driven by delayed setStates, so we pump
-/// fixed durations and never pumpAndSettle (which would hang on the pending
-/// animation/timer chain).
+/// NOTE: this page runs flutter_animate effects (the checkmark spring-in, and —
+/// on a real accepted lead — a one-shot celebration burst) plus a staggered
+/// checklist. On a real accepted lead the FIRST step is shown done immediately
+/// (honest: the backend already accepted before navigating here); the remaining
+/// steps reveal on delayed setStates. We pump fixed durations and never
+/// pumpAndSettle (which would hang on the pending animation/timer chain).
 Future<void> _bootApp(WidgetTester tester) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   SharedPreferences.setMockInitialValues({});
@@ -36,9 +38,9 @@ Future<void> _bootApp(WidgetTester tester) async {
   await tester.pump(const Duration(milliseconds: 300));
 }
 
-void _go(WidgetTester tester, String path) {
+void _go(WidgetTester tester, String path, {Object? extra}) {
   final ctx = tester.element(find.byType(Navigator).first);
-  ctx.go(path);
+  ctx.go(path, extra: extra);
 }
 
 /// Swallow benign RenderFlex overflow errors — the tall celebration column can
@@ -94,6 +96,42 @@ void main() {
       expect(find.text('מעקב אחר התהליך'), findsWidgets);
       expect(find.text('חזרה לדף הבית'), findsOneWidget);
 
+      tester.takeException();
+    });
+  });
+
+  testWidgets(
+      'A real accepted lead shows the first step done immediately (no fake timer)',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      await _bootApp(tester);
+
+      // Arrive on the success screen the way the lead flow does — with the
+      // REAL accepted signal as the route `extra`.
+      _go(tester, '/success', extra: true);
+      // Pump LESS than the 900ms fallback first-step timer. If the first step
+      // is only revealed by that timer, it would still read as "pending" here;
+      // an honest accepted arrival shows it done right away.
+      await tester.pump(); // build
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byType(SuccessWidget), findsOneWidget);
+
+      // The first checklist step is wrapped in an AnimatedOpacity whose target
+      // is 1.0 when the step is checked (0.4 while pending). Find the one that
+      // wraps the first step's label and assert it's already fully opaque.
+      final firstStepOpacity = tester.widget<AnimatedOpacity>(
+        find.ancestor(
+          of: find.text('הבקשה נקלטה במערכת'),
+          matching: find.byType(AnimatedOpacity),
+        ).first,
+      );
+      expect(firstStepOpacity.opacity, 1.0);
+
+      // Let the rest of the chain + the one-shot burst settle, then ensure no
+      // exception escaped (the celebration burst is reduced-motion-aware and
+      // honest-only).
+      await _settleHero(tester);
       tester.takeException();
     });
   });

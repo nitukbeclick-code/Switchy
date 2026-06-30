@@ -618,18 +618,37 @@ class _HomeWidgetState extends State<HomeWidget> {
                       Text(rec.tag, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
                       const SizedBox(height: 4),
                       Expanded(
-                        child: MiniPlanCard(
-                          plan: rec.plan,
-                          savingsPerYear: rec.saving > 0 ? rec.saving : null,
-                          // Curated best-match recommendations — these keep the
-                          // saving badge (the de-push only strips it from generic
-                          // list rows, which leave isBest false).
-                          isBest: true,
-                          ctaLabel: rec.cta,
-                          onTap: () {
-                            appState.viewPlan(rec.plan.id);
-                            context.pushNamed('PlanDetail', pathParameters: {'planId': rec.plan.id});
-                          },
+                        // Shared-element flight: tapping a recommendation card now
+                        // animates the provider logo into the plan-detail hero chip
+                        // (target tag 'plan_logo_<id>' in plan_detail_widget.dart),
+                        // matching the existing results→detail Hero. The resting
+                        // widget is the whole MiniPlanCard, but the [flightShuttleBuilder]
+                        // flies ONLY the provider logo (logo→logo, like the results
+                        // card) so the transition reads as a calm logo morph, not a
+                        // card-warping the size of the detail chip.
+                        //
+                        // Tags are unique per plan: the carousel dedupes by plan id
+                        // (see the `recs.any((r) => r.plan.id == …)` guards above),
+                        // and the activity row below renders a bare LogoWidget (no
+                        // Hero), so no two heroes share a tag within this route. The
+                        // results list lives on a DIFFERENT route, so a plan that also
+                        // appears there never collides during a transition.
+                        child: _CarouselLogoHero(
+                          provider: rec.plan.provider,
+                          tag: 'plan_logo_${rec.plan.id}',
+                          child: MiniPlanCard(
+                            plan: rec.plan,
+                            savingsPerYear: rec.saving > 0 ? rec.saving : null,
+                            // Curated best-match recommendations — these keep the
+                            // saving badge (the de-push only strips it from generic
+                            // list rows, which leave isBest false).
+                            isBest: true,
+                            ctaLabel: rec.cta,
+                            onTap: () {
+                              appState.viewPlan(rec.plan.id);
+                              context.pushNamed('PlanDetail', pathParameters: {'planId': rec.plan.id});
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -1220,6 +1239,50 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Carousel shared-element logo hero ───────────────────────────────────────────
+//
+// Wraps a recommendation carousel card in a [Hero] tagged 'plan_logo_<id>' — the
+// same scheme the results card (plan_card_widget.dart) and the plan-detail hero
+// chip (plan_detail_widget.dart) use — so tapping a card flies the provider logo
+// into plan detail. The resting child is the full card, but [flightShuttleBuilder]
+// renders ONLY the provider logo mid-flight so the shared element is a clean
+// logo→logo morph (matching the results→detail transition), not the whole card
+// stretching to the detail chip's size.
+//
+// Reduced-motion safe: Hero itself is harmless under "reduce motion" (the OS may
+// shorten/skip the page transition), and the shuttle only ever paints a static
+// [LogoWidget], so there is nothing to crash on. We never recolour the logo, so
+// per-provider brand colours are preserved.
+class _CarouselLogoHero extends StatelessWidget {
+  const _CarouselLogoHero({
+    required this.provider,
+    required this.tag,
+    required this.child,
+  });
+
+  final String provider;
+  final Object tag;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Hero(
+      tag: tag,
+      flightShuttleBuilder: (flightContext, animation, direction, fromContext, toContext) {
+        // Fly only the provider logo so the carousel→detail flight matches the
+        // calm logo morph used by the results list rather than warping the whole
+        // card. The logo is never recoloured, so brand colours are preserved.
+        return ExcludeSemantics(
+          child: Center(
+            child: LogoWidget(provider: provider, size: 52),
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

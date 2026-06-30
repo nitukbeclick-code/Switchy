@@ -7,6 +7,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
 import '../../widgets/saving_pill.dart';
 import '../logo_widget/logo_widget.dart';
 
@@ -362,13 +363,14 @@ class PlanCardWidget extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          displayPrice,
-                          // The plan-card price numeral — the dedicated
-                          // priceDisplay token (30/w800/-0.5/tabular), a
-                          // pixel-identical migration of the old inline style.
-                          style: ffTheme.priceDisplay,
-                        ),
+                        // The plan-card price numeral — the dedicated
+                        // priceDisplay token (30/w800/-0.5/tabular). Rendered via
+                        // [PriceText] so the ₪+digits run keeps a stable LTR bidi
+                        // order inside the RTL card (₪ pinned before the number,
+                        // never re-ordered). Truth-only: the REAL displayPrice
+                        // string is rendered verbatim, still a single Text node
+                        // so find.text('₪79') keeps matching.
+                        PriceText(displayPrice),
                         Text(
                           priceUnitLabel(plan),
                           // 12px Assistant caption (default w400) — nearest scale

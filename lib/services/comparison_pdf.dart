@@ -20,9 +20,10 @@ class ComparisonPdf {
   static const PdfColor _muted = PdfColor.fromInt(0xFF4B5563);
   static const PdfColor _line = PdfColor.fromInt(0xFFE5E7EB);
   static const PdfColor _altRow = PdfColor.fromInt(0xFFF5F7F8);
-  static const PdfColor _amber = PdfColor.fromInt(0xFFF59E0B);
-  static const PdfColor _amberTint = PdfColor.fromInt(0xFFFEF3C7);
-  static const PdfColor _amberText = PdfColor.fromInt(0xFF92400E);
+  // VALUE accent — owner recolor amber→green (names kept to avoid churn).
+  static const PdfColor _amber = PdfColor.fromInt(0xFF16A34A); // green 600
+  static const PdfColor _amberTint = PdfColor.fromInt(0xFFDCFCE7); // green tint
+  static const PdfColor _amberText = PdfColor.fromInt(0xFF15803D); // green 700
   static const PdfColor _white = PdfColor.fromInt(0xFFFFFFFF);
   static const PdfColor _slate = PdfColor.fromInt(0xFFCBD5E1);
 

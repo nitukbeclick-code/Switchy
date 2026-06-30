@@ -67,17 +67,17 @@ class AppColors {
   // only reaches ~3:1 as small text — green 700 clears 4.5:1 on white, the
   // tint chip, and the glass bg while still reading as the same brand green.
   static const Color brandAccentText = Color(0xFF15803D); // green 700 — small-text/link
-  static const Color saving = Color(0xFFF59E0B); // amber 500
-  static const Color savingDark = Color(0xFFD97706); // amber 600
-  // AA-safe ink for amber VALUE TEXT on light glass. Amber 500/600 fail 4.5:1
-  // as normal text; amber 800 clears it while keeping the warm "value" read.
-  static const Color savingText = Color(0xFF92400E); // amber 800 — small savings text
-  // The ink read out ON the amber VALUE fill (savings pills, "best value"
-  // badges). A deep amber-brown that clears AA on the amber surface in BOTH
-  // themes (amber is a fixed-hue accent), so it never needs a dark variant.
-  // The canonical "ink-on-amber" pair — use everywhere a chip/badge fills with
-  // [saving] and prints text/icons on top, instead of re-declaring the literal.
-  static const Color onSaving = Color(0xFF3A2900);
+  // VALUE accent (savings figures, "best value" badges) — owner recolor
+  // amber→green, so VALUE now reads in the SAME brand green as ACTION.
+  static const Color saving = Color(0xFF16A34A); // green 600
+  static const Color savingDark = Color(0xFF15803D); // green 700 (gradient depth)
+  // AA-safe ink for VALUE TEXT on light glass — green 700 clears 4.5:1 on white
+  // (the fill #16A34A only ~3:1 as small text), same as brandAccentText.
+  static const Color savingText = Color(0xFF15803D); // green 700 — small savings text
+  // The ink read out ON the green VALUE fill (savings pills, "best value"
+  // badges) — white, matching white-on-green CTAs. Use everywhere a chip/badge
+  // fills with [saving] and prints text/icons on top, instead of the literal.
+  static const Color onSaving = Color(0xFFFFFFFF);
 
   // ── Dark variant ──────────────────────────────────────────────────────────
   // NOT a colour flip — a cohesive night theme. Deep blue-ink surfaces, slate
@@ -96,8 +96,8 @@ class AppColors {
   static const Color darkBrandAccent = Color(0xFF4ADE80); // green 400
   static const Color darkBrandAccentDark = Color(0xFF22C55E); // green 500
   static const Color darkBrandAccentTint = Color(0xFF14301F); // deep green wash
-  static const Color darkSaving = Color(0xFFFBBF24); // amber 400
-  static const Color darkSavingDark = Color(0xFFF59E0B); // amber 500
+  static const Color darkSaving = Color(0xFF4ADE80); // green 400 (VALUE lifted for dark)
+  static const Color darkSavingDark = Color(0xFF22C55E); // green 500
   // Surface tints on dark — faint slate washes for tinted chips/cards.
   static const Color darkAccent1 = Color(0xFF1C2330);
   static const Color darkError = Color(0xFFF87171); // red 400, lifted

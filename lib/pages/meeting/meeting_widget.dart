@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../app_state.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../core/nav.dart';
+import '../../core/zoom_providers.dart';
 import '../../data.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart'; // global `appBackend` lives here
@@ -86,6 +87,13 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     if (appState.userName.isNotEmpty) _nameCtrl.text = appState.userName;
     if (appState.userPhone.isNotEmpty) _phoneCtrl.text = appState.userPhone;
     if (appState.userEmail.isNotEmpty) _emailCtrl.text = appState.userEmail;
+
+    // Warm the live Zoom-supported provider set (provider_capabilities) once so
+    // the support gate reflects the table; until it resolves the const fallback
+    // is used. Rebuild when it lands in case it flips this provider's gate.
+    zoomSupportedProviders().then((_) {
+      if (mounted) setState(() {});
+    });
 
     // Editing the email after a code was sent/verified invalidates the gate:
     // a code is bound to one address, so the user must re-request + re-verify.
@@ -321,6 +329,22 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     final appState = Provider.of<AppState>(context);
     final showStatus = _hasOpenMeeting(appState);
 
+    // Honest gate: when the booking is for a KNOWN provider (passed in via the
+    // entry point) that doesn't support Zoom video calls, never offer the
+    // booking form — show a clear not-supported note instead. An open meeting
+    // still owns the screen (already booked → always reachable), and when no
+    // provider was passed the user picks a supported one from the chips.
+    final gatedProvider = widget.provider;
+    final providerUnsupported = gatedProvider != null &&
+        gatedProvider.trim().isNotEmpty &&
+        !providerSupportsZoom(gatedProvider);
+
+    final Widget body = showStatus
+        ? _buildStatusView(t, appState)
+        : providerUnsupported
+            ? _buildUnsupported(t, gatedProvider)
+            : _buildWizard(t);
+
     return Scaffold(
       backgroundColor: t.background,
       appBar: AppBar(
@@ -337,8 +361,71 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: showStatus ? _buildStatusView(t, appState) : _buildWizard(t),
+        child: body,
       ),
+    );
+  }
+
+  // ── Provider-not-supported state ───────────────────────────────────────────
+  /// Shown instead of the booking wizard when the entry provider doesn't offer
+  /// Zoom video calls (provider_capabilities.supports_zoom_meeting = false).
+  /// Keeps the Geist header; offers a phone callback so the user never dead-ends.
+  Widget _buildUnsupported(AppTheme t, String provider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHero(t).animate().fadeIn(duration: 350.ms),
+        const SizedBox(height: 20),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: t.cardDecoration(radius: t.radiusLg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  ExcludeSemantics(child: LogoWidget(provider: provider, size: 30)),
+                  const SizedBox(width: 10),
+                  Icon(Icons.videocam_off_rounded, size: 22, color: t.secondaryText),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('ספק זה אינו תומך כרגע בשיחות וידאו',
+                  style: t.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                'פגישות הווידאו זמינות כרגע רק עם חלק מהספקים. אפשר לבקש שנציג '
+                'יחזור אליכם טלפונית, או לבחור ספק אחר.',
+                style: t.bodySmall.copyWith(color: t.secondaryText),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.pushNamed('Callback'),
+                  icon: const Icon(Icons.headset_mic_outlined, size: 18),
+                  label: const Text('בקשו שיחה חוזרת במקום'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: t.brandAccent,
+                    side: BorderSide(color: t.brandAccent),
+                    minimumSize: const Size(double.infinity, 46),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.04, end: 0),
+        const SizedBox(height: 16),
+        Center(
+          child: TextButton(
+            onPressed: () => context.goNamed('Home'),
+            child: Text('חזרה לדף הבית',
+                style: t.labelMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+          ),
+        ),
+      ],
     );
   }
 
@@ -582,10 +669,15 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   }
 
   Widget _buildProviderChips(AppTheme t) {
+    // Only offer providers that actually support a Zoom booking — picking an
+    // unsupported one would just dead-end at submit. Keeps the chips honest and
+    // in sync with the same gate the entry-provider path uses.
+    final providers =
+        allProviders.where(providerSupportsZoom).toList(growable: false);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: allProviders.map((p) {
+      children: providers.map((p) {
         final active = _provider == p;
         return Semantics(
           button: true,

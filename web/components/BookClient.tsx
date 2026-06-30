@@ -33,6 +33,7 @@ import CommissionDisclosure from "@/components/CommissionDisclosure";
 import { isValidIsraeliPhone } from "@/lib/phone";
 import { CATEGORY_HE } from "@/lib/categories";
 import { availableSlots } from "@/lib/slots";
+import { MEETING_PROVIDERS } from "@/lib/meeting-providers";
 
 // The categories the booking form offers (same set + order as <LeadForm>).
 const SERVICE_CATEGORIES = [
@@ -92,12 +93,28 @@ async function callMeetingBook(
   return data;
 }
 
-// The carriers Switchy books a Zoom consultation for. MUST stay in sync with the
-// public.meetings_guard whitelist (meetings-2026-06.sql) — an insert with any other
-// `provider` is rejected ('provider not eligible'). Mirrors the static booking grid.
-const MEETING_PROVIDERS = ["HOT", "yes", "פרטנר", "סלקום", "STING TV", "בזק", "הוט מובייל"] as const;
+interface BookClientProps {
+  /**
+   * The Zoom-supported providers to offer in the dropdown — read LIVE from
+   * public.provider_capabilities by the /book server component (single source of
+   * truth). Only these may be booked: the server's meetings_guard /
+   * provider_capabilities gate rejects any other provider, so the UI must not
+   * offer one. When the prop is omitted/empty (e.g. a unit render with no server
+   * fetch) we default to the bundled {@link MEETING_PROVIDERS} const (the 10
+   * Zoom-supported providers) so the dropdown is never empty or out of sync.
+   */
+  supportedProviders?: readonly string[];
+}
 
-export default function BookClient() {
+export default function BookClient({ supportedProviders }: BookClientProps = {}) {
+  // The dropdown list: the live server-fetched providers when present, else the
+  // resilient const fallback. Both honour the same single source of truth. Typed
+  // as readonly string[] so .includes(provider) accepts an arbitrary string.
+  const meetingProviders: readonly string[] =
+    supportedProviders && supportedProviders.length > 0
+      ? supportedProviders
+      : MEETING_PROVIDERS;
+
   // ── Step 1 fields ──────────────────────────────────────────────────────────
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -137,6 +154,12 @@ export default function BookClient() {
   useEffect(() => {
     if (slot && !slotsForDay.includes(slot)) setSlot("");
   }, [slotsForDay, slot]);
+
+  // Honesty guard: never keep a chosen provider that isn't in the supported list
+  // (e.g. the live list changed). An UNsupported provider must not be bookable.
+  useEffect(() => {
+    if (provider && !meetingProviders.includes(provider)) setProvider("");
+  }, [meetingProviders, provider]);
 
   // Focus the code input when we enter the verify step.
   useEffect(() => {
@@ -451,7 +474,7 @@ export default function BookClient() {
               className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             >
               <option value="">בחרו חברה…</option>
-              {MEETING_PROVIDERS.map((p) => (
+              {meetingProviders.map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>

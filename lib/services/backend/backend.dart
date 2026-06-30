@@ -912,6 +912,18 @@ abstract interface class Backend {
   /// as the polling fallback.
   Stream<void> catalogueChanges();
 
+  // ── Provider capabilities (provider_capabilities) ────────────────────────────
+  /// The set of provider ids that offer a Zoom video-meeting booking — the live
+  /// SOURCE OF TRUTH the booking gate consults (`public.provider_capabilities`
+  /// where `supports_zoom_meeting = true`). Provider ids are the EXACT catalogue
+  /// ids (`public.plans.provider`). [SupabaseBackend] selects the flagged rows
+  /// with the anon client (publicly-readable); [LocalBackend] returns the const
+  /// `kZoomSupportedProviders` fallback (no table offline). The Supabase
+  /// implementation returns an EMPTY set on any transport / RLS / empty-rows
+  /// failure so the caller keeps the const fallback (never blanks the gate); the
+  /// caching + fallback live in `core/zoom_providers.dart`.
+  Future<Set<String>> fetchZoomSupportedProviders();
+
   // ── Real-time deals (plan_price_history) ─────────────────────────────────────
   /// The most-recent price snapshots from `plan_price_history`, newest-first,
   /// capped at [limit]. The deals feed diffs consecutive snapshots per plan to

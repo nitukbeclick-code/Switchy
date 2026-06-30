@@ -1814,7 +1814,12 @@
     const form = $('bookForm');
     if (!form) return;
 
-    const PROVIDERS = ['HOT', 'yes', 'פרטנר', 'סלקום', 'STING TV', 'בזק', 'הוט מובייל'];
+    // The Zoom-supported providers, in EXACT catalogue ids. SINGLE SOURCE OF
+    // TRUTH is public.provider_capabilities.supports_zoom_meeting — only these 10
+    // are opted in; everyone else is NOT supported and must not be bookable. This
+    // const mirrors BOOK_PROVIDERS in site/build.js (which renders book.html's
+    // buttons) and is the FALLBACK used only when the markup ships no buttons.
+    const PROVIDERS = ['פרטנר', 'yes', 'STING TV', 'HOT', 'NextTV', 'סלקום', 'גולן טלקום', 'בזק', 'פלאפון', 'הוט מובייל'];
     const providersHost = $('bookProviders') || form.querySelector('.booking__providers');
     const dateSel = $('bookDate');
     const slotHost = $('bookSlots') || form.querySelector('.slot-grid');

@@ -45,6 +45,7 @@ import {
   hashCode,
   isValidEmail,
   normalizeEmail,
+  providerSupportsZoom,
   validBookingSlot,
 } from "./lib.ts";
 
@@ -121,10 +122,26 @@ const OTP_TTL_MS = 15 * 60_000; // code lifetime
 const MAX_VERIFY_ATTEMPTS = 5; // per OTP row
 const BOOK_OTP_MAX_AGE_MS = 30 * 60_000; // verified OTP must be fresher than this to book
 
-// Carriers eligible for a booked consultation — MUST match the public.meetings_guard
-// whitelist (meetings-2026-06.sql) EXACTLY, or the insert is rejected with
-// 'provider not eligible'. Mirrors the static booking grid + the web BookClient.
-const MEETING_PROVIDERS = ["HOT", "yes", "פרטנר", "סלקום", "STING TV", "בזק", "הוט מובייל"];
+// Zoom-meeting provider gate: the AUTHORITATIVE list of carriers eligible for a
+// booked consultation now lives in public.provider_capabilities
+// (supports_zoom_meeting) — read LIVE per request below (providerSupportsZoomDb).
+// ZOOM_SUPPORTED_PROVIDERS (in lib.ts) is the OFFLINE FALLBACK const used only
+// when that table query errors; the two MUST agree on the 10 supported ids.
+
+// Read the live capability flag for ONE provider from public.provider_capabilities
+// (service-role). Returns:
+//   true/false → the table's supports_zoom_meeting for an EXISTING row (false also
+//                covers "no row" — the read-side default is unsupported).
+//   null       → the query FAILED (no env / DB error) — caller falls back to the
+//                const set so a transient blip can't block a legit booking.
+async function providerSupportsZoomDb(provider: string): Promise<boolean | null> {
+  const q = `/rest/v1/provider_capabilities?select=supports_zoom_meeting` +
+    `&provider=eq.${encodeURIComponent(provider)}&limit=1`;
+  const rows = await fetchRows<{ supports_zoom_meeting: boolean }>(q);
+  if (rows === null) return null; // query errored → signal fallback
+  if (rows.length === 0) return false; // no row ⇒ unsupported by default
+  return rows[0].supports_zoom_meeting === true;
+}
 
 type OtpRow = {
   id: string;
@@ -327,11 +344,21 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
   if (!name || name.length < 2) return json({ ok: false, error: "שם מלא נדרש" }, 400, origin);
   if (!phone) return json({ ok: false, error: "מספר טלפון לא תקין" }, 400, origin);
   if (!isValidEmail(email)) return json({ ok: false, error: "כתובת מייל לא תקינה" }, 400, origin);
-  // Provider gate: a meeting may only be booked for an eligible carrier — the SAME
-  // seven the public.meetings_guard whitelist enforces. Reject early with a friendly
-  // message instead of letting the trigger raise a generic error.
-  if (!MEETING_PROVIDERS.includes(provider)) {
+  // A provider must be chosen at all.
+  if (!provider) {
     return json({ ok: false, error: "נא לבחור חברה לפגישה מתוך הרשימה" }, 400, origin);
+  }
+  // ZOOM-CAPABILITY GATE (defense-in-depth): a Zoom consultation may only be
+  // booked for a carrier that SUPPORTS video meetings. The authority is the live
+  // public.provider_capabilities.supports_zoom_meeting flag (read service-role);
+  // if that query errors we fall back to the ZOOM_SUPPORTED_PROVIDERS const so a
+  // transient DB blip can't block a legit booking, but the table wins whenever
+  // readable. An unsupported provider is rejected here, BEFORE the booking insert,
+  // so it is never offered a Zoom slot.
+  const dbSupports = await providerSupportsZoomDb(provider);
+  if (!providerSupportsZoom(provider, dbSupports)) {
+    jlog({ at: "book", ok: false, reason: "provider-no-zoom", db: dbSupports });
+    return json({ ok: false, error: "ספק זה אינו תומך כרגע בשיחות וידאו" }, 400, origin);
   }
 
   // EMAIL GATE: require a verified, unconsumed OTP for this address, fresh enough

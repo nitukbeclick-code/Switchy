@@ -144,6 +144,28 @@ class SupabaseBackend implements Backend {
     return _catalogueCtrl!.stream;
   }
 
+  // ── Provider capabilities (provider_capabilities) ────────────────────────────
+  // Reads the Zoom-supported provider ids from the publicly-readable
+  // `public.provider_capabilities` table (anon SELECT grant + RLS). Truth-only:
+  // a transport / RLS / empty read returns an EMPTY set so the caller keeps the
+  // const `kZoomSupportedProviders` fallback rather than blanking the gate.
+  @override
+  Future<Set<String>> fetchZoomSupportedProviders() async {
+    try {
+      final rows = await _db
+          .from('provider_capabilities')
+          .select('provider')
+          .eq('supports_zoom_meeting', true);
+      return {
+        for (final r in (rows as List))
+          if ((r as Map)['provider'] case final String p when p.isNotEmpty) p,
+      };
+    } catch (_) {
+      // Transport / RLS / parse failure → empty; the caller keeps the fallback.
+      return const {};
+    }
+  }
+
   // ── Real-time deals (plan_price_history) ─────────────────────────────────────
   @override
   Future<List<PriceSnapshot>> fetchPriceSnapshots({int limit = 400}) async {

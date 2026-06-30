@@ -102,6 +102,44 @@ export function canonicalizeEmail(raw: unknown): string {
   return `${local}@${domain}`;
 }
 
+// ── Zoom-meeting provider capability gate ────────────────────────────────────
+// SINGLE SOURCE OF TRUTH at runtime is public.provider_capabilities
+// (supports_zoom_meeting). This const is the OFFLINE FALLBACK ONLY — used when
+// the table query errors (transient DB blip / env missing) so a legit booking is
+// not blocked. The const MUST stay in sync with the seeded rows in
+// supabase/provider-capabilities-2026-06.sql (the 10 Zoom-supported providers,
+// exact catalogue ids, Hebrew-first). Every OTHER provider (019 מובייל, Xphone,
+// רמי לוי, וואלה מובייל, גילת, CCC, WeCom, Airalo eSIM, electricity, …) is NOT
+// supported and must be rejected.
+export const ZOOM_SUPPORTED_PROVIDERS: ReadonlySet<string> = new Set<string>([
+  "פרטנר",
+  "yes",
+  "STING TV",
+  "HOT",
+  "NextTV",
+  "סלקום",
+  "גולן טלקום",
+  "בזק",
+  "פלאפון",
+  "הוט מובייל",
+]);
+
+// Decide whether `provider` may be offered a Zoom booking, given the DB answer.
+// `dbSupports` is the table's supports_zoom_meeting flag:
+//   • true  → supported (the row says so) — allow.
+//   • false → explicitly NOT supported (row exists & false, or no row ⇒ caller
+//             passes false by the read-side default) — reject.
+//   • null  → the table query ERRORED (couldn't read) — FALL BACK to the const
+//             set so a transient DB issue doesn't block a legit booking, while the
+//             table stays authoritative whenever it's readable.
+// Pure: the I/O (reading the table) is the caller's job.
+export function providerSupportsZoom(provider: unknown, dbSupports: boolean | null): boolean {
+  const p = String(provider ?? "").trim();
+  if (!p) return false;
+  if (dbSupports === null) return ZOOM_SUPPORTED_PROVIDERS.has(p); // DB unreadable → const fallback
+  return dbSupports === true;
+}
+
 // ── Schedule validation — mirrors public.meetings_guard EXACTLY ──────────────
 
 export type SlotCheck = { ok: true } | { ok: false; error: string };

@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
+import '../../core/zoom_providers.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../models.dart';
@@ -41,6 +42,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     // notifyListeners doesn't fire mid-build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppState().viewPlan(widget.planId);
+    });
+    // Warm the live Zoom-supported provider set once so the video-meeting
+    // cross-sell shows/hides honestly (falls back to the const set until it
+    // resolves). Rebuild when it lands in case it flips this provider's gate.
+    zoomSupportedProviders().then((_) {
+      if (mounted) setState(() {});
     });
   }
 
@@ -551,36 +558,55 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       const SizedBox(height: 14),
 
                       // Video-meeting cross-sell — a quote over Zoom with a rep.
-                      _Card(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => context.pushNamed('Meeting', queryParameters: {
-                              'provider': plan.provider,
-                              'planId': plan.id,
-                              'source': 'plan',
-                            }),
-                            child: Row(
-                              children: [
-                                Icon(Icons.videocam_rounded, color: ffTheme.brandAccent, size: 22),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('פגישת וידאו עם נציג', style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
-                                      Text('הצעת מחיר אישית בשיחת Zoom של 30 דקות',
-                                          style: ffTheme.labelSmall),
-                                    ],
+                      // Only providers that support Zoom calls
+                      // (provider_capabilities.supports_zoom_meeting) get the
+                      // booking entry; an unsupported provider shows an honest
+                      // not-supported note instead of a card that dead-ends.
+                      if (providerSupportsZoom(plan.provider))
+                        _Card(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () => context.pushNamed('Meeting', queryParameters: {
+                                'provider': plan.provider,
+                                'planId': plan.id,
+                                'source': 'plan',
+                              }),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.videocam_rounded, color: ffTheme.brandAccent, size: 22),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('פגישת וידאו עם נציג', style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                                        Text('הצעת מחיר אישית בשיחת Zoom של 30 דקות',
+                                            style: ffTheme.labelSmall),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                Icon(Icons.chevron_left_rounded, size: 20, color: ffTheme.secondaryText),
-                              ],
+                                  Icon(Icons.chevron_left_rounded, size: 20, color: ffTheme.secondaryText),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
+                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08)
+                      else
+                        _Card(
+                          child: Row(
+                            children: [
+                              Icon(Icons.videocam_off_rounded, color: ffTheme.secondaryText, size: 22),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text('ספק זה אינו תומך כרגע בשיחות וידאו',
+                                    style: ffTheme.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w700, color: ffTheme.secondaryText)),
+                              ),
+                            ],
+                          ),
+                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
 
                       const SizedBox(height: 14),
 

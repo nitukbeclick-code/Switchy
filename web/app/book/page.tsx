@@ -24,11 +24,16 @@ import TrustSignals from "@/components/TrustSignals";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import BookClient from "@/components/BookClient";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
+import { getMeetingProviders } from "@/lib/meeting-providers";
 import { breadcrumbSchema, webPageSchema, howToSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 const PAGE_PATH = "/book";
 const REVIEWED_AT = new Date().toISOString().slice(0, 10);
+
+// ISR: regenerate hourly so the static HTML picks up owner edits to
+// public.provider_capabilities (the Zoom-supported provider list) on a schedule.
+export const revalidate = 3600;
 
 export const metadata: Metadata = pageMetadata({
   title: "קביעת שיחת ייעוץ — Switchy AI",
@@ -39,11 +44,17 @@ export const metadata: Metadata = pageMetadata({
   path: PAGE_PATH,
 });
 
-export default function BookPage() {
+export default async function BookPage() {
   // REAL catalogue totals for the honest trust block (no fabricated figures).
   const planCount = getPlans().length;
   const providerCount = getProviders().length;
   const categoryCount = getCategories().length;
+
+  // The Zoom-supported providers — read LIVE from public.provider_capabilities
+  // (single source of truth), with the bundled 10-provider const as a resilient
+  // fallback. Threaded into <BookClient> so the dropdown only ever offers
+  // providers that can actually be booked. NEVER throws.
+  const supportedProviders = await getMeetingProviders();
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -161,7 +172,7 @@ export default function BookPage() {
         <h2 id="book-h" className="sr-only">
           טופס קביעת שיחת ייעוץ
         </h2>
-        <BookClient />
+        <BookClient supportedProviders={supportedProviders} />
       </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}

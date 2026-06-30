@@ -3560,7 +3560,18 @@ ${footer}
 // time, ≥4h ahead, ≤30 days, 30-min grid, Sun–Thu 09:00–20:30 / Fri 09:00–12:30,
 // no Saturday), provider pick state, consent gating, and the success/guard-error
 // messaging. The date <select> is pre-filled here with the next ~30 valid days.
-const BOOK_PROVIDERS = ['HOT', 'yes', 'פרטנר', 'סלקום', 'STING TV', 'בזק', 'הוט מובייל'];
+// The Zoom-supported providers, in EXACT catalogue ids (public.plans.provider).
+// SINGLE SOURCE OF TRUTH is public.provider_capabilities.supports_zoom_meeting
+// (supabase/provider-capabilities-2026-06.sql): only these 10 are opted in; every
+// other provider (019 מובייל, Xphone, רמי לוי, וואלה מובייל, גילת, CCC, WeCom,
+// Airalo eSIM, electricity, …) is NOT supported and must NOT be offered a booking.
+// This const is the build-time FALLBACK that keeps the generated book.html honest
+// offline / before the migration is applied. It MUST agree with that table.
+// TODO(db-driven): to regenerate this list from the live DB, fetch
+//   /rest/v1/provider_capabilities?select=provider&supports_zoom_meeting=eq.true
+//   (same anon-key REST pattern as fetchLivePlans below) and use it here, falling
+//   back to BOOK_PROVIDERS on any empty/failed read — see rebuild-static.yml.
+const BOOK_PROVIDERS = ['פרטנר', 'yes', 'STING TV', 'HOT', 'NextTV', 'סלקום', 'גולן טלקום', 'בזק', 'פלאפון', 'הוט מובייל'];
 // Build the next ~30 calendar days as ISO values; script.js skips Saturdays when
 // populating slots, but we keep all options so the user can pick any day and see
 // "no slots" honestly. Generated from the build date for a deterministic file;

@@ -15,8 +15,10 @@ import {
   hashCode,
   isValidEmail,
   normalizeEmail,
+  providerSupportsZoom,
   timingSafeEqualHex,
   validBookingSlot,
+  ZOOM_SUPPORTED_PROVIDERS,
 } from "../meeting-book/lib.ts";
 
 // A fixed "now": Wednesday 2026-06-10 08:00 UTC (= 11:00 Asia/Jerusalem, summer
@@ -143,6 +145,62 @@ Deno.test("canonicalizeEmail is safe on malformed input (no throw, stable fallba
   assertEquals(canonicalizeEmail(""), "");
   assertEquals(canonicalizeEmail(null), "");
   assertEquals(canonicalizeEmail(undefined), "");
+});
+
+// ── providerSupportsZoom — Zoom-capability gate (DB-authoritative + const fallback)
+// The booking step rejects any provider that doesn't support video meetings. The
+// live public.provider_capabilities flag is authoritative; the const set is only
+// the fallback when the table read errors (dbSupports === null).
+
+Deno.test("provider-zoom: const fallback lists EXACTLY the 10 supported providers", () => {
+  const expected = [
+    "פרטנר",
+    "yes",
+    "STING TV",
+    "HOT",
+    "NextTV",
+    "סלקום",
+    "גולן טלקום",
+    "בזק",
+    "פלאפון",
+    "הוט מובייל",
+  ];
+  assertEquals(ZOOM_SUPPORTED_PROVIDERS.size, 10);
+  for (const p of expected) assert(ZOOM_SUPPORTED_PROVIDERS.has(p), `missing from const set: ${p}`);
+});
+
+Deno.test("provider-zoom: DB true allows, DB false rejects (table is authoritative)", () => {
+  // Even an unsupported id is allowed if the table explicitly says true...
+  assert(providerSupportsZoom("yes", true));
+  assert(providerSupportsZoom("019 מובייל", true));
+  // ...and even a supported id is rejected if the table says false (owner toggled off).
+  assertFalse(providerSupportsZoom("yes", false));
+  assertFalse(providerSupportsZoom("פרטנר", false));
+});
+
+Deno.test("provider-zoom: DB null (query errored) falls back to the const set", () => {
+  // Each of the 10 supported ids passes via the fallback...
+  for (const p of ZOOM_SUPPORTED_PROVIDERS) {
+    assert(providerSupportsZoom(p, null), `expected fallback-allow: ${p}`);
+  }
+  // ...and an unsupported id is rejected via the fallback.
+  for (const p of ["019 מובייל", "Xphone", "רמי לוי", "וואלה מובייל", "גילת", "CCC"]) {
+    assertFalse(providerSupportsZoom(p, null), `expected fallback-reject: ${p}`);
+  }
+});
+
+Deno.test("provider-zoom: empty / whitespace / missing provider is always rejected", () => {
+  for (const db of [true, false, null] as const) {
+    assertFalse(providerSupportsZoom("", db));
+    assertFalse(providerSupportsZoom("   ", db));
+    assertFalse(providerSupportsZoom(null, db));
+    assertFalse(providerSupportsZoom(undefined, db));
+  }
+});
+
+Deno.test("provider-zoom: trims surrounding whitespace before the const-fallback check", () => {
+  assert(providerSupportsZoom("  yes  ", null));
+  assertFalse(providerSupportsZoom("  Xphone  ", null));
 });
 
 // ── validBookingSlot — mirrors meetings_guard ─────────────────────────────────

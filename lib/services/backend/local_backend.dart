@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../core/zoom_providers.dart' show kZoomSupportedProviders;
 import '../../data.dart' show compiledPlans;
 import '../../models.dart';
 import '../meeting_slots.dart';
@@ -48,6 +49,14 @@ class LocalBackend implements Backend {
 
   @override
   Stream<void> catalogueChanges() => const Stream<void>.empty();
+
+  // ── Provider capabilities — the const fallback offline ───────────────────────
+  // No `provider_capabilities` table without Supabase, so the live set IS the
+  // compiled const list (the same fallback core/zoom_providers.dart uses on a
+  // failed fetch). Keeps the booking gate honest and identical offline.
+  @override
+  Future<Set<String>> fetchZoomSupportedProviders() async =>
+      kZoomSupportedProviders;
 
   // ── Real-time deals — no price ledger offline ────────────────────────────────
   // The plan_price_history ledger only exists in Supabase, so offline the deals

@@ -119,17 +119,17 @@ void main() {
     expect(find.textContaining('% התאמה'), findsNothing);
   });
 
-  testWidgets('bestMatch shows the floating badge and the amber VALUE ring', (tester) async {
+  testWidgets('bestMatch shows the floating badge and the green VALUE ring', (tester) async {
     await tester.pumpWidget(_wrap(
       const PlanCardWidget(plan: _testPlan, currentBill: 119, bestMatch: true),
     ));
     await tester.pump();
     expect(find.text('ההתאמה הכי טובה'), findsOneWidget);
-    // The card border carries the amber (VALUE) accent, 2px.
+    // The card border carries the green (VALUE) accent, 2px (owner recolor amber→green).
     final box = tester.widgetList<Container>(find.byType(Container)).firstWhere(
       (c) => c.decoration is BoxDecoration && ((c.decoration as BoxDecoration).border?.top.width ?? 0) == 2,
     );
-    expect(((box.decoration as BoxDecoration).border!.top.color), const Color(0xFFF59E0B));
+    expect(((box.decoration as BoxDecoration).border!.top.color), const Color(0xFF16A34A));
   });
 
   testWidgets('regular card has no best-match badge', (tester) async {

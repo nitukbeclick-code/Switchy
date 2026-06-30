@@ -11,6 +11,7 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/whatsapp_button.dart';
 import '../../services/recommendation_engine.dart';
@@ -76,7 +77,7 @@ class ProviderWidget extends StatelessWidget {
     return Scaffold(
       backgroundColor: ffTheme.background,
       body: plans.isEmpty
-          ? _EmptyState(providerName: providerName, ffTheme: ffTheme)
+          ? _ProviderEmpty(providerName: providerName, ffTheme: ffTheme)
           : RefreshIndicator(
               color: ffTheme.primary,
               backgroundColor: ffTheme.cardSurface,
@@ -381,8 +382,8 @@ class _HeroHeader extends StatelessWidget {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState(
+class _ProviderEmpty extends StatelessWidget {
+  const _ProviderEmpty(
       {required this.providerName, required this.ffTheme});
   final String providerName;
   final AppTheme ffTheme;
@@ -405,54 +406,15 @@ class _EmptyState extends StatelessWidget {
         title: Text(providerName,
             style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: ffTheme.accent1,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.search_off_rounded,
-                    size: 48, color: ffTheme.secondaryText),
-              )
-                  .animate()
-                  .fadeIn(duration: 400.ms)
-                  .scale(begin: const Offset(0.7, 0.7)),
-              const SizedBox(height: 20),
-              Text('לא נמצאו מסלולים', style: ffTheme.titleMedium)
-                  .animate()
-                  .fadeIn(delay: 120.ms),
-              const SizedBox(height: 8),
-              Text(
-                'אין מסלולים זמינים עבור $providerName כרגע',
-                style: ffTheme.bodyMedium
-                    .copyWith(color: ffTheme.secondaryText),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 180.ms),
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                onPressed: () => context.safePop(),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text('חזרה'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: ffTheme.primary,
-                  side: BorderSide(
-                      color: ffTheme.primary.withValues(alpha: 0.4)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 12),
-                ),
-              ).animate().fadeIn(delay: 240.ms),
-            ],
-          ),
-        ),
+      // Shared Geist empty-state: 80dp brand badge, tight headline + copy, and
+      // a CTA hugging the copy — replaces the old bespoke over-centered layout
+      // (96dp faint-grey disc + a low-emphasis outlined "back").
+      body: EmptyState(
+        icon: Icons.search_off_rounded,
+        headline: 'לא נמצאו מסלולים',
+        subtitle: 'אין מסלולים זמינים עבור $providerName כרגע',
+        ctaLabel: 'חזרה',
+        onCtaTap: () async => context.safePop(),
       ),
     );
   }

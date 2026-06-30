@@ -9,6 +9,7 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/app_sliver_header.dart';
+import '../../widgets/empty_state.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/pressable.dart';
 import '../../app_state.dart';
@@ -217,9 +218,10 @@ class _WinnerCtaBar extends StatelessWidget {
           color: ffTheme.cardSurface,
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(ffTheme.radiusXl)),
-          border: Border(
-              top: BorderSide(
-                  color: ffTheme.primary.withValues(alpha: 0.06), width: 1)),
+          // Visible 1px hairline separating the sticky bar from the scrolling
+          // matrix behind it — the prior 0.06-alpha ink line was effectively
+          // invisible, so the bar appeared to float without a seam.
+          border: Border(top: BorderSide(color: ffTheme.lineColor, width: 1)),
           boxShadow: ffTheme.shadowLifted,
         ),
         child: Row(
@@ -382,6 +384,12 @@ class _ShareMenuState extends State<_ShareMenu> {
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
+/// Compare screen empty / single-plan state. Delegates the icon + copy + CTA to
+/// the shared [EmptyState] (80dp icon, headline in primaryText, CTA right under
+/// the copy) — TOP-aligned in a scroll view rather than vertically centred, so
+/// there's no cavernous whitespace and the "חזרה לתוצאות" CTA can never fall
+/// off-screen. When one plan is already in the basket, its card is shown ABOVE
+/// the prompt and the CTA invites adding a second.
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.ffTheme, this.hasPlan = false, this.firstPlan});
   final AppTheme ffTheme;
@@ -390,43 +398,26 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final emptyState = EmptyState(
+      icon: Icons.compare_arrows_rounded,
+      headline: hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
+      subtitle: hasPlan
+          ? 'הוסף מסלול נוסף להשוואה — לחץ + בכרטיס מסלול'
+          : 'לחץ על + בכרטיס של כל מסלול\nלהוספה לסל ההשוואה',
+      ctaLabel: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
+      onCtaTap: () async => context.goNamed('Results'),
+    );
+
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 20),
-            Container(
-              width: 112,
-              height: 112,
-              decoration: BoxDecoration(
-                // GEIST: neutral tint surface (was a decorative ink-tint backdrop).
-                color: ffTheme.accent1,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.compare_arrows_rounded,
-                size: 56,
-                color: hasPlan
-                    ? ffTheme.primaryText
-                    : ffTheme.secondaryText,
-              ),
-            ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
+      child: Column(
+        // TOP-aligned (was vertically centred) — content sits under the app bar
+        // with Geist-scale padding, not floating in the middle of the screen.
+        children: [
+          if (hasPlan && firstPlan != null) ...[
             const SizedBox(height: 24),
-            Text(hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
-                    style: ffTheme.headlineSmall.copyWith(color: ffTheme.secondaryText),
-                    textAlign: TextAlign.center)
-                .animate().fadeIn(delay: 150.ms),
-            const SizedBox(height: 12),
-            Text(
-              hasPlan ? 'הוסף מסלול נוסף להשוואה — לחץ + בכרטיס מסלול' : 'לחץ על + בכרטיס של כל מסלול\nלהוספה לסל ההשוואה',
-              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
-              textAlign: TextAlign.center,
-            ).animate().fadeIn(delay: 200.ms),
-            if (hasPlan && firstPlan != null) ...[
-              const SizedBox(height: 20),
-              Container(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: ffTheme.cardDecoration(
                   radius: ffTheme.radiusCard,
@@ -436,32 +427,28 @@ class _EmptyState extends StatelessWidget {
                   children: [
                     LogoWidget(provider: firstPlan!.provider, size: 40),
                     const SizedBox(width: 12),
-                    Expanded(child: Column(
+                    Expanded(
+                        child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(firstPlan!.provider, style: ffTheme.titleSmall),
-                        Text(firstPlan!.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(firstPlan!.plan,
+                            style: ffTheme.bodySmall
+                                .copyWith(color: ffTheme.secondaryText),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
                       ],
                     )),
-                    Text('₪${firstPlan!.priceText}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
+                    Text('₪${firstPlan!.priceText}',
+                        style: ffTheme.titleMedium
+                            .copyWith(color: ffTheme.primary)),
                   ],
                 ),
-              ).animate().fadeIn(delay: 250.ms),
-            ],
-            const SizedBox(height: 32),
-            AppButton(
-              text: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
-              onPressed: () async => context.goNamed('Results'),
-
-                // Const brand ink → green ACTION gradient in both themes.
-                color: AppColors.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(14),
-                height: 52,
-
-            ).animate().fadeIn(delay: 300.ms),
+              ),
+            ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.06, end: 0),
           ],
-        ),
+          emptyState,
+        ],
       ),
     );
   }
@@ -620,7 +607,10 @@ class _CompareTableState extends State<_CompareTable> {
       _Row('ציוד ועמלות',
           plans.map((p) {
             if (p.fees.isEmpty) return '—';
-            return p.fees.entries.map((e) => '${e.key} ${e.value}').join('\n');
+            // Single-line, middot-separated so the cell stays one line (maxLines:1)
+            // and aligns with its frozen label — was '\n'-joined, which sheared
+            // the row height before the cells were capped.
+            return p.fees.entries.map((e) => '${e.key} ${e.value}').join(' · ');
           }).toList()),
       _Row('ללא התחייבות',
           plans.map((p) => p.noCommit ? '✓' : '—').toList()),
@@ -638,13 +628,18 @@ class _CompareTableState extends State<_CompareTable> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // ── Winner summary card ───────────────────────────────────────────
-        _WinnerSummaryCard(
-          plans: plans,
-          winnerId: winnerId,
-          appState: appState,
-          ffTheme: ffTheme,
-          matchMap: matchMap,
-        ),
+        // The champion banner + hero saving are a 2+ comparison construct (they
+        // crown a single winner against the field). Guard them so the card never
+        // renders with <2 plans, even if this table is ever reused outside the
+        // length-gated call site.
+        if (plans.length >= 2)
+          _WinnerSummaryCard(
+            plans: plans,
+            winnerId: winnerId,
+            appState: appState,
+            ffTheme: ffTheme,
+            matchMap: matchMap,
+          ),
 
         // ── Header strip — frozen empty label cell + scrolling plan headers ──
         Padding(
@@ -1561,20 +1556,29 @@ class _RowWidget extends StatelessWidget {
   final AppTheme ffTheme;
   final bool isAlt;
 
-  // Shared FIXED row height so the frozen label column and the scrolling value
-  // column line up cell-for-cell. It's fixed (not a minimum) so a tall value —
-  // e.g. multi-line fees — can never make the scrolling band's row outgrow the
-  // frozen label's row and shear the grid; value text is capped to fit.
-  static const double _kRowH = 48;
+  // Shared row height so the frozen label column and the scrolling value column
+  // line up cell-for-cell. [_kRowMinH] is the floor every cell shares; the
+  // ConstrainedBox(minHeight) below pins both halves to it so a single-line row
+  // can't collapse shorter than its peer. Combined with maxLines:1 on every
+  // value/price cell, a tall value (e.g. multi-line fees) can never make the
+  // scrolling band's row outgrow the frozen label's row and shear the grid.
+  static const double _kRowMinH = 48;
 
-  Color get _tint =>
-      isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : ffTheme.cardSurface;
+  // Alternating-row tint. On light, a 0.5-alpha neutral wash reads clearly over
+  // white. On dark, that same 0.5 collapsed the slate accent1 into the
+  // background — alternation was nearly invisible — so dark uses the full,
+  // un-faded accent1 to keep the zebra visible.
+  Color get _tint => isAlt
+      ? (ffTheme.dark
+          ? ffTheme.accent1
+          : ffTheme.accent1.withValues(alpha: 0.5))
+      : ffTheme.cardSurface;
 
   /// The pinned label cell for the frozen first column.
   Widget frozenLabel() {
     return Container(
       width: _kLabelColW,
-      height: _kRowH,
+      constraints: const BoxConstraints(minHeight: _kRowMinH),
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
         color: _tint,
@@ -1595,7 +1599,7 @@ class _RowWidget extends StatelessWidget {
   /// The scrolling value cells for this row (one fixed-width cell per plan).
   Widget scrollingValues() {
     return Container(
-      height: _kRowH,
+      constraints: const BoxConstraints(minHeight: _kRowMinH),
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
         color: _tint,
@@ -1654,7 +1658,11 @@ class _RowWidget extends StatelessWidget {
                 )
               : Text(
                   v,
-                  maxLines: 2,
+                  // maxLines:1 keeps every value cell a single line so its
+                  // baseline matches the frozen label across the row — a 2-line
+                  // value (e.g. multi-line fees) would otherwise grow only the
+                  // scrolling half and shear the grid.
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: ffTheme.bodySmall.copyWith(
                     color: textColor,

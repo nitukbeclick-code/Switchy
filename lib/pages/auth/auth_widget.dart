@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import '../../theme/app_theme.dart';
+import '../../core/feature_flags.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
@@ -21,7 +23,7 @@ class AuthWidget extends StatefulWidget {
   State<AuthWidget> createState() => _AuthWidgetState();
 }
 
-enum _Mode { choose, signup, login }
+enum _Mode { choose, signup, login, emailCode }
 
 class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
   _Mode _mode = _Mode.choose;
@@ -39,11 +41,16 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
   bool _acceptMarketing = false;
   bool get _consentOk => _acceptTerms && _acceptPrivacy;
 
+  // Passwordless email-OTP flow: once a code is mailed, swap the email field for
+  // the 6-digit entry. Reuses [_emailCtrl] for the address.
+  bool _codeSent = false;
+
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -87,6 +94,7 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
     _emailCtrl.dispose();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
+    _codeCtrl.dispose();
     super.dispose();
   }
 
@@ -162,6 +170,7 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
                         _Mode.choose => _chooseBody(t),
                         _Mode.signup => _emailForm(t, isSignup: true),
                         _Mode.login => _emailForm(t, isSignup: false),
+                        _Mode.emailCode => _emailCodeBody(t),
                       },
               ),
             ],
@@ -177,11 +186,13 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
       _Mode.login => 'ברוכים הבאים חזרה',
       _Mode.signup => 'יוצרים חשבון',
       _Mode.choose => 'מצטרפים ל-Switchy AI',
+      _Mode.emailCode => 'כניסה עם קוד',
     };
     final sub = switch (_mode) {
       _Mode.login => 'התחברו כדי לראות את החיסכון שלכם',
       _Mode.signup => 'נרשמים פעם אחת — חוסכים תמיד',
       _Mode.choose => 'התחברו כדי לשמור מסלולים, לעקוב ולדרג',
+      _Mode.emailCode => _codeSent ? 'הזינו את הקוד שנשלח למייל' : 'נשלח לכם קוד חד-פעמי למייל',
     };
     return Container(
       width: double.infinity,
@@ -201,7 +212,11 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
                   IconButton(
                     icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
                     tooltip: 'חזרה',
-                    onPressed: () => setState(() => _mode = _Mode.choose),
+                    onPressed: () => setState(() {
+                      _mode = _Mode.choose;
+                      _codeSent = false;
+                      _codeCtrl.clear();
+                    }),
                   )
                 else
                   IconButton(
@@ -210,10 +225,14 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
                     onPressed: () => context.safePop(),
                   ),
                 const Spacer(),
-                TextButton(
-                  onPressed: _enterAsGuest,
-                  child: Text('המשך כאורח', style: t.bodyMedium.copyWith(color: Colors.white)),
-                ),
+                // Guest skip is hidden when registration is mandatory
+                // ([kAuthGateRequired]) — there's no "continue as guest" once
+                // the auth gate is on; the router would only bounce them back.
+                if (!kAuthGateRequired)
+                  TextButton(
+                    onPressed: _enterAsGuest,
+                    child: Text('המשך כאורח', style: t.bodyMedium.copyWith(color: Colors.white)),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -442,6 +461,18 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
           onPressed: () async => setState(() => _mode = _Mode.signup),
           width: double.infinity,
         ),
+        const SizedBox(height: 10),
+        // Passwordless: mail a one-time code instead of choosing a password.
+        TextButton.icon(
+          onPressed: () => setState(() {
+            _mode = _Mode.emailCode;
+            _codeSent = false;
+            _codeCtrl.clear();
+          }),
+          icon: Icon(Icons.password_outlined, size: 18, color: t.brandAccent),
+          label: Text('כניסה עם קוד למייל',
+              style: t.bodyMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+        ),
         const SizedBox(height: 14),
         TextButton(
           onPressed: () => setState(() => _mode = _Mode.login),
@@ -549,6 +580,139 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
         ],
       ),
     ).animate().fadeIn(duration: 240.ms);
+  }
+
+  /// Passwordless email-OTP body: enter email → receive a 6-digit code → verify.
+  /// Two steps share one screen, toggled by [_codeSent].
+  Widget _emailCodeBody(AppTheme t) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_codeSent) ...[
+            _field(t, _emailCtrl, 'מייל', Icons.mail_outline_rounded,
+                keyboard: TextInputType.emailAddress,
+                autofill: const [AutofillHints.email],
+                ltr: true,
+                validator: (v) {
+                  final s = (v ?? '').trim();
+                  return (!s.contains('@') || !s.contains('.')) ? 'מייל לא תקין' : null;
+                }),
+            const SizedBox(height: 14),
+            // Same mandatory consent gate as signup/OAuth — a code login can
+            // create a brand-new account, so terms + privacy are required.
+            _consentPanel(t),
+            const SizedBox(height: 18),
+            AppButton(
+              text: 'שליחת קוד',
+              color: AppColors.primary,
+              enabled: !_busy,
+              onPressed: () async => _sendCode(),
+              width: double.infinity,
+            ),
+          ] else ...[
+            Text('הזינו את הקוד בן 6 הספרות שנשלח ל-${_emailCtrl.text.trim()}',
+                style: t.bodyMedium.copyWith(color: t.secondaryText)),
+            const SizedBox(height: 14),
+            TextFormField(
+              key: const Key('auth-otp-code'),
+              controller: _codeCtrl,
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(6),
+              ],
+              onChanged: (_) => setState(() {}),
+              onFieldSubmitted: (_) => _verifyCode(),
+              style: t.titleMedium.copyWith(
+                letterSpacing: 6,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+              decoration: InputDecoration(
+                hintText: '------',
+                counterText: '',
+                filled: true,
+                fillColor: t.secondaryBackground,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.alternate)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            AppButton(
+              text: 'אימות וכניסה',
+              color: AppColors.primary,
+              enabled: !_busy && _codeCtrl.text.trim().length == 6,
+              onPressed: () async => _verifyCode(),
+              width: double.infinity,
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: _busy ? null : () async => _sendCode(),
+              child: Text('לא קיבלתם? שליחה חוזרת',
+                  style: t.labelMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(duration: 240.ms);
+  }
+
+  /// Step 1 — validate the email + consent, then mail a 6-digit code.
+  Future<void> _sendCode() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!_consentOk) {
+      _consentMissing();
+      return;
+    }
+    setState(() => _busy = true);
+    final res = await AuthService.instance.requestEmailOtp(
+      email: _emailCtrl.text,
+      acceptedTerms: _acceptTerms,
+      acceptedPrivacy: _acceptPrivacy,
+      acceptedMarketing: _acceptMarketing,
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!res.ok) {
+      AppSnackBar.error(context, res.error ?? 'שליחת הקוד נכשלה');
+      return;
+    }
+    setState(() {
+      _codeSent = true;
+      _codeCtrl.clear();
+    });
+    AppSnackBar.success(context, 'נשלח קוד למייל — הזינו אותו כאן');
+  }
+
+  /// Step 2 — verify the code; on success mirror identity locally and enter.
+  Future<void> _verifyCode() async {
+    final code = _codeCtrl.text.trim();
+    if (code.length != 6) return;
+    setState(() => _busy = true);
+    final res = await AuthService.instance.verifyEmailOtp(
+      email: _emailCtrl.text,
+      code: code,
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (!res.ok) {
+      AppSnackBar.error(context, res.error ?? 'הקוד שגוי או שפג תוקפו');
+      return;
+    }
+    // Verified → a real session now exists. Mirror identity locally and enter;
+    // the auth-state listener in main.dart also records consent + upserts.
+    final email = _emailCtrl.text.trim();
+    final n = AuthService.instance.currentEmail?.split('@').first ?? email.split('@').first;
+    AppState().login(name: n, phone: AppState().userPhone, email: email);
+    AppState().markOnboardingSeen();
+    context.goNamed('Home');
   }
 
   Future<void> _forgotPassword() async {

@@ -9,6 +9,7 @@ import 'services/backend/backend.dart'
     show BookedMeeting, MeetingStatus, meetingStatusFromDb, meetingStatusToDb;
 import 'services/backend/local_backend.dart' show appBackend;
 import 'services/savings_summary.dart' show savingsCreditedOnLead;
+import 'services/auth_service.dart' show AuthService;
 
 /// Outcome of [AppState.saveProfile] — lets the edit-profile UI pick the right
 /// Hebrew message without re-deriving validation rules in the widget.
@@ -544,6 +545,14 @@ class AppState extends ChangeNotifier {
   String get userPhone => _userPhone;
   String get userEmail => _userEmail;
   String get firstName => _userName.isNotEmpty ? _userName.split(' ').first : 'אורח';
+
+  /// True only for a REAL, non-anonymous Supabase account (email/OAuth-backed) —
+  /// an anonymous guest session counts as NOT registered. Read by the router's
+  /// `kAuthGateRequired` gate. Guarded against Supabase-not-initialized (unit
+  /// tests / LocalBackend) via [AuthService.isRealUser], which returns false
+  /// instead of throwing, so this is always safe to call synchronously.
+  bool get isRegistered => AuthService.instance.isRealUser;
+
   void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; notifyListeners(); _persist(); }
   void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; notifyListeners(); _persist(); }
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'backend/local_backend.dart' show appBackend;
 
 /// Real authentication on top of Supabase Auth — email+password, Google &
 /// Facebook OAuth, sign-out, and on-device biometric (Face ID / fingerprint)
@@ -138,6 +139,78 @@ class AuthService {
     try {
       await auth.resetPasswordForEmail(email.trim());
       return const AuthOutcome(ok: true);
+    } catch (e) {
+      return AuthOutcome.failure(_he(e.toString()));
+    }
+  }
+
+  // ── Passwordless email (OTP code) ────────────────────────────────────────────
+  // A code-by-mail flow: no password to choose or remember. [requestEmailOtp]
+  // mails a 6-digit code (Supabase `signInWithOtp`), [verifyEmailOtp] exchanges
+  // the code for a real session (`verifyOTP`, type `email`). Like signup, the
+  // request is consent-gated and arms the legal-consent record so it's stamped
+  // once the session lands. On a verified session we await the profile upsert so
+  // a registered row is guaranteed before the caller treats the user as signed-in.
+
+  /// Step 1 — mail a 6-digit login/signup code to [email]. Consent-gated like
+  /// signup (terms + privacy mandatory); arms the consent record for when the
+  /// session arrives at verify time. [shouldCreateUser] true lets a brand-new
+  /// email register straight from the code (the mandatory auth gate's happy path).
+  Future<AuthOutcome> requestEmailOtp({
+    required String email,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
+    bool acceptedMarketing = false,
+  }) async {
+    if (!acceptedTerms || !acceptedPrivacy) {
+      return const AuthOutcome.failure('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך');
+    }
+    final auth = _auth;
+    if (auth == null) return const AuthOutcome.failure('שירות ההתחברות אינו זמין כרגע');
+    try {
+      await auth.signInWithOtp(email: email.trim(), shouldCreateUser: true);
+      // Arm consent now; recordConsentIfArmed() stamps it once verifyOTP lands a
+      // session (the auth listener also calls it, so it's idempotent either way).
+      armConsent(marketing: acceptedMarketing);
+      return const AuthOutcome(ok: true);
+    } on AuthException catch (e) {
+      return AuthOutcome.failure(_he(e.message));
+    } catch (e) {
+      return AuthOutcome.failure(_he(e.toString()));
+    }
+  }
+
+  /// Step 2 — exchange the 6-digit [code] for a real session. On success records
+  /// the armed consent and AWAITS the profile upsert so a `profiles` row exists
+  /// before the caller routes into the gated app. The auth-state listener still
+  /// mirrors identity + navigates; this just guarantees the row up front.
+  Future<AuthOutcome> verifyEmailOtp({
+    required String email,
+    required String code,
+    String name = '',
+  }) async {
+    final auth = _auth;
+    if (auth == null) return const AuthOutcome.failure('שירות ההתחברות אינו זמין כרגע');
+    try {
+      final res = await auth.verifyOTP(
+        email: email.trim(),
+        token: code.trim(),
+        type: OtpType.email,
+      );
+      if (res.session == null) {
+        return const AuthOutcome.failure('הקוד שגוי או שפג תוקפו — בקשו קוד חדש');
+      }
+      // Stamp server-authoritative consent now that a session exists.
+      await recordConsentIfArmed();
+      // Guarantee a registered profile row before the caller enters the app.
+      final e = email.trim();
+      final n = name.trim().isNotEmpty ? name.trim() : e.split('@').first;
+      try {
+        await appBackend.upsertProfile(name: n, phone: '', email: e);
+      } catch (_) {/* fail-soft — the auth listener re-mirrors the profile too */}
+      return const AuthOutcome(ok: true);
+    } on AuthException catch (e) {
+      return AuthOutcome.failure(_he(e.message));
     } catch (e) {
       return AuthOutcome.failure(_he(e.toString()));
     }

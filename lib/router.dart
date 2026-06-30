@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'app_state.dart';
+import 'core/feature_flags.dart';
 import 'theme/app_theme.dart';
 import 'widgets/glass_panel.dart';
 import 'pages/onboarding/onboarding_widget.dart';
@@ -82,6 +83,19 @@ GoRouter createRouter() {
       return '/lock';
     }
     final appState = Provider.of<AppState>(context, listen: false);
+    // Mandatory auth gate (feature-flagged, defaults OFF). When the owner flips
+    // [kAuthGateRequired] on — once OAuth / email-OTP providers are configured —
+    // a visitor who isn't a REAL (non-anonymous) account is forced to `/auth`
+    // and can't reach `/home` or skip onboarding as a guest. `/auth` itself
+    // (and `/website`, the public marketing surface) stay reachable so the gate
+    // doesn't trap the very screen that lets them register. While the flag is
+    // OFF this block is inert and the redirect below is unchanged.
+    if (kAuthGateRequired &&
+        !appState.isRegistered &&
+        state.uri.path != '/auth' &&
+        state.uri.path != '/website') {
+      return '/auth';
+    }
     // Admin-only CRM + analytics — a non-admin who deep-links to either bounces
     // home. The edge function re-checks authoritatively; this is just the UI gate.
     if ((state.uri.path == '/crm' || state.uri.path == '/analytics') &&

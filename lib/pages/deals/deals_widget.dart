@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../app_state.dart';
@@ -129,7 +128,7 @@ class _DealsWidgetState extends State<DealsWidget> {
       backgroundColor: ffTheme.background,
       appBar: AppBar(
         title: Text('מבצעים בזמן אמת',
-            style: GoogleFonts.rubik(fontWeight: FontWeight.w700)),
+            style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
         backgroundColor: ffTheme.background,
         foregroundColor: ffTheme.primaryText,
         elevation: 0,
@@ -228,7 +227,7 @@ class _DealsWidgetState extends State<DealsWidget> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
               color: ffTheme.brandAccentTint,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -276,9 +275,9 @@ class _DealCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: ffTheme.saving.withValues(alpha: 0.12),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(ffTheme.radiusCard),
+                topRight: Radius.circular(ffTheme.radiusCard),
               ),
               border: Border.all(color: ffTheme.saving.withValues(alpha: 0.30)),
             ),
@@ -314,7 +313,7 @@ class _DealCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                     decoration: BoxDecoration(
                       color: ffTheme.saving,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                     ),
                     child: Text('-${drop.dropPctRounded}%',
                         style: ffTheme.labelSmall.copyWith(
@@ -357,9 +356,9 @@ class _DealSkeleton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
               color: t.saving.withValues(alpha: 0.10),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(t.radiusCard),
+                topRight: Radius.circular(t.radiusCard),
               ),
               border: Border.all(color: t.saving.withValues(alpha: 0.22)),
             ),

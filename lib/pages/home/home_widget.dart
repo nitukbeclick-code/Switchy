@@ -13,6 +13,7 @@ import '../../services/backend/backend.dart' show MeetingStatus;
 import '../../services/meeting_slots.dart' show meetingLocalStart;
 import '../meeting/meeting_status_card.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../services/recommendation_engine.dart';
@@ -108,6 +109,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
     final savings = _savingsFor(appState);
+    // Honour the OS "reduce motion" setting for the overlay entrances (FAB +
+    // compare tray): when set, they appear instantly with no fade/slide.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -171,42 +175,51 @@ class _HomeWidgetState extends State<HomeWidget> {
             ],
           ),
 
-          // ── Callback FAB (kept; no entrance animation) ─────────────────────
+          // ── Callback FAB ───────────────────────────────────────────────────
+          // A genuinely-lifted overlay, so it keeps its lift and earns a short,
+          // restrained ENTRANCE (fade + a few px slide-up), reduced-motion-aware.
           Positioned(
             bottom: 24,
             left: 20,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: ffTheme.shadowAccent,
-              ),
-              child: FloatingActionButton(
-                // Green ACTION — request a callback. Icon-only, so it carries a
-                // tooltip (also surfaced as a semantics label) per the a11y rule.
-                tooltip: 'בקשת שיחה חוזרת',
-                backgroundColor: ffTheme.brandAccent,
-                elevation: 0,
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  context.pushNamed('Callback');
-                },
-                child: const ExcludeSemantics(child: Icon(Icons.phone_rounded, color: Colors.white, size: 26)),
+            child: _animateOverlay(
+              reduceMotion,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: ffTheme.shadowAccent,
+                ),
+                child: FloatingActionButton(
+                  // Green ACTION — request a callback. Icon-only, so it carries a
+                  // tooltip (also surfaced as a semantics label) per the a11y rule.
+                  tooltip: 'בקשת שיחה חוזרת',
+                  backgroundColor: ffTheme.brandAccent,
+                  elevation: 0,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.pushNamed('Callback');
+                  },
+                  child: const ExcludeSemantics(child: Icon(Icons.phone_rounded, color: Colors.white, size: 26)),
+                ),
               ),
             ),
           ),
 
-          // ── Compare tray (kept; no entrance animation) ─────────────────────
+          // ── Compare tray ───────────────────────────────────────────────────
+          // The sticky compare bar is a genuinely-lifted overlay (keeps its
+          // lift); it slides up + fades in on appear, reduced-motion-aware.
           if (appState.comparePlans.isNotEmpty)
             Positioned(
               bottom: 24,
               right: 16,
               left: 76,
-              child: Pressable(
-                haptic: false,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.goNamed('Compare');
-                },
+              child: _animateOverlay(
+                reduceMotion,
+                Pressable(
+                  haptic: false,
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.goNamed('Compare');
+                  },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
@@ -228,11 +241,24 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ],
                   ),
                 ),
+                ),
               ),
             ),
         ],
       ),
     );
+  }
+
+  /// A restrained ENTRANCE for the two lifted overlays (the callback FAB and the
+  /// sticky compare tray): a short fade in with a few-px upward slide so they
+  /// arrive softly instead of popping. Reduced-motion-aware — when the OS asks to
+  /// reduce motion the [child] is returned as-is (no fade, no slide).
+  Widget _animateOverlay(bool reduceMotion, Widget child) {
+    if (reduceMotion) return child;
+    return child
+        .animate()
+        .fadeIn(duration: 260.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.2, end: 0, duration: 260.ms, curve: Curves.easeOutCubic);
   }
 
   // ── Section builders ─────────────────────────────────────────────────────
@@ -465,26 +491,25 @@ class _HomeWidgetState extends State<HomeWidget> {
             ),
             const SizedBox(height: 16),
             // SINGLE calm green ACTION CTA — the only conversion cue on the hero.
+            // Routed through the unified [AppButton] (pill variant) so the hero
+            // capsule is the same one source of truth as every other CTA. Green
+            // brandAccent fill + white w700 label preserves the prior visual; the
+            // pill flag rounds it to [radiusPill]. The button fires its own
+            // selectionClick haptic, so the wrapping [Semantics] keeps the a11y
+            // label and the outer card Pressable stays silent (haptic: false).
             Semantics(
               button: true,
               label: personalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
-              child: Pressable(
-                haptic: false,
-                onTap: () {
-                  HapticFeedback.lightImpact();
+              child: AppButton(
+                text: ctaLabel,
+                color: AppColors.brandAccent,
+                pill: true,
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                onPressed: () async {
                   personalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: ffTheme.brandAccent,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  ),
-                  child: Text(
-                    ctaLabel,
-                    style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                  ),
-                ),
               ),
             ),
           ],
@@ -838,7 +863,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                           : ffTheme.primary.withValues(alpha: 0.06),
                       width: isActive ? 2 : 1,
                     ),
-                    boxShadow: ffTheme.shadowMd,
+                    // ONE DEPTH STORY: resting browse cards read as one flat
+                    // plane — a hairline + whisper [shadowCard], not a lifted
+                    // [shadowMd]. Only sheets/FAB/sticky compare bar lift.
+                    boxShadow: ffTheme.shadowCard,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -994,7 +1022,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
-                    boxShadow: ffTheme.shadowSoft,
+                    // ONE DEPTH STORY: flat resting card — hairline + whisper.
+                    boxShadow: ffTheme.shadowCard,
                   ),
                   child: Row(
                     children: [
@@ -1031,7 +1060,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(6)),
+                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
                                   child: Text('הפוסט שלך', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ),
                               ],
@@ -1061,7 +1090,8 @@ class _HomeWidgetState extends State<HomeWidget> {
           color: ffTheme.accent1,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
-          boxShadow: ffTheme.shadowSoft,
+          // ONE DEPTH STORY: flat resting card — hairline + whisper.
+          boxShadow: ffTheme.shadowCard,
         ),
         child: Row(
           children: [

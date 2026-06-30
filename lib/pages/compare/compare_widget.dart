@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -175,21 +174,22 @@ class _HeroSaving extends StatelessWidget {
       children: [
         Text(
           '₪$saving',
-          style: GoogleFonts.rubik(
+          // Hero stat numeral → numericLarge (30/w800/tabular); copyWith carries
+          // the genuine deltas (34px hero size, VALUE-green savingText, the -1
+          // tracking, flat 1.0 height) so the figure renders identically.
+          style: ffTheme.numericLarge.copyWith(
             fontSize: 34,
-            fontWeight: FontWeight.w800,
             color: ffTheme.savingText,
             letterSpacing: -1,
             height: 1.0,
-            fontFeatures: const [FontFeature.tabularFigures()],
           ),
         ),
         const SizedBox(height: 2),
         Text(
           'חיסכון שנתי עם ההמלצה',
-          style: GoogleFonts.assistant(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+          // Assistant caption → nearest scale token is labelMedium (12/w600);
+          // copyWith only re-asserts the secondaryText colour it already carries.
+          style: ffTheme.labelMedium.copyWith(
             color: ffTheme.secondaryText,
           ),
         ),
@@ -248,7 +248,9 @@ class _WinnerCtaBar extends StatelessWidget {
                   // gradient + glow in BOTH themes (white-on-green).
                   color: AppColors.primary,
                   textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(16),
+                  // No token equals 16 (radiusCard 12 / radiusSheet 20 straddle it
+                  // equally); radiusCard keeps this CTA on the content-corner scale.
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ),
               ),
             ),
@@ -736,7 +738,7 @@ class _CompareTableState extends State<_CompareTable> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: ffTheme.warning.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
               ),
               child: Row(
@@ -786,7 +788,7 @@ class _CompareTableState extends State<_CompareTable> {
                       // minimum tap target so it's comfortable on mobile.
                       minimumSize: const Size(0, kMinTapTarget),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         side: BorderSide(
                             color: isWinner
                                 ? ffTheme.primary
@@ -1131,7 +1133,9 @@ class _ScrollDots extends StatelessWidget {
                 height: 2,
                 decoration: BoxDecoration(
                   color: ffTheme.alternate,
-                  borderRadius: BorderRadius.circular(1),
+                  // A 2px-tall track: radiusPill capsules it (clamps to half-height),
+                  // rendering identically to the bespoke circular(1).
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                 ),
               ),
               // Gliding thumb — left/right is physical, fraction follows the
@@ -1232,8 +1236,9 @@ class _WinnerSummaryCard extends StatelessWidget {
                     const Spacer(),
                     if (winnerSave > 0)
                       Text('חיסכון ₪$winnerSave/שנה',
-                          style: GoogleFonts.rubik(
-                              fontSize: 13,
+                          // Rubik 13 → titleSmall; copyWith carries w700, the
+                          // VALUE-green colour and the tabular figures.
+                          style: ffTheme.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: ffTheme.saving,
                               fontFeatures: const [FontFeature.tabularFigures()])),
@@ -1244,7 +1249,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                       child: LogoWidget(provider: winner.provider, size: 40),
                     ),
                     const SizedBox(width: 12),
@@ -1252,16 +1257,22 @@ class _WinnerSummaryCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(winner.provider, style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                          Text(winner.plan, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          // Rubik 18 → headlineMedium (18); copyWith carries w800 + on-ink white.
+                          Text(winner.provider, style: ffTheme.headlineMedium.copyWith(fontWeight: FontWeight.w800, color: Colors.white)),
+                          // Assistant 12 → labelMedium (12); copyWith restores the
+                          // original w400 weight and the on-ink white70.
+                          Text(winner.plan, style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w400, color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('₪${winner.priceText}', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
-                        Text(priceUnitLabel(winner), style: GoogleFonts.assistant(fontSize: 11, color: Colors.white60)),
+                        // Price numeral → numericLarge (30/w800/tabular); copyWith
+                        // carries the 28px size, -1 tracking and on-ink white.
+                        Text('₪${winner.priceText}', style: ffTheme.numericLarge.copyWith(fontSize: 28, color: Colors.white, letterSpacing: -1)),
+                        // Assistant 11 → labelSmall (11); copyWith restores w400 + on-ink white60.
+                        Text(priceUnitLabel(winner), style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w400, color: Colors.white60)),
                       ],
                     ),
                   ],
@@ -1275,14 +1286,15 @@ class _WinnerSummaryCard extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'למה ${winner.provider} מנצח?',
-                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                          // Rubik 13 → titleSmall; copyWith carries w700 + on-ink white.
+                          style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                         const SizedBox(height: 8),
                         // Engine reasons — green-tinted check reads as "pro" on the
@@ -1295,7 +1307,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                               const Icon(Icons.check_circle_rounded, size: 15, color: Colors.white),
                               const SizedBox(width: 6),
                               Expanded(
-                                child: Text(r, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                                child: Text(r, style: ffTheme.labelMedium.copyWith(color: Colors.white)),
                               ),
                             ],
                           ),
@@ -1309,7 +1321,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                               Icon(Icons.star_rounded, size: 15, color: ffTheme.saving),
                               const SizedBox(width: 6),
                               Expanded(
-                                child: Text(s, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                                child: Text(s, style: ffTheme.labelMedium.copyWith(color: Colors.white)),
                               ),
                             ],
                           ),
@@ -1331,10 +1343,13 @@ class _WinnerSummaryCard extends StatelessWidget {
                     backgroundColor: Colors.white,
                     foregroundColor: AppColors.primary,
                     minimumSize: const Size(double.infinity, 46),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                     elevation: 0,
                   ),
-                  child: Text('בחר מסלול זה ←', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  // Rubik 14 → titleLarge (15/w700); copyWith carries the 14px
+                  // size, w800 and the ink label that sits on the white-on-ink-hero
+                  // fill (theme-locked here, so it stays AppColors.primary directly).
+                  child: Text('בחר מסלול זה ←', style: ffTheme.titleLarge.copyWith(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
                 ),
               ],
             ),
@@ -1362,7 +1377,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                       child: LinearProgressIndicator(
                         value: fraction,
                         // Track stays a pale glass tint; winner is full ink, the
@@ -1455,7 +1470,9 @@ class _PlanHeader extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: ffTheme.saving,
-                borderRadius: BorderRadius.circular(20),
+                // A small pill badge: radiusPill capsules it (was a bespoke 20 that
+                // already fully rounded this ~20px-tall chip).
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1487,7 +1504,7 @@ class _PlanHeader extends StatelessWidget {
                 // Winner: ink chip + white text. Others: light-grey chip + dark
                 // text (never grey-on-dark — keeps the % legible).
                 color: isWinner ? ffTheme.primary : ffTheme.secondary,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
               ),
               child: Text(
                 '${match!.scorePct}% התאמה',
@@ -1583,8 +1600,8 @@ class _RowWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: _tint,
         // Round only the start side; the end butts against the scrolling band.
-        borderRadius: const BorderRadiusDirectional.horizontal(
-          start: Radius.circular(8),
+        borderRadius: BorderRadiusDirectional.horizontal(
+          start: Radius.circular(ffTheme.radiusSm),
         ),
       ),
       alignment: AlignmentDirectional.centerStart,
@@ -1603,8 +1620,8 @@ class _RowWidget extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
         color: _tint,
-        borderRadius: const BorderRadiusDirectional.horizontal(
-          end: Radius.circular(8),
+        borderRadius: BorderRadiusDirectional.horizontal(
+          end: Radius.circular(ffTheme.radiusSm),
         ),
       ),
       child: Row(
@@ -1640,7 +1657,7 @@ class _RowWidget extends StatelessWidget {
                     color: isWinner
                         ? ffTheme.saving.withValues(alpha: 0.18)
                         : ffTheme.background,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   ),
                   child: Text(
                     v,

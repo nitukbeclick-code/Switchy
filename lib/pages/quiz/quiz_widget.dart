@@ -182,7 +182,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                   height: 56,
                   color: ffTheme.brandAccent,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
                 ),
                 const SizedBox(height: 8),
                 // SECONDARY — demoted to a single low-emphasis text button that
@@ -210,7 +210,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                           foregroundColor: ffTheme.secondaryText,
                           side: BorderSide(color: ffTheme.alternate),
                           minimumSize: const Size(52, 56),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSheet)),
                         ),
                         child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
                       ),
@@ -229,7 +229,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                       height: 56,
                       color: ffTheme.brandAccent,
                       textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
                     ),
                   ),
                 ],
@@ -840,12 +840,13 @@ class _QuizWidgetState extends State<QuizWidget> {
                     // Savings strip ghost.
                     SkeletonBox(width: double.infinity, height: 56, radius: ffTheme.radiusLg),
                     const SizedBox(height: 14),
-                    // Badge row ghost.
-                    const Row(
+                    // Badge row ghost — pill radius sourced from the token so the
+                    // ghosts mirror the real radiusPill badges they stand in for.
+                    Row(
                       children: [
-                        SkeletonBox(width: 84, height: 24, radius: 20),
-                        SizedBox(width: 8),
-                        SkeletonBox(width: 96, height: 24, radius: 20),
+                        SkeletonBox(width: 84, height: 24, radius: ffTheme.radiusPill),
+                        const SizedBox(width: 8),
+                        SkeletonBox(width: 96, height: 24, radius: ffTheme.radiusPill),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -878,7 +879,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: ffTheme.brandAccentTint,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ),
                 child: Icon(Icons.auto_awesome_rounded, color: ffTheme.brandAccent, size: 20),
               ),
@@ -986,7 +987,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.saving.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
                         ),
                         child: Row(
@@ -1004,7 +1005,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           gradient: ffTheme.accentGradient,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1022,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.brandAccentTint,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
                         ),
                         child: Text(top.label,
@@ -1111,7 +1112,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: ffTheme.secondary,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                           ),
                           child: Text('${alt.scorePct}%',
                               style: ffTheme.labelSmall
@@ -1160,7 +1161,7 @@ class _StepCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: ffTheme.brandAccentTint,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
               ),
               child: ExcludeSemantics(
                 child: Text('שלב $step מתוך 5',
@@ -1300,7 +1301,7 @@ class _PresetChip extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                 border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
               ),
               child: ExcludeSemantics(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -137,11 +136,12 @@ class _RealizedHeroFigure extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 'החיסכון שלך עד היום',
-                style: GoogleFonts.assistant(
-                    fontSize: 12,
+                // Eyebrow sourced from the label scale (Assistant 12 / secondary
+                // ink); the genuine delta (bolder w700 + a hair of tracking)
+                // rides via copyWith.
+                style: ffTheme.labelMedium.copyWith(
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                    color: ffTheme.secondaryText),
+                    letterSpacing: 0.2),
               ),
             ],
           ),
@@ -155,34 +155,34 @@ class _RealizedHeroFigure extends StatelessWidget {
               // is KEPT, only the size is dialed down.
               Text(
                 '₪${wallet.realizedSaving}',
-                style: GoogleFonts.rubik(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
+                // The hero realized total IS numericLarge (Rubik 30 / w800 /
+                // height 1 / tabular) — sourced from the numeric scale so it
+                // aligns with the shared savings treatment. The genuine deltas
+                // (VALUE-green colour + the tighter -1 tracking the hero wants)
+                // ride via copyWith.
+                style: ffTheme.numericLarge.copyWith(
                   color: valueAmber,
                   letterSpacing: -1,
-                  height: 1,
-                  // Tabular figures so the hero realized total aligns with the
-                  // shared savings treatment (the eyebrow above carries the
-                  // savings glyph). Kept a numeral as the page's main stat.
-                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(width: 8),
               Padding(
                 padding: const EdgeInsets.only(bottom: 7),
                 child: Text('לשנה',
-                    style: GoogleFonts.assistant(
-                        fontSize: 15,
-                        color: ffTheme.secondaryText)),
+                    // "per year" suffix → body scale (Assistant 15); the muted
+                    // colour and the original's w400 (vs the token's w500) are the
+                    // deltas, kept so the suffix renders unchanged.
+                    style: ffTheme.bodyLarge.copyWith(
+                        color: ffTheme.secondaryText, fontWeight: FontWeight.w400)),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
             'כ-₪${wallet.monthlyEquivalent} בחודש שנשארים אצלך',
-            style: GoogleFonts.assistant(
-                fontSize: 13,
-                color: ffTheme.secondaryText),
+            // Monthly-equivalent caption → bodySmall (Assistant 13 / secondary
+            // ink); the original's w400 (vs the token's w500) is the only delta.
+            style: ffTheme.bodySmall.copyWith(fontWeight: FontWeight.w400),
             textAlign: TextAlign.center,
           ),
         ],
@@ -193,17 +193,18 @@ class _RealizedHeroFigure extends StatelessWidget {
       children: [
         Text(
           'עוד לא חסכת דרכנו',
-          style: GoogleFonts.rubik(
-              fontSize: 22, fontWeight: FontWeight.w800, color: ffTheme.primaryText),
+          // Empty-state headline → displaySmall (Rubik 22 / primary ink); only
+          // the heavier w800 is a delta.
+          style: ffTheme.displaySmall.copyWith(fontWeight: FontWeight.w800),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 6),
         Text(
           'כשתעברו למסלול משתלם דרך Switchy AI, החיסכון השנתי יופיע כאן.',
-          style: GoogleFonts.assistant(
-              fontSize: 13,
-              height: 1.4,
-              color: ffTheme.secondaryText),
+          // Empty-state body → bodySmall (Assistant 13 / secondary ink); the
+          // relaxed line-height and the original's w400 (vs the token's w500)
+          // are the deltas.
+          style: ffTheme.bodySmall.copyWith(height: 1.4, fontWeight: FontWeight.w400),
           textAlign: TextAlign.center,
         ),
       ],

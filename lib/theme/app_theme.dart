@@ -487,7 +487,16 @@ class AppTheme {
   double get radiusMd => 8; // default button/input
   double get radiusLg => 10; // cards
   double get radiusCard => 12; // large containers/bento
-  double get radiusXl => 12; // sheets/modals (Geist never exceeds 12 for content)
+  double get radiusXl => 12; // dialogs/popovers + the largest CONTENT corner
+  /// Bottom sheets and large slide-up surfaces. The ONE exception to the 12-cap:
+  /// a sheet anchored to the screen edge needs a more generous top corner to read
+  /// as a distinct surface lifting over the page, so it gets [radiusSheet] (20).
+  /// Use this token for every bottom-sheet / drawer top corner — it is the single
+  /// source for that corner, so re-rounding all sheets is a one-line change here.
+  double get radiusSheet => 20;
+  // RULE: content corners (chips→bento) never exceed [radiusXl] (12); only
+  // edge-anchored sheets/drawers use the larger [radiusSheet] (20). [radiusPill]
+  // (999) is the full-round shape for pills/avatars and is not part of that cap.
   double get radiusPill => 999;
 
   // ── Motion — one shared vocabulary of durations + curves ────────────────────
@@ -584,6 +593,29 @@ class AppTheme {
   TextStyle get displayLarge => _ink(_displayLarge);
   TextStyle get displayMedium => _ink(_displayMedium);
   TextStyle get displaySmall => _ink(_displaySmall);
+
+  // ── Numeric scale — THE single source for any rendered NUMBER ───────────────
+  // Money, savings, wallet totals and stat figures must all read from these
+  // three tokens, never a hand-tuned GoogleFonts.rubik(...) per widget. Every
+  // one carries tabular figures so digits sit on a fixed advance — totals don't
+  // jitter as they tick/animate and columns of numbers line up. These are the
+  // ONLY numeric styles; map a bespoke numeral to the nearest one + copyWith
+  // (e.g. a different colour or a hair of letterSpacing), do not invent a size.
+  //
+  //   • priceDisplay — the plan-card price numeral (30 / w800 / -0.5 tracking).
+  //     Recreated EXACTLY from plan_card_widget.dart's inline price so the
+  //     migrated card renders pixel-identical; tabular keeps ₪-prices aligned.
+  //   • numericLarge — hero/stat headline numerals (30 / w800): the wallet /
+  //     savings "realized total" hero figure. Same size+weight as priceDisplay
+  //     but a calm tracking (no -0.5) for a standalone stat rather than a price.
+  //   • numericMedium — secondary stat numerals (24 / w700): smaller figures in
+  //     a stat cluster / bento tile that sit below the hero numeral.
+  static final TextStyle _priceDisplay = GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.primaryText, fontFeatures: const [FontFeature.tabularFigures()]);
+  static final TextStyle _numericLarge = GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.02, height: 1, color: AppColors.primaryText, fontFeatures: const [FontFeature.tabularFigures()]);
+  static final TextStyle _numericMedium = GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.05, color: AppColors.primaryText, fontFeatures: const [FontFeature.tabularFigures()]);
+  TextStyle get priceDisplay => _ink(_priceDisplay);
+  TextStyle get numericLarge => _ink(_numericLarge);
+  TextStyle get numericMedium => _ink(_numericMedium);
 
   // Headlines
   static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
@@ -694,7 +726,7 @@ class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: t.cardSurface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusXl)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusSheet)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

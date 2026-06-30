@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../app_state.dart';
@@ -135,11 +134,8 @@ class PlanCardWidget extends StatelessWidget {
                                       Flexible(
                                         child: Text(
                                           plan.provider,
-                                          style: GoogleFonts.rubik(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: ffTheme.primaryText,
-                                          ),
+                                          // 15/w700/ink — the title scale exactly.
+                                          style: ffTheme.titleLarge,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -153,7 +149,10 @@ class PlanCardWidget extends StatelessWidget {
                                 ),
                                 child: Text(
                                   plan.netLabel,
-                                  style: GoogleFonts.rubik(
+                                  // Rubik micro-chip: nearest Rubik scale token
+                                  // is titleSmall (13/w600); the 10px size +
+                                  // w700 + info colour are the genuine deltas.
+                                  style: ffTheme.titleSmall.copyWith(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: ffTheme.info,
@@ -181,7 +180,10 @@ class PlanCardWidget extends StatelessWidget {
                                         ],
                                         Text(
                                           matchLabel,
-                                          style: GoogleFonts.rubik(
+                                          // Rubik micro-chip: nearest Rubik token
+                                          // is titleSmall (13/w600); 9px + w700 +
+                                          // tone are the genuine deltas.
+                                          style: ffTheme.titleSmall.copyWith(
                                             fontSize: 9,
                                             fontWeight: FontWeight.w700,
                                             color: tone,
@@ -197,11 +199,8 @@ class PlanCardWidget extends StatelessWidget {
                                   const SizedBox(height: 2),
                                   Text(
                                     plan.plan,
-                                    style: GoogleFonts.assistant(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: ffTheme.secondaryText,
-                                    ),
+                                    // 13/w500/secondary — the bodySmall scale exactly.
+                                    style: ffTheme.bodySmall,
                                   ),
                                   // Secondary affordance: open the provider profile.
                                   const SizedBox(height: 4),
@@ -209,7 +208,7 @@ class PlanCardWidget extends StatelessWidget {
                                     button: true,
                                     label: 'פרופיל ${plan.provider}',
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -218,8 +217,9 @@ class PlanCardWidget extends StatelessWidget {
                                           children: [
                                             Text(
                                               'פרופיל הספק',
-                                              style: GoogleFonts.assistant(
-                                                fontSize: 11,
+                                              // 11/w600 labelSmall; w700 + primary
+                                              // (link ink) are the genuine deltas.
+                                              style: ffTheme.labelSmall.copyWith(
                                                 fontWeight: FontWeight.w700,
                                                 color: ffTheme.primary,
                                               ),
@@ -291,7 +291,8 @@ class PlanCardWidget extends StatelessWidget {
                             // Match score is an ACTION signal → green gradient,
                             // legible in both themes (white ink on green).
                             gradient: ffTheme.accentGradient,
-                            borderRadius: BorderRadius.circular(20),
+                            // Full-round pill chip.
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                             boxShadow: ffTheme.shadowAccent,
                           ),
                           child: Row(
@@ -301,7 +302,10 @@ class PlanCardWidget extends StatelessWidget {
                               const SizedBox(width: 4),
                               Text(
                                 '$matchPct% התאמה',
-                                style: GoogleFonts.rubik(
+                                // Rubik chip: nearest Rubik token is titleSmall
+                                // (13/w600); 11px + w700 + white-on-green are the
+                                // genuine deltas.
+                                style: ffTheme.titleSmall.copyWith(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
@@ -360,18 +364,18 @@ class PlanCardWidget extends StatelessWidget {
                       children: [
                         Text(
                           displayPrice,
-                          style: GoogleFonts.rubik(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            color: ffTheme.primaryText,
-                            letterSpacing: -0.5,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
+                          // The plan-card price numeral — the dedicated
+                          // priceDisplay token (30/w800/-0.5/tabular), a
+                          // pixel-identical migration of the old inline style.
+                          style: ffTheme.priceDisplay,
                         ),
                         Text(
                           priceUnitLabel(plan),
-                          style: GoogleFonts.assistant(
-                            fontSize: 12,
+                          // 12px Assistant caption (default w400) — nearest scale
+                          // token by size is labelMedium (12/w600); w400 is the
+                          // genuine delta so the unit stays a light caption.
+                          style: ffTheme.labelMedium.copyWith(
+                            fontWeight: FontWeight.w400,
                             color: ffTheme.secondaryText,
                           ),
                         ),
@@ -379,8 +383,10 @@ class PlanCardWidget extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             'אחרי מבצע: $displayAfter',
-                            style: GoogleFonts.assistant(
-                              fontSize: 12,
+                            // 12px Assistant caption — labelMedium (12) + w400
+                            // delta, matching the price-unit caption above.
+                            style: ffTheme.labelMedium.copyWith(
+                              fontWeight: FontWeight.w400,
                               color: ffTheme.secondaryText,
                             ),
                           ),
@@ -404,11 +410,8 @@ class PlanCardWidget extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '* ${plan.intro}',
-                    style: GoogleFonts.assistant(
-                      fontSize: 11,
-                      color: ffTheme.warning,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    // 11/w600 labelSmall; the warning colour is the genuine delta.
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.warning),
                   ),
                 ],
 
@@ -434,9 +437,8 @@ class PlanCardWidget extends StatelessWidget {
                         ),
                         child: Text(
                           feat,
-                          style: GoogleFonts.assistant(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                          // 11/w600 labelSmall; primaryText is the genuine delta.
+                          style: ffTheme.labelSmall.copyWith(
                             color: ffTheme.primaryText,
                           ),
                         ),
@@ -496,7 +498,9 @@ class PlanCardWidget extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       'ההתאמה הכי טובה',
-                      style: GoogleFonts.rubik(
+                      // Rubik badge: nearest Rubik token is titleSmall (13/w600);
+                      // 11px + w800 + onSaving ink are the genuine deltas.
+                      style: ffTheme.titleSmall.copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: ffTheme.onSaving,
@@ -539,9 +543,10 @@ class _ChooseButton extends StatelessWidget {
         : (ffTheme.dark ? ffTheme.background : Colors.white);
     final label = Text(
       'בחירה',
-      style: GoogleFonts.rubik(
+      // CTA label: nearest Rubik token is titleLarge (15/w700); 14px + the
+      // on-fill labelColor are the genuine deltas.
+      style: ffTheme.titleLarge.copyWith(
         fontSize: 14,
-        fontWeight: FontWeight.w700,
         color: labelColor,
       ),
     );
@@ -672,7 +677,8 @@ class _SpecChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(20),
+        // Full-round pill chip.
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -683,11 +689,8 @@ class _SpecChip extends StatelessWidget {
           Flexible(
             child: Text(
               value,
-              style: GoogleFonts.assistant(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: ffTheme.secondaryText,
-              ),
+              // 11/w600/secondary — the labelSmall scale exactly.
+              style: ffTheme.labelSmall,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -728,7 +731,8 @@ class _EquipChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(20),
+        // Full-round pill chip.
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -739,11 +743,8 @@ class _EquipChip extends StatelessWidget {
           Flexible(
             child: Text(
               _text,
-              style: GoogleFonts.assistant(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: ffTheme.secondaryText,
-              ),
+              // 11/w600/secondary — the labelSmall scale exactly.
+              style: ffTheme.labelSmall,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -773,11 +774,8 @@ class _FlagChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.assistant(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: ffTheme.secondaryText,
-        ),
+        // 11/w600 labelSmall; w700 is the genuine delta (flag chips read bolder).
+        style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }

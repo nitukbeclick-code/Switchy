@@ -238,15 +238,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     Text(
                                       '₪${plan.priceText}',
                                       // The plan's headline price is the page's
-                                      // single focal number — tabular figures so
-                                      // the hero figure reads crisp and aligned,
-                                      // matching every other ₪ figure on the page.
-                                      style: ffTheme.displaySmall.copyWith(
-                                          color: ffTheme.primary,
-                                          fontWeight: FontWeight.w800,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures()
-                                          ]),
+                                      // single focal number — re-sourced to the
+                                      // shared [priceDisplay] numeral token (30 /
+                                      // w800 / tabular), the single source for the
+                                      // ₪ price figure across the app.
+                                      style: ffTheme.priceDisplay.copyWith(
+                                          color: ffTheme.primary),
                                     ),
                                     const SizedBox(width: 4),
                                     Padding(
@@ -269,7 +266,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: ffTheme.background,
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                     border: Border.all(color: ffTheme.alternate),
                                   ),
                                   child: Text(plan.commitmentLabel,
@@ -407,7 +404,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: ffTheme.warning.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                             border: Border.all(
                                 color: ffTheme.warning.withValues(alpha: 0.4)),
                           ),
@@ -442,7 +439,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
                               color: ffTheme.accent1,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                               border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                             ),
                             child: Row(
@@ -567,7 +564,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                               onTap: () => context.pushNamed('Meeting', queryParameters: {
                                 'provider': plan.provider,
                                 'planId': plan.id,
@@ -1062,7 +1059,7 @@ class _EstimateTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: t.warning.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(t.radiusSm),
       ),
       child: Text(
         'הערכה',
@@ -1860,7 +1857,7 @@ class _ExtraInfoSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
               ),
               child: Row(

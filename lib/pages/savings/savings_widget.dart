@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -401,7 +400,7 @@ class _RealizedCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: ffTheme.brandAccent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -411,7 +410,7 @@ class _RealizedCard extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: ffTheme.brandAccent.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
             ),
             child: Icon(Icons.savings_rounded, color: ffTheme.brandAccent, size: 22),
           ),
@@ -472,13 +471,13 @@ class _TopOpportunityCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           splashColor: ffTheme.saving.withValues(alpha: 0.12),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: ffTheme.saving.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
               border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
             ),
             child: Row(
@@ -488,7 +487,7 @@ class _TopOpportunityCard extends StatelessWidget {
                   height: 46,
                   decoration: BoxDecoration(
                     color: ffTheme.saving.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   ),
                   child: Icon(Icons.rocket_launch_rounded, size: 24, color: ffTheme.savingDark),
                 ),
@@ -617,15 +616,22 @@ class _PotentialDonutCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(personalized ? '₪$total' : '~₪$total',
-                                  style: GoogleFonts.rubik(
+                                  // Sourced from the numeric scale (Rubik +
+                                  // tabular figures); the donut-hole total sits
+                                  // below the numericMedium size, so the genuine
+                                  // delta (18px / w800 / VALUE-green) rides via
+                                  // copyWith. Tabular keeps the total aligned
+                                  // with the savings-category style.
+                                  style: ffTheme.numericMedium.copyWith(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      color: ffTheme.savingText,
-                                      // Tabular figures so the donut total stays
-                                      // aligned with the savings-category style.
-                                      fontFeatures: const [
-                                        FontFeature.tabularFigures()
-                                      ])),
+                                      // Neutralise the token's tracking/height so
+                                      // the donut total renders pixel-identical to
+                                      // the prior inline numeral (only the font
+                                      // family + tabular figures are re-sourced).
+                                      letterSpacing: 0,
+                                      height: 1,
+                                      color: ffTheme.savingText)),
                               Text('לשנה',
                                   style: ffTheme.labelSmall
                                       .copyWith(color: ffTheme.secondaryText)),
@@ -838,7 +844,7 @@ class _ProgressCard extends StatelessWidget {
           toY: y,
           width: 46,
           color: color,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusSm)),
         ),
       ],
     );
@@ -862,8 +868,18 @@ class _ValueTag extends StatelessWidget {
     return Column(
       children: [
         Text(text,
-            style: GoogleFonts.rubik(
-                fontSize: 17, fontWeight: FontWeight.w800, color: color)),
+            // Stat numeral sourced from the numeric scale (Rubik + tabular);
+            // it sits below numericMedium's size, so the 17px / w800 / per-tag
+            // colour delta rides via copyWith.
+            style: ffTheme.numericMedium.copyWith(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                // Neutralise the token's tracking/height so the tag renders at the
+                // prior inline metrics; the figure now also gains tabular figures
+                // from the token, aligning the ₪ potential/realized columns.
+                letterSpacing: 0,
+                height: 1,
+                color: color)),
         const SizedBox(height: 2),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
       ],

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
@@ -177,7 +176,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl)),
         title: const Text('מחיקת פוסט', textAlign: TextAlign.center),
         content: const Text('למחוק את הפוסט? לא ניתן לשחזר.', textAlign: TextAlign.center),
         actionsAlignment: MainAxisAlignment.center,
@@ -194,7 +193,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             style: ElevatedButton.styleFrom(
               backgroundColor: ffTheme.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
             ),
             child: const Text('מחק'),
           ),
@@ -224,7 +223,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           child: Container(
             decoration: BoxDecoration(
               color: ffTheme.background,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -260,7 +259,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: active ? AppColors.primary : ffTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
                         ),
                         child: Text(r, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
@@ -279,9 +278,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     hintText: 'פרטים נוספים (לא חובה)...',
                     filled: true,
                     fillColor: ffTheme.cardSurface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -309,8 +308,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: ffTheme.alternate,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
+                      textStyle: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700),
                       elevation: 0,
                     ),
                   ),
@@ -431,7 +430,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             builder: (ctx, scrollCtrl) => Container(
               decoration: BoxDecoration(
                 color: ffTheme.background,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
               ),
               child: Column(
                 children: [
@@ -449,7 +448,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(10)),
+                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
                               child: Text('${replies.length}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
                             ),
                           ],
@@ -465,7 +464,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: ffTheme.cardSurface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
                     child: Column(
@@ -476,7 +475,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             Container(
                               width: 28, height: 28,
                               decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                              child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                              child: Center(child: Text(post.avatar, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primary))),
                             ),
                             const SizedBox(width: 8),
                             Text(post.author, style: ffTheme.labelMedium),
@@ -548,7 +547,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: ffTheme.accent1,
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                                     border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                                   ),
                                   child: Row(
@@ -631,9 +630,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                   filled: true,
                                   fillColor: ffTheme.background,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary)),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.primary)),
                                 ),
                               ),
                             ),
@@ -703,7 +702,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           child: Container(
             decoration: BoxDecoration(
               color: ffTheme.background,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -737,7 +736,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: active ? AppColors.primary : ffTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
                         ),
                         child: Text(ch, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
@@ -760,9 +759,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     hintText: 'שתפו חוויה, טיפ, שאלה...',
                     filled: true,
                     fillColor: ffTheme.cardSurface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -817,7 +816,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent1,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                                   border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
@@ -898,8 +897,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
+                      textStyle: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700),
                       elevation: 0,
                     ),
                   ),
@@ -932,8 +931,12 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('קהילת Switchy AI', style: GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-            Text('שתפו חוויות, טיפים ועצות חיסכון', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
+            // App-bar title/subtitle on the fixed ink header — sourced from the
+            // type scale, with white-on-ink colour as the only delta (the
+            // subtitle keeps its lighter w400 via copyWith since the nearest
+            // size token, labelSmall, is w600).
+            Text('קהילת Switchy AI', style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w800, color: Colors.white)),
+            Text('שתפו חוויות, טיפים ועצות חיסכון', style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w400, color: Colors.white70)),
           ],
         ),
         foregroundColor: Colors.white,
@@ -950,8 +953,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 foregroundColor: AppColors.primary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                textStyle: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                textStyle: ffTheme.titleSmall.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                // App-bar "publish" pill — full-round to preserve the pill look
+                // (radius-20 on a short chip reads as a pill, not a 12 card).
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
               ),
             ),
           ),
@@ -987,7 +992,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1024,7 +1029,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: active ? AppColors.primary : ffTheme.cardSurface,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                       border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
                     ),
                     child: Row(
@@ -1035,7 +1040,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           const SizedBox(width: 5),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
                             child: Text('$count', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                           ),
                         ],
@@ -1063,7 +1068,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
                     ),
                     child: Row(
@@ -1097,7 +1102,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                           border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
                         ),
                         child: ExcludeSemantics(
@@ -1132,9 +1137,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       filled: true,
                       fillColor: ffTheme.cardSurface,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.primary)),
                     ),
                   ),
                 ),
@@ -1343,7 +1348,7 @@ class _PostCardState extends State<_PostCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: ffTheme.warning.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1362,7 +1367,7 @@ class _PostCardState extends State<_PostCard> {
                     Container(
                       width: 38, height: 38,
                       decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                      child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                      child: Center(child: Text(post.avatar, style: ffTheme.titleLarge.copyWith(fontSize: 16, color: ffTheme.primary))),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1376,8 +1381,12 @@ class _PostCardState extends State<_PostCard> {
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(6)),
-                                  child: Text('צוות', style: GoogleFonts.rubik(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+                                  // Micro "team" badge — no token sits at 9px, so
+                                  // the nearest Rubik token (titleSmall) carries
+                                  // the face and the 9px / white delta rides via
+                                  // copyWith.
+                                  child: Text('צוות', style: ffTheme.titleSmall.copyWith(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ),
                               ],
                               if (post.isVerified) ...[
@@ -1393,7 +1402,7 @@ class _PostCardState extends State<_PostCard> {
                     // Channel badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
                       child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                     ),
                     const SizedBox(width: 4),
@@ -1411,7 +1420,7 @@ class _PostCardState extends State<_PostCard> {
                             padding: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               color: widget.bookmarked ? ffTheme.accent2 : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                             ),
                             child: Icon(
                               widget.bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
@@ -1432,7 +1441,7 @@ class _PostCardState extends State<_PostCard> {
                           padding: EdgeInsets.zero,
                           tooltip: 'אפשרויות',
                           icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl)),
                           onSelected: (v) {
                             if (v == 'delete') widget.onDelete?.call();
                             if (v == 'report') widget.onReport?.call();
@@ -1474,7 +1483,7 @@ class _PostCardState extends State<_PostCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: ffTheme.warning.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                       border: Border.all(color: ffTheme.warning.withValues(alpha: 0.4)),
                     ),
                     child: Row(
@@ -1516,7 +1525,7 @@ class _PostCardState extends State<_PostCard> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: ffTheme.accent1,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                           border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                         ),
                         child: Row(
@@ -1653,7 +1662,10 @@ class _StatPill extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+        // Compact stat count — the numericLarge/Medium tokens (>=24px) are hero
+        // sizes, far larger than this 15px pill, so it sources the nearest Rubik
+        // title token and applies the heavier w800 + per-pill colour via copyWith.
+        Text(value, style: ffTheme.titleLarge.copyWith(fontWeight: FontWeight.w800, color: color)),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
       ],
     );
@@ -1705,7 +1717,7 @@ class _ReplyBubble extends StatelessWidget {
           Container(
             width: 32, height: 32,
             decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-            child: Center(child: Text(reply.avatar, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+            child: Center(child: Text(reply.avatar, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primary))),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1738,10 +1750,10 @@ class _ReplyBubble extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: ffTheme.background,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      bottomLeft: Radius.circular(14),
-                      bottomRight: Radius.circular(14),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(ffTheme.radiusCard),
+                      bottomLeft: Radius.circular(ffTheme.radiusCard),
+                      bottomRight: Radius.circular(ffTheme.radiusCard),
                     ),
                     border: Border.all(color: ffTheme.alternate),
                   ),

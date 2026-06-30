@@ -353,7 +353,10 @@ class _LeadWidgetState extends State<LeadWidget> {
           height: 56,
           color: AppColors.primary,
           textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-          borderRadius: BorderRadius.circular(18),
+          // No token equals the bespoke 18 corner (radiusCard 12 / radiusSheet 20
+          // straddle it); radiusSheet is the nearest token, kept to preserve the
+          // generous hero-CTA corner without forcing a 6px-tighter card radius.
+          borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
         ).animate().fadeIn(delay: 300.ms),
         const SizedBox(height: 8),
         Row(
@@ -425,7 +428,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 foregroundColor: ffTheme.brandAccent,
                 side: BorderSide(color: ffTheme.brandAccent),
                 minimumSize: const Size(double.infinity, 46),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
               ),
             ),
           ),
@@ -573,7 +576,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
                   ),
                   child: Column(
@@ -592,7 +595,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: ffTheme.saving.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -656,7 +659,7 @@ class _LeadWidgetState extends State<LeadWidget> {
         ),
         side: WidgetStatePropertyAll(BorderSide(color: ffTheme.alternate)),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
         ),
         backgroundColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
@@ -697,11 +700,11 @@ class _LeadWidgetState extends State<LeadWidget> {
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
       filled: true,
       fillColor: ffTheme.cardSurface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error)),
-      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error, width: 1.5)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.error)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.error, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }

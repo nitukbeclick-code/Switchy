@@ -143,6 +143,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               (matchMap[b.id]?.score ?? 0).compareTo(matchMap[a.id]?.score ?? 0)))
         : filteredByProvider;
 
+    // A stable signature of the CURRENT result ordering+membership. It changes
+    // exactly when the list mutates (sort reorders the ids, a filter / provider /
+    // search / category narrows or swaps membership) and stays identical across
+    // unrelated rebuilds (an AppState notify that doesn't touch the results). We
+    // fold it into each row's flutter_animate key below so the calm fade-rise
+    // RE-FIRES when the list changes — without disturbing the CustomScrollView,
+    // the linked category scroll, or the smart-sort logic.
+    final listSignature =
+        '$effectiveSort|$_smartSort|$_providerFilter|${plans.map((p) => p.id).join(',')}';
+
     final allCatProviders = plansByCat(cat).map((p) => p.provider).toSet().toList();
 
     final topPlanMatch = plans.isNotEmpty ? matchMap[plans.first.id] : null;
@@ -215,7 +225,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           color: active
                               ? ffTheme.brandAccent
                               : onHeader.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           boxShadow: active ? ffTheme.shadowAccent : null,
                         ),
                         child: Row(
@@ -239,7 +249,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -293,7 +303,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               })
                           : const Icon(Icons.search_rounded),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        // No exact 14 token — radiusCard (12) is the nearest
+                        // content corner (the scale caps content at radiusXl/12).
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
@@ -326,7 +338,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               decoration: BoxDecoration(
                                 // Green "fresh/live" cue — the catalogue is current.
                                 color: ffTheme.brandAccent.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                 border: Border.all(
                                     color: ffTheme.brandAccent.withValues(alpha: 0.25)),
                               ),
@@ -361,7 +373,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             Material(
                               color: Colors.transparent,
                               child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -394,9 +406,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               label: 'ערוך את החשבון החודשי',
                               child: Material(
                                 color: ffTheme.accent1,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                   onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -496,7 +508,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   ? (isSmart ? null : ffTheme.brandAccent)
                                   : ffTheme.cardSurface,
                               gradient: active && isSmart ? ffTheme.accentGradient : null,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                               border: Border.all(
                                   color: active
                                       ? ffTheme.brandAccent
@@ -540,7 +552,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
                       ),
                       child: Row(
@@ -558,7 +570,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                               onTap: () => context.pushNamed('Quiz'),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -588,9 +600,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Material(
                       color: ffTheme.brandAccent.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         onTap: () {
                           HapticFeedback.lightImpact();
                           context.pushNamed('Quiz');
@@ -756,17 +768,17 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             .where((c) => c.$1 != cat)
                             .map((c) => Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                 boxShadow: ffTheme.shadowSoft,
                               ),
                               child: Material(
                                 color: ffTheme.cardSurface,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                   side: BorderSide(color: ffTheme.lineColor),
                                 ),
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                   onTap: () => _switchCategory(appState, c.$1),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -815,9 +827,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         // once on reveal (no loop). Every other row keeps the
                         // calm fade+slide. flutter_animate already drops the
                         // transform under reduced-motion.
+                        // Keying each row's animation by (listSignature, id)
+                        // makes flutter_animate mint a fresh Animate whenever the
+                        // list mutates (sort/filter/provider/search/category), so
+                        // the reveal replays on every list change — and stays put
+                        // on unrelated rebuilds (the signature is unchanged).
+                        final animKey =
+                            ValueKey('$listSignature#${plan.id}');
                         if (isTopMatch) {
                           return card
-                              .animate()
+                              .animate(key: animKey)
                               .fadeIn(duration: 320.ms)
                               .scale(
                                 begin: const Offset(1.03, 1.03),
@@ -830,7 +849,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             // Cap the stagger so long result lists settle
                             // quickly — the reveal reads premium for the first
                             // few cards, slow past that.
-                            .animate(delay: (index.clamp(0, 6) * 60).ms)
+                            .animate(key: animKey, delay: (index.clamp(0, 6) * 60).ms)
                             .fadeIn(duration: 300.ms)
                             .slideX(begin: 0.05);
                       },
@@ -868,7 +887,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 decoration: BoxDecoration(
                   // Green ACTION band — the compare CTA, vivid on both themes.
                   gradient: ffTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(16),
+                  // No exact 16 token — radiusCard (12) is the nearest content
+                  // corner (the scale caps content at radiusXl/12).
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   boxShadow: ffTheme.shadowAccent,
                 ),
                 child: Row(
@@ -890,7 +911,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         foregroundColor: AppColors.brandAccentDark,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                       ),
@@ -939,7 +960,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             color: active
                 ? ffTheme.brandAccent.withValues(alpha: 0.12)
                 : ffTheme.cardSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
             border: Border.all(
               color: active ? ffTheme.brandAccent : ffTheme.alternate,
               width: active ? 1.5 : 1,
@@ -990,7 +1011,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
                     color: ffTheme.error,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                     border: Border.all(color: ffTheme.error),
                   ),
                   child: Row(
@@ -1023,7 +1044,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   decoration: BoxDecoration(
                     // Selected filter = green ACTION fill (consistent active cue).
                     color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                     border: Border.all(
                         color: active ? ffTheme.brandAccent : ffTheme.alternate),
                     boxShadow: active ? ffTheme.shadowAccent : null,
@@ -1064,7 +1085,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: ffTheme.cardSurface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           border: Border.all(color: ffTheme.alternate),
         ),
         child: Row(
@@ -1098,7 +1119,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 onTap: () => isDefault
                     ? context.pushNamed('Bills')
                     : _showBillEditor(context, appState, cat, bill, ffTheme),
@@ -1125,7 +1146,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      // The single bottom-sheet top-corner token (was a 24 literal).
+      shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
         child: Column(
@@ -1145,8 +1169,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               decoration: InputDecoration(
                 prefixText: '₪',
                 prefixStyle: ffTheme.displaySmall.copyWith(color: ffTheme.brandAccent),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 2)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 2)),
                 filled: true, fillColor: ffTheme.accent1,
               ),
             ),
@@ -1161,7 +1185,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ffTheme.brandAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text('עדכן', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
@@ -1184,8 +1208,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     };
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      // The single bottom-sheet top-corner token (was a 24 literal).
+      shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: const EdgeInsets.all(24),
@@ -1239,7 +1265,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ffTheme.brandAccent,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: Text('הצג תוצאות',
@@ -1265,17 +1291,18 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Pill-shaped recovery CTA (was a 22 literal) — the full-round pill token.
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         boxShadow: ffTheme.shadowAccent,
       ),
       child: Material(
         // Green ACTION — the empty-state recovery CTA.
         color: ffTheme.brandAccent,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         child: InkWell(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),

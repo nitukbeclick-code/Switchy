@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -69,13 +68,12 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                             height: 40,
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                             ),
                             child: Center(
                               child: ExcludeSemantics(
                                 child: Text('₪',
-                                    style: GoogleFonts.rubik(
-                                        fontSize: 20,
+                                    style: ffTheme.headlineLarge.copyWith(
                                         fontWeight: FontWeight.w800,
                                         color: AppColors.primaryDark)),
                               ),
@@ -83,7 +81,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                        Text('Switchy AI', style: ffTheme.displaySmall.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0, color: Colors.white)),
                         const Spacer(),
                         // Skip stays available through the first two pages; on the
                         // last page the primary CTA *is* the finish, so a second
@@ -213,7 +211,7 @@ class _Page1 extends StatelessWidget {
             header: true,
             child: Text(
               'כל המחירים\nבמקום אחד',
-              style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
+              style: ffTheme.displayLarge.copyWith(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 0, height: 1.15),
               textAlign: TextAlign.center,
             ),
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
@@ -294,7 +292,7 @@ class _Page2 extends StatelessWidget {
             header: true,
             child: Text(
               'כל הספקים\nבמקום אחד',
-              style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
+              style: ffTheme.displayLarge.copyWith(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 0, height: 1.15),
               textAlign: TextAlign.center,
             ),
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
@@ -316,10 +314,10 @@ class _Page2 extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
                   color: ffTheme.accent1,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   border: Border.all(color: p.$2.withValues(alpha: 0.25)),
                 ),
-                child: Text(p.$1, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: p.$2)),
+                child: Text(p.$1, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: p.$2)),
               ).animate(delay: (300 + i * 60).ms).fadeIn(duration: 300.ms).scale(begin: const Offset(0.8, 0.8));
             }).toList(),
           ),
@@ -356,7 +354,7 @@ class _Page3 extends StatelessWidget {
             header: true,
             child: Text(
               'מעבר קל\nוחלק',
-              style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
+              style: ffTheme.displayLarge.copyWith(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 0, height: 1.15),
               textAlign: TextAlign.center,
             ),
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
@@ -382,7 +380,7 @@ class _Page3 extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'שירות חינמי לחלוטין',
-                  style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: ffTheme.titleLarge.copyWith(fontSize: 16, color: Colors.white),
                 ),
                 const SizedBox(height: 4),
                 Text('אין עמלות נסתרות · המספר נשמר · ליווי עד סיום הניוד',
@@ -436,7 +434,7 @@ class _StatChip extends StatelessWidget {
         decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
         child: Column(
           children: [
-            Text(value, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: ffTheme.brandAccent)),
+            Text(value, style: ffTheme.headlineLarge.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0, color: ffTheme.brandAccent)),
             Text(label, style: ffTheme.labelSmall),
           ],
         ),
@@ -457,7 +455,7 @@ class _FeatureRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: ffTheme.brandAccentTint,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.12)),
       ),
       child: Row(

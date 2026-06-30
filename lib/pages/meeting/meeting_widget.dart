@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../app_state.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -426,7 +425,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                     foregroundColor: t.brandAccent,
                     side: BorderSide(color: t.brandAccent),
                     minimumSize: const Size(double.infinity, 46),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusCard)),
                   ),
                 ),
               ),
@@ -625,7 +624,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             height: 56,
             color: AppColors.primary,
             textStyle: t.titleMedium.copyWith(color: Colors.white),
-            borderRadius: BorderRadius.circular(18),
+            // No token equals the bespoke 18 corner (radiusCard 12 / radiusSheet
+            // 20 straddle it); radiusSheet is the nearest, preserving the generous
+            // hero-CTA corner without forcing the tighter card radius.
+            borderRadius: BorderRadius.circular(t.radiusSheet),
           ).animate(delay: 180.ms).fadeIn(),
           const SizedBox(height: 8),
           Center(
@@ -673,7 +675,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 const SizedBox(height: 4),
                 Text(
                   'נציג מכירות יציג לכם הצעת מחיר מותאמת בשיחת וידאו של 30 דקות — ללא עלות וללא התחייבות.',
-                  style: GoogleFonts.assistant(
+                  // Assistant body face → nearest scale token is bodySmall (13);
+                  // copyWith carries the genuine deltas (on-ink white@0.85, the
+                  // 12.5 size and 1.35 line-height) so the render is unchanged.
+                  style: t.bodySmall.copyWith(
                       fontSize: 12.5, color: Colors.white.withValues(alpha: 0.85), height: 1.35),
                 ),
               ],
@@ -877,7 +882,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 foregroundColor: t.brandAccent,
                 side: BorderSide(color: t.brandAccent),
                 minimumSize: const Size(double.infinity, 46),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusCard)),
               ),
             ),
           ),
@@ -892,11 +897,11 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       prefixIcon: Icon(icon, color: t.secondaryText, size: 20),
       filled: true,
       fillColor: t.cardSurface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error)),
-      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error, width: 1.5)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.alternate)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.alternate)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.error)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.error, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
@@ -1004,7 +1009,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 color: AppColors.primary,
                 textStyle: t.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(t.radiusCard),
               ),
             ],
           ),
@@ -1042,8 +1047,10 @@ class _SectionLabel extends StatelessWidget {
           height: 22,
           decoration: BoxDecoration(color: t.brandAccent, shape: BoxShape.circle),
           child: Center(
+            // Rubik step numeral → nearest Rubik scale token is titleSmall (13);
+            // copyWith carries the genuine deltas (12px, w800, white-on-accent).
             child: Text('$step',
-                style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                style: t.titleSmall.copyWith(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
           ),
         ),
         const SizedBox(width: 8),

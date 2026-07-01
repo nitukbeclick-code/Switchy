@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../logo_widget/logo_widget.dart';
 
 class PlanCardWidget extends StatelessWidget {
@@ -31,8 +33,8 @@ class PlanCardWidget extends StatelessWidget {
   final int? matchPct;
 
   /// Overrides the catalogue `plan.highlight` flag for the "best match"
-  /// treatment (amber VALUE ring + floating badge) — e.g. the smart-sort top
-  /// pick in results.
+  /// treatment (flat 2px green VALUE border + flat floating badge, no glow) —
+  /// e.g. the smart-sort top pick in results.
   final bool? bestMatch;
 
   String? _quizMatch(AppState appState) {
@@ -51,15 +53,22 @@ class PlanCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
+    // Perf: SCOPED AppState dependency. The card used to watch() the whole
+    // AppState (rebuilding on ANY notify — bills, chat, telemetry…); now it
+    // rebuilds only when ITS OWN slice changes: this plan's compare/watch
+    // membership and the quiz-match inputs. Actions go through a
+    // non-listening read.
+    final appState = Provider.of<AppState>(context, listen: false);
+    final inCompare =
+        context.select<AppState, bool>((s) => s.isInCompare(plan.id));
+    final isWatching =
+        context.select<AppState, bool>((s) => s.isWatching(plan.id));
+    final matchLabel = context.select<AppState, String?>(_quizMatch);
     final ffTheme = AppTheme.of(context);
     final isBest = bestMatch ?? plan.highlight;
     final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
-    final inCompare = appState.isInCompare(plan.id);
-    final isWatching = appState.isWatching(plan.id);
     final displayPrice = '₪${plan.priceText}';
     final displayAfter = plan.hasPromo ? '₪${plan.afterText}' : null;
-    final matchLabel = _quizMatch(appState);
 
     // One-line summary read out by screen readers before the inner controls.
     // The saving line is announced only on the best-match card — the same place
@@ -74,6 +83,11 @@ class PlanCardWidget extends StatelessWidget {
     return Semantics(
       container: true,
       label: cardLabel,
+      // Perf: the card is a repeated list element with its own ink ripples and
+      // press feedback — a RepaintBoundary keeps those repaints from dirtying
+      // the surrounding scroll view (SliverList adds one per ITEM, but the card
+      // is also used inside eager Columns on other screens).
+      child: RepaintBoundary(
       child: Padding(
       // Room above for the floating badge to overhang the best-match card.
       padding: EdgeInsets.only(bottom: 12, top: isBest ? 10 : 0),
@@ -84,15 +98,16 @@ class PlanCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-        // Crisp formal frame; the best match wears the VALUE accent — a 2px
-        // amber ring + warm glow, mirroring the site's `.plan--best`.
+        // Crisp formal frame; the best match is expressed by ONLY the flat 2px
+        // green border (+ the flat 'ההתאמה הכי טובה' badge below) — consistent
+        // with the app's flat, border-defined thesis. The Geist redesign
+        // removed glows; we do not re-introduce one here, so the best-match
+        // card keeps the same flat [shadowCard] as its siblings.
         border: Border.all(
           color: isBest ? ffTheme.saving : ffTheme.alternate,
           width: isBest ? 2 : 1,
         ),
-        boxShadow: isBest
-            ? [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 8))]
-            : ffTheme.shadowCard,
+        boxShadow: ffTheme.shadowCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,16 +147,16 @@ class PlanCardWidget extends StatelessWidget {
                                       Flexible(
                                         child: Text(
                                           plan.provider,
-                                          style: GoogleFonts.rubik(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: ffTheme.primaryText,
-                                          ),
+                                          // 15/w700/ink — the title scale exactly.
+                                          style: ffTheme.titleLarge,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       const SizedBox(width: 6),
-                              Container(
+                              // Flexible + ellipsis: at large OS text scale the
+                              // header row must squeeze gracefully, never clip.
+                              Flexible(
+                                child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent4,
@@ -150,16 +165,25 @@ class PlanCardWidget extends StatelessWidget {
                                 ),
                                 child: Text(
                                   plan.netLabel,
-                                  style: GoogleFonts.rubik(
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  // Rubik micro-chip: nearest Rubik scale token
+                                  // is titleSmall (13/w600); the 10px size +
+                                  // w700 + info colour are the genuine deltas.
+                                  style: ffTheme.titleSmall.copyWith(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                     color: ffTheme.info,
                                   ),
                                 ),
+                                ),
                               ),
                               if (matchLabel != null) ...[
                                 const SizedBox(width: 6),
-                                Builder(builder: (context) {
+                                // Flexible + ellipsis: overflow-safe at large
+                                // OS text scale (dynamic-type resilience).
+                                Flexible(
+                                  child: Builder(builder: (context) {
                                   final fits = matchLabel == 'מתאים לתקציב';
                                   final tone = fits ? ffTheme.success : ffTheme.warning;
                                   return Container(
@@ -176,29 +200,34 @@ class PlanCardWidget extends StatelessWidget {
                                           Icon(Icons.check_rounded, size: 9, color: tone),
                                           const SizedBox(width: 2),
                                         ],
-                                        Text(
-                                          matchLabel,
-                                          style: GoogleFonts.rubik(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w700,
-                                            color: tone,
+                                        Flexible(
+                                          child: Text(
+                                            matchLabel,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            // Rubik micro-chip: nearest Rubik token
+                                            // is titleSmall (13/w600); 9px + w700 +
+                                            // tone are the genuine deltas.
+                                            style: ffTheme.titleSmall.copyWith(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: tone,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
                                   );
-                                }),
+                                  }),
+                                ),
                               ],
                             ],
                           ),
                                   const SizedBox(height: 2),
                                   Text(
                                     plan.plan,
-                                    style: GoogleFonts.assistant(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: ffTheme.secondaryText,
-                                    ),
+                                    // 13/w500/secondary — the bodySmall scale exactly.
+                                    style: ffTheme.bodySmall,
                                   ),
                                   // Secondary affordance: open the provider profile.
                                   const SizedBox(height: 4),
@@ -206,7 +235,7 @@ class PlanCardWidget extends StatelessWidget {
                                     button: true,
                                     label: 'פרופיל ${plan.provider}',
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -215,8 +244,9 @@ class PlanCardWidget extends StatelessWidget {
                                           children: [
                                             Text(
                                               'פרופיל הספק',
-                                              style: GoogleFonts.assistant(
-                                                fontSize: 11,
+                                              // 11/w600 labelSmall; w700 + primary
+                                              // (link ink) are the genuine deltas.
+                                              style: ffTheme.labelSmall.copyWith(
                                                 fontWeight: FontWeight.w700,
                                                 color: ffTheme.primary,
                                               ),
@@ -248,7 +278,10 @@ class PlanCardWidget extends StatelessWidget {
                             fill: isWatching ? ffTheme.warning.withValues(alpha: 0.1) : ffTheme.background,
                             borderColor: isWatching ? ffTheme.warning : ffTheme.alternate,
                             iconColor: isWatching ? ffTheme.warning : ffTheme.secondaryText,
-                            onTap: () => appState.toggleWatch(plan.id),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              appState.toggleWatch(plan.id);
+                            },
                           ),
                           _CardIconButton(
                             semanticLabel: inCompare ? 'בהשוואה — הסר' : 'הוסף להשוואה',
@@ -259,7 +292,10 @@ class PlanCardWidget extends StatelessWidget {
                             fill: inCompare ? ffTheme.primary : ffTheme.background,
                             borderColor: inCompare ? ffTheme.primary : ffTheme.alternate,
                             iconColor: inCompare ? (ffTheme.dark ? ffTheme.background : Colors.white) : ffTheme.secondaryText,
-                            onTap: () => appState.toggleCompare(plan.id),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              appState.toggleCompare(plan.id);
+                            },
                           ),
                         ],
                       ),
@@ -282,7 +318,8 @@ class PlanCardWidget extends StatelessWidget {
                             // Match score is an ACTION signal → green gradient,
                             // legible in both themes (white ink on green).
                             gradient: ffTheme.accentGradient,
-                            borderRadius: BorderRadius.circular(20),
+                            // Full-round pill chip.
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                             boxShadow: ffTheme.shadowAccent,
                           ),
                           child: Row(
@@ -292,7 +329,10 @@ class PlanCardWidget extends StatelessWidget {
                               const SizedBox(width: 4),
                               Text(
                                 '$matchPct% התאמה',
-                                style: GoogleFonts.rubik(
+                                // Rubik chip: nearest Rubik token is titleSmall
+                                // (13/w600); 11px + w700 + white-on-green are the
+                                // genuine deltas.
+                                style: ffTheme.titleSmall.copyWith(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
@@ -349,20 +389,21 @@ class PlanCardWidget extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          displayPrice,
-                          style: GoogleFonts.rubik(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                            color: ffTheme.primaryText,
-                            letterSpacing: -0.5,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
+                        // The plan-card price numeral — the dedicated
+                        // priceDisplay token (30/w800/-0.5/tabular). Rendered via
+                        // [PriceText] so the ₪+digits run keeps a stable LTR bidi
+                        // order inside the RTL card (₪ pinned before the number,
+                        // never re-ordered). Truth-only: the REAL displayPrice
+                        // string is rendered verbatim, still a single Text node
+                        // so find.text('₪79') keeps matching.
+                        PriceText(displayPrice),
                         Text(
                           priceUnitLabel(plan),
-                          style: GoogleFonts.assistant(
-                            fontSize: 12,
+                          // 12px Assistant caption (default w400) — nearest scale
+                          // token by size is labelMedium (12/w600); w400 is the
+                          // genuine delta so the unit stays a light caption.
+                          style: ffTheme.labelMedium.copyWith(
+                            fontWeight: FontWeight.w400,
                             color: ffTheme.secondaryText,
                           ),
                         ),
@@ -370,8 +411,10 @@ class PlanCardWidget extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             'אחרי מבצע: $displayAfter',
-                            style: GoogleFonts.assistant(
-                              fontSize: 12,
+                            // 12px Assistant caption — labelMedium (12) + w400
+                            // delta, matching the price-unit caption above.
+                            style: ffTheme.labelMedium.copyWith(
+                              fontWeight: FontWeight.w400,
                               color: ffTheme.secondaryText,
                             ),
                           ),
@@ -380,26 +423,17 @@ class PlanCardWidget extends StatelessWidget {
                     ),
                     const Spacer(),
                     if (isBest && savings > 0)
-                      // De-pushed: the "חוסך ₪X בשנה" amber chip prints ONLY on
+                      // De-pushed: the "חוסך ₪X בשנה" VALUE pill prints ONLY on
                       // the single best-match card now (not on every list row),
                       // so the list reads as a calm price comparison. When shown
-                      // it's still the REAL saving (currentBill − price) × 12.
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: ffTheme.saving,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        ),
-                        child: Text(
-                          'חוסך ₪$savings בשנה',
-                          style: GoogleFonts.rubik(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            color: ffTheme.onSaving,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ),
+                      // it's still the REAL saving (currentBill − price) × 12,
+                      // rendered through the shared [SavingPill] so savings get
+                      // the one consistent VALUE treatment (pale-green tint +
+                      // green text + savings glyph + tabular figures).
+                      // Flexible: at large OS text scale the pill ellipsizes
+                      // (SavingPill is internally overflow-safe once
+                      // constrained) instead of overflowing the price row.
+                      Flexible(child: SavingPill(text: 'חוסך ₪$savings בשנה')),
                   ],
                 ),
 
@@ -407,11 +441,8 @@ class PlanCardWidget extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     '* ${plan.intro}',
-                    style: GoogleFonts.assistant(
-                      fontSize: 11,
-                      color: ffTheme.warning,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    // 11/w600 labelSmall; the warning colour is the genuine delta.
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.warning),
                   ),
                 ],
 
@@ -437,9 +468,8 @@ class PlanCardWidget extends StatelessWidget {
                         ),
                         child: Text(
                           feat,
-                          style: GoogleFonts.assistant(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                          // 11/w600 labelSmall; primaryText is the genuine delta.
+                          style: ffTheme.labelSmall.copyWith(
                             color: ffTheme.primaryText,
                           ),
                         ),
@@ -477,8 +507,11 @@ class PlanCardWidget extends StatelessWidget {
         ],
       ),
           ),
-          // Floating amber "best match" pill overhanging the top edge — the
-          // same VALUE anchor the site uses for its lowest-price badge.
+          // Floating green "best match" pill overhanging the top edge — the
+          // same VALUE anchor the site uses for its lowest-price badge. FLAT,
+          // no shadow: 'best match' is expressed by the 2px green border + this
+          // badge alone, per the app's flat, border-defined thesis (the Geist
+          // redesign removed the badge glow).
           if (isBest)
             PositionedDirectional(
               top: -10,
@@ -488,7 +521,6 @@ class PlanCardWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ffTheme.saving,
                   borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  boxShadow: [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.34), blurRadius: 16, offset: const Offset(0, 6))],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -497,7 +529,9 @@ class PlanCardWidget extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       'ההתאמה הכי טובה',
-                      style: GoogleFonts.rubik(
+                      // Rubik badge: nearest Rubik token is titleSmall (13/w600);
+                      // 11px + w800 + onSaving ink are the genuine deltas.
+                      style: ffTheme.titleSmall.copyWith(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                         color: ffTheme.onSaving,
@@ -510,13 +544,16 @@ class PlanCardWidget extends StatelessWidget {
         ],
       ),
       ),
+      ),
     );
   }
 }
 
-/// The card's "בחירה" CTA. The best match carries the green ACTION gradient
-/// (the one splash of colour per list); regular cards stay formal ink. Both
-/// give ripple feedback and meet the 44px touch-target minimum.
+/// The card's "פרטים" action — it OPENS the plan detail, it does not convert,
+/// so it stays the card's calm primary action (not a conversion CTA). The best
+/// match carries the green ACTION gradient (the one splash of colour per list);
+/// regular cards stay formal ink. Both give ripple feedback and meet the 44px
+/// touch-target minimum.
 class _ChooseButton extends StatelessWidget {
   const _ChooseButton({
     required this.isBest,
@@ -539,10 +576,13 @@ class _ChooseButton extends StatelessWidget {
         ? Colors.white
         : (ffTheme.dark ? ffTheme.background : Colors.white);
     final label = Text(
-      'בחירה',
-      style: GoogleFonts.rubik(
+      'פרטים',
+      // Action label: nearest Rubik token is titleLarge (15/w700); 14px + the
+      // on-fill labelColor are the genuine deltas. "פרטים" (not "בחירה") — the
+      // button opens the plan detail, it doesn't convert, so the verb stays a
+      // calm browse action and the conversion accent is spent only at the lead.
+      style: ffTheme.titleLarge.copyWith(
         fontSize: 14,
-        fontWeight: FontWeight.w700,
         color: labelColor,
       ),
     );
@@ -673,7 +713,8 @@ class _SpecChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(20),
+        // Full-round pill chip.
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -684,11 +725,8 @@ class _SpecChip extends StatelessWidget {
           Flexible(
             child: Text(
               value,
-              style: GoogleFonts.assistant(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: ffTheme.secondaryText,
-              ),
+              // 11/w600/secondary — the labelSmall scale exactly.
+              style: ffTheme.labelSmall,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -729,7 +767,8 @@ class _EquipChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(20),
+        // Full-round pill chip.
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -740,11 +779,8 @@ class _EquipChip extends StatelessWidget {
           Flexible(
             child: Text(
               _text,
-              style: GoogleFonts.assistant(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: ffTheme.secondaryText,
-              ),
+              // 11/w600/secondary — the labelSmall scale exactly.
+              style: ffTheme.labelSmall,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),
@@ -774,11 +810,8 @@ class _FlagChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: GoogleFonts.assistant(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: ffTheme.secondaryText,
-        ),
+        // 11/w600 labelSmall; w700 is the genuine delta (flag chips read bolder).
+        style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
       ),
     );
   }

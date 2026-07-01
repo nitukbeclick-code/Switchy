@@ -12,11 +12,14 @@ import 'package:chosech/services/backend/backend.dart';
 import 'package:chosech/services/backend/local_backend.dart';
 
 /// Widget tests for the lead form (lib/pages/lead/lead_widget.dart): that it
-/// renders for a real plan, that the WhatsApp alternative is always present, and
-/// — the focus of this surface — that a failed submit raises a PERSISTENT
-/// recovery panel (retry CTA + WhatsApp + request-a-callback) rather than a
-/// transient snackbar the user can miss. Boots the full app through GoRouter
-/// exactly like the other harnesses (test/nav_smoke_test.dart, bills test).
+/// renders for a real plan, that the WhatsApp alternative is always present,
+/// that the CRO MINIMAL FIRST ASK holds (name + phone + consent above the fold;
+/// the secondary email / callback-time inputs collapsed behind a
+/// 'הוסיפו פרטים (לא חובה)' expander, revealed on tap), and — the focus of this
+/// surface — that a failed submit raises a PERSISTENT recovery panel (retry CTA
+/// + WhatsApp + request-a-callback) rather than a transient snackbar the user
+/// can miss. Boots the full app through GoRouter exactly like the other
+/// harnesses (test/nav_smoke_test.dart, bills test).
 
 /// A backend whose [submitLead] always throws — used to drive the lead form's
 /// failure-recovery path deterministically.
@@ -86,6 +89,42 @@ void main() {
       expect(find.textContaining('נחזור אליכם'), findsWidgets);
       // WhatsApp is always offered as an alternative to leaving details.
       expect(find.textContaining('וואטסאפ'), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets(
+      'Minimal first ask: email + callback-time are collapsed behind the '
+      'extras expander, revealed on tap', (tester) async {
+    await _ignoringOverflow(() async {
+      await _bootApp(tester);
+      _go(tester, '/lead/${_planId()}');
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(const Duration(milliseconds: 700));
+
+      // Above the fold the minimal ask shows only name + phone (2 fields); the
+      // optional email field is collapsed inside the extras section.
+      expect(find.byType(TextFormField), findsNWidgets(2));
+      // The progressive-disclosure header is present and the secondary inputs
+      // it hosts are NOT mounted yet (collapsed by default).
+      final expander = find.text('הוסיפו פרטים (לא חובה)');
+      expect(expander, findsOneWidget);
+      expect(find.text('אימייל (אופציונלי)'), findsNothing);
+      expect(find.text('מתי נחזור אליכם?'), findsNothing);
+
+      // Expand — the email field, the callback-time picker, the availability
+      // banner + timeline all mount and become functional. Pump past the
+      // chevron-rotation (200ms) AND the longest flutter_animate entry delay of
+      // the newly-mounted body (~260ms) so no animation Timer outlives the test.
+      await tester.ensureVisible(expander);
+      await tester.tap(expander);
+      await tester.pump(const Duration(milliseconds: 700));
+      await tester.pump(const Duration(milliseconds: 700));
+
+      expect(find.text('אימייל (אופציונלי)'), findsOneWidget);
+      expect(find.text('מתי נחזור אליכם?'), findsOneWidget);
+      // Now name + phone + email = 3 fields are present.
+      expect(find.byType(TextFormField), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
   });

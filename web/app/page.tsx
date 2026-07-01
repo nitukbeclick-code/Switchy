@@ -10,7 +10,7 @@ import StickyLeadCta from "@/components/StickyLeadCta";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
-import HeroVideo from "@/components/HeroVideo";
+import Icon from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { AiToolsShowcase } from "@/components/AiToolsShowcase";
 import { HowItWorks } from "@/components/HowItWorks";
@@ -118,54 +118,33 @@ export default function Home() {
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 
       {/* ── Hero ──────────────────────────────────────────────────────────────
-          Full-bleed background video (HeroVideo, absolute inset-0) with the text
-          column overlaid above it (relative z-10). `relative isolate
-          overflow-hidden` contains the video + its own stacking context; the
-          min-height gives the robot room to breathe on lg while staying auto on
-          mobile (where the clip sits at the top and text reads below it). */}
-      <section className="relative isolate grid grid-cols-1 items-center gap-10 overflow-hidden pt-4 text-center sm:pt-8 lg:min-h-[clamp(440px,56vh,620px)] lg:grid-cols-2 lg:gap-12 lg:text-start">
-        {/* Full-bleed background — Switchy, the AI agent, feathered borderlessly
-            into the page (replaces the old framed card). */}
-        <HeroVideo />
-
-        {/* Text column — headline, value pitch, CTAs. Overlaid above the video
-            (relative z-10). On lg it is pinned to the start edge (right, RTL) in
-            the first grid column; on mobile it reads below the clip (the
-            top-padding clears the top-anchored robot), centered on the scrim. */}
-        <div className="relative z-10 pt-[58vw] sm:pt-[44vw] lg:pt-0">
-          <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
+          Calm, flat-ink editorial hero (bank-grade): a solid ink panel with the
+          white headline/subtext set directly on it — NO photo/video behind the
+          text — and ONE green CTA. The panel is a fixed deep ink (#111827, the
+          light-theme --ink) in BOTH themes so "white text on ink" always holds;
+          a hairline border keeps it defined on the dark page background. */}
+      <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
             משווים תקשורת.{" "}
-            <span className="text-accent-text">חוסכים כסף.</span>
+            <span className="text-accent">חוסכים כסף.</span>
           </h1>
           <p
-            className="sw-reveal mx-auto mt-5 max-w-2xl text-xl font-semibold leading-relaxed text-foreground sm:text-2xl lg:mx-0"
+            className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
             style={{ animationDelay: "60ms" }}
           >
             השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
             וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
           </p>
-          {/* Amber VALUE badge — honest, qualitative framing (no fabricated figure);
-              the per-category savings vary, so we promise comparison value, not a
-              number the catalogue can't substantiate. */}
-          <p
-            className="sw-reveal mt-4 inline-flex items-center gap-1.5 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text"
-            style={{ animationDelay: "90ms" }}
-          >
-            <span
-              aria-hidden="true"
-              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value"
-            />
-            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
-          </p>
           <div
-            className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
+            className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3"
             style={{ animationDelay: "120ms" }}
           >
             <TrackedCtaLink
               href={`/compare/${featuredCat}`}
               location="hero"
               label="compare"
-              className="interactive press sw-lift rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
+              className="interactive press rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast hover:bg-accent-hover"
             >
               להשוואת מסלולים
             </TrackedCtaLink>
@@ -173,19 +152,29 @@ export default function Home() {
               href="/book"
               location="hero"
               label="consult"
-              className="interactive press sw-lift rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"
+              className="interactive press rounded-xl border border-white/30 px-6 py-3 font-medium text-white hover:border-white/50 hover:bg-white/10"
             >
               שיחת ייעוץ חינם בזום
             </TrackedCtaLink>
           </div>
-          {/* Trust band — the cheapest entry price is the product's hook, so it
-              carries the amber VALUE token (the rest stays muted). */}
+          {/* Quiet value line (was an amber pill) — honest, qualitative framing
+              (no fabricated figure), restyled as a muted single line with a
+              small green tick for positive emphasis. */}
           <p
-            className="sw-reveal mt-4 text-sm text-muted"
+            className="sw-reveal mt-6 inline-flex items-center gap-1.5 text-sm text-white/75"
             style={{ animationDelay: "150ms" }}
           >
+            <Icon name="check" size={16} className="shrink-0 text-accent" />
+            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
+          </p>
+          {/* Trust band — REAL catalogue counts; the entry price is the hook so
+              it carries the green positive emphasis (no amber). */}
+          <p
+            className="sw-reveal mt-2 text-sm text-white/70"
+            style={{ animationDelay: "180ms" }}
+          >
             {planCount} מסלולים · {providers.length} ספקים · החל מ-
-            <span className="font-display font-bold text-value-text">
+            <span className="font-display font-bold text-accent">
               {ils(minFeatured)}
             </span>{" "}
             לחודש
@@ -237,38 +226,47 @@ export default function Home() {
         </ul>
       </section>
 
-      {/* ── Value props ───────────────────────────────────────────────────── */}
+      {/* ── Value props — compact rows (icon + title + one line, ~72–96px each),
+          not quarter-viewport slabs. One hairline card per point; neutral greys
+          with a single green icon accent. ─────────────────────────────────── */}
       <section
         aria-label="למה להשוות איתנו"
-        className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-3"
+        className="mt-14 grid grid-cols-1 gap-2.5 sm:grid-cols-3"
       >
         {[
           {
             t: "השוואה חינמית",
             d: "השוואת כל המסלולים באתר היא ללא עלות וללא התחייבות.",
+            icon: "check" as const,
           },
           {
             t: "מחירים שקופים",
             d: "מציגים גם את המחיר אחרי המבצע ואת יחידת החיוב — בלי הפתעות.",
+            icon: "search" as const,
           },
           {
             t: "מעבר בהסכמה",
             d: "ניצור קשר רק אם תשאירו פרטים ותאשרו זאת בטופס.",
+            icon: "lock" as const,
           },
         ].map((v, i) => (
           <article
             key={v.t}
-            className="sw-reveal bento card-interactive p-6"
+            className="sw-reveal card flex items-center gap-3 p-4"
             style={{ animationDelay: `${i * 70}ms` }}
           >
-            <h3 className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight text-ink">
-              <span
-                aria-hidden="true"
-                className="inline-block h-4 w-1 shrink-0 rounded-full bg-accent"
-              />
-              {v.t}
-            </h3>
-            <p className="mt-2 text-sm leading-relaxed text-foreground">{v.d}</p>
+            <span
+              aria-hidden="true"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent-text"
+            >
+              <Icon name={v.icon} size={18} />
+            </span>
+            <div className="min-w-0">
+              <h3 className="font-display text-base font-semibold tracking-tight text-ink">
+                {v.t}
+              </h3>
+              <p className="mt-0.5 text-sm leading-snug text-muted">{v.d}</p>
+            </div>
           </article>
         ))}
       </section>

@@ -56,31 +56,56 @@ class ConsentPanel extends StatelessWidget {
             ]
           : null,
     ));
-    return Row(children: [
-      SizedBox(
-        width: 40,
-        height: 40,
-        child: Checkbox(
-          value: value,
-          onChanged: (v) => onChanged(v ?? false),
-          activeColor: t.primary,
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    // The whole row is a single screen-reader toggle: [Semantics] announces the
+    // FULL consent sentence as a checkable button and flips the value on tap, so
+    // VoiceOver/TalkBack users can toggle consent without hunting for the small
+    // checkbox glyph. The sentence is the lead + (optional) legal-link words, so
+    // the §30A terms / §7b marketing wording is announced verbatim.
+    final fullSentence = link != null ? '$lead$link' : lead;
+    return Semantics(
+      container: true,
+      checked: value,
+      button: true,
+      label: fullSentence,
+      // One clean node for the whole row — drop the descendant checkbox/link
+      // semantics so the announcement is just the consent sentence + state.
+      excludeSemantics: true,
+      onTap: () => onChanged(!value),
+      child: InkWell(
+        // Tapping anywhere on the row toggles consent. The legal link keeps its
+        // own visual affordance and opens the document via a nested gesture
+        // (below) without stealing the row-level toggle.
+        onTap: () => onChanged(!value),
+        child: ConstrainedBox(
+          // >=44px tap target (iOS HIG / WCAG 2.5.5) across the whole row.
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Row(children: [
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: Checkbox(
+                value: value,
+                onChanged: (v) => onChanged(v ?? false),
+                activeColor: t.primary,
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+            Expanded(
+              child: page != null
+                  ? GestureDetector(
+                      // Sighted users can still open the legal doc by tapping the
+                      // underlined link text; screen-reader users reach it via the
+                      // row's existing link route. Toggle stays on the row tap.
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _openLegal(context, page),
+                      child: label)
+                  : label,
+            ),
+          ]),
         ),
       ),
-      Expanded(
-        child: page != null
-            ? Semantics(
-                button: true,
-                label: 'פתח $link',
-                // Exclude the descendant rich-text semantics so the button node
-                // announces a single clean action ("פתח תנאי השימוש") instead of
-                // concatenating the lead consent copy onto the link label.
-                excludeSemantics: true,
-                child: InkWell(onTap: () => _openLegal(context, page), child: label))
-            : label,
-      ),
-    ]);
+    );
   }
 
   @override

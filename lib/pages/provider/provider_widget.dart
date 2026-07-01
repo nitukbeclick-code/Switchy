@@ -472,7 +472,7 @@ class _BestMatchCard extends StatelessWidget {
                     // Match score is an ACTION signal → green, legible in both
                     // themes (white ink on green).
                     gradient: ffTheme.accentGradient,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   ),
                   child: Text(
                     '${match.scorePct}% · ${match.label}',
@@ -806,7 +806,7 @@ class _RatingPanel extends StatelessWidget {
                 foregroundColor: ffTheme.primary,
                 side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
@@ -897,7 +897,7 @@ class _PlanCard extends StatelessWidget {
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: ffTheme.accent1,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       border: Border.all(
                           color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
@@ -1102,8 +1102,8 @@ class _StreetPricePanelState extends State<_StreetPricePanel> {
       context: context,
       backgroundColor: widget.ffTheme.cardSurface,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(widget.ffTheme.radiusSheet)),
       ),
       builder: (_) => _ReportPriceSheet(
         providerName: widget.providerName,
@@ -1139,7 +1139,7 @@ class _StreetPricePanelState extends State<_StreetPricePanel> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   ),
                   child: Text(
                     'נמוך מהמחירון',
@@ -1202,7 +1202,7 @@ class _StreetPricePanelState extends State<_StreetPricePanel> {
                 foregroundColor: ffTheme.primary,
                 side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
@@ -1295,7 +1295,7 @@ class _StreetPriceRow extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1334,7 +1334,7 @@ class _MiniChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
         border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.7)),
       ),
       child: Row(
@@ -1397,10 +1397,12 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
     final catId = _catId;
     final price = double.tryParse(_priceCtrl.text.trim().replaceAll(',', '.'));
     if (catId == null) {
+      HapticFeedback.heavyImpact();
       setState(() => _error = 'בחרו קטגוריה');
       return;
     }
     if (price == null || price <= 0) {
+      HapticFeedback.heavyImpact();
       setState(() => _error = 'הזינו מחיר חודשי תקין');
       return;
     }
@@ -1414,12 +1416,17 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
 
     if (!report.accepted) {
       // Honest rejection: the number is held out of the aggregate, and we say so
-      // — we never silently fabricate or silently drop.
+      // — we never silently fabricate or silently drop. Heavy buzz marks the
+      // rejected report.
+      HapticFeedback.heavyImpact();
       setState(() => _error =
           'המחיר שהוזן חורג מהטווח הסביר ולכן לא ייכלל בממוצע. בדקו את הסכום ונסו שוב.');
       return;
     }
 
+    // The report was accepted into the real aggregate — a medium buzz confirms
+    // the committed outcome (pairs with the thank-you snackbar below).
+    HapticFeedback.mediumImpact();
     final catName = categoryById(catId)?.name ?? catId;
     final needed = StreetPriceService.reportsNeeded(widget.providerName, catId);
     final msg = needed > 0
@@ -1464,7 +1471,7 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
                   height: 40,
                   decoration: BoxDecoration(
                     color: ffTheme.brandAccent.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   ),
                   child: Icon(Icons.storefront_rounded,
                       size: 22, color: ffTheme.brandAccent),
@@ -1523,7 +1530,7 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
                             ? Colors.transparent
                             : ffTheme.alternate),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
                   );
                 }).toList(),
               ),

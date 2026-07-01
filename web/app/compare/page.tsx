@@ -11,6 +11,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Icon from "@/components/Icon";
+import Money from "@/components/Money";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
@@ -29,7 +30,6 @@ import {
   SITE_URL,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
-import { ils } from "@/lib/format";
 
 export const metadata: Metadata = pageMetadata({
   title: "השוואת מסלולי תקשורת בישראל — לפי שירות",
@@ -142,11 +142,11 @@ export default function CompareIndexPage() {
         <span className="text-foreground">השוואה</span>
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────────
-          The single confident focal point of the hub: an Icon-led category
-          eyebrow (green = ACTION), the H1, an intent-matching lead, and a row of
-          REAL catalogue stats so the value is legible above the fold. The price
-          figure is amber (VALUE); everything else stays ink/structure. */}
+      {/* ── Hero — TOOL FIRST ─────────────────────────────────────────────────
+          The hub opens with the tool, not the trust content: an Icon-led eyebrow
+          (green = ACTION), the H1 and ONE line of subtext — then straight into
+          the service picker. The stats row and the trust panel move BELOW the
+          picker (they support the tool; they are not the tool). */}
       <header className="mt-4">
         <span
           className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
@@ -161,56 +161,22 @@ export default function CompareIndexPage() {
           השוואת מסלולי תקשורת בישראל
         </h1>
         <p
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          className="sw-reveal mt-3 max-w-2xl text-lg leading-relaxed text-foreground"
           style={{ animationDelay: "80ms" }}
         >
           בחרו שירות להשוואת מסלולים מכל הספקים בישראל — מחירים בשקלים, כולל המחיר
-          אחרי המבצע. הזמינות ארצית, אותם ספקים בכל הארץ.
+          אחרי המבצע.
         </p>
-        <dl
-          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
-          style={{ animationDelay: "120ms" }}
-        >
-          {[
-            { figure: planCount.toLocaleString("he-IL"), label: "מסלולים" },
-            { figure: providerCount.toLocaleString("he-IL"), label: "ספקים" },
-            { figure: services.length.toLocaleString("he-IL"), label: "שירותים להשוואה" },
-          ].map((s) => (
-            <div key={s.label} className="flex items-baseline gap-1.5">
-              <dt className="sr-only">{s.label}</dt>
-              <dd className="font-display text-xl font-bold tracking-tight text-ink">
-                {s.figure}
-              </dd>
-              <span className="text-sm text-muted">{s.label}</span>
-            </div>
-          ))}
-        </dl>
       </header>
 
-      {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
-        <SgeSummary heading="השורה התחתונה: השוואה">{summary}</SgeSummary>
-      </div>
-
-      {/* ── Trust signals — real catalogue counts + honest trust points + the
-          §7b disclosure + §17 price caveat. Builds trust before the user picks
-          a service (the single primary action on this hub). ──────────────── */}
-      <div className="mt-8">
-        <TrustSignals
-          planCount={planCount}
-          providerCount={providerCount}
-          categoryCount={categoryCount}
-        />
-      </div>
-
-      {/* ── Service cards ───────────────────────────────────────────────────
-          The hub's primary action: one bento tile per service axis. Visible
-          section heading anchors the choice; each tile leads with the service
-          name, shows the REAL plan count and an amber (VALUE) "starts at" price,
-          and ends with a clear forward affordance. Guards the (catalogue-wide
-          unlikely) empty case with the shared EmptyState rather than a blank
-          grid. */}
-      <section aria-labelledby="services-h" className="mt-12">
+      {/* ── Service picker — THE tool, first thing after the H1 ──────────────
+          Compact, uniform cards (2-up from 360px, 3-up on lg): service name, one
+          real "N מסלולים · החל מ-₪X" line (catalogue-derived), and a small green
+          button as the explicit forward affordance. Prices render through the
+          bidi-safe <Money> so ₪ always sits on the same side of the digits.
+          Guards the (catalogue-wide unlikely) empty case with the shared
+          EmptyState rather than a blank grid. */}
+      <section aria-labelledby="services-h" className="mt-8">
         <h2
           id="services-h"
           className="font-display text-2xl font-bold tracking-tight text-ink"
@@ -230,7 +196,7 @@ export default function CompareIndexPage() {
             cta={{ label: "לכל הספקים", href: "/providers" }}
           />
         ) : (
-          <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-5 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3">
             {services.map((s, i) => {
               const plans = plansForService(s.slug);
               const min = minPriceOf(plans);
@@ -238,33 +204,34 @@ export default function CompareIndexPage() {
                 <li key={s.slug}>
                   <Link
                     href={`/compare/${s.slug}`}
-                    className="group sw-reveal bento card-interactive flex h-full flex-col p-6"
+                    className="group sw-reveal card card-interactive flex h-full min-h-24 flex-col justify-between gap-2 p-4"
                     style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
                   >
-                    <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
-                      השוואת {s.label}
+                    <span>
+                      <span className="block font-display text-base font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
+                        {s.label}
+                      </span>
+                      <span className="mt-0.5 block text-sm text-muted">
+                        {plans.length.toLocaleString("he-IL")} מסלולים
+                        {min != null && (
+                          <>
+                            {" "}
+                            <span aria-hidden="true">·</span> החל מ-
+                            <Money
+                              amount={min}
+                              className="font-display font-semibold text-value-text"
+                            />
+                          </>
+                        )}
+                      </span>
                     </span>
-                    <span className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 text-sm text-muted">
-                      <span>{plans.length} מסלולים</span>
-                      {min != null && (
-                        <>
-                          <span aria-hidden="true">·</span>
-                          <span>
-                            החל מ-
-                            <span className="font-display font-semibold text-value-text">
-                              {ils(min)}
-                            </span>
-                          </span>
-                        </>
-                      )}
-                    </span>
-                    {/* Pinned to the tile bottom (mt-auto) so the forward
-                        affordance aligns across equal-height cards. */}
-                    <span className="mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-accent-text">
-                      להשוואת {s.label}
+                    {/* A real (small, green) button affordance — the whole card
+                        is the link; this is its visible action. */}
+                    <span className="inline-flex w-fit items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-contrast transition-colors group-hover:bg-accent-hover">
+                      להשוואה
                       <Icon
                         name="arrow"
-                        size={16}
+                        size={14}
                         aria-hidden="true"
                         className="transition-transform ease-[var(--ease-out)] group-hover:-translate-x-0.5"
                       />
@@ -276,6 +243,42 @@ export default function CompareIndexPage() {
           </ul>
         )}
       </section>
+
+      {/* ── Real catalogue stats row — below the tool, above the trust panel. */}
+      <dl
+        className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3"
+        aria-label="נתוני הקטלוג"
+      >
+        {[
+          { figure: planCount.toLocaleString("he-IL"), label: "מסלולים" },
+          { figure: providerCount.toLocaleString("he-IL"), label: "ספקים" },
+          { figure: services.length.toLocaleString("he-IL"), label: "שירותים להשוואה" },
+        ].map((s) => (
+          <div key={s.label} className="flex items-baseline gap-1.5">
+            <dt className="sr-only">{s.label}</dt>
+            <dd className="font-display text-xl font-bold tracking-tight text-ink">
+              {s.figure}
+            </dd>
+            <span className="text-sm text-muted">{s.label}</span>
+          </div>
+        ))}
+      </dl>
+
+      {/* ── Trust signals — real catalogue counts + honest trust points + the
+          §7b disclosure + §17 price caveat. Supports the picker above (the
+          single primary action on this hub). ─────────────────────────────── */}
+      <div className="mt-6">
+        <TrustSignals
+          planCount={planCount}
+          providerCount={providerCount}
+          categoryCount={categoryCount}
+        />
+      </div>
+
+      {/* ── SGE summary ───────────────────────────────────────────────────── */}
+      <div className="mt-8">
+        <SgeSummary heading="השורה התחתונה: השוואה">{summary}</SgeSummary>
+      </div>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

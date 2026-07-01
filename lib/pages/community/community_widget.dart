@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
@@ -136,12 +135,6 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     }
   }
 
-  int _channelCount(String ch) {
-    final appState = AppState();
-    final visible = _posts.where((p) => !p.isFlagged || appState.isOwnPost(p.id));
-    return ch == 'הכל' ? visible.length : visible.where((p) => p.channel == ch).length;
-  }
-
   List<CommunityPost> get _filtered {
     final appState = AppState();
     // Hide moderator-flagged posts from the feed. A user's OWN flagged post is
@@ -177,7 +170,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl)),
         title: const Text('מחיקת פוסט', textAlign: TextAlign.center),
         content: const Text('למחוק את הפוסט? לא ניתן לשחזר.', textAlign: TextAlign.center),
         actionsAlignment: MainAxisAlignment.center,
@@ -194,7 +187,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             style: ElevatedButton.styleFrom(
               backgroundColor: ffTheme.error,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
             ),
             child: const Text('מחק'),
           ),
@@ -224,7 +217,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           child: Container(
             decoration: BoxDecoration(
               color: ffTheme.background,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -237,7 +230,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   children: [
                     Icon(Icons.flag_rounded, size: 18, color: ffTheme.error),
                     const SizedBox(width: 8),
-                    Text('דיווח על תוכן', style: ffTheme.titleLarge),
+                    Semantics(
+                      header: true,
+                      child: Text('דיווח על תוכן', style: ffTheme.titleLarge),
+                    ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
@@ -252,18 +248,27 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   spacing: 8, runSpacing: 8,
                   children: reasons.map((r) {
                     final active = selectedReason == r;
-                    return GestureDetector(
-                      onTap: () => setSheet(() => selectedReason = r),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: ffTheme.easeInOut,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: active ? AppColors.primary : ffTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
+                    // Announced as a selectable button; >=48dp hit area around
+                    // the unchanged painted chip.
+                    return Semantics(
+                      button: true,
+                      selected: active,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setSheet(() => selectedReason = r),
+                        child: _MinTapTarget(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: ffTheme.easeInOut,
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: active ? AppColors.primary : ffTheme.cardSurface,
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                              border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
+                            ),
+                            child: Text(r, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
+                          ),
                         ),
-                        child: Text(r, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                       ),
                     );
                   }).toList(),
@@ -279,9 +284,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     hintText: 'פרטים נוספים (לא חובה)...',
                     filled: true,
                     fillColor: ffTheme.cardSurface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -309,8 +314,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: ffTheme.alternate,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
+                      textStyle: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700),
                       elevation: 0,
                     ),
                   ),
@@ -431,7 +436,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             builder: (ctx, scrollCtrl) => Container(
               decoration: BoxDecoration(
                 color: ffTheme.background,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
               ),
               child: Column(
                 children: [
@@ -445,11 +450,14 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         const SizedBox(height: 16),
                         Row(
                           children: [
-                            Text('תגובות', style: ffTheme.titleLarge),
+                            Semantics(
+                              header: true,
+                              child: Text('תגובות', style: ffTheme.titleLarge),
+                            ),
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(10)),
+                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
                               child: Text('${replies.length}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
                             ),
                           ],
@@ -465,7 +473,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: ffTheme.cardSurface,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
                     child: Column(
@@ -473,16 +481,20 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              width: 28, height: 28,
-                              decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                              child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                            // Initials avatar is decorative — the author name
+                            // sits right next to it.
+                            ExcludeSemantics(
+                              child: Container(
+                                width: 28, height: 28,
+                                decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                                child: Center(child: Text(post.avatar, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Text(post.author, style: ffTheme.labelMedium),
                             if (post.isVerified) ...[
                               const SizedBox(width: 4),
-                              Icon(Icons.verified_rounded, size: 13, color: ffTheme.info),
+                              Icon(Icons.verified_rounded, size: 13, color: ffTheme.info, semanticLabel: 'משתמש מאומת'),
                             ],
                           ],
                         ),
@@ -499,27 +511,36 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     child: replies.isEmpty
                         ? const EmptyState(
                             icon: Icons.chat_bubble_outline_rounded,
-                            headline: 'אין תגובות עדיין',
-                            subtitle: 'היה הראשון לענות!',
+                            headline: 'עדיין אין תגובות',
+                            // Plural, calm voice — matches the feed's empty state
+                            // ("היו הראשונים לשתף") instead of the old
+                            // masculine-singular exclamatory nudge.
+                            subtitle: 'היו הראשונים להגיב',
                           )
                         : ListView.builder(
                             controller: scrollCtrl,
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                             itemCount: replies.length,
-                            itemBuilder: (_, i) {
+                            itemBuilder: (itemCtx, i) {
                               final reply = replies[i];
                               final appState = AppState();
                               // Reportable only when it's a persisted backend reply
                               // (has an id) authored by someone other than the user.
                               final isOwnReply = appState.isLoggedIn && reply.author == appState.firstName;
                               final canReport = reply.id != null && !isOwnReply;
-                              return _ReplyBubble(
+                              final bubble = _ReplyBubble(
                                 reply: reply,
                                 ffTheme: ffTheme,
                                 onReport: canReport
                                     ? () => _showReportSheet(context, ffTheme, targetType: 'reply', targetId: reply.id!)
                                     : null,
-                              ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideY(begin: 0.05);
+                              ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms);
+                              // Reduced motion keeps the fade, drops the slide;
+                              // RepaintBoundary isolates each bubble's entrance.
+                              final reduce = MediaQuery.maybeOf(itemCtx)?.disableAnimations ?? false;
+                              return RepaintBoundary(
+                                child: reduce ? bubble : bubble.slideY(begin: 0.05),
+                              );
                             },
                           ),
                   ),
@@ -548,7 +569,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
                                     color: ffTheme.accent1,
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                                     border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                                   ),
                                   child: Row(
@@ -563,16 +584,30 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                               Positioned(
                                 top: 4,
                                 left: 4,
-                                child: GestureDetector(
-                                  onTap: () => setSheet(() {
-                                    replyPendingType = null;
-                                    replyPendingData = null;
-                                    replyPendingDur = null;
-                                  }),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                // Accessible name + a 40dp hit area (the painted
+                                // 20dp X stays in the same corner).
+                                child: Semantics(
+                                  button: true,
+                                  label: 'הסר צירוף',
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => setSheet(() {
+                                      replyPendingType = null;
+                                      replyPendingData = null;
+                                      replyPendingDur = null;
+                                    }),
+                                    child: SizedBox(
+                                      width: 40,
+                                      height: 40,
+                                      child: Align(
+                                        alignment: Alignment.topLeft,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                          child: const ExcludeSemantics(child: Icon(Icons.close, color: Colors.white, size: 14)),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -631,9 +666,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                   filled: true,
                                   fillColor: ffTheme.background,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary)),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.primary)),
                                 ),
                               ),
                             ),
@@ -657,7 +692,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   setSheet(() { replyPendingType = null; replyPendingData = null; replyPendingDur = null; });
                                 },
                                 child: Container(
-                                  width: 44, height: 44,
+                                  // >=48dp accessible tap target.
+                                  width: kMinTapTarget, height: kMinTapTarget,
                                   decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                                   child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                                 ),
@@ -703,7 +739,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           child: Container(
             decoration: BoxDecoration(
               color: ffTheme.background,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
             ),
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -714,7 +750,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Text('פוסט חדש', style: ffTheme.titleLarge),
+                    Semantics(
+                      header: true,
+                      child: Text('פוסט חדש', style: ffTheme.titleLarge),
+                    ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
@@ -729,18 +768,27 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   spacing: 8, runSpacing: 6,
                   children: _channels.where((c) => c != 'הכל').map((ch) {
                     final active = selectedChannel == ch;
-                    return GestureDetector(
-                      onTap: () => setSheet(() => selectedChannel = ch),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: ffTheme.easeInOut,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: active ? AppColors.primary : ffTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
+                    // Announced as a selectable button; >=48dp hit area around
+                    // the unchanged painted chip.
+                    return Semantics(
+                      button: true,
+                      selected: active,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setSheet(() => selectedChannel = ch),
+                        child: _MinTapTarget(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: ffTheme.easeInOut,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: active ? AppColors.primary : ffTheme.cardSurface,
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                              border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
+                            ),
+                            child: Text(ch, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
+                          ),
                         ),
-                        child: Text(ch, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                       ),
                     );
                   }).toList(),
@@ -760,9 +808,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     hintText: 'שתפו חוויה, טיפ, שאלה...',
                     filled: true,
                     fillColor: ffTheme.cardSurface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -817,7 +865,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent1,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                                   border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
@@ -836,11 +884,20 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 button: true,
                                 label: 'הסר צירוף',
                                 child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
                                   onTap: () => setSheet(() { pendingType = null; pendingData = null; pendingDur = null; }),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                                    child: const ExcludeSemantics(child: Icon(Icons.close, color: Colors.white, size: 14)),
+                                  // 40dp hit area; the painted 20dp X keeps its corner.
+                                  child: SizedBox(
+                                    width: 40,
+                                    height: 40,
+                                    child: Align(
+                                      alignment: Alignment.topLeft,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                        child: const ExcludeSemantics(child: Icon(Icons.close, color: Colors.white, size: 14)),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -898,8 +955,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
+                      textStyle: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700),
                       elevation: 0,
                     ),
                   ),
@@ -918,6 +975,24 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
+    // PERF: compute the filtered feed ONCE per build. It used to be a getter
+    // re-evaluated in itemCount AND inside every itemBuilder call — a full
+    // O(n) filter pass per visible row.
+    final filtered = _filtered;
+    // PERF: channel counts in a single pass over the visible posts (was one
+    // full-feed scan per chip per build).
+    final visiblePosts =
+        _posts.where((p) => !p.isFlagged || appState.isOwnPost(p.id));
+    final channelCounts = <String, int>{};
+    var visibleTotal = 0;
+    for (final p in visiblePosts) {
+      visibleTotal++;
+      channelCounts[p.channel] = (channelCounts[p.channel] ?? 0) + 1;
+    }
+    // Reduced motion KEEPS the entrance fade (opacity) but DROPS the translate
+    // — the feed reveal stays vestibular-safe.
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -932,8 +1007,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('קהילת Switchy AI', style: GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
-            Text('שתפו חוויות, טיפים ועצות חיסכון', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
+            // App-bar title/subtitle on the fixed ink header — sourced from the
+            // type scale, with white-on-ink colour as the only delta (the
+            // subtitle keeps its lighter w400 via copyWith since the nearest
+            // size token, labelSmall, is w600).
+            Semantics(
+              header: true,
+              child: Text('קהילת Switchy AI', style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w800, color: Colors.white)),
+            ),
+            Text('שתפו חוויות, טיפים ועצות חיסכון', style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w400, color: Colors.white70)),
           ],
         ),
         foregroundColor: Colors.white,
@@ -950,8 +1032,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 foregroundColor: AppColors.primary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                textStyle: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                textStyle: ffTheme.titleSmall.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
+                // App-bar "publish" pill — full-round to preserve the pill look
+                // (radius-20 on a short chip reads as a pill, not a 12 card).
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
               ),
             ),
           ),
@@ -983,63 +1067,84 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   color: ffTheme.error,
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.emoji_events_rounded, size: 14, color: ffTheme.primary),
-                      const SizedBox(width: 4),
-                      Text('קהילה פעילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                    ],
+                // Flexible + ellipsis: at large OS text scales the pill yields
+                // instead of overflowing the stats strip.
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ffTheme.accent1,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.emoji_events_rounded, size: 14, color: ffTheme.primary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'קהילה פעילה',
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
           ).animate().fadeIn(duration: 300.ms),
 
-          // Channel chips with counts
+          // Channel chips with counts. The rail is tall enough for a >=48dp
+          // tap target per chip; the painted pill stays its intrinsic size,
+          // centered inside the (opaque) hit area.
           SizedBox(
-            height: 46,
+            height: 58,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               children: _channels.map((ch) {
                 final active = _activeChannel == ch;
-                final count = _channelCount(ch);
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _activeChannel = ch;
-                    _visibleCount = _feedPageSize;
-                  }),
-                  child: AnimatedContainer(
-                    // Filter-chip select is a state MORPH → easeInOut.
-                    duration: const Duration(milliseconds: 200),
-                    curve: ffTheme.easeInOut,
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: active ? AppColors.primary : ffTheme.cardSurface,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(ch, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
-                        if (!active) ...[
-                          const SizedBox(width: 5),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(8)),
-                            child: Text('$count', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
-                          ),
-                        ],
-                      ],
+                final count = ch == 'הכל' ? visibleTotal : (channelCounts[ch] ?? 0);
+                return Semantics(
+                  button: true,
+                  selected: active,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      _activeChannel = ch;
+                      _visibleCount = _feedPageSize;
+                    }),
+                    child: Center(
+                      widthFactor: 1,
+                      child: AnimatedContainer(
+                        // Filter-chip select is a state MORPH → easeInOut.
+                        duration: const Duration(milliseconds: 200),
+                        curve: ffTheme.easeInOut,
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: active ? AppColors.primary : ffTheme.cardSurface,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                          border: Border.all(color: active ? AppColors.primary : ffTheme.alternate),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(ch, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
+                            if (!active) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                                child: Text('$count', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -1052,27 +1157,36 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => setState(() {
-                    _sortByPopular = !_sortByPopular;
-                    _visibleCount = _feedPageSize;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: ffTheme.easeInOut,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_sortByPopular ? Icons.local_fire_department_rounded : Icons.access_time_rounded, size: 13, color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText),
-                        const SizedBox(width: 4),
-                        Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.copyWith(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
-                      ],
+                // Sort toggle — announced as a toggle button; the hit area is
+                // raised to >=48dp while the painted chip keeps its size.
+                Semantics(
+                  button: true,
+                  toggled: _sortByPopular,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      _sortByPopular = !_sortByPopular;
+                      _visibleCount = _feedPageSize;
+                    }),
+                    child: _MinTapTarget(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: ffTheme.easeInOut,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                          border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_sortByPopular ? Icons.local_fire_department_rounded : Icons.access_time_rounded, size: 13, color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText),
+                            const SizedBox(width: 4),
+                            Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.copyWith(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -1084,6 +1198,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   child: Tooltip(
                     message: 'פוסטים שמורים',
                     child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() {
@@ -1091,20 +1206,22 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           _visibleCount = _feedPageSize;
                         });
                       },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: ffTheme.easeInOut,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
-                        ),
-                        child: ExcludeSemantics(
-                          child: Icon(
-                            _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                            size: 15,
-                            color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                      child: _MinTapTarget(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: ffTheme.easeInOut,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                            border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
+                          ),
+                          child: ExcludeSemantics(
+                            child: Icon(
+                              _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                              size: 15,
+                              color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                            ),
                           ),
                         ),
                       ),
@@ -1132,9 +1249,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       filled: true,
                       fillColor: ffTheme.cardSurface,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.primary)),
                     ),
                   ),
                 ),
@@ -1183,7 +1300,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
           // Posts list
           Expanded(
-            child: _filtered.isEmpty
+            child: filtered.isEmpty
                 ? (_showBookmarksOnly
                     ? EmptyState(
                         icon: Icons.bookmark_border_rounded,
@@ -1240,10 +1357,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       // Build only the current window; it grows as the user
                       // scrolls (see _maybeGrowFeed). For short feeds this equals
                       // _filtered.length, so behavior is unchanged.
-                      itemCount: math.min(_visibleCount, _filtered.length),
+                      itemCount: math.min(_visibleCount, filtered.length),
                       itemBuilder: (context, i) {
-                        final post = _filtered[i];
-                        return _PostCard(
+                        final post = filtered[i];
+                        final card = _PostCard(
                           post: post,
                           ffTheme: ffTheme,
                           bookmarked: appState.isBookmarked(post.id),
@@ -1258,7 +1375,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           onReply: () => _showReplies(context, post, ffTheme),
                           onDelete: () => _confirmDelete(context, post, appState, ffTheme),
                           onReport: () => _showReportSheet(context, ffTheme, targetType: 'post', targetId: post.id),
-                        ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
+                        ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms);
+                        // RepaintBoundary: a like-bounce / entrance on one card
+                        // never repaints its neighbours. Reduced motion keeps
+                        // the fade and drops the slide.
+                        return RepaintBoundary(
+                          child: reduceMotion
+                              ? card
+                              : card.slideY(begin: 0.05, end: 0),
+                        );
                       },
                     ),
                   ),
@@ -1343,7 +1468,7 @@ class _PostCardState extends State<_PostCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: ffTheme.warning.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1359,10 +1484,14 @@ class _PostCardState extends State<_PostCard> {
                 // Author row
                 Row(
                   children: [
-                    Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                      child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                    // Initials avatar is decorative — the author name sits
+                    // right next to it, so screen readers skip the fragment.
+                    ExcludeSemantics(
+                      child: Container(
+                        width: 38, height: 38,
+                        decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                        child: Center(child: Text(post.avatar, style: ffTheme.titleLarge.copyWith(fontSize: 16, color: ffTheme.primary))),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1376,13 +1505,17 @@ class _PostCardState extends State<_PostCard> {
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(6)),
-                                  child: Text('צוות', style: GoogleFonts.rubik(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+                                  // Micro "team" badge — no token sits at 9px, so
+                                  // the nearest Rubik token (titleSmall) carries
+                                  // the face and the 9px / white delta rides via
+                                  // copyWith.
+                                  child: Text('צוות', style: ffTheme.titleSmall.copyWith(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ),
                               ],
                               if (post.isVerified) ...[
                                 const SizedBox(width: 4),
-                                Icon(Icons.verified_rounded, size: 14, color: ffTheme.info),
+                                Icon(Icons.verified_rounded, size: 14, color: ffTheme.info, semanticLabel: 'משתמש מאומת'),
                               ],
                             ],
                           ),
@@ -1393,7 +1526,7 @@ class _PostCardState extends State<_PostCard> {
                     // Channel badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
                       child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                     ),
                     const SizedBox(width: 4),
@@ -1404,19 +1537,25 @@ class _PostCardState extends State<_PostCard> {
                       child: Tooltip(
                         message: widget.bookmarked ? 'הסר מהשמורים' : 'שמור',
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () => widget.onBookmark(post.id),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            curve: ffTheme.easeInOut,
-                            padding: const EdgeInsets.all(5),
-                            decoration: BoxDecoration(
-                              color: widget.bookmarked ? ffTheme.accent2 : Colors.transparent,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              widget.bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                              size: 18,
-                              color: widget.bookmarked ? ffTheme.warning : ffTheme.secondaryText,
+                          // >=48dp hit area; the painted 28dp chip stays put.
+                          child: _MinTapTarget(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              curve: ffTheme.easeInOut,
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: widget.bookmarked ? ffTheme.accent2 : Colors.transparent,
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                              ),
+                              child: ExcludeSemantics(
+                                child: Icon(
+                                  widget.bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                                  size: 18,
+                                  color: widget.bookmarked ? ffTheme.warning : ffTheme.secondaryText,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1426,13 +1565,14 @@ class _PostCardState extends State<_PostCard> {
                     if ((widget.isOwn && widget.onDelete != null) ||
                         (!widget.isOwn && widget.onReport != null))
                       SizedBox(
-                        height: 28,
-                        width: 28,
+                        // >=48dp accessible tap target for the overflow menu.
+                        height: kMinTapTarget,
+                        width: kMinTapTarget,
                         child: PopupMenuButton<String>(
                           padding: EdgeInsets.zero,
                           tooltip: 'אפשרויות',
                           icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl)),
                           onSelected: (v) {
                             if (v == 'delete') widget.onDelete?.call();
                             if (v == 'report') widget.onReport?.call();
@@ -1474,7 +1614,7 @@ class _PostCardState extends State<_PostCard> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: ffTheme.warning.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                       border: Border.all(color: ffTheme.warning.withValues(alpha: 0.4)),
                     ),
                     child: Row(
@@ -1516,7 +1656,7 @@ class _PostCardState extends State<_PostCard> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: ffTheme.accent1,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                           border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                         ),
                         child: Row(
@@ -1599,6 +1739,23 @@ class _PostCardState extends State<_PostCard> {
 
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
+/// Raises a small control's HIT AREA to the >=48dp accessibility minimum
+/// ([kMinTapTarget]) without growing the painted control itself — the child
+/// keeps its intrinsic size, centered inside the enlarged (transparent) box.
+/// Pair with a [GestureDetector] using [HitTestBehavior.opaque] so the whole
+/// box accepts the tap.
+class _MinTapTarget extends StatelessWidget {
+  const _MinTapTarget({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(
+            minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+        child: Align(widthFactor: 1, heightFactor: 1, child: child),
+      );
+}
+
 class _ActionBtn extends StatelessWidget {
   const _ActionBtn({required this.icon, required this.label, required this.color, required this.onTap, this.scale = 1.0, this.semanticLabel});
   final IconData icon;
@@ -1611,29 +1768,36 @@ class _ActionBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    // Reduced motion: the like-pop scale beat is skipped entirely.
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Semantics(
       button: true,
       label: semanticLabel,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedScale(
-                scale: scale,
-                duration: const Duration(milliseconds: 220),
-                // A single gentle overshoot (the shared [spring]) instead of a
-                // multi-wobble elasticOut — one confident beat, then settle.
-                curve: ffTheme.spring,
-                child: Icon(icon, size: 17, color: color),
-              ),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+        // >=48dp hit area; the painted row keeps its compact size.
+        child: _MinTapTarget(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: reduceMotion ? 1.0 : scale,
+                  duration: const Duration(milliseconds: 220),
+                  // A single gentle overshoot (the shared [spring]) instead of a
+                  // multi-wobble elasticOut — one confident beat, then settle.
+                  curve: ffTheme.spring,
+                  child: Icon(icon, size: 17, color: color),
+                ),
+                if (label.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -1653,7 +1817,10 @@ class _StatPill extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+        // Compact stat count — the numericLarge/Medium tokens (>=24px) are hero
+        // sizes, far larger than this 15px pill, so it sources the nearest Rubik
+        // title token and applies the heavier w800 + per-pill colour via copyWith.
+        Text(value, style: ffTheme.titleLarge.copyWith(fontWeight: FontWeight.w800, color: color)),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
       ],
     );
@@ -1702,10 +1869,13 @@ class _ReplyBubble extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32, height: 32,
-            decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-            child: Center(child: Text(reply.avatar, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+          // Initials avatar is decorative — the author name is read instead.
+          ExcludeSemantics(
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+              child: Center(child: Text(reply.avatar, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primary))),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1723,10 +1893,16 @@ class _ReplyBubble extends StatelessWidget {
                         button: true,
                         label: 'דווח על תגובה',
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: onReport,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            child: Icon(Icons.flag_outlined, size: 14, color: ffTheme.secondaryText.withValues(alpha: 0.7)),
+                          // >=48dp hit area; the tiny painted flag stays put.
+                          child: _MinTapTarget(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: ExcludeSemantics(
+                                child: Icon(Icons.flag_outlined, size: 14, color: ffTheme.secondaryText.withValues(alpha: 0.7)),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -1738,10 +1914,10 @@ class _ReplyBubble extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: ffTheme.background,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(14),
-                      bottomLeft: Radius.circular(14),
-                      bottomRight: Radius.circular(14),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(ffTheme.radiusCard),
+                      bottomLeft: Radius.circular(ffTheme.radiusCard),
+                      bottomRight: Radius.circular(ffTheme.radiusCard),
                     ),
                     border: Border.all(color: ffTheme.alternate),
                   ),

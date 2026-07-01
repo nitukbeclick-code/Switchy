@@ -9,6 +9,8 @@ import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../widgets/legal_disclosure.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/empty_state.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});
@@ -88,6 +90,14 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Reduced-motion gate: flutter_animate does NOT read disableAnimations by
+    // itself, so every transform below (slide/scale) is explicitly dropped —
+    // reveals degrade to a plain fade — when the user asked for less motion.
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Dynamic type: the fixed-height horizontal chip bands scale with the OS
+    // text size (the app clamps at 1.3x globally) so large type never clips.
+    final textScaler = MediaQuery.textScalerOf(context);
     final appState = Provider.of<AppState>(context);
     final cat = appState.selectedCat;
     final catData = categoryById(cat);
@@ -143,6 +153,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               (matchMap[b.id]?.score ?? 0).compareTo(matchMap[a.id]?.score ?? 0)))
         : filteredByProvider;
 
+    // A stable signature of the CURRENT result ordering+membership. It changes
+    // exactly when the list mutates (sort reorders the ids, a filter / provider /
+    // search / category narrows or swaps membership) and stays identical across
+    // unrelated rebuilds (an AppState notify that doesn't touch the results). We
+    // fold it into each row's flutter_animate key below so the calm fade-rise
+    // RE-FIRES when the list changes — without disturbing the CustomScrollView,
+    // the linked category scroll, or the smart-sort logic.
+    final listSignature =
+        '$effectiveSort|$_smartSort|$_providerFilter|${plans.map((p) => p.id).join(',')}';
+
     final allCatProviders = plansByCat(cat).map((p) => p.provider).toSet().toList();
 
     final topPlanMatch = plans.isNotEmpty ? matchMap[plans.first.id] : null;
@@ -155,8 +175,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         backgroundColor: headerColor,
         foregroundColor: onHeader,
         elevation: 0,
-        title: Text(catData?.name ?? 'תוצאות',
-            style: ffTheme.titleLarge.copyWith(color: onHeader)),
+        title: Semantics(
+            header: true,
+            child: Text(catData?.name ?? 'תוצאות',
+                style: ffTheme.titleLarge.copyWith(color: onHeader))),
         actions: [
           IconButton(
             icon: Stack(children: [
@@ -179,14 +201,18 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         ],
         bottom: PreferredSize(
           // Tighter category band (~40px) — calmer chrome above the results.
-          preferredSize: const Size.fromHeight(44),
+          // The band height follows the OS text scale so large type never
+          // clips the chips (dynamic-type resilience, no scale clamping).
+          preferredSize: Size.fromHeight(textScaler.scale(44)),
           child: Container(
             color: headerColor,
             child: SizedBox(
-              height: 44,
+              height: textScaler.scale(44),
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                // Vertical inset moved INTO each item (below) so the tap
+                // target spans the full 44px band, not just the 32px chip.
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: _categories.map((c) {
                   final active = appState.selectedCat == c.$1;
                   // The budget filter from the quiz silently applies to its own
@@ -200,10 +226,23 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   // inactive = a faint glass chip on the ink header.
                   return Padding(
                     padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: GestureDetector(
+                    // Screen readers hear a proper toggle-button (name comes
+                    // from the chip's own Text; selected = the active tab).
+                    child: Semantics(
+                      button: true,
+                      selected: active,
+                      child: GestureDetector(
+                      // Opaque: the whole 44px-tall item (chip + the vertical
+                      // 6px insets moved in from the ListView padding) is
+                      // tappable — a full-height touch target, same visuals.
+                      behavior: HitTestBehavior.opaque,
                       onTap: () => _switchCategory(appState, c.$1),
+                      child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: AnimatedContainer(
-                        duration: ffTheme.motionFast,
+                        // Reduced motion: state flips snap instead of easing.
+                        duration:
+                            reduceMotion ? Duration.zero : ffTheme.motionFast,
                         curve: ffTheme.easeOut,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 5),
@@ -215,7 +254,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           color: active
                               ? ffTheme.brandAccent
                               : onHeader.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           boxShadow: active ? ffTheme.shadowAccent : null,
                         ),
                         child: Row(
@@ -239,7 +278,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withValues(alpha: 0.22),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -258,6 +297,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             ],
                           ],
                         ),
+                      ),
+                      ),
                       ),
                     ),
                   );
@@ -293,7 +334,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               })
                           : const Icon(Icons.search_rounded),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        // No exact 14 token — radiusCard (12) is the nearest
+                        // content corner (the scale caps content at radiusXl/12).
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
@@ -326,7 +369,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               decoration: BoxDecoration(
                                 // Green "fresh/live" cue — the catalogue is current.
                                 color: ffTheme.brandAccent.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                 border: Border.all(
                                     color: ffTheme.brandAccent.withValues(alpha: 0.25)),
                               ),
@@ -357,18 +400,25 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 2),
                             // Padded InkWell — a comfortable target with press
-                            // feedback instead of a bare 24px text tap.
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  child: Text('נקה',
-                                      style: ffTheme.labelMedium.copyWith(
-                                          color: ffTheme.error,
-                                          fontWeight: FontWeight.w700)),
+                            // feedback instead of a bare 24px text tap. The
+                            // visible "נקה" is ambiguous without visual context,
+                            // so screen readers get the full action.
+                            Semantics(
+                              button: true,
+                              label: 'נקה את כל הסינונים',
+                              excludeSemantics: true,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                                  onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                    child: Text('נקה',
+                                        style: ffTheme.labelMedium.copyWith(
+                                            color: ffTheme.error,
+                                            fontWeight: FontWeight.w700)),
+                                  ),
                                 ),
                               ),
                             ),
@@ -385,27 +435,38 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
                         child: Row(
                           children: [
-                            Text('החשבון שלך:',
-                                style: ffTheme.bodyMedium
-                                    .copyWith(color: ffTheme.secondaryText)),
+                            // Flexible + ellipsis: overflow-safe when the OS
+                            // text scale is large (the steppers keep priority).
+                            Flexible(
+                              child: Text('החשבון שלך:',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: ffTheme.bodyMedium
+                                      .copyWith(color: ffTheme.secondaryText)),
+                            ),
                             const SizedBox(width: 8),
                             Semantics(
                               button: true,
                               label: 'ערוך את החשבון החודשי',
                               child: Material(
                                 color: ffTheme.accent1,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                   onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text('₪$bill',
+                                        // Money token — [PriceText] pins the ₪
+                                        // before the digits (stable LTR bidi) in
+                                        // the RTL stepper. Style override keeps
+                                        // the titleMedium/ink numeral; priceDisplay
+                                        // already carries tabular figures.
+                                        PriceText('₪$bill',
                                             style: ffTheme.titleMedium
-                                                .copyWith(color: ffTheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
+                                                .copyWith(color: ffTheme.primary)),
                                         const SizedBox(width: 4),
                                         Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
                                       ],
@@ -439,7 +500,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               ),
 
               // Savings baseline banner — makes the comparison's reference point
-              // legible: every "תחסוך ₪X" figure is computed against THIS bill.
+              // legible: every "חיסכון של ₪X" figure is computed against THIS bill.
               // When the bill is still the default (not personalized), nudge the
               // user to enter their real bill so the savings reflect reality.
               if (bill > 0)
@@ -461,11 +522,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               // Sort chips
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 52,
+                  // Scales with the OS text size so large type never clips.
+                  height: textScaler.scale(52),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    // Vertical inset moved INTO each item so the tap target
+                    // spans the full 52px band (>=48px), not just the chip.
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: _sorts.map((s) {
                       final isSmart = s.$1 == 'smart';
                       final active = isSmart
@@ -473,7 +536,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           : (!_smartSort && appState.sortMode == s.$1);
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 8),
-                        child: GestureDetector(
+                        // Accessible name comes from the chip's Text; expose
+                        // button role + the selected sort state.
+                        child: Semantics(
+                          button: true,
+                          selected: active,
+                          child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             if (isSmart) {
@@ -483,8 +552,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               appState.setSortMode(s.$1);
                             }
                           },
+                          child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           child: AnimatedContainer(
-                            duration: ffTheme.motionFast,
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : ffTheme.motionFast,
                             curve: ffTheme.easeOut,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 6),
@@ -496,7 +569,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   ? (isSmart ? null : ffTheme.brandAccent)
                                   : ffTheme.cardSurface,
                               gradient: active && isSmart ? ffTheme.accentGradient : null,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                               border: Border.all(
                                   color: active
                                       ? ffTheme.brandAccent
@@ -524,6 +597,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               ],
                             ),
                           ),
+                          ),
+                          ),
                         ),
                       );
                     }).toList(),
@@ -540,7 +615,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
                       ),
                       child: Row(
@@ -558,7 +633,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                               onTap: () => context.pushNamed('Quiz'),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -588,9 +663,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Material(
                       color: ffTheme.brandAccent.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         onTap: () {
                           HapticFeedback.lightImpact();
                           context.pushNamed('Quiz');
@@ -669,7 +744,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'תחסוך ₪$topSave בשנה',
+                                        // De-pushed: the descriptive "חיסכון של"
+                                        // (honest comparison figure) instead of the
+                                        // second-person "תחסוך" hard sell.
+                                        'חיסכון של ₪$topSave בשנה',
                                         style: ffTheme.bodySmall.copyWith(
                                             color: ffTheme.savingText,
                                             fontWeight: FontWeight.w800),
@@ -684,69 +762,59 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ),
                         ),
                       ),
-                    ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05),
+                    // Reduced motion KEEPS the fade but DROPS the slide
+                    // transform (begin: 0 = no translation).
+                    ).animate().fadeIn(duration: 300.ms).slideX(
+                        begin: reduceMotion ? 0 : 0.05),
                   ),
                 ),
 
-              // Plan list or empty state
+              // No-match / empty state — the shared [EmptyState] (warm honest
+              // copy + ONE clear next action), with a "switch category" helper
+              // row beneath it as a calm secondary path. Three honest variants:
+              //   • search has a query  → clear the search
+              //   • filters are active  → clear the filters
+              //   • category is just empty (no query, no filters) → no primary
+              //     CTA; the category row below is the action.
               if (plans.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.fromLTRB(8, 16, 8, 24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent1,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.08), width: 1.5),
-                            boxShadow: ffTheme.shadowMd,
-                          ),
-                          child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.primary.withValues(alpha: 0.55)),
-                        ).animate().fadeIn(duration: 350.ms).scale(
-                              begin: const Offset(0.85, 0.85),
-                              end: const Offset(1, 1),
-                              duration: 350.ms,
-                              curve: Curves.easeOutBack,
-                            ),
-                        const SizedBox(height: 20),
-                        Text(
-                          appState.searchQuery.isNotEmpty ? 'אין תוצאות לחיפוש' : 'לא נמצאו מסלולים',
-                          style: ffTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          appState.searchQuery.isNotEmpty
-                            ? 'לא מצאנו תוצאות עבור "${appState.searchQuery}"'
-                            : appState.activeFilters.isNotEmpty
-                              ? 'הסינונים שבחרת מצמצמים מדי — נסה להסיר חלקם'
-                              : 'אין מסלולים בקטגוריה זו כרגע',
-                          style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 28),
                         if (appState.searchQuery.isNotEmpty)
-                          _ActionChip(
-                            label: 'נקה חיפוש',
-                            icon: Icons.clear_rounded,
-                            onTap: () { _searchController.clear(); appState.setSearch(''); },
-                            ffTheme: ffTheme,
-                          ),
-                        if (appState.activeFilters.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _ActionChip(
-                            label: 'נקה את כל הסינונים',
+                          EmptyState(
+                            icon: Icons.search_off_rounded,
+                            headline: 'לא נמצאו תוצאות',
+                            subtitle:
+                                'לא מצאנו מסלולים שתואמים ל"${appState.searchQuery}".\nנסו מילה אחרת או נקו את החיפוש.',
+                            ctaLabel: 'נקו חיפוש',
+                            onCtaTap: () async {
+                              _searchController.clear();
+                              appState.setSearch('');
+                            },
+                          )
+                        else if (appState.activeFilters.isNotEmpty)
+                          EmptyState(
                             icon: Icons.filter_alt_off_rounded,
-                            onTap: appState.clearFilters,
-                            ffTheme: ffTheme,
+                            headline: 'אין מסלולים בסינון הזה',
+                            subtitle:
+                                'הסינונים שבחרתם מצמצמים מדי. נקו אותם ותראו שוב את כל המסלולים בקטגוריה.',
+                            ctaLabel: 'נקו סינון',
+                            onCtaTap: () async => appState.clearFilters(),
+                          )
+                        else
+                          const EmptyState(
+                            icon: Icons.search_off_rounded,
+                            headline: 'אין מסלולים בקטגוריה הזו',
+                            subtitle: 'כרגע אין כאן מסלולים זמינים להצגה.',
                           ),
-                        ],
-                        const SizedBox(height: 28),
-                        Text('נסה קטגוריה אחרת', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
+                        const SizedBox(height: 8),
+                        Text('אפשר גם לעבור קטגוריה',
+                            style: ffTheme.labelMedium
+                                .copyWith(color: ffTheme.secondaryText)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -756,17 +824,17 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             .where((c) => c.$1 != cat)
                             .map((c) => Container(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                 boxShadow: ffTheme.shadowSoft,
                               ),
                               child: Material(
                                 color: ffTheme.cardSurface,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                   side: BorderSide(color: ffTheme.lineColor),
                                 ),
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                   onTap: () => _switchCategory(appState, c.$1),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -813,14 +881,25 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         // with the gentle overshoot spring, so the eye lands on
                         // the top pick first. PURPOSE = focal hierarchy, fired
                         // once on reveal (no loop). Every other row keeps the
-                        // calm fade+slide. flutter_animate already drops the
-                        // transform under reduced-motion.
+                        // calm fade+slide. Reduced motion (disableAnimations —
+                        // flutter_animate does NOT gate on it by itself) KEEPS
+                        // the fade but DROPS the scale/slide transforms, so the
+                        // list still resolves cleanly with no movement.
+                        // Keying each row's animation by (listSignature, id)
+                        // makes flutter_animate mint a fresh Animate whenever the
+                        // list mutates (sort/filter/provider/search/category), so
+                        // the reveal replays on every list change — and stays put
+                        // on unrelated rebuilds (the signature is unchanged).
+                        final animKey =
+                            ValueKey('$listSignature#${plan.id}');
                         if (isTopMatch) {
                           return card
-                              .animate()
+                              .animate(key: animKey)
                               .fadeIn(duration: 320.ms)
                               .scale(
-                                begin: const Offset(1.03, 1.03),
+                                begin: reduceMotion
+                                    ? const Offset(1, 1)
+                                    : const Offset(1.03, 1.03),
                                 end: const Offset(1, 1),
                                 duration: 360.ms,
                                 curve: ffTheme.spring,
@@ -830,9 +909,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             // Cap the stagger so long result lists settle
                             // quickly — the reveal reads premium for the first
                             // few cards, slow past that.
-                            .animate(delay: (index.clamp(0, 6) * 60).ms)
+                            .animate(key: animKey, delay: (index.clamp(0, 6) * 60).ms)
                             .fadeIn(duration: 300.ms)
-                            .slideX(begin: 0.05);
+                            .slideX(begin: reduceMotion ? 0 : 0.05);
                       },
                       childCount: plans.length,
                     ),
@@ -861,21 +940,34 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               offset: appState.comparePlans.isEmpty
                   ? const Offset(0, 2)
                   : Offset.zero,
-              duration: ffTheme.motionMedium,
+              // Reduced motion: the bar appears/disappears in place.
+              duration: reduceMotion ? Duration.zero : ffTheme.motionMedium,
               curve: ffTheme.emphasized,
+              // Perf: the sliding bar repaints on its own layer instead of
+              // dirtying the results list beneath it on every frame of the
+              // slide.
+              child: RepaintBoundary(
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   // Green ACTION band — the compare CTA, vivid on both themes.
                   gradient: ffTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(16),
+                  // No exact 16 token — radiusCard (12) is the nearest content
+                  // corner (the scale caps content at radiusXl/12).
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   boxShadow: ffTheme.shadowAccent,
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      'השווה ${appState.comparePlans.length} מסלולים',
-                      style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                    Flexible(
+                      child: Text(
+                        // Plural imperative to match the app's "ענו / בחרו / נסו"
+                        // voice (was the singular "השווה").
+                        'השוו ${appState.comparePlans.length} מסלולים',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                      ),
                     ),
                     const Spacer(),
                     ElevatedButton(
@@ -890,7 +982,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         foregroundColor: AppColors.brandAccentDark,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                       ),
@@ -902,6 +994,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ],
                 ),
               ),
+              ),
             ),
           ),
         ],
@@ -912,10 +1005,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   Widget _buildProviderChips(AppTheme ffTheme, List<String> providers) {
     if (providers.length <= 1) return const SizedBox();
     return SizedBox(
-      height: 44,
+      // Scales with the OS text size so large type never clips the chips.
+      height: MediaQuery.textScalerOf(context).scale(44),
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        // Vertical inset moved INTO each chip so the tap target spans the
+        // full 44px band, not just the ~36px pill.
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           _providerChip('הכל', ffTheme),
           ...providers.map((p) => _providerChip(p, ffTheme)),
@@ -927,29 +1023,41 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   Widget _providerChip(String label, AppTheme ffTheme) {
     final isAll = label == 'הכל';
     final active = isAll ? _providerFilter.isEmpty : _providerFilter == label;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _providerFilter = isAll ? '' : label),
-        child: AnimatedContainer(
-          duration: ffTheme.motionFast,
-          curve: ffTheme.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: active
-                ? ffTheme.brandAccent.withValues(alpha: 0.12)
-                : ffTheme.cardSurface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: active ? ffTheme.brandAccent : ffTheme.alternate,
-              width: active ? 1.5 : 1,
-            ),
-          ),
-          child: Text(
-            label,
-            style: ffTheme.labelSmall.copyWith(
-              color: active ? ffTheme.brandAccent : ffTheme.primaryText,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+      // Accessible name comes from the chip's Text; expose button role + the
+      // selected provider-filter state.
+      child: Semantics(
+        button: true,
+        selected: active,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _providerFilter = isAll ? '' : label),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: AnimatedContainer(
+              duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
+              curve: ffTheme.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: active
+                    ? ffTheme.brandAccent.withValues(alpha: 0.12)
+                    : ffTheme.cardSurface,
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                border: Border.all(
+                  color: active ? ffTheme.brandAccent : ffTheme.alternate,
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: ffTheme.labelSmall.copyWith(
+                  color: active ? ffTheme.brandAccent : ffTheme.primaryText,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
             ),
           ),
         ),
@@ -969,40 +1077,58 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     if (chips.isEmpty) return const SizedBox();
 
     final hasActiveFilters = appState.activeFilters.isNotEmpty;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return SizedBox(
-      height: 44,
+      // Scales with the OS text size so large type never clips the chips.
+      height: MediaQuery.textScalerOf(context).scale(44),
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        // Vertical inset moved INTO each chip so the tap target spans the
+        // full 44px band, not just the ~36px pill.
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           // "נקה" clear button — shown only when any filter is active
           if (hasActiveFilters)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 8),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  appState.clearFilters();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: ffTheme.error,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ffTheme.error),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.close_rounded, size: 12, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text('נקה',
-                          style: ffTheme.labelSmall.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700)),
-                    ],
+              child: Semantics(
+                button: true,
+                // The visible "נקה" is ambiguous out of visual context — give
+                // screen readers the full action.
+                label: 'נקה את כל הסינונים',
+                excludeSemantics: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    appState.clearFilters();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: AnimatedContainer(
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: ffTheme.error,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(color: ffTheme.error),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text('נקה',
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1011,37 +1137,48 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             final active = appState.activeFilters.contains(chip.$2);
             return Padding(
               padding: const EdgeInsetsDirectional.only(end: 8),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  appState.toggleFilter(chip.$2);
-                },
-                child: AnimatedContainer(
-                  duration: ffTheme.motionFast,
-                  curve: ffTheme.easeOut,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    // Selected filter = green ACTION fill (consistent active cue).
-                    color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                    boxShadow: active ? ffTheme.shadowAccent : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (active) ...[
-                        const Icon(Icons.check_rounded, size: 12, color: Colors.white),
-                        const SizedBox(width: 4),
-                      ],
-                      Text(chip.$1,
-                          style: ffTheme.labelSmall.copyWith(
-                              color: active ? Colors.white : ffTheme.primaryText,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w600)),
-                    ],
+              // Accessible name comes from the chip's Text; expose button role
+              // + the selected filter state.
+              child: Semantics(
+                button: true,
+                selected: active,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    appState.toggleFilter(chip.$2);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: AnimatedContainer(
+                      duration:
+                          reduceMotion ? Duration.zero : ffTheme.motionFast,
+                      curve: ffTheme.easeOut,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        // Selected filter = green ACTION fill (consistent active cue).
+                        color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(
+                            color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                        boxShadow: active ? ffTheme.shadowAccent : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (active) ...[
+                            const Icon(Icons.check_rounded, size: 12, color: Colors.white),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(chip.$1,
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: active ? Colors.white : ffTheme.primaryText,
+                                  fontWeight: active
+                                      ? FontWeight.w700
+                                      : FontWeight.w600)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1064,7 +1201,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: ffTheme.cardSurface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           border: Border.all(color: ffTheme.alternate),
         ),
         child: Row(
@@ -1080,7 +1217,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   children: [
                     const TextSpan(text: 'החיסכון מחושב מול '),
                     TextSpan(
-                      text: '₪$bill$unit',
+                      // LTR isolate (U+2066 … U+2069) around the money run so the
+                      // ₪+digits+unit keep a stable order inside this RTL Hebrew
+                      // sentence (PriceText's bidi technique, applied inline where
+                      // a TextSpan can't host a Directionality). Truth-only: the
+                      // real ₪$bill$unit is rendered verbatim.
+                      text: '\u{2066}₪$bill$unit\u{2069}',
                       style: ffTheme.labelSmall.copyWith(
                           color: ffTheme.primaryText,
                           fontWeight: FontWeight.w700,
@@ -1098,7 +1240,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 onTap: () => isDefault
                     ? context.pushNamed('Bills')
                     : _showBillEditor(context, appState, cat, bill, ffTheme),
@@ -1125,7 +1267,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      // The single bottom-sheet top-corner token (was a 24 literal).
+      shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
         child: Column(
@@ -1145,8 +1290,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               decoration: InputDecoration(
                 prefixText: '₪',
                 prefixStyle: ffTheme.displaySmall.copyWith(color: ffTheme.brandAccent),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 2)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 2)),
                 filled: true, fillColor: ffTheme.accent1,
               ),
             ),
@@ -1161,7 +1306,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ffTheme.brandAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
                 child: Text('עדכן', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
@@ -1184,8 +1329,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     };
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      // The single bottom-sheet top-corner token (was a 24 literal).
+      shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) => Padding(
           padding: const EdgeInsets.all(24),
@@ -1239,7 +1386,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ffTheme.brandAccent,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   child: Text('הצג תוצאות',
@@ -1249,44 +1396,6 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               ),
               const SizedBox(height: 8),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({required this.label, required this.icon, required this.onTap, required this.ffTheme});
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-  final AppTheme ffTheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: ffTheme.shadowAccent,
-      ),
-      child: Material(
-        // Green ACTION — the empty-state recovery CTA.
-        color: ffTheme.brandAccent,
-        borderRadius: BorderRadius.circular(22),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 16, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(label, style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-              ],
-            ),
           ),
         ),
       ),

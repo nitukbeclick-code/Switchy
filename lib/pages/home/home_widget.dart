@@ -13,6 +13,7 @@ import '../../services/backend/backend.dart' show MeetingStatus;
 import '../../services/meeting_slots.dart' show meetingLocalStart;
 import '../meeting/meeting_status_card.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../services/recommendation_engine.dart';
@@ -41,6 +42,13 @@ class _HomeWidgetState extends State<HomeWidget> {
   String? _savingsKey;
   SavingsSummary? _savingsMemo;
 
+  // Memo for the recommendations carousel: it runs bestMatch across every
+  // active category + a quiz-filter ranking + the hot-deal scan — all engine
+  // work that is pure over bills/quiz/selectedCat. Without this it re-ran on
+  // EVERY AppState notify (a like, a watch toggle) on the busiest screen.
+  String? _recsKey;
+  List<_Rec>? _recsMemo;
+
   String _savingsFingerprint(AppState s) =>
       '${s.currentBills}|${s.quizCompleted}|${s.quizBudget}|${s.quizPriority}|'
       '${s.quizLines}|${s.quizCat}|${s.wants5G}|${s.wantsAbroad}|${s.wantsNoCommit}';
@@ -62,6 +70,8 @@ class _HomeWidgetState extends State<HomeWidget> {
   Future<void> _onRefresh() async {
     _savingsKey = null;
     _savingsMemo = null;
+    _recsKey = null;
+    _recsMemo = null;
     _cheapestCache.clear();
     if (mounted) setState(() {});
   }
@@ -104,10 +114,19 @@ class _HomeWidgetState extends State<HomeWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    // Home legitimately renders ~a dozen AppState slices (bills, quiz, watched,
+    // recently-viewed, compare, meeting, notifications, community, category…),
+    // so a Selector over "just the fields it needs" would be nearly the whole
+    // state and would risk missed rebuilds. Instead the EXPENSIVE derivations
+    // are memoised by input fingerprint ([_savingsFor], [_recsMemo],
+    // [_cheapestCache]) so an unrelated notify re-renders cheap widgets only.
     final appState = Provider.of<AppState>(context);
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
     final savings = _savingsFor(appState);
+    // Honour the OS "reduce motion" setting for the overlay entrances (FAB +
+    // compare tray): when set, they appear instantly with no fade/slide.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -171,67 +190,112 @@ class _HomeWidgetState extends State<HomeWidget> {
             ],
           ),
 
-          // ── Callback FAB (kept; no entrance animation) ─────────────────────
+          // ── Callback FAB ───────────────────────────────────────────────────
+          // A genuinely-lifted overlay, so it keeps its lift and earns a short,
+          // restrained ENTRANCE (fade + a few px slide-up), reduced-motion-aware.
           Positioned(
             bottom: 24,
             left: 20,
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: ffTheme.shadowAccent,
-              ),
-              child: FloatingActionButton(
-                // Green ACTION — request a callback. Icon-only, so it carries a
-                // tooltip (also surfaced as a semantics label) per the a11y rule.
-                tooltip: 'בקשת שיחה חוזרת',
-                backgroundColor: ffTheme.brandAccent,
-                elevation: 0,
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  context.pushNamed('Callback');
-                },
-                child: const ExcludeSemantics(child: Icon(Icons.phone_rounded, color: Colors.white, size: 26)),
+            child: _animateOverlay(
+              reduceMotion,
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: ffTheme.shadowAccent,
+                ),
+                child: FloatingActionButton(
+                  // Green ACTION — request a callback. Icon-only, so it carries a
+                  // tooltip (also surfaced as a semantics label) per the a11y rule.
+                  tooltip: 'בקשת שיחה חוזרת',
+                  backgroundColor: ffTheme.brandAccent,
+                  elevation: 0,
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.pushNamed('Callback');
+                  },
+                  child: const ExcludeSemantics(child: Icon(Icons.phone_rounded, color: Colors.white, size: 26)),
+                ),
               ),
             ),
           ),
 
-          // ── Compare tray (kept; no entrance animation) ─────────────────────
+          // ── Compare tray ───────────────────────────────────────────────────
+          // The sticky compare bar is a genuinely-lifted overlay (keeps its
+          // lift); it slides up + fades in on appear, reduced-motion-aware.
           if (appState.comparePlans.isNotEmpty)
             Positioned(
               bottom: 24,
               right: 16,
               left: 76,
-              child: Pressable(
-                haptic: false,
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.goNamed('Compare');
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: ffTheme.freshGradient,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                    boxShadow: ffTheme.shadowPrimary,
+              child: _animateOverlay(
+                reduceMotion,
+                Semantics(
+                  // The tray is a tappable control whose visible text is its
+                  // name; expose the button ROLE so screen readers announce it
+                  // as actionable, not as a stray sentence.
+                  button: true,
+                  child: Pressable(
+                    haptic: false,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.goNamed('Compare');
+                    },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.freshGradient,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                      boxShadow: ffTheme.shadowPrimary,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.compare_arrows_rounded, color: ffTheme.brandAccent, size: 20),
+                        const SizedBox(width: 8),
+                        // Flexible + ellipsis: at large OS text scales the label
+                        // shrinks gracefully instead of overflowing the tray.
+                        Flexible(
+                          child: Text(
+                            'השווה ${appState.comparePlans.length} מסלולים',
+                            style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Spacer(),
+                        // Decorative arrow chip — pure noise to a screen reader.
+                        ExcludeSemantics(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                            child: const Text('←', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.compare_arrows_rounded, color: ffTheme.brandAccent, size: 20),
-                      const SizedBox(width: 8),
-                      Text('השווה ${appState.comparePlans.length} מסלולים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
-                        child: const Text('←', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                      ),
-                    ],
                   ),
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  /// A restrained ENTRANCE for the two lifted overlays (the callback FAB and the
+  /// sticky compare tray): a short fade in with a few-px upward slide so they
+  /// arrive softly instead of popping. Reduced-motion-aware — when the OS asks to
+  /// reduce motion the [child] is returned as-is (no fade, no slide).
+  Widget _animateOverlay(bool reduceMotion, Widget child) {
+    // RepaintBoundary either way: these overlays float above the scrolling
+    // feed, so isolating them means neither the entrance animation nor the
+    // list's scroll repaints ever invalidate the other.
+    if (reduceMotion) return RepaintBoundary(child: child);
+    return RepaintBoundary(
+      child: child
+          .animate()
+          .fadeIn(duration: 260.ms, curve: Curves.easeOut)
+          .slideY(begin: 0.2, end: 0, duration: 260.ms, curve: Curves.easeOutCubic),
     );
   }
 
@@ -264,7 +328,11 @@ class _HomeWidgetState extends State<HomeWidget> {
     final borderColor = accent.withValues(alpha: isUrgent ? 0.30 : 0.40);
 
     return SliverToBoxAdapter(
-      child: Pressable(
+      child: Semantics(
+        // Whole alert is one tappable control (opens the renewal report) — give
+        // it the button ROLE; its visible text remains the accessible name.
+        button: true,
+        child: Pressable(
         haptic: false,
         onTap: () {
           HapticFeedback.lightImpact();
@@ -302,6 +370,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -359,7 +428,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                   // The separating ring follows the header surface so the dot reads
                   // as a discrete badge (was Colors.white on the old green header).
                   decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: ffTheme.cardSurface, width: 1.5)),
-                  child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
+                  // FittedBox(scaleDown): at large OS text scales the numeral
+                  // shrinks to fit the fixed 16px dot instead of overflowing —
+                  // the user's text scaling stays on everywhere else.
+                  child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving)))),
                 ),
               ),
             );
@@ -427,9 +499,15 @@ class _HomeWidgetState extends State<HomeWidget> {
     // is nothing computed yet we simply omit the figure (no fabricated number).
     final totalSave = savings.totalAnnualPotential;
     final personalized = appState.billsPersonalized;
-    final ctaLabel = personalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←';
+    // BROWSE moment (routes to Results / Quiz, never submits a lead) — a calm
+    // browse verb per the canonical CRO decision, NOT a savings-pushy promise.
+    // Both states use the same honest "compare plans" framing.
+    final ctaLabel = personalized ? 'השוו מסלולים ←' : 'חפשו חבילות ←';
+    // Honour the OS "reduce motion" setting: the entrance fade/slide below is
+    // skipped entirely (the card just appears) when the user asked for less.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-    return Pressable(
+    final card = Pressable(
       // The CTA fires its own lightImpact; keep the card-level press silent.
       haptic: false,
       onTap: () {
@@ -465,32 +543,33 @@ class _HomeWidgetState extends State<HomeWidget> {
             ),
             const SizedBox(height: 16),
             // SINGLE calm green ACTION CTA — the only conversion cue on the hero.
+            // Routed through the unified [AppButton] (pill variant) so the hero
+            // capsule is the same one source of truth as every other CTA. Green
+            // brandAccent fill + white w700 label preserves the prior visual; the
+            // pill flag rounds it to [radiusPill]. The button fires its own
+            // selectionClick haptic, so the wrapping [Semantics] keeps the a11y
+            // label and the outer card Pressable stays silent (haptic: false).
             Semantics(
               button: true,
-              label: personalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
-              child: Pressable(
-                haptic: false,
-                onTap: () {
-                  HapticFeedback.lightImpact();
+              label: personalized ? 'השוו מסלולים' : 'חפשו חבילות',
+              child: AppButton(
+                text: ctaLabel,
+                color: AppColors.brandAccent,
+                pill: true,
+                height: 44,
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                onPressed: () async {
                   personalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
                 },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: ffTheme.brandAccent,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  ),
-                  child: Text(
-                    ctaLabel,
-                    style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                  ),
-                ),
               ),
             ),
           ],
         ),
       ),
-    )
+    );
+    if (reduceMotion) return card;
+    return card
         .animate()
         .fadeIn(duration: 400.ms)
         .slideY(begin: 0.06, end: 0, curve: Curves.easeOutCubic);
@@ -502,6 +581,103 @@ class _HomeWidgetState extends State<HomeWidget> {
   /// [MiniPlanCard], which hides the badge when the saving is 0). No section is
   /// lost: every card still routes to PlanDetail / Results as before.
   Widget _buildRecommendations(BuildContext context, AppTheme ffTheme, AppState appState) {
+    // Memoised: the engine scans below are pure over bills+quiz+selectedCat
+    // (the exact savings fingerprint plus the active category, which feeds the
+    // hot-deal pick) — don't redo them on every unrelated AppState notify.
+    final recsKey = '${_savingsFingerprint(appState)}|${appState.selectedCat}';
+    if (recsKey != _recsKey || _recsMemo == null) {
+      _recsMemo = _computeRecs(appState);
+      _recsKey = recsKey;
+    }
+    final recs = _recsMemo!;
+
+    if (recs.isEmpty) return const SizedBox.shrink();
+    final cards = recs.take(3).toList();
+    // Dynamic-type resilience: the band height tracks the OS text scale
+    // (clamped so it never shrinks below design nor grows unbounded) — large
+    // type gets room instead of clipping the cards. Scaling stays enabled.
+    final textScale =
+        ((MediaQuery.maybeTextScalerOf(context)?.scale(14) ?? 14.0) / 14.0)
+            .clamp(1.0, 1.6);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 0, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            // Section title — announced as a HEADER so screen-reader users can
+            // jump between home sections.
+            child: Semantics(header: true, child: Text('המלצות', style: ffTheme.titleLarge)),
+          ),
+          SizedBox(
+            height: 188 * textScale,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: cards.length,
+              padding: const EdgeInsetsDirectional.only(end: 16),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final rec = cards[i];
+                return SizedBox(
+                  width: 268,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(rec.tag, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Expanded(
+                        // Shared-element flight: tapping a recommendation card now
+                        // animates the provider logo into the plan-detail hero chip
+                        // (target tag 'plan_logo_<id>' in plan_detail_widget.dart),
+                        // matching the existing results→detail Hero. The resting
+                        // widget is the whole MiniPlanCard, but the [flightShuttleBuilder]
+                        // flies ONLY the provider logo (logo→logo, like the results
+                        // card) so the transition reads as a calm logo morph, not a
+                        // card-warping the size of the detail chip.
+                        //
+                        // Tags are unique per plan: the carousel dedupes by plan id
+                        // (see the `recs.any((r) => r.plan.id == …)` guards in
+                        // [_computeRecs]), and the activity row below renders a bare
+                        // LogoWidget (no Hero), so no two heroes share a tag within
+                        // this route. The results list lives on a DIFFERENT route, so
+                        // a plan that also appears there never collides during a
+                        // transition.
+                        child: _CarouselLogoHero(
+                          provider: rec.plan.provider,
+                          tag: 'plan_logo_${rec.plan.id}',
+                          child: MiniPlanCard(
+                            plan: rec.plan,
+                            savingsPerYear: rec.saving > 0 ? rec.saving : null,
+                            // Curated best-match recommendations — these keep the
+                            // saving badge (the de-push only strips it from generic
+                            // list rows, which leave isBest false).
+                            isBest: true,
+                            ctaLabel: rec.cta,
+                            onTap: () {
+                              appState.viewPlan(rec.plan.id);
+                              context.pushNamed('PlanDetail', pathParameters: {'planId': rec.plan.id});
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The raw carousel picks (top personal pick / quiz match / hot deal) — pure
+  /// engine work over [AppState], hoisted out of the section builder so
+  /// [_buildRecommendations] can memoise it (see [_recsMemo]).
+  List<_Rec> _computeRecs(AppState appState) {
     final recs = <_Rec>[];
 
     // 1) Top personal pick across active categories (real annual saving only).
@@ -522,7 +698,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         tag: 'המלצה אישית',
         plan: topMatch.plan,
         saving: topMatch.annualSaving,
-        cta: 'בחר',
+        // Opens the plan detail (browse, not convert) — the card's normal
+        // primary action, so it reads "פרטים", not a conversion verb.
+        cta: 'פרטים',
       ));
     }
 
@@ -543,7 +721,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               tag: 'התאמת השאלון',
               plan: plan,
               saving: save > 0 ? save : 0,
-              cta: 'בחר',
+              cta: 'פרטים',
             ));
           }
         }
@@ -559,63 +737,11 @@ class _HomeWidgetState extends State<HomeWidget> {
         tag: 'עסקה חמה',
         plan: deal,
         saving: saving > 0 ? saving : 0,
-        cta: 'ראה עסקה',
+        cta: 'פרטים',
       ));
     }
 
-    if (recs.isEmpty) return const SizedBox.shrink();
-    final cards = recs.take(3).toList();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 0, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text('המלצות', style: ffTheme.titleLarge),
-          ),
-          SizedBox(
-            height: 188,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: cards.length,
-              padding: const EdgeInsetsDirectional.only(end: 16),
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) {
-                final rec = cards[i];
-                return SizedBox(
-                  width: 268,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(rec.tag, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Expanded(
-                        child: MiniPlanCard(
-                          plan: rec.plan,
-                          savingsPerYear: rec.saving > 0 ? rec.saving : null,
-                          // Curated best-match recommendations — these keep the
-                          // saving badge (the de-push only strips it from generic
-                          // list rows, which leave isBest false).
-                          isBest: true,
-                          ctaLabel: rec.cta,
-                          onTap: () {
-                            appState.viewPlan(rec.plan.id);
-                            context.pushNamed('PlanDetail', pathParameters: {'planId': rec.plan.id});
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+    return recs;
   }
 
   /// ONE "הפעילות שלך" row — merges the former Watchlist and Recently-Viewed
@@ -632,6 +758,11 @@ class _HomeWidgetState extends State<HomeWidget> {
       for (final id in recent) _ActivityItem(id: id, watched: false),
     ];
     if (items.isEmpty) return const SizedBox.shrink();
+    // Dynamic-type resilience: the fixed tile band grows with the OS text
+    // scale (clamped) so large type never clips the price/label lines.
+    final textScale =
+        ((MediaQuery.maybeTextScalerOf(context)?.scale(14) ?? 14.0) / 14.0)
+            .clamp(1.0, 1.6);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 0, 4),
@@ -642,7 +773,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             children: [
               Padding(
                 padding: const EdgeInsetsDirectional.only(end: 16),
-                child: Text('הפעילות שלך', style: ffTheme.titleLarge),
+                // Section title — a HEADER for screen-reader section jumping.
+                child: Semantics(header: true, child: Text('הפעילות שלך', style: ffTheme.titleLarge)),
               ),
               const Spacer(),
               Padding(
@@ -653,9 +785,16 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: InkWell(
                     onTap: () => context.pushNamed('Account'),
                     borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                      child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                    // Enforce the minimum 48px tap target for the small link —
+                    // the visible text stays the same, only the hit area grows.
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: kMinTapTarget, minWidth: kMinTapTarget),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -664,7 +803,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 6),
           SizedBox(
-            height: 90,
+            height: 90 * textScale,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -676,7 +815,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                 final plan = planById(item.id);
                 if (plan == null) return const SizedBox();
                 final better = item.watched ? _betterDealFor(plan, appState) : null;
-                return Pressable(
+                return Semantics(
+                  // Each activity tile is one tappable control (opens the plan);
+                  // give it the button ROLE — its text stays the accessible name.
+                  button: true,
+                  child: Pressable(
                   onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
                   child: Stack(
                     clipBehavior: Clip.none,
@@ -698,13 +841,22 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             Row(
                               children: [
-                                LogoWidget(provider: plan.provider, size: 24),
+                                // Decorative — the provider NAME follows as text,
+                                // so the logo would be read as noise.
+                                ExcludeSemantics(child: LogoWidget(provider: plan.provider, size: 24)),
                                 const SizedBox(width: 6),
                                 Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                               ],
                             ),
                             const SizedBox(height: 5),
-                            Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
+                            // Single price numeral in a fixed-width tile: scale
+                            // DOWN to fit at huge text sizes rather than clip a
+                            // real figure (never ellipsize money).
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
+                            ),
                             const SizedBox(height: 3),
                             Row(
                               children: [
@@ -744,6 +896,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         ),
                     ],
                   ),
+                  ),
                 );
               },
             ),
@@ -775,6 +928,16 @@ class _HomeWidgetState extends State<HomeWidget> {
           return catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
         });
 
+    // Reduced-motion: skip the staggered cell entrances entirely when the OS
+    // asks for less motion (cells just appear in place).
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Dynamic-type resilience: cells hold 4 text lines at a fixed aspect
+    // ratio, so flatten the ratio as the OS text scale grows (clamped; 1.0
+    // stays pixel-identical) — large type gets taller cells, not clipping.
+    final textScale =
+        ((MediaQuery.maybeTextScalerOf(context)?.scale(14) ?? 14.0) / 14.0)
+            .clamp(1.0, 1.6);
+
     // Tightened band: no extra top padding so the title + grid read as one
     // group; tighter inter-cell spacing and a flatter aspect ratio.
     return Padding(
@@ -782,16 +945,17 @@ class _HomeWidgetState extends State<HomeWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('השוואה לפי קטגוריה', style: ffTheme.titleLarge),
+          // Section title — a HEADER for screen-reader section jumping.
+          Semantics(header: true, child: Text('השוואה לפי קטגוריה', style: ffTheme.titleLarge)),
           const SizedBox(height: 10),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 1.85,
+              childAspectRatio: 1.85 / textScale,
             ),
             itemCount: categories.length,
             itemBuilder: (context, i) {
@@ -800,13 +964,15 @@ class _HomeWidgetState extends State<HomeWidget> {
               final isPersonalized = hasActual[cat.id] == true;
               final save = isPersonalized ? actualSavings[cat.id]! : 0;
               final cheapest = cheapestIn(cat.id);
+              // De-push: a stated FACT ("a ₪X/year saving"), not a second-person
+              // command ("you'll save"). Honest comparison framing, never a sell.
               final savingsText = isPersonalized
-                  ? (save > 0 ? 'תחסוך ₪$save בשנה' : 'מחיר תחרותי')
+                  ? (save > 0 ? 'חיסכון של ₪$save בשנה' : 'מחיר תחרותי')
                   : (cheapest > 0 ? 'מסלולים מ-₪$cheapest' : 'השוואת מחירים');
               // Amber = VALUE (personalised saving); neutral ink otherwise.
               final savingsColor = isPersonalized && save > 0 ? ffTheme.savingDark : ffTheme.secondaryText;
 
-              return Pressable(
+              final cell = Pressable(
                 haptic: false,
                 onTap: () {
                   HapticFeedback.selectionClick();
@@ -838,7 +1004,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                           : ffTheme.primary.withValues(alpha: 0.06),
                       width: isActive ? 2 : 1,
                     ),
-                    boxShadow: ffTheme.shadowMd,
+                    // ONE DEPTH STORY: resting browse cards read as one flat
+                    // plane — a hairline + whisper [shadowCard], not a lifted
+                    // [shadowMd]. Only sheets/FAB/sticky compare bar lift.
+                    boxShadow: ffTheme.shadowCard,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -859,16 +1028,25 @@ class _HomeWidgetState extends State<HomeWidget> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(cat.name, style: ffTheme.labelLarge.copyWith(color: ffTheme.primaryText)),
+                      Text(cat.name, style: ffTheme.labelLarge.copyWith(color: ffTheme.primaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall),
-                      Text(savingsText, style: ffTheme.labelSmall.copyWith(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500)),
+                      Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(savingsText, style: ffTheme.labelSmall.copyWith(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
-                )
-                    .animate(delay: (i.clamp(0, 6) * 70).ms)
-                    .fadeIn()
-                    .slideY(begin: 0.15, end: 0),
+                ),
+              );
+              // Each cell is one tappable control — expose the button ROLE (the
+              // cell's own text remains the accessible name). The staggered
+              // entrance is skipped under reduced-motion.
+              return Semantics(
+                button: true,
+                child: reduceMotion
+                    ? cell
+                    : cell
+                        .animate(delay: (i.clamp(0, 6) * 70).ms)
+                        .fadeIn()
+                        .slideY(begin: 0.15, end: 0),
               );
             },
           ),
@@ -881,7 +1059,11 @@ class _HomeWidgetState extends State<HomeWidget> {
   /// one-line headline and a smaller glyph) so it reads as an entry point, not a
   /// hero. Route + brand tokens + tap target unchanged.
   Widget _buildAIAdvisor(BuildContext context, AppTheme ffTheme) {
-    return Pressable(
+    return Semantics(
+      // One tappable band — expose the button ROLE; the visible title/subtitle
+      // remain the accessible name.
+      button: true,
+      child: Pressable(
       onTap: () {
         HapticFeedback.lightImpact();
         context.pushNamed('AIAdvisor');
@@ -932,6 +1114,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -960,21 +1143,28 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Row(
             children: [
-              Icon(Icons.chat_bubble_outline_rounded, size: 18, color: ffTheme.primaryText),
+              // Decorative glyph — the section NAME follows as text.
+              ExcludeSemantics(child: Icon(Icons.chat_bubble_outline_rounded, size: 18, color: ffTheme.primaryText)),
               const SizedBox(width: 6),
-              Text('קהילה', style: ffTheme.titleLarge),
+              // Section title — a HEADER for screen-reader section jumping.
+              Semantics(header: true, child: Text('קהילה', style: ffTheme.titleLarge)),
               const Spacer(),
-              // Comfortable hit area for the "see all" link (≥44px tall) rather
-              // than a bare text target.
+              // Comfortable hit area for the "see all" link (≥48px, the
+              // [kMinTapTarget] minimum) rather than a bare text target.
               Semantics(
                 button: true,
                 label: 'הצג את כל הדיונים בקהילה',
                 child: InkWell(
                   onTap: () => context.goNamed('Community'),
                   borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                    child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: kMinTapTarget, minWidth: kMinTapTarget),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -985,7 +1175,10 @@ class _HomeWidgetState extends State<HomeWidget> {
             _buildCommunityCta(context, ffTheme)
           else
             ...realPosts.map((post) {
-              return Pressable(
+              return Semantics(
+                // A tappable preview row (opens the community feed) — button ROLE.
+                button: true,
+                child: Pressable(
                 onTap: () => context.goNamed('Community'),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -994,22 +1187,27 @@ class _HomeWidgetState extends State<HomeWidget> {
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
-                    boxShadow: ffTheme.shadowSoft,
+                    // ONE DEPTH STORY: flat resting card — hairline + whisper.
+                    boxShadow: ffTheme.shadowCard,
                   ),
                   child: Row(
                     children: [
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          // Green avatar — the community identity accent.
-                          gradient: ffTheme.accentGradient,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            post.user,
-                            style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                      // Decorative avatar INITIAL — a lone letter is noise to a
+                      // screen reader; the post text carries the content.
+                      ExcludeSemantics(
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            // Green avatar — the community identity accent.
+                            gradient: ffTheme.accentGradient,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              post.user,
+                              style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
                       ),
@@ -1031,7 +1229,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(6)),
+                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
                                   child: Text('הפוסט שלך', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ),
                               ],
@@ -1044,6 +1242,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ],
                   ),
                 ),
+                ),
               );
             }),
         ],
@@ -1052,7 +1251,10 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildCommunityCta(BuildContext context, AppTheme ffTheme) {
-    return Pressable(
+    return Semantics(
+      // One tappable CTA card — button ROLE; its title/body are the name.
+      button: true,
+      child: Pressable(
       onTap: () => context.goNamed('Community'),
       child: Container(
         width: double.infinity,
@@ -1061,7 +1263,8 @@ class _HomeWidgetState extends State<HomeWidget> {
           color: ffTheme.accent1,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
-          boxShadow: ffTheme.shadowSoft,
+          // ONE DEPTH STORY: flat resting card — hairline + whisper.
+          boxShadow: ffTheme.shadowCard,
         ),
         child: Row(
           children: [
@@ -1092,6 +1295,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -1114,33 +1318,41 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text('כלים שימושיים', style: ffTheme.titleLarge),
+            // Section title — a HEADER for screen-reader section jumping.
+            child: Semantics(header: true, child: Text('כלים שימושיים', style: ffTheme.titleLarge)),
           ),
           Row(
             children: [
               for (var i = 0; i < tools.length; i++) ...[
                 if (i > 0) const SizedBox(width: 10),
                 Expanded(
-                  child: Pressable(
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      context.pushNamed(tools[i].route);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-                      decoration: ffTheme.cardDecoration(),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(tools[i].icon, size: 20, color: ffTheme.primaryText),
-                          const SizedBox(height: 6),
-                          Text(
-                            tools[i].label,
-                            style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                          ),
-                        ],
+                  // Each tool tile is one tappable control — button ROLE; the
+                  // visible label is the accessible name (icon stays decorative).
+                  child: Semantics(
+                    button: true,
+                    child: Pressable(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.pushNamed(tools[i].route);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+                        decoration: ffTheme.cardDecoration(),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(tools[i].icon, size: 20, color: ffTheme.primaryText),
+                            const SizedBox(height: 6),
+                            Text(
+                              tools[i].label,
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              // Large-type safety in a quarter-width tile.
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1190,6 +1402,50 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── Carousel shared-element logo hero ───────────────────────────────────────────
+//
+// Wraps a recommendation carousel card in a [Hero] tagged 'plan_logo_<id>' — the
+// same scheme the results card (plan_card_widget.dart) and the plan-detail hero
+// chip (plan_detail_widget.dart) use — so tapping a card flies the provider logo
+// into plan detail. The resting child is the full card, but [flightShuttleBuilder]
+// renders ONLY the provider logo mid-flight so the shared element is a clean
+// logo→logo morph (matching the results→detail transition), not the whole card
+// stretching to the detail chip's size.
+//
+// Reduced-motion safe: Hero itself is harmless under "reduce motion" (the OS may
+// shorten/skip the page transition), and the shuttle only ever paints a static
+// [LogoWidget], so there is nothing to crash on. We never recolour the logo, so
+// per-provider brand colours are preserved.
+class _CarouselLogoHero extends StatelessWidget {
+  const _CarouselLogoHero({
+    required this.provider,
+    required this.tag,
+    required this.child,
+  });
+
+  final String provider;
+  final Object tag;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Hero(
+      tag: tag,
+      flightShuttleBuilder: (flightContext, animation, direction, fromContext, toContext) {
+        // Fly only the provider logo so the carousel→detail flight matches the
+        // calm logo morph used by the results list rather than warping the whole
+        // card. The logo is never recoloured, so brand colours are preserved.
+        return ExcludeSemantics(
+          child: Center(
+            child: LogoWidget(provider: provider, size: 52),
+          ),
+        );
+      },
+      child: child,
     );
   }
 }

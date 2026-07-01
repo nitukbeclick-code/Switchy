@@ -179,15 +179,15 @@ const ACCENT_TOKENS: Swatch[] = [
   },
   {
     token: "--value",
-    name: "Value · VALUE (ענבר)",
-    hex: "#F59E0B",
-    note: "באדג'ים, מצבי 'הכי משתלם'. לא טקסט קטן (2.15:1).",
+    name: "Value · VALUE (ירוק)",
+    hex: "#16A34A",
+    note: "מונו-ירוק: באדג'ים, מצבי 'הכי משתלם'. לא טקסט קטן (3.30:1).",
   },
   {
     token: "--value-text",
     name: "Value text · מספרים",
-    hex: "#B45309",
-    note: "ענבר לטקסט/מספרי חיסכון על בהיר (≥4.5:1).",
+    hex: "#15803D",
+    note: "ירוק לטקסט/מספרי חיסכון על בהיר (≥4.5:1).",
     textVar: "--value-text",
   },
   {
@@ -294,9 +294,9 @@ export default function DesignSystemPage() {
           מרווח, עקומת תנועה ורכיב כאן נמשכים מהטוקנים והקומפוננטות האמיתיים
           (<code className="rounded bg-border/60 px-1 font-mono text-[0.85em] text-ink">globals.css</code>{" "}
           + הרכיבים המשותפים). שינוי בטוקן זז כאן אוטומטית. בסיס{" "}
-          <strong className="text-ink">זכוכית לבנה + דיו</strong>, ושתי הדגשות
-          בלבד: <span className="font-semibold text-accent-text">ירוק = פעולה</span>,{" "}
-          <span className="font-semibold text-value-text">ענבר = ערך</span>.
+          <strong className="text-ink">זכוכית לבנה + דיו</strong>, והדגשה אחת
+          בלבד: <span className="font-semibold text-accent-text">ירוק = פעולה</span>{" "}
+          <span className="font-semibold text-value-text">וגם ערך (מונו-ירוק)</span>.
         </p>
       </header>
 
@@ -305,7 +305,7 @@ export default function DesignSystemPage() {
         <Section
           n="01"
           title="צבע"
-          lede="בסיס זכוכית-לבן + דיו, ומערכת דו-הדגשה ממושמעת. שימו לב להפרדה בין גוון מילוי (fill, סף 3:1) לבין גוון טקסט (-text, סף AA 4.5:1) — הירוק/ענבר הראשי נכשלים כטקסט קטן, ולכן יש -text נפרד."
+          lede="בסיס זכוכית-לבן + דיו, והדגשה ירוקה אחת ממושמעת. שימו לב להפרדה בין גוון מילוי (fill, סף 3:1) לבין גוון טקסט (-text, סף AA 4.5:1) — הירוק הראשי נכשל כטקסט קטן, ולכן יש -text נפרד."
         >
           <h3 className="mb-3 font-display text-base font-bold tracking-tight text-ink">
             משטחים ומבנה
@@ -332,9 +332,9 @@ export default function DesignSystemPage() {
               className="mt-0.5 shrink-0 text-value-text"
             />
             <p className="leading-relaxed">
-              <strong>משמעת:</strong> ירוק רק לפעולה (CTA / קישור / focus), ענבר רק
-              לערך (מספרי חיסכון / "הכי משתלם"). אסור לדלוף ביניהם, ואסור לצבוע
-              מחדש צבעי ספק/מותג לפלטת המותג.
+              <strong>משמעת:</strong> ירוק אחד בלבד — לפעולה (CTA / קישור / focus)
+              ולערך (מספרי חיסכון / "הכי משתלם"), בשימוש חסכוני. אין ענבר/כתום,
+              ואסור לצבוע מחדש צבעי ספק/מותג לפלטת המותג.
             </p>
           </div>
         </Section>
@@ -498,7 +498,7 @@ export default function DesignSystemPage() {
         <Section
           n="06"
           title="כפתורים ובאדג'ים"
-          lede="ה-CTA הראשי הוא מילוי accent ירוק עם accentGradient/glow (פעולה). באדג' ערך הוא ענבר. כל אחד נושא את ה-easing וה-press feedback מהטוקנים."
+          lede="ה-CTA הראשי הוא מילוי accent ירוק עם accentGradient/glow (פעולה). באדג' ערך ירוק גם הוא (מונו-ירוק). כל אחד נושא את ה-easing וה-press feedback מהטוקנים."
         >
           <div className="card flex flex-col gap-6 p-6">
             <div className="flex flex-wrap items-center gap-3">
@@ -531,7 +531,7 @@ export default function DesignSystemPage() {
             <div className="h-px bg-border" />
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* VALUE badge — amber (savings / best value). */}
+              {/* VALUE badge — green pill (savings / best value, mono-green). */}
               <span className="inline-flex items-center gap-1.5 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text">
                 <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value" />
                 הכי משתלם
@@ -592,7 +592,7 @@ export default function DesignSystemPage() {
             </div>
             <div className="card p-6 glow-value">
               <p className="font-display font-bold text-ink">.glow-value</p>
-              <p className="mt-1 text-sm text-muted">זוהר ענבר — ערך/win.</p>
+              <p className="mt-1 text-sm text-muted">זוהר ירוק — ערך/win.</p>
             </div>
           </div>
         </Section>

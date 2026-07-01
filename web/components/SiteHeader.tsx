@@ -8,9 +8,11 @@
 //
 // Server component (no state). Uses next/link for internal nav.
 //
-// Design: the glass language already used across cards — a translucent, blurred
-// surface with a hairline bottom border (`bg-surface/80 backdrop-blur`). Green is
-// reserved for the single CTA (ACTION), per the two-accent system.
+// Design: bank-grade solid masthead — an opaque theme surface (white in light,
+// dark ink in dark) with backdrop-blur and a 1px bottom hairline, so content
+// never scrolls through the controls. Green is reserved for the single CTA
+// (ACTION), per the accent system. Brand lockup = spark + "Switchy AI" as one
+// LTR-isolated unit.
 //
 // a11y: a real <header><nav aria-label> landmark. The layout's skip-link target
 // (#main) stays valid — this header sits above it. On small screens the primary
@@ -61,9 +63,11 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
     <header
       data-site-header
       className={[
-        // Glass navbar (premium-2026): translucent, blurred, hairline bottom
-        // border + a soft shadow that lifts it off the page as you scroll past.
-        "glass sticky top-0 z-40 border-x-0 border-t-0 border-b border-border/60 shadow-soft",
+        // Solid masthead (bank-grade): an OPAQUE theme surface (white / dark ink)
+        // with backdrop-blur and a 1px bottom hairline, so page content and the
+        // provider-logo strip can never read through the controls. z-50 keeps it
+        // above every in-page layer (FAB z-30/40, sticky bars z-40).
+        "sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/90",
         className ?? "",
       ]
         .join(" ")
@@ -75,12 +79,16 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           href="/"
           className="group flex items-center gap-2 font-display text-lg font-bold tracking-tight text-ink transition-colors hover:text-accent"
         >
-          <span
-            aria-hidden="true"
-            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:group-hover:scale-y-110"
+          {/* Single brand lockup: the spark mark + "Switchy AI" as ONE LTR unit
+              (dir isolate) so RTL bidi can never reorder it into "AI Switchy". */}
+          <Icon
+            name="spark"
+            size={18}
+            className="shrink-0 text-accent"
           />
-          Switchy
-          <span className="text-sm font-semibold text-muted">AI</span>
+          <span dir="ltr" className="whitespace-nowrap">
+            Switchy AI
+          </span>
         </Link>
 
         {/* Primary nav — hidden on small screens (the mobile <details> menu below

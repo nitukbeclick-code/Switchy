@@ -25,6 +25,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   isPushSupported,
   registerServiceWorker,
@@ -45,12 +46,19 @@ import { trackEvent } from "@/lib/tracking";
 // simply don't re-prompt, never throw).
 const DISMISS_KEY = "chosech-push-prompt";
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Cool-off before re-asking after the Nth dismissal: 3d, then 10d, then 30d.
-const COOLOFF_DAYS = [3, 10, 30];
+// Cool-off before re-asking after the Nth dismissal: NEVER within 7 days of a
+// dismissal (Google intrusive-interstitial guidance), then 14d, then 30d.
+const COOLOFF_DAYS = [7, 14, 30];
 const MAX_DISMISSALS = COOLOFF_DAYS.length;
-// Don't interrupt first paint / the LCP — wait for the visitor to settle in
-// before surfacing the prompt (context: they've stuck around past initial load).
-const ENGAGE_DELAY_MS = 12_000;
+// ── Engagement gate ──────────────────────────────────────────────────────────
+// The prompt must NEVER pop on first paint / cover the primary CTA. It surfaces
+// only after a real engagement signal — whichever comes FIRST of:
+//   • the visitor's 2nd in-app page navigation (route change), or
+//   • >25s of dwell time on the site, or
+//   • a first meaningful interaction (tap/click on a link/button/control, or
+//     scrolling meaningfully into the page).
+const DWELL_MS = 25_000;
+const SCROLL_ENGAGE_PX = 400;
 
 type PromptRecord =
   | { state: "subscribed" }
@@ -112,6 +120,13 @@ function maySurface(record: PromptRecord | null): boolean {
 
 export default function PwaInstaller() {
   const [showPrompt, setShowPrompt] = useState(false);
+  // Engagement gate: `eligible` = the push-policy checks passed (support, VAPID,
+  // not subscribed, cool-off elapsed, permission not denied); `engaged` = the
+  // visitor produced a real engagement signal (2nd navigation / 25s dwell /
+  // first meaningful interaction). The prompt surfaces only when BOTH are true.
+  const [eligible, setEligible] = useState(false);
+  const [engaged, setEngaged] = useState(false);
+  const surfacedRef = useRef(false);
   // One-frame `mounted` flip drives the INTERRUPTIBLE enter transition (Emil rule
   // 9). Reset whenever the prompt is (re)shown so the slide-up replays cleanly.
   const [mounted, setMounted] = useState(false);
@@ -127,10 +142,9 @@ export default function PwaInstaller() {
   const [priorDismissals, setPriorDismissals] = useState(0);
 
   // Register the SW unconditionally (powers offline + push handlers), then decide
-  // whether to surface the push opt-in. All branches fail soft.
+  // whether the push opt-in is ELIGIBLE (policy checks). All branches fail soft.
   useEffect(() => {
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
 
     (async () => {
       await registerServiceWorker();
@@ -149,7 +163,7 @@ export default function PwaInstaller() {
       }
 
       // Respect the re-prompt policy: terminal subscribe, dismissal budget, and
-      // the escalating cool-off window.
+      // the escalating cool-off window (≥7 days after any dismissal).
       if (!maySurface(record)) return;
 
       // Don't prompt if notifications are already blocked at the browser level —
@@ -161,35 +175,76 @@ export default function PwaInstaller() {
       }
 
       setPriorDismissals(record?.state === "dismissed" ? record.count : 0);
-
-      // CONTEXT-AWARE: don't pop during initial load. Wait until the visitor has
-      // stuck around (a soft engagement signal) before surfacing, and only while
-      // the tab is actually visible — never interrupt a backgrounded tab.
-      const surface = () => {
-        if (!cancelled) setShowPrompt(true);
-      };
-      timer = setTimeout(() => {
-        if (cancelled) return;
-        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-          // Defer until the tab is foregrounded again.
-          const onVisible = () => {
-            if (document.visibilityState === "visible") {
-              document.removeEventListener("visibilitychange", onVisible);
-              surface();
-            }
-          };
-          document.addEventListener("visibilitychange", onVisible);
-          return;
-        }
-        surface();
-      }, ENGAGE_DELAY_MS);
+      setEligible(true);
     })();
 
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
     };
   }, []);
+
+  // ── Engagement signals (whichever fires FIRST flips `engaged`) ─────────────
+  // 1) 2nd in-app page navigation — count route changes via Next's usePathname
+  //    (this component lives in the root layout, so it survives client navs).
+  const pathname = usePathname();
+  const navCountRef = useRef(-1); // first run is the landing render, not a nav
+  useEffect(() => {
+    navCountRef.current += 1;
+    if (navCountRef.current >= 2) setEngaged(true);
+  }, [pathname]);
+
+  // 2) >25s dwell  ·  3) first meaningful interaction (pointer on an interactive
+  // element, a keyboard activation, or a meaningful scroll). Listeners are
+  // passive and removed as soon as one fires.
+  useEffect(() => {
+    if (engaged) return;
+    const arm = () => setEngaged(true);
+
+    const timer = setTimeout(arm, DWELL_MS);
+
+    const onPointerDown = (e: PointerEvent) => {
+      const el = e.target as Element | null;
+      // "Meaningful" = an actual control, not a stray tap on empty page.
+      if (el?.closest?.("a,button,input,select,textarea,summary,[role='button']")) {
+        arm();
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") arm();
+    };
+    const onScroll = () => {
+      if (window.scrollY > SCROLL_ENGAGE_PX) arm();
+    };
+
+    document.addEventListener("pointerdown", onPointerDown, { passive: true });
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [engaged]);
+
+  // Surface the prompt only when BOTH eligible and engaged — and only while the
+  // tab is actually visible (never interrupt a backgrounded tab). Once per mount.
+  useEffect(() => {
+    if (!eligible || !engaged || surfacedRef.current) return;
+    surfacedRef.current = true;
+
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      const onVisible = () => {
+        if (document.visibilityState === "visible") {
+          document.removeEventListener("visibilitychange", onVisible);
+          setShowPrompt(true);
+        }
+      };
+      document.addEventListener("visibilitychange", onVisible);
+      return () => document.removeEventListener("visibilitychange", onVisible);
+    }
+    setShowPrompt(true);
+  }, [eligible, engaged]);
 
   // Begin the graceful exit: flip the prompt closed but keep it MOUNTED via
   // `closing` so the reverse transition (slide back down + fade) can play; finalize

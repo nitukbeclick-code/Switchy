@@ -17,9 +17,12 @@ class AppColors {
 
   // Brand — "white glass & black ink": a formal, editorial base of ink black
   // for text/structure/borders, true black for depth, slate + grey neutrals.
-  // Colour is carried by a disciplined two-accent system layered on top —
-  // green = ACTION, amber = VALUE (see the accent block below); the ink/glass
-  // base stays monochrome so those accents read clearly.
+  // Colour is carried by a single, disciplined accent: green is the ONE brand
+  // hue, used for both ACTION (CTAs/links/focus) and VALUE (savings). VALUE is
+  // told apart NOT by a second colour but by a distinct pill TREATMENT — a
+  // pale-green tint + leading savings glyph + tabular figures (see SavingPill
+  // and the accent block below). The ink/glass base stays monochrome so the
+  // green reads clearly.
   // GEIST neutrals — monochrome, border-defined. `primary` = near-black ink
   // (Geist neutral-950) for text + flat black hero surfaces; structure is carried
   // by 1px gray hairlines, not dark borders.
@@ -45,7 +48,7 @@ class AppColors {
   // Status (kept functional — errors/warnings still need their semantic hue)
   static const Color error = Color(0xFFDC2626);
   static const Color warning = Color(0xFFB45309);
-  static const Color success = Color(0xFF111827); // neutral ink base; the green ACTION accent (brandAccent) carries positive emphasis
+  static const Color success = Color(0xFF111827); // neutral ink base; the green accent (brandAccent) carries positive emphasis
   static const Color info = Color(0xFF374151);
 
   // Surface tints — neutral grey washes for tinted cards/chips (no color).
@@ -55,35 +58,42 @@ class AppColors {
   static const Color accent4 = Color(0xFFFAFAFA); // neutral-50
   static const Color mint = Color(0xFFF5F5F5); // alias for accent1, semantic
 
-  // Refined accent system — colour used with intent over the ink/glass base.
-  // brandAccent (green) = ACTION: primary CTAs, active states, links, focus.
-  // Matches the Switchy logo. saving (amber) = VALUE: savings figures,
-  // "best value", win states. Provider/carrier brand colours are separate and
-  // never use these.
+  // Refined accent system — a SINGLE green accent used with intent over the
+  // ink/glass base. brandAccent (green) = ACTION: primary CTAs, active states,
+  // links, focus. Matches the Switchy logo. The `saving*` tokens below are the
+  // SAME green: VALUE (savings) shares the one brand hue and is told apart by
+  // the SavingPill TREATMENT (pale-green tint + savings glyph + tabular
+  // figures), not by a competing colour. Provider/carrier brand colours are
+  // separate and never use these.
   static const Color brandAccent = Color(0xFF16A34A); // green 600
   static const Color brandAccentDark = Color(0xFF15803D); // green 700 (gradient depth)
-  static const Color brandAccentTint = Color(0xFFDCFCE7); // light green surface
+  static const Color brandAccentTint = Color(0xFFDCFCE7); // pale-green VALUE-pill tint surface
   // AA-safe ink for green TEXT/links on light glass. The fill hue (#16A34A)
   // only reaches ~3:1 as small text — green 700 clears 4.5:1 on white, the
   // tint chip, and the glass bg while still reading as the same brand green.
   static const Color brandAccentText = Color(0xFF15803D); // green 700 — small-text/link
-  // VALUE accent (savings figures, "best value" badges) — owner recolor
-  // amber→green, so VALUE now reads in the SAME brand green as ACTION.
-  static const Color saving = Color(0xFF16A34A); // green 600
+  // VALUE tokens (savings figures, "best value" badges). These are NOT a second
+  // hue — they are the SAME brand green as brandAccent (deliberately aliased so
+  // VALUE and ACTION share one colour). Distinction comes from the pill shape +
+  // savings glyph + tabular figures (SavingPill), never from a different colour.
+  // Kept as named tokens because call sites read `saving`/`savingText` to mean
+  // "the green used on a VALUE surface"; do not delete or rename them.
+  static const Color saving = Color(0xFF16A34A); // green 600 (== brandAccent)
   static const Color savingDark = Color(0xFF15803D); // green 700 (gradient depth)
-  // AA-safe ink for VALUE TEXT on light glass — green 700 clears 4.5:1 on white
-  // (the fill #16A34A only ~3:1 as small text), same as brandAccentText.
+  // AA-safe ink for small VALUE TEXT on light glass — green 700 clears 4.5:1 on
+  // white (the fill #16A34A only ~3:1 as small text), same as brandAccentText.
   static const Color savingText = Color(0xFF15803D); // green 700 — small savings text
-  // The ink read out ON the green VALUE fill (savings pills, "best value"
-  // badges) — white, matching white-on-green CTAs. Use everywhere a chip/badge
-  // fills with [saving] and prints text/icons on top, instead of the literal.
+  // The ink read out ON a SOLID green VALUE fill (e.g. "best value" badges that
+  // fill with [saving]) — white, matching white-on-green CTAs. Note: the
+  // SavingPill itself uses the pale TINT bg + green text, not this solid fill;
+  // reach for onSaving only where a chip/badge fills with [saving] underneath.
   static const Color onSaving = Color(0xFFFFFFFF);
 
   // ── Dark variant ──────────────────────────────────────────────────────────
   // NOT a colour flip — a cohesive night theme. Deep blue-ink surfaces, slate
-  // cards, off-white ink, and accents lifted so green/amber stay vivid on dark.
-  // Brand identity is preserved: the SAME green/amber, just at a brighter tint
-  // that holds contrast against the dark surface.
+  // cards, off-white ink, and the green accent lifted so it stays vivid on dark.
+  // Brand identity is preserved: the SAME single green (for both ACTION and
+  // VALUE), just at a brighter tint that holds contrast against the dark surface.
   static const Color darkBackground = Color(0xFF0F1419); // app canvas
   static const Color darkSurface = Color(0xFF141A23); // raised scaffolds/sheets
   static const Color darkCard = Color(0xFF1A1F2B); // slate card surface
@@ -92,11 +102,13 @@ class AppColors {
   static const Color darkSecondaryText = Color(0xFF9BA6B4); // muted slate ink
   static const Color darkBorder = Color(0xFF2A3442); // hairline on dark
   static const Color darkLine = Color(0xFF232C38); // subtle inner divider
-  // Accents lifted for dark: brighter green/amber keep AA contrast on slate.
+  // Accent lifted for dark: a brighter green keeps AA contrast on slate. VALUE
+  // (darkSaving*) reuses the SAME lifted green — distinction is the pill
+  // treatment, not a second hue.
   static const Color darkBrandAccent = Color(0xFF4ADE80); // green 400
   static const Color darkBrandAccentDark = Color(0xFF22C55E); // green 500
-  static const Color darkBrandAccentTint = Color(0xFF14301F); // deep green wash
-  static const Color darkSaving = Color(0xFF4ADE80); // green 400 (VALUE lifted for dark)
+  static const Color darkBrandAccentTint = Color(0xFF14301F); // deep green VALUE-pill wash
+  static const Color darkSaving = Color(0xFF4ADE80); // green 400 (== darkBrandAccent; VALUE lifted for dark)
   static const Color darkSavingDark = Color(0xFF22C55E); // green 500
   // Surface tints on dark — faint slate washes for tinted chips/cards.
   static const Color darkAccent1 = Color(0xFF1C2330);
@@ -199,15 +211,17 @@ class AppTheme {
   Color get brandAccentText =>
       dark ? AppColors.darkBrandAccent : AppColors.brandAccentText;
 
-  /// AA-safe amber for small VALUE TEXT (savings figures, "best value") on
-  /// glass. On dark the lifted amber 400 clears AA; on light it drops to amber
-  /// 800 so small savings text reads at ≥4.5:1. Large display numerals can keep
-  /// [saving]/[savingDark] (≥3:1 at 18px+ bold).
+  /// AA-safe green for small VALUE TEXT (savings figures, "best value") on
+  /// glass. Same brand green as ACTION — on dark the lifted green 400 clears AA;
+  /// on light it drops to green 700 so small savings text reads at ≥4.5:1. Large
+  /// display numerals can keep [saving]/[savingDark] (≥3:1 at 18px+ bold). This
+  /// is the text colour used inside [SavingPill].
   Color get savingText => dark ? AppColors.darkSaving : AppColors.savingText;
 
-  /// The ink read out ON the amber VALUE fill (savings pills, "best value"
-  /// badges). Amber is a fixed-hue accent in both themes, so this deep-amber ink
-  /// is theme-independent — use it wherever a chip fills with [saving].
+  /// The ink read out ON a SOLID green VALUE fill ("best value" badges that fill
+  /// with [saving]) — white, matching white-on-green CTAs. The SavingPill uses
+  /// the pale [brandAccentTint] bg + [savingText] instead, so reach for [onSaving]
+  /// only where a chip/badge fills solid green underneath.
   Color get onSaving => AppColors.onSaving;
 
   // ── Spacing scale — one shared rhythm for gaps, padding, insets ────────────
@@ -307,26 +321,25 @@ class AppTheme {
       ? const [BoxShadow(color: Color(0x4D000000), blurRadius: 18, offset: Offset(0, 5))]
       : const [BoxShadow(color: Color(0x14000000), blurRadius: 14, offset: Offset(0, 4))];
 
-  /// A soft ink shadow under the primary (black) CTA so it reads "tap me".
-  // GEIST: primary/accent CTAs are FLAT — no drop shadow, no glow.
+  // GEIST: primary/accent CTAs are FLAT — no drop shadow, no glow. The three
+  // getters below all resolve to an EMPTY shadow list (they render nothing), so
+  // they are functionally dead. They are intentionally RETAINED — not deleted —
+  // because each still has live call sites across ~20 screens outside this
+  // file's ownership (e.g. plan_card, results, app_button, home, profile…).
+  // Removing the tokens would break those call sites' compilation for zero
+  // visual change; the truly-dead, ZERO-reference sibling (`glowValue`) has been
+  // removed. Real elevation is carried by [shadowCard] (the resting card) and
+  // [shadowLifted] (sheets/modals/FABs); reach for those when a surface needs
+  // genuine depth.
+  /// FLAT (empty) — the primary (ink) CTA carries no drop shadow under GEIST.
   List<BoxShadow> get shadowPrimary => const [];
 
+  /// FLAT (empty) — green ACTION surfaces carry no drop shadow under GEIST.
   List<BoxShadow> get shadowAccent => const [];
 
-  /// The "live" green ACTION glow — a 1px accent-tinted ring hugging the edge
-  /// plus a soft accent-coloured drop — the Flutter mirror of the site's
-  /// `--glow-accent`. Use on the surface a primary CTA wants to feel energised
-  /// (the green button, an active "best match" tile). Theme-aware: on dark the
-  /// hue lifts to the brighter green and the alphas rise a touch so the glow
-  /// still reads against slate. The ring is the `0 0 0 1px` layer
-  /// (spread 1, blur 0); the soft drop is the `0 8px 28px` layer.
-  List<BoxShadow> get glowAccent => const []; // GEIST: no glow
-
-  /// The "live" amber VALUE glow — the same 1px ring + soft drop as
-  /// [glowAccent], tinted to the amber VALUE accent. The Flutter mirror of the
-  /// site's `--glow-value`; reach for it on a "best value"/savings surface that
-  /// should glow warm. Theme-aware (lifts to amber 400 on dark).
-  List<BoxShadow> get glowValue => const []; // GEIST: no glow
+  /// FLAT (empty) — the green ACTION "glow" is disabled under GEIST (no glow).
+  /// Kept (vs. deleted) only because it has live call sites outside this file.
+  List<BoxShadow> get glowAccent => const [];
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
   List<BoxShadow> get shadowGlass => dark
@@ -420,20 +433,32 @@ class AppTheme {
       );
 
   // ── Gradients — the brand washes used on heroes, headers, primary CTAs ──────
-  // GEIST: gradients are now FLAT solids (two identical stops) so callers that
-  // paint a `gradient:` get a crisp solid fill, not a wash. The ink hero is flat
-  // near-black (white foreground stays valid + is authentically Geist).
+  // GEIST-calm: most surface gradients stay near-flat, but the SINGLE home hero
+  // (which reads [brandGradient]) earns ONE restrained, real vertical ink wash
+  // so it gains a touch of dimensionality without breaking the monochrome calm.
+  /// The home-hero ink wash — a real, restrained TOP→BOTTOM gradient from a
+  /// hair-lighter ink (top) to a near-true-black (bottom), so the single hero
+  /// reads with subtle depth while staying authentically Geist (white foreground
+  /// stays valid on both stops). On dark it runs charcoal→deep-ink in the same
+  /// restrained band. This is a genuine two-stop gradient, not a flat solid.
   LinearGradient get brandGradient => LinearGradient(
-        colors: dark ? const [Color(0xFF141414), Color(0xFF141414)] : const [AppColors.primary, AppColors.primary],
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
+        colors: dark
+            ? const [Color(0xFF1C1C1C), Color(0xFF0A0A0A)]
+            : const [Color(0xFF161616), Color(0xFF050505)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       );
 
-  /// Flat near-black surface (was an ink→slate wash).
+  /// A sibling of [brandGradient] for "fresh"/value-leaning hero surfaces — the
+  /// same restrained ink wash, with a barely-there green cast (≤6% alpha) bled
+  /// in at the bottom so a VALUE hero feels a hint warmer toward the savings hue
+  /// without ever reading as a green panel. Real two-stop gradient.
   LinearGradient get freshGradient => LinearGradient(
-        colors: dark ? const [Color(0xFF141414), Color(0xFF141414)] : const [AppColors.primary, AppColors.primary],
-        begin: Alignment.topRight,
-        end: Alignment.bottomLeft,
+        colors: dark
+            ? [const Color(0xFF1C1C1C), Color.alphaBlend(AppColors.darkBrandAccent.withValues(alpha: 0.06), const Color(0xFF0A0A0A))]
+            : [const Color(0xFF161616), Color.alphaBlend(AppColors.brandAccent.withValues(alpha: 0.06), const Color(0xFF050505))],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
       );
 
   /// A flat neutral chip surface (was a slate→grey ribbon).
@@ -462,7 +487,16 @@ class AppTheme {
   double get radiusMd => 8; // default button/input
   double get radiusLg => 10; // cards
   double get radiusCard => 12; // large containers/bento
-  double get radiusXl => 12; // sheets/modals (Geist never exceeds 12 for content)
+  double get radiusXl => 12; // dialogs/popovers + the largest CONTENT corner
+  /// Bottom sheets and large slide-up surfaces. The ONE exception to the 12-cap:
+  /// a sheet anchored to the screen edge needs a more generous top corner to read
+  /// as a distinct surface lifting over the page, so it gets [radiusSheet] (20).
+  /// Use this token for every bottom-sheet / drawer top corner — it is the single
+  /// source for that corner, so re-rounding all sheets is a one-line change here.
+  double get radiusSheet => 20;
+  // RULE: content corners (chips→bento) never exceed [radiusXl] (12); only
+  // edge-anchored sheets/drawers use the larger [radiusSheet] (20). [radiusPill]
+  // (999) is the full-round shape for pills/avatars and is not part of that cap.
   double get radiusPill => 999;
 
   // ── Motion — one shared vocabulary of durations + curves ────────────────────
@@ -553,16 +587,47 @@ class AppTheme {
   // Display — tightened again (owner: text feels too large / loud) from 26-40px
   // to a restrained 22-32px / w700. Big numerals still read as the hero, but
   // confident and calm rather than shouting.
-  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.05, color: AppColors.primaryText);
-  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.06, color: AppColors.primaryText);
-  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.08, color: AppColors.primaryText);
+  //
+  // HEBREW TRACKING: these are HEBREW-TEXT (display headline) tokens, so they
+  // carry ZERO letterSpacing. Negative (Latin-tuned) tracking pinches Hebrew
+  // letterforms — the gaps that Hebrew relies on for legibility collapse — so
+  // it is intentionally removed here. (Negative tracking stays ONLY on the
+  // NUMERIC tokens below, where it is correct for numerals.)
+  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.05, color: AppColors.primaryText);
+  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.06, color: AppColors.primaryText);
+  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 0, height: 1.08, color: AppColors.primaryText);
   TextStyle get displayLarge => _ink(_displayLarge);
   TextStyle get displayMedium => _ink(_displayMedium);
   TextStyle get displaySmall => _ink(_displaySmall);
 
-  // Headlines
-  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
-  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: -0.005, color: AppColors.primaryText);
+  // ── Numeric scale — THE single source for any rendered NUMBER ───────────────
+  // Money, savings, wallet totals and stat figures must all read from these
+  // three tokens, never a hand-tuned GoogleFonts.rubik(...) per widget. Every
+  // one carries tabular figures so digits sit on a fixed advance — totals don't
+  // jitter as they tick/animate and columns of numbers line up. These are the
+  // ONLY numeric styles; map a bespoke numeral to the nearest one + copyWith
+  // (e.g. a different colour or a hair of letterSpacing), do not invent a size.
+  //
+  //   • priceDisplay — the plan-card price numeral (30 / w800 / -0.5 tracking).
+  //     Recreated EXACTLY from plan_card_widget.dart's inline price so the
+  //     migrated card renders pixel-identical; tabular keeps ₪-prices aligned.
+  //   • numericLarge — hero/stat headline numerals (30 / w800): the wallet /
+  //     savings "realized total" hero figure. Same size+weight as priceDisplay
+  //     but a calm tracking (no -0.5) for a standalone stat rather than a price.
+  //   • numericMedium — secondary stat numerals (24 / w700): smaller figures in
+  //     a stat cluster / bento tile that sit below the hero numeral.
+  static final TextStyle _priceDisplay = GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: AppColors.primaryText, fontFeatures: const [FontFeature.tabularFigures()]);
+  static final TextStyle _numericLarge = GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.02, height: 1, color: AppColors.primaryText, fontFeatures: const [FontFeature.tabularFigures()]);
+  static final TextStyle _numericMedium = GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.05, color: AppColors.primaryText, fontFeatures: const [FontFeature.tabularFigures()]);
+  TextStyle get priceDisplay => _ink(_priceDisplay);
+  TextStyle get numericLarge => _ink(_numericLarge);
+  TextStyle get numericMedium => _ink(_numericMedium);
+
+  // Headlines — HEBREW-TEXT tokens: ZERO letterSpacing (negative Latin tracking
+  // pinches Hebrew; see the display-token note above). Numeric tokens keep their
+  // negative tracking.
+  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: 0, color: AppColors.primaryText);
+  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0, color: AppColors.primaryText);
   static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: 0, color: AppColors.primaryText);
   TextStyle get headlineLarge => _ink(_headlineLarge);
   TextStyle get headlineMedium => _ink(_headlineMedium);
@@ -597,8 +662,8 @@ class AppTheme {
   /// (dialogs, snackbars, inputs, app bars) match the hand-authored surfaces.
   static ThemeData lightTheme() => _buildTheme(_light, Brightness.light);
 
-  /// The cohesive dark [ThemeData] — deep slate surfaces, off-white ink, lifted
-  /// green/amber accents. Not a colour flip; a designed night theme.
+  /// The cohesive dark [ThemeData] — deep slate surfaces, off-white ink, the
+  /// single green accent lifted. Not a colour flip; a designed night theme.
   static ThemeData darkTheme() => _buildTheme(_dark, Brightness.dark);
 
   static ThemeData _buildTheme(AppTheme t, Brightness brightness) {
@@ -669,7 +734,7 @@ class AppTheme {
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: t.cardSurface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusXl)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusSheet)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

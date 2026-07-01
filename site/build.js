@@ -624,7 +624,7 @@ function planCardHtml(p, best) {
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
   if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
   const hasJump = p.after && (p.after - p.price) > 30;
-  const after = p.after ? `<span class="plan__after">ואז ₪${p.afterExact != null ? p.afterExact : p.after}</span>` : '';
+  const after = p.after ? `<span class="plan__after">ואז <span dir="ltr">₪${p.afterExact != null ? p.afterExact : p.after}</span></span>` : '';
   // Card variant: the value anchor (cheapest in its category) reads as a budget
   // pick; a richer 5G/abroad plan with a promo-jump reads as a premium pick.
   // These are presentational accents only (A2 styles them); they never change
@@ -646,7 +646,7 @@ function planCardHtml(p, best) {
         <div class="plan__name">${esc(p.plan)} <span class="plan__net">${esc(p.net)}</span></div>
         ${specs ? `<div class="plan__specs">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
-        <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
@@ -701,18 +701,16 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
         <a href="plans.html">כל החבילות</a>
-        <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
-        <a href="community.html">קהילה</a>
-        <a href="book.html">פגישת ייעוץ</a>
-        <a href="app.html">האפליקציה</a>
+        <a href="providers.html">ספקים</a>
         <div class="mega" data-mega>
           <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
           <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
 ${megaMenuColumns()}
           </div>
         </div>
-        <a href="index.html#calculator">מחשבון</a>
+        <a href="app.html">האפליקציה</a>
+        <a href="book.html">פגישת ייעוץ</a>
       </nav>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true">${svgIcon('sun')}</span><span class="theme-toggle__moon" aria-hidden="true">${svgIcon('moon')}</span>
@@ -1322,7 +1320,7 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
   const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
   const fee = (p, ...keys) => { for (const k of keys) { const v = (p.fees || {})[k]; if (v) return esc(v); } return ''; };
   const afterCell = (p) => (p.after && p.after > p.price)
-    ? `<b class="cmp__jump">₪${p.afterExact != null ? p.afterExact : p.after}</b>`
+    ? `<b class="cmp__jump" dir="ltr">₪${p.afterExact != null ? p.afterExact : p.after}</b>`
     : `<span class="cmp__fixed">קבוע</span>`;
   const info = (p) => {
     const f = (p.feats || []).filter((x) => x && !/^\d|GB|דק|SMS|מגה|Mb|^5G$/i.test(x));
@@ -1332,7 +1330,8 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
   const waHref = (p) => 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan);
   const prov = (p) => `<a class="cmp__prov" href="provider-${providerSlug(p.provider)}.html">${providerLogo(p.provider, 26)}<span>${esc(p.provider)}</span></a>`;
   const name = (p) => `<button type="button" class="cmp__name cmp__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" title="${esc('כל הפרטים — ' + p.plan)}">${esc(p.plan)}</button>`;
-  const price = (p) => `<b>₪${priceText(p)}</b>`;
+  // Money runs are bidi-isolated LTR so ₪ + digits render identically in RTL context.
+  const price = (p) => `<b dir="ltr">₪${priceText(p)}</b>`;
   let head, row;
   if (catSlug === 'internet') {
     head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'מהירות', 'נתב', 'מגדיל טווח', 'התקנה', 'מידע נוסף'];
@@ -1364,8 +1363,10 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
   const keep = head.map((_, ci) => ci < 3 || rowData.some((r) => r[ci] && r[ci] !== '—'));
   const ths = head.map((h, i) => keep[i] ? `<th${i === 2 || i === 3 ? ' class="cmp__num"' : ''}>${esc(h)}</th>` : '').join('') + '<th class="cmp__cta" scope="col"><span class="sr-only">פנייה</span></th>';
   const trs = plans.map((p, i) => {
-    const cells = rowData[i].map((cell, ci) => keep[ci] ? `<td data-th="${esc(head[ci])}"${ci === 2 || ci === 3 ? ' class="cmp__num"' : ''}>${cell}</td>` : '').join('');
-    const cta = `<td class="cmp__cta"><a href="${waHref(p)}" target="_blank" rel="noopener" aria-label="${esc('מעוניין/ת ב' + p.provider + ' ' + p.plan + ' בוואטסאפ')}" title="פנייה בוואטסאפ">${svgIcon('chat')}</a></td>`;
+    // Cheapest row carries a small green "הכי זול" pill on its provider cell.
+    const cells = rowData[i].map((cell, ci) => keep[ci] ? `<td data-th="${esc(head[ci])}"${ci === 2 || ci === 3 ? ' class="cmp__num"' : ''}>${cell}${ci === 0 && i === bestIdx ? '<span class="cmp__best-pill">הכי זול</span>' : ''}</td>` : '').join('');
+    // Row CTA — a compact labelled button (green tint + green label/icon), same WhatsApp behaviour.
+    const cta = `<td class="cmp__cta"><a href="${waHref(p)}" target="_blank" rel="noopener" aria-label="${esc('מעוניין/ת ב' + p.provider + ' ' + p.plan + ' בוואטסאפ')}" title="פנייה בוואטסאפ">${svgIcon('chat')}<span>מעוניין/ת</span></a></td>`;
     return `              <tr${i === bestIdx ? ' class="cmp__best"' : ''}>${cells}${cta}</tr>`;
   }).join('\n');
   return `
@@ -1816,12 +1817,13 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
-  <!-- Fonts via Google CDN, loaded non-render-blocking (preload as style →
-       swap media print→all on load), with a <noscript> fallback. Preconnected
-       above; font-display:swap so text never blocks on the webfont. -->
+  <!-- Fonts via Google CDN. Loaded as a PLAIN stylesheet (preloaded +
+       preconnected above, font-display:swap in the URL) — the old JS-dependent
+       media="print" onload swap left the whole site on the browser's default
+       (serif) faces whenever inline handlers were blocked (e.g. a strict CSP).
+       Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="${CSS_HREF}" />
   ${analyticsTag()}
   ${siteJsonLdTag()}
@@ -2222,7 +2224,7 @@ function howItWorksPage() {
             <span class="cat__icon" aria-hidden="true">${iconFor(c.icon)}</span>
             <h3>${esc(c.name)}</h3>
             <p>${esc(c.intro)}</p>
-            <span style="display:block;margin-top:8px;font-family:'Rubik',sans-serif;font-weight:700;font-size:13px;color:var(--value)">${esc(fromTxt)}</span>
+            <span style="display:block;margin-top:8px;font-family:'Rubik',sans-serif;font-weight:700;font-size:13px;color:var(--accent-ink)">${esc(fromTxt)}</span>
             <span class="cat__go" aria-hidden="true">להשוואה ←</span>
           </a>`;
   }).join('\n');

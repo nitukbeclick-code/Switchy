@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
@@ -17,6 +16,33 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/savings_summary.dart';
+
+/// Reduced-motion-aware transforms for the profile's entrance chains: each is
+/// a drop-in for its flutter_animate counterpart that KEEPS the fade already
+/// on the chain but DROPS the slide/scale transform when the OS asks for
+/// reduced motion (`MediaQuery.disableAnimations`).
+extension _ProfileSettleX on Animate {
+  Animate settleY(BuildContext context, {double begin = 0.08}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideY(begin: begin, end: 0);
+  }
+
+  Animate settleX(BuildContext context, {double begin = 0.05}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideX(begin: begin, end: 0);
+  }
+
+  Animate settleScale(BuildContext context) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return scale(duration: 500.ms, curve: Curves.elasticOut);
+  }
+}
 
 class ProfileWidget extends StatefulWidget {
   const ProfileWidget({super.key});
@@ -71,7 +97,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 children: [
                   // Guest state CTA
                   if (!appState.isLoggedIn) ...[
-                    _buildGuestCard(context, ffTheme).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
+                    _buildGuestCard(context, ffTheme).animate().fadeIn(duration: 350.ms).settleY(context, begin: 0.1),
                     const SizedBox(height: 20),
                   ],
 
@@ -81,6 +107,14 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     _buildActivePlanCard(context, ffTheme, appState),
                     const SizedBox(height: 20),
                   ],
+
+                  // Community quick-link — WAVE 4 removed "קהילה" from the
+                  // primary bottom-tab bar, so the profile surfaces an explicit
+                  // entry point into the (still fully-reachable) community branch.
+                  // goNamed switches the shell branch, matching Home's community
+                  // section and the Account screen's "קהילה" quick-link.
+                  _buildCommunityLink(context, ffTheme),
+                  const SizedBox(height: 20),
 
                   // Upcoming renewal alert — surfaces the soonest promo end from
                   // the renewal radar so a deal about to expire never hides on
@@ -408,8 +442,13 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 32),
-                // Avatar
-                GestureDetector(
+                // Avatar — tappable only when logged in; give the tap an
+                // accessible name + button role (the initial letter alone
+                // says nothing to a screen reader).
+                Semantics(
+                  button: appState.isLoggedIn,
+                  label: appState.isLoggedIn ? 'עריכת פרופיל' : null,
+                  child: GestureDetector(
                   onTap: appState.isLoggedIn ? () => _showEditProfile(context, appState, ffTheme) : null,
                   child: Stack(
                     children: [
@@ -425,7 +464,14 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                           child: appState.isLoggedIn && appState.firstName.isNotEmpty
                               ? Text(
                                   appState.firstName[0],
-                                  style: GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                                  // Token-sourced numeral scale (Rubik 30) —
+                                  // the avatar initial's original w700/white
+                                  // deltas ride via copyWith (was a raw
+                                  // GoogleFonts.rubik literal).
+                                  style: ffTheme.numericLarge.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0,
+                                      color: Colors.white),
                                 )
                               : const Icon(Icons.person_rounded, size: 32, color: Colors.white),
                         ),
@@ -447,25 +493,33 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         ),
                     ],
                   ),
-                ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+                  ),
+                  // Reduced motion: skip the elastic pop-in entirely (a pure
+                  // transform); the avatar simply appears.
+                ).animate().settleScale(context),
                 const SizedBox(height: 10),
                 Text(
                   appState.isLoggedIn ? appState.userName : 'אורח',
                   style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                // Stats row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _HeroStat(value: '₪${appState.totalSavings}', label: 'חיסכון', ffTheme: ffTheme),
-                    Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
-                    _HeroStat(value: appState.leadPlanId != null ? '1' : '0', label: 'מעברים', ffTheme: ffTheme),
-                    Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
-                    _HeroStat(value: '${appState.watchedPlans.length}', label: 'במעקב', ffTheme: ffTheme),
-                    Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
-                    _HeroStat(value: '${appState.userReviews.length}', label: 'ביקורות', ffTheme: ffTheme),
-                  ],
+                // Stats row — FittedBox scales the fixed 4-stat strip DOWN
+                // instead of overflowing the header width when the OS text
+                // scale is large (~1.3x); scaling is honored elsewhere.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _HeroStat(value: '₪${appState.totalSavings}', label: 'חיסכון', ffTheme: ffTheme),
+                      Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                      _HeroStat(value: appState.leadPlanId != null ? '1' : '0', label: 'מעברים', ffTheme: ffTheme),
+                      Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                      _HeroStat(value: '${appState.watchedPlans.length}', label: 'במעקב', ffTheme: ffTheme),
+                      Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                      _HeroStat(value: '${appState.userReviews.length}', label: 'ביקורות', ffTheme: ffTheme),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -476,7 +530,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildGuestCard(BuildContext context, AppTheme ffTheme) {
-    return Pressable(
+    // Button role for the tappable card (Pressable adds no semantics itself).
+    return Semantics(
+      button: true,
+      child: Pressable(
       onTap: () => context.pushNamed('Auth'),
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -506,6 +563,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             const Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
           ],
         ),
+      ),
       ),
     );
   }
@@ -554,7 +612,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08);
+    ).animate().fadeIn(duration: 300.ms).settleY(context);
   }
 
   /// A compact alert for the soonest upcoming renewal — the radar's headline,
@@ -571,7 +629,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         : days <= 0
             ? 'המבצע מסתיים היום'
             : 'המבצע מסתיים בעוד $days ימים';
-    return Pressable(
+    // Button role for the tappable card (Pressable adds no semantics itself).
+    return Semantics(
+      button: true,
+      child: Pressable(
       onTap: () => context.pushNamed('RenewalReport', pathParameters: {'trackedId': tp.id}),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -608,7 +669,53 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08);
+      ),
+    ).animate().fadeIn(duration: 300.ms).settleY(context);
+  }
+
+  /// A compact entry point into the community branch — added in WAVE 4 when
+  /// "קהילה" left the primary bottom-tab bar so it never becomes unreachable
+  /// from the profile. [goNamed] switches the shell branch (the route stays
+  /// fully intact); the icon/labels use tokens for light+dark parity and the
+  /// row is RTL-correct (leading icon, trailing chevron points end→start).
+  Widget _buildCommunityLink(BuildContext context, AppTheme ffTheme) {
+    // Button role for the tappable card (Pressable adds no semantics itself).
+    return Semantics(
+      button: true,
+      child: Pressable(
+      onTap: () => context.goNamed('Community'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: ExcludeSemantics(
+                child: Icon(Icons.chat_bubble_outline_rounded, color: ffTheme.secondaryText, size: 20),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('קהילה', style: ffTheme.titleSmall),
+                  Text('שאלות, חוויות וטיפים ממשתמשים אחרים', style: ffTheme.bodySmall),
+                ],
+              ),
+            ),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
+          ],
+        ),
+      ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).settleY(context);
   }
 
   /// The total annual saving potential across the user's bills (amber = VALUE),
@@ -616,7 +723,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   Widget _buildSavingsCard(BuildContext context, AppTheme ffTheme) {
     final top = _savings.topOpportunity;
     final topLabel = top == null ? null : categoryById(top.categoryId)?.name;
-    return Pressable(
+    // Button role for the tappable card (Pressable adds no semantics itself).
+    return Semantics(
+      button: true,
+      child: Pressable(
       onTap: () => context.pushNamed('Savings'),
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -659,7 +769,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.08);
+      ),
+    ).animate().fadeIn(duration: 320.ms).settleY(context);
   }
 
   /// The user's own tracked plans (renewal radar). Each row shows the carrier,
@@ -719,7 +830,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               ),
             ),
           ),
-        ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideX(begin: 0.05);
+        ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).settleX(context);
       }).toList(),
     );
   }
@@ -744,7 +855,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             showCta: false,
             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
           ),
-        ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideX(begin: 0.05);
+        ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).settleX(context);
       }).toList(),
     );
   }
@@ -810,7 +921,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildQuizCTA(BuildContext context, AppTheme ffTheme) {
-    return Pressable(
+    // Button role for the tappable card (Pressable adds no semantics itself).
+    return Semantics(
+      button: true,
+      child: Pressable(
       onTap: () => context.pushNamed('Quiz'),
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -836,6 +950,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -845,10 +960,25 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: ffTheme.titleMedium),
+          // Section headings are marked for screen-reader navigation.
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text(title, style: ffTheme.titleMedium,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+          ),
           if (actionLabel != null && onAction != null)
-            GestureDetector(
-              onTap: onAction,
+            // TextButton (was a bare GestureDetector on small text): gives the
+            // action a real button role for screen readers AND a >=48dp tap
+            // target; the visible label/style are unchanged.
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, kMinTapTarget),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                visualDensity: VisualDensity.compact,
+              ),
               child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
             ),
         ],
@@ -987,37 +1117,41 @@ class _ToggleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: ffTheme.glassDecoration(radius: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(10),
+    // MergeSemantics: the switch and its title/subtitle announce as ONE named
+    // toggle instead of an unnamed switch next to loose text.
+    return MergeSemantics(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: ffTheme.glassDecoration(radius: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: ffTheme.secondaryText, size: 20),
             ),
-            child: Icon(icon, color: ffTheme.secondaryText, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: ffTheme.titleSmall),
-                Text(subtitle, style: ffTheme.bodySmall),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: ffTheme.titleSmall),
+                  Text(subtitle, style: ffTheme.bodySmall),
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: ffTheme.brandAccent,
-          ),
-        ],
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: ffTheme.brandAccent,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -90,7 +90,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('אין ירידות מחיר כרגע'), findsOneWidget);
-    expect(find.text('עיינו במסלולים'), findsOneWidget);
+    // Canonical BROWSE verb, consistent with the home/results/profile CTAs.
+    expect(find.text('השוו מסלולים'), findsOneWidget);
   });
 
   testWidgets('a price rise is not shown as a deal', (tester) async {

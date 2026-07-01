@@ -36,7 +36,8 @@ export type IconName =
   | "lock"
   | "spark"
   | "sun"
-  | "moon";
+  | "moon"
+  | "chat";
 
 // Each entry is the inner path markup for the glyph, drawn in a 24×24 box on a
 // 1.5–2px stroke grid. Kept as JSX fragments so the shared <svg> wrapper owns the
@@ -95,6 +96,10 @@ const PATHS: Record<IconName, ReactNode> = {
   ),
   // ☾ — dark mode.
   moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />,
+  // 💬 — chat / advisor (speech bubble with a tail).
+  chat: (
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+  ),
 };
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "ref"> {

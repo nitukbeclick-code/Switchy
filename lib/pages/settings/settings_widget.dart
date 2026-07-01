@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
@@ -14,6 +13,19 @@ import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
+
+/// Reduced-motion-aware settle for the section cards: `.settleY()` is a
+/// drop-in for `.slideY(begin: …)` that KEEPS the fade already on the chain
+/// but DROPS the slide transform when the OS asks for reduced motion —
+/// the same policy [_RowReveal] applies to the rows inside the cards.
+extension _SettleYX on Animate {
+  Animate settleY(BuildContext context, {double begin = 0.06}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideY(begin: begin, end: 0);
+  }
+}
 
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
@@ -177,7 +189,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 120.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 120.ms, duration: 350.ms).settleY(context),
 
             const SizedBox(height: 24),
 
@@ -225,7 +237,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 180.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 180.ms, duration: 350.ms).settleY(context),
 
             const SizedBox(height: 24),
 
@@ -245,7 +257,7 @@ class SettingsWidget extends StatelessWidget {
                           height: 38,
                           decoration: BoxDecoration(
                             color: ffTheme.accent1,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                           ),
                           child: Icon(Icons.dark_mode_rounded, color: ffTheme.secondaryText, size: 20),
                         ),
@@ -273,7 +285,7 @@ class SettingsWidget extends StatelessWidget {
                   ],
                 ),
               ),
-            ).animate().fadeIn(delay: 250.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 250.ms, duration: 350.ms).settleY(context),
 
             const SizedBox(height: 24),
 
@@ -293,7 +305,7 @@ class SettingsWidget extends StatelessWidget {
                         height: 44,
                         decoration: BoxDecoration(
                           gradient: ffTheme.accentGradient,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                           boxShadow: ffTheme.shadowAccent,
                         ),
                         child: const Center(child: ExcludeSemantics(child: Icon(Icons.savings_outlined, size: 22, color: Colors.white))),
@@ -312,7 +324,7 @@ class SettingsWidget extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.brandAccentTint,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
                         ),
                         child: Text('1.0.4', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
@@ -336,7 +348,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 320.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 320.ms, duration: 350.ms).settleY(context),
 
             // The logout CTA is pinned to the bottom (StickyCtaScaffold) instead
             // of scrolling with the list, so leave only breathing room here.
@@ -598,7 +610,11 @@ class _SectionHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+          // Section headings are marked for screen-reader navigation.
+          Semantics(
+            header: true,
+            child: Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
             Text(subtitle!, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
@@ -630,7 +646,7 @@ class _ThemeSegmented extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -650,7 +666,7 @@ class _ThemeSegmented extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
                     gradient: active ? ffTheme.accentGradient : null,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     boxShadow: active ? ffTheme.shadowAccent : null,
                   ),
                   child: Column(
@@ -723,35 +739,39 @@ class _ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(10),
+    // MergeSemantics: the switch and its title/subtitle announce as ONE named
+    // toggle (e.g. "התראות מחיר, מופעל") instead of an unnamed switch.
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+              ),
+              child: Icon(icon, color: ffTheme.secondaryText, size: 20),
             ),
-            child: Icon(icon, color: ffTheme.secondaryText, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: ffTheme.titleSmall),
-                Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: ffTheme.titleSmall),
+                  Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: ffTheme.brandAccent,
-          ),
-        ],
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: ffTheme.brandAccent,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -790,7 +810,7 @@ class _ActionRow extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
               ),
               child: Icon(icon, color: iconColor, size: 20),
             ),
@@ -917,7 +937,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                 height: 38,
                 decoration: BoxDecoration(
                   color: const Color(0xFF0088cc).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 ),
                 child: const Icon(Icons.send, color: Color(0xFF0088cc), size: 20),
               ),
@@ -957,7 +977,7 @@ class _TelegramRowState extends State<_TelegramRow> {
     } else {
       return InkWell(
         onTap: _busy ? null : _connectTelegram,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -967,7 +987,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                 height: 38,
                 decoration: BoxDecoration(
                   color: ffTheme.secondaryText.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 ),
                 child: Icon(Icons.send, color: ffTheme.secondaryText, size: 20),
               ),
@@ -1101,9 +1121,8 @@ class _HoldToConfirmState extends State<_HoldToConfirm>
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final radius = BorderRadius.circular(ffTheme.radiusMd);
     const height = 52.0;
-    final labelStyle = GoogleFonts.rubik(
+    final labelStyle = ffTheme.titleLarge.copyWith(
       fontSize: 14,
-      fontWeight: FontWeight.w700,
       color: Colors.white,
     );
 

@@ -33,6 +33,7 @@ class AppButton extends StatefulWidget {
     this.padding,
     this.iconPadding,
     this.enabled = true,
+    this.pill = false,
   });
 
   /// Secondary action: white fill, hairline border, ink label — sits quietly
@@ -51,6 +52,7 @@ class AppButton extends StatefulWidget {
     this.padding,
     this.iconPadding,
     this.enabled = true,
+    this.pill = false,
   })  : color = Colors.white,
         borderSide = const BorderSide(color: AppColors.alternate);
 
@@ -70,6 +72,7 @@ class AppButton extends StatefulWidget {
     this.padding,
     this.iconPadding,
     this.enabled = true,
+    this.pill = false,
   })  : color = AppColors.accent1,
         borderSide = BorderSide.none;
 
@@ -90,6 +93,14 @@ class AppButton extends StatefulWidget {
   /// When false the button renders dimmed and ignores taps — for CTAs that
   /// unlock later (e.g. the Zoom join button before T-15).
   final bool enabled;
+
+  /// Full-round "pill" shape — rounds the button to [AppTheme.radiusPill] so it
+  /// reads as a fully-rounded capsule (the hero CTA, the plan-card "choose"
+  /// button). Back-compatible: defaults to false (the standard [radiusMd]
+  /// corner), and an explicit [borderRadius] still wins over this flag. This is
+  /// the canonical way to get a pill CTA — sweeps route capsule buttons here
+  /// instead of hand-passing `BorderRadius.circular(999)`.
+  final bool pill;
 
   @override
   State<AppButton> createState() => _AppButtonState();
@@ -193,7 +204,11 @@ class _AppButtonState extends State<AppButton> {
         widget.textStyle?.color ?? (lightFill ? ffTheme.primaryText : Colors.white);
     final labelStyle = widget.textStyle ??
         GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: foreground);
-    final borderRadius = widget.borderRadius ?? BorderRadius.circular(ffTheme.radiusMd);
+    // Corner source of truth: an explicit [borderRadius] always wins; otherwise
+    // a [pill] CTA rounds to the full-round [radiusPill] capsule, and the
+    // default is the standard [radiusMd] button corner.
+    final borderRadius = widget.borderRadius ??
+        BorderRadius.circular(widget.pill ? ffTheme.radiusPill : ffTheme.radiusMd);
 
     // The primary CTA: brand ink colour, no outline → it earns the green
     // ACTION gradient + glow. Any other colour (or an outlined/ghost variant)

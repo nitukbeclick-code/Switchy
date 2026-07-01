@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import Icon from "@/components/Icon";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import { trackEvent, fireLeadConversion } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
@@ -320,20 +321,20 @@ export default function AiConcierge() {
         aria-controls={open ? titleId : undefined}
         aria-label={open ? "סגירת הצ׳אט עם Switchy AI" : "פתיחת צ׳אט עם Switchy AI"}
         className={[
-          "fixed bottom-4 z-40 flex h-14 w-14 items-center justify-center rounded-full",
+          // Compact 56px (h-14) single-ring brand-green launcher; z-30 keeps it
+          // BELOW the sticky site header (z-50) and the bottom bars (z-40).
+          "fixed bottom-4 z-30 flex h-14 w-14 items-center justify-center rounded-full",
           // Bottom-START (RTL → right side of the screen visually mirrors LTR's
           // left; we pin to the inline-start corner via `start-4`).
           "start-4",
           "bg-accent text-accent-contrast shadow-float",
           "interactive press hover:bg-accent-hover",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          // Lift above the mobile sticky lead bar's safe-area inset.
+          // Respect the safe area (home-indicator) so the FAB never sits under it.
           "mb-[env(safe-area-inset-bottom)]",
         ].join(" ")}
       >
-        <span aria-hidden="true" className="text-2xl leading-none">
-          {open ? "✕" : "💬"}
-        </span>
+        <Icon name={open ? "close" : "chat"} size={24} strokeWidth={2} />
       </button>
 
       {/* Panel — mounted while open OR exiting (kept alive to collapse back into

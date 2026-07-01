@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════════════
-   Brand tokens — "white glass + ink" base + a disciplined two-accent system.
-     • green  #16A34A = ACTION  (CTAs, links, active nav, focus)
-     • amber  #F59E0B = VALUE   (savings figures, "best value" / win states)
+   Brand tokens — "white glass + ink" base + ONE green accent (mono-green brand).
+     • green  #16A34A = ACTION + VALUE (CTAs, links, active nav, focus, savings
+       figures / "best value" win states — the --value tier aliases to green)
      • ink    #111827 = text / structure / borders
      • glass  #F5F7F8 = page background
    Per-provider brand colors are NOT defined here (never recolored to the theme).
@@ -27,14 +27,17 @@
          where the 3:1 non-text threshold applies.
        • -text shades are for the SAME accent used as small text / inline links on
          a light surface, where 4.5:1 is required. The headline #16A34A green is
-         only 3.30:1 on white and #F59E0B amber only 2.15:1 — both FAIL as text. */
+         only 3.30:1 on white — it FAILS as text. */
   --accent: #16a34a; /* ACTION (green) — fills/CTAs/active nav/focus */
   --accent-hover: #15803d; /* darker green for hover */
   --accent-contrast: #ffffff; /* text on green */
   --accent-text: #0f7a37; /* green for text/links on light bg (≥4.5:1) */
-  --value: #f59e0b; /* VALUE (amber) — fills/badges/win states */
-  --value-contrast: #111827; /* text on amber */
-  --value-text: #b45309; /* amber for text/figures on light bg (≥4.5:1) */
+  /* VALUE tier — mono-green brand: savings/win states use the SAME green system
+     (fill #16A34A / AA text #15803D), never amber/orange. Token names kept so
+     every existing bg-value/text-value-text usage repaints without edits. */
+  --value: #16a34a; /* VALUE (green fill) — badges/win states */
+  --value-contrast: #ffffff; /* text on the green fill */
+  --value-text: #15803d; /* green for value text/figures on light bg (≥4.5:1) */
 
   /* Danger / error — the one state color outside the two-accent system. Split
      fill vs text like the accents: -text is AA (≥4.5:1) for small error copy on
@@ -61,11 +64,12 @@
   --shadow-float: 0 4px 12px rgba(11, 15, 20, 0.06),
     0 16px 40px rgba(11, 15, 20, 0.1);
 
-  /* Subtle accent glow — green action energy, kept faint (decorative, non-text). */
+  /* Subtle accent glow — green action energy, kept faint (decorative, non-text).
+     Mono-green: the value glow is the same green (slightly warmer weight). */
   --glow-accent: 0 0 0 1px rgba(22, 163, 74, 0.12),
     0 8px 28px rgba(22, 163, 74, 0.16);
-  --glow-value: 0 0 0 1px rgba(245, 158, 11, 0.14),
-    0 8px 28px rgba(245, 158, 11, 0.18);
+  --glow-value: 0 0 0 1px rgba(22, 163, 74, 0.14),
+    0 8px 28px rgba(22, 163, 74, 0.18);
 
   /* ── Motion system (Emil Kowalski's rules) ────────────────────────────────
      Define easing + duration ONCE here and reference everywhere, so every
@@ -93,13 +97,12 @@
 
    We re-skin the SAME token NAMES so every utility / component inherits dark mode
    with no per-rule overrides: surfaces become dark ink, body text lifts to light,
-   and the brand accents keep their meaning — green = ACTION, amber = VALUE — but
-   are NUDGED BRIGHTER so they clear WCAG AA on the dark glass:
+   and the ONE green accent keeps its meaning (ACTION + VALUE, mono-green) but is
+   NUDGED BRIGHTER so it clears WCAG AA on the dark glass:
      • green  #16A34A → #4ADE80 (fill) / #22C55E (hover)
-     • amber  #F59E0B → #FBBF24 (fill)
-   On the dark surfaces these lifted accents already exceed 4.5:1 as small text,
-   so the `-text` tiers alias to the brighter fills (green/amber text stays bright,
-   never the dark light-mode text shade that would vanish on dark glass).
+   On the dark surfaces the lifted green already exceeds 4.5:1 as small text, so
+   the `-text` tiers alias to the brighter fill (green text stays bright, never
+   the dark light-mode text shade that would vanish on dark glass).
    Per-provider/carrier brand colors are NOT defined here — never re-skinned.
    ════════════════════════════════════════════════════════════════════════════ */
 :root[data-theme="dark"] {
@@ -115,14 +118,14 @@
   --border-strong: #3a4452; /* strong/structural borders on dark */
   --muted: #aeb6c2; /* secondary text — ≥4.5:1 on the dark surfaces */
 
-  /* Accents — lifted for legibility on dark glass (green=action, amber=value). */
+  /* Accents — lifted for legibility on dark glass (mono-green: action = value). */
   --accent: #4ade80; /* ACTION (green) — fills/CTAs/active nav/focus */
   --accent-hover: #22c55e; /* brighter green for hover on dark */
   --accent-contrast: #0b2a18; /* deep-green ink for text on the bright green */
   --accent-text: #4ade80; /* green text/links — bright (already ≥4.5:1 on dark) */
-  --value: #fbbf24; /* VALUE (amber) — fills/badges/win states */
-  --value-contrast: #2a2410; /* dark amber-ink for text on the bright amber */
-  --value-text: #fbbf24; /* amber text/figures — bright (≥4.5:1 on dark) */
+  --value: #4ade80; /* VALUE (green fill) — badges/win states */
+  --value-contrast: #0b2a18; /* deep-green ink for text on the bright green */
+  --value-text: #4ade80; /* green value text/figures — bright (≥4.5:1 on dark) */
 
   /* Danger / error — lifted hue + AA text shade for error copy on dark glass. */
   --danger: #f87171; /* error fill (borders / icon backgrounds) */
@@ -133,11 +136,11 @@
   --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 38px rgba(0, 0, 0, 0.55);
   --shadow-float: 0 6px 16px rgba(0, 0, 0, 0.5), 0 30px 70px rgba(0, 0, 0, 0.6);
 
-  /* Accent glow — re-tinted to the lifted accents so it reads on dark. */
+  /* Accent glow — re-tinted to the lifted green so it reads on dark. */
   --glow-accent: 0 0 0 1px rgba(74, 222, 128, 0.18),
     0 8px 28px rgba(74, 222, 128, 0.22);
-  --glow-value: 0 0 0 1px rgba(251, 191, 36, 0.2),
-    0 8px 28px rgba(251, 191, 36, 0.24);
+  --glow-value: 0 0 0 1px rgba(74, 222, 128, 0.2),
+    0 8px 28px rgba(74, 222, 128, 0.24);
 }
 
 /* The .glass / .glass-strong surfaces use `var(--surface)` via color-mix, so they
@@ -421,7 +424,7 @@ a:hover {
   box-shadow: var(--shadow-float);
 }
 
-/* ── Subtle accent glow (decorative emphasis — green=action, amber=value) ────── */
+/* ── Subtle accent glow (decorative emphasis — mono-green: action + value) ───── */
 .glow-accent {
   box-shadow: var(--glow-accent);
 }

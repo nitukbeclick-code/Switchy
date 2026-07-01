@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../app_state.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -71,6 +70,21 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   String get _emailText => _emailCtrl.text.trim();
   bool get _emailLooksValid => _emailRe.hasMatch(_emailText);
 
+  /// OS reduced-motion flag — entrance FADES stay (opacity is vestibular-safe);
+  /// the slide legs are dropped (see [_reveal]).
+  bool get _reduceMotion =>
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
+  /// Shared wizard-section reveal honouring reduced motion: the fade always
+  /// plays; the small slide-up only when the OS allows motion.
+  Widget _reveal(Widget child, AppTheme t, {int delayMs = 0}) {
+    final faded =
+        child.animate(delay: delayMs.ms).fadeIn(duration: 260.ms, curve: t.easeOut);
+    return _reduceMotion
+        ? faded
+        : faded.slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut);
+  }
+
   /// The bookable dates are recomputed every build (cheap + pure) so the grid
   /// can't go stale across midnight; the picked date falls back to the first
   /// valid one when yesterday's choice is no longer bookable.
@@ -131,8 +145,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
 
   /// A meeting that should occupy this screen: anything not terminal, or a
   /// confirmed meeting that hasn't ended yet.
-  bool _hasOpenMeeting(AppState s) {
-    final m = s.bookedMeeting;
+  bool _hasOpenMeeting(BookedMeeting? m) {
     if (m == null) return false;
     final start = meetingLocalStart(m.meetingDate, m.slot);
     return switch (m.status) {
@@ -149,6 +162,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   /// whether the address exists, so a true return just means "request sent".
   Future<void> _sendCode() async {
     if (!_emailLooksValid) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'הזינו כתובת אימייל תקינה לקבלת קוד האימות');
       return;
     }
@@ -178,12 +192,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     if (accepted) {
       AppSnackBar.success(context, 'שלחנו קוד אימות בן 6 ספרות לכתובת $_emailText');
     } else if (res.ok && !res.sent) {
+      HapticFeedback.heavyImpact();
       // Reached the backend, but the email SEND failed (Resend down / sender
       // domain not verified). Don't dead-end the user on a code that won't come —
       // point them to WhatsApp, where the live agent can book them directly.
       AppSnackBar.error(context,
           'לא הצלחנו לשלוח כרגע מייל לכתובת זו. נסו שוב בעוד רגע, או דברו איתנו ישירות ב-WhatsApp ונסגור לכם פגישה.');
     } else {
+      HapticFeedback.heavyImpact();
       AppSnackBar.error(context, 'שליחת קוד האימות נכשלה — בדקו את החיבור ונסו שוב');
     }
   }
@@ -194,6 +210,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   Future<void> _verifyCode() async {
     final code = _codeCtrl.text.trim();
     if (code.length < 6) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'הזינו את קוד האימות בן 6 הספרות');
       return;
     }
@@ -217,25 +234,35 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       HapticFeedback.mediumImpact();
       AppSnackBar.success(context, 'האימייל אומת — אפשר לקבוע את הפגישה');
     } else {
+      // Wrong/expired code — heavy buzz pairs with the honest rejection copy.
+      HapticFeedback.heavyImpact();
       AppSnackBar.error(context, res.error ?? 'הקוד שגוי או שפג תוקפו — נסו שוב');
     }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      // A field is invalid — heavy buzz marks the rejected booking attempt.
+      HapticFeedback.heavyImpact();
+      return;
+    }
     if (_provider == null) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'בחרו ספק לפגישה');
       return;
     }
     if (_slot == null) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'בחרו שעה לפגישה');
       return;
     }
     if (!_acceptTerms || !_acceptPrivacy) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
       return;
     }
     if (!_emailVerified || _emailText != _verifiedEmail) {
+      HapticFeedback.heavyImpact();
       AppSnackBar.info(context, 'אמתו את כתובת האימייל לפני קביעת הפגישה');
       return;
     }
@@ -267,8 +294,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           .timeout(const Duration(seconds: 10));
     } catch (e) {
       // The request never reached the team — keep the form so the user can
-      // retry. The guard trigger's rejections get specific, honest copy.
+      // retry. The guard trigger's rejections get specific, honest copy. A
+      // heavy buzz marks the failed booking outcome before the honest message.
       if (!mounted) return;
+      HapticFeedback.heavyImpact();
       final msg = e.toString();
       if (msg.contains('meeting already pending')) {
         // There IS an open booking server-side (e.g. cleared local state) —
@@ -326,8 +355,13 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
-    final appState = Provider.of<AppState>(context);
-    final showStatus = _hasOpenMeeting(appState);
+    // Scope the AppState dependency: this screen only cares about the booked
+    // meeting (rep confirmations / link arrivals), so select just that field —
+    // a like/bill/quiz notify elsewhere no longer rebuilds the whole wizard.
+    final appState = Provider.of<AppState>(context, listen: false);
+    final bookedMeeting =
+        context.select<AppState, BookedMeeting?>((s) => s.bookedMeeting);
+    final showStatus = _hasOpenMeeting(bookedMeeting);
 
     // Honest gate: when the booking is for a KNOWN provider (passed in via the
     // entry point) that doesn't support Zoom video calls, never offer the
@@ -356,7 +390,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
-        title: Text('פגישת וידאו עם נציג', style: t.titleMedium),
+        title: Semantics(
+          header: true,
+          child: Text('פגישת וידאו עם נציג', style: t.titleMedium),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -371,12 +408,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   /// Zoom video calls (provider_capabilities.supports_zoom_meeting = false).
   /// Keeps the Geist header; offers a phone callback so the user never dead-ends.
   Widget _buildUnsupported(AppTheme t, String provider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildHero(t).animate().fadeIn(duration: 350.ms),
-        const SizedBox(height: 20),
-        Container(
+    final card = Container(
           width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: t.cardDecoration(radius: t.radiusLg),
@@ -410,13 +442,20 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                     foregroundColor: t.brandAccent,
                     side: BorderSide(color: t.brandAccent),
                     minimumSize: const Size(double.infinity, 46),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusCard)),
                   ),
                 ),
               ),
             ],
           ),
-        ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.04, end: 0),
+        ).animate().fadeIn(duration: 300.ms);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildHero(t).animate().fadeIn(duration: 350.ms),
+        const SizedBox(height: 20),
+        // Reduced motion keeps the fade, drops the slide.
+        _reduceMotion ? card : card.slideY(begin: 0.04, end: 0),
         const SizedBox(height: 16),
         Center(
           child: TextButton(
@@ -433,6 +472,13 @@ class _MeetingWidgetState extends State<MeetingWidget> {
 
   Widget _buildStatusView(AppTheme t, AppState appState) {
     final m = appState.bookedMeeting!;
+    final statusCard = MeetingStatusCard(
+      meeting: m,
+      onPickNewSlot: () {
+        appState.clearBookedMeeting();
+        setState(() => _justBooked = false);
+      },
+    ).animate().fadeIn(duration: 300.ms);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -447,13 +493,8 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           _DemoBanner(t: t),
           const SizedBox(height: 12),
         ],
-        MeetingStatusCard(
-          meeting: m,
-          onPickNewSlot: () {
-            appState.clearBookedMeeting();
-            setState(() => _justBooked = false);
-          },
-        ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.04, end: 0),
+        // Reduced motion keeps the fade, drops the slide.
+        _reduceMotion ? statusCard : statusCard.slideY(begin: 0.04, end: 0),
         const SizedBox(height: 16),
         _NextSteps(t: t, status: m.status),
         const SizedBox(height: 20),
@@ -495,14 +536,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           // appearing never feels sluggish.
           _SectionLabel(t: t, step: 1, label: 'לאיזה ספק תרצו הצעת מחיר?'),
           const SizedBox(height: 10),
-          _buildProviderChips(t).animate(delay: 40.ms).fadeIn(duration: 260.ms, curve: t.easeOut).slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut),
+          _reveal(_buildProviderChips(t), t, delayMs: 40),
 
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 2, label: 'באיזה יום נוח לכם?'),
           const SizedBox(height: 4),
           Text('ניתן לקבוע פגישה החל ממחר, בימים א׳–ה׳ ובשישי בבוקר.', style: t.bodySmall),
           const SizedBox(height: 10),
-          _buildDateChips(t).animate(delay: 100.ms).fadeIn(duration: 260.ms, curve: t.easeOut).slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut),
+          _reveal(_buildDateChips(t), t, delayMs: 100),
 
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 3, label: 'באיזו שעה?'),
@@ -514,7 +555,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             style: t.bodySmall,
           ),
           const SizedBox(height: 10),
-          _buildSlotChips(t).animate(delay: 160.ms).fadeIn(duration: 260.ms, curve: t.easeOut).slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut),
+          _reveal(_buildSlotChips(t), t, delayMs: 160),
 
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 4, label: 'פרטים לאישור הפגישה'),
@@ -609,7 +650,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             height: 56,
             color: AppColors.primary,
             textStyle: t.titleMedium.copyWith(color: Colors.white),
-            borderRadius: BorderRadius.circular(18),
+            // No token equals the bespoke 18 corner (radiusCard 12 / radiusSheet
+            // 20 straddle it); radiusSheet is the nearest, preserving the generous
+            // hero-CTA corner without forcing the tighter card radius.
+            borderRadius: BorderRadius.circular(t.radiusSheet),
           ).animate(delay: 180.ms).fadeIn(),
           const SizedBox(height: 8),
           Center(
@@ -644,7 +688,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
               borderRadius: BorderRadius.circular(t.radiusMd),
             ),
             child: ExcludeSemantics(
-              child: Image.asset('assets/images/zoom.png', fit: BoxFit.contain),
+              child: Image.asset(
+                'assets/images/zoom.png',
+                fit: BoxFit.contain,
+                // Decode at the ~34dp display box (48 tile minus padding), not
+                // at the asset's full resolution.
+                cacheWidth:
+                    (34 * MediaQuery.devicePixelRatioOf(context)).round(),
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -657,7 +708,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 const SizedBox(height: 4),
                 Text(
                   'נציג מכירות יציג לכם הצעת מחיר מותאמת בשיחת וידאו של 30 דקות — ללא עלות וללא התחייבות.',
-                  style: GoogleFonts.assistant(
+                  // Assistant body face → nearest scale token is bodySmall (13);
+                  // copyWith carries the genuine deltas (on-ink white@0.85, the
+                  // 12.5 size and 1.35 line-height) so the render is unchanged.
+                  style: t.bodySmall.copyWith(
                       fontSize: 12.5, color: Colors.white.withValues(alpha: 0.85), height: 1.35),
                 ),
               ],
@@ -689,26 +743,34 @@ class _MeetingWidgetState extends State<MeetingWidget> {
               setState(() => _provider = p);
             },
             haptic: false,
-            child: AnimatedContainer(
-              duration: t.motionTooltip,
-              curve: t.easeOut,
-              decoration: BoxDecoration(
-                color: active ? t.brandAccent : t.cardSurface,
-                borderRadius: BorderRadius.circular(t.radiusPill),
-                border: Border.all(color: active ? t.brandAccent : t.alternate),
-              ),
-              padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
-                  const SizedBox(width: 7),
-                  Text(p,
-                      style: t.labelMedium.copyWith(
-                        color: active ? Colors.white : t.primaryText,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      )),
-                ],
+            // >=48dp tap target (Pressable hit-tests the whole opaque box)
+            // without growing the painted pill — it stays centered inside.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: kMinTapTarget),
+              child: Center(
+                widthFactor: 1,
+                child: AnimatedContainer(
+                  duration: t.motionTooltip,
+                  curve: t.easeOut,
+                  decoration: BoxDecoration(
+                    color: active ? t.brandAccent : t.cardSurface,
+                    borderRadius: BorderRadius.circular(t.radiusPill),
+                    border: Border.all(color: active ? t.brandAccent : t.alternate),
+                  ),
+                  padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
+                      const SizedBox(width: 7),
+                      Text(p,
+                          style: t.labelMedium.copyWith(
+                            color: active ? Colors.white : t.primaryText,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          )),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -720,8 +782,12 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   Widget _buildDateChips(AppTheme t) {
     final dates = bookableMeetingDates();
     final selected = _effectiveDate(dates);
+    // Dynamic-type resilience: the two-line chip content grows with the OS
+    // text scale, so the fixed rail grows with it (never shrinks below 64).
+    final textScale =
+        (MediaQuery.textScalerOf(context).scale(14) / 14).clamp(1.0, 1.6).toDouble();
     return SizedBox(
-      height: 64,
+      height: 64 * textScale,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: dates.length,
@@ -803,21 +869,30 @@ class _MeetingWidgetState extends State<MeetingWidget> {
               setState(() => _slot = s);
             },
             haptic: false,
-            child: AnimatedContainer(
-              duration: t.motionTooltip,
-              curve: t.easeOut,
-              decoration: BoxDecoration(
-                color: active ? t.brandAccent : t.cardSurface,
-                borderRadius: BorderRadius.circular(t.radiusSm),
-                border: Border.all(color: active ? t.brandAccent : t.alternate),
+            // >=48dp tap target (Pressable hit-tests the whole opaque box)
+            // without growing the painted chip — it stays centered inside.
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                  minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+              child: Center(
+                widthFactor: 1,
+                child: AnimatedContainer(
+                  duration: t.motionTooltip,
+                  curve: t.easeOut,
+                  decoration: BoxDecoration(
+                    color: active ? t.brandAccent : t.cardSurface,
+                    borderRadius: BorderRadius.circular(t.radiusSm),
+                    border: Border.all(color: active ? t.brandAccent : t.alternate),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  child: Text(s,
+                      style: t.labelMedium.copyWith(
+                        color: active ? Colors.white : t.primaryText,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              child: Text(s,
-                  style: t.labelMedium.copyWith(
-                    color: active ? Colors.white : t.primaryText,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  )),
             ),
           ),
         );
@@ -861,7 +936,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 foregroundColor: t.brandAccent,
                 side: BorderSide(color: t.brandAccent),
                 minimumSize: const Size(double.infinity, 46),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusCard)),
               ),
             ),
           ),
@@ -876,11 +951,11 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       prefixIcon: Icon(icon, color: t.secondaryText, size: 20),
       filled: true,
       fillColor: t.cardSurface,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
-      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error)),
-      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error, width: 1.5)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.alternate)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.alternate)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.error)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusCard), borderSide: BorderSide(color: t.error, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
@@ -988,7 +1063,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 color: AppColors.primary,
                 textStyle: t.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(t.radiusCard),
               ),
             ],
           ),
@@ -1026,12 +1101,21 @@ class _SectionLabel extends StatelessWidget {
           height: 22,
           decoration: BoxDecoration(color: t.brandAccent, shape: BoxShape.circle),
           child: Center(
+            // Rubik step numeral → nearest Rubik scale token is titleSmall (13);
+            // copyWith carries the genuine deltas (12px, w800, white-on-accent).
             child: Text('$step',
-                style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                style: t.titleSmall.copyWith(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
           ),
         ),
         const SizedBox(width: 8),
-        Expanded(child: Text(label, style: t.titleSmall)),
+        // The wizard step titles are the screen's section headers — announce
+        // them as such so screen-reader users can jump between steps.
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(label, style: t.titleSmall),
+          ),
+        ),
       ],
     );
   }
@@ -1073,24 +1157,33 @@ class _SuccessHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Reduced motion: the celebratory scale-pop degrades to a plain fade.
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final badge = Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: t.brandAccent,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: t.brandAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 1)],
+      ),
+      child: const Icon(Icons.check_rounded, size: 34, color: Colors.white),
+    );
     return Column(
       children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: t.brandAccent,
-            shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: t.brandAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 1)],
-          ),
-          child: const Icon(Icons.check_rounded, size: 34, color: Colors.white),
-        ).animate().scale(
-            begin: const Offset(0.6, 0.6),
-            end: const Offset(1, 1),
-            duration: 350.ms,
-            curve: Curves.easeOutBack),
+        reduceMotion
+            ? badge.animate().fadeIn(duration: 200.ms)
+            : badge.animate().scale(
+                begin: const Offset(0.6, 0.6),
+                end: const Offset(1, 1),
+                duration: 350.ms,
+                curve: Curves.easeOutBack),
         const SizedBox(height: 12),
-        Text('הבקשה התקבלה', style: t.headlineSmall, textAlign: TextAlign.center),
+        Semantics(
+          header: true,
+          child: Text('הבקשה התקבלה', style: t.headlineSmall, textAlign: TextAlign.center),
+        ),
       ],
     );
   }

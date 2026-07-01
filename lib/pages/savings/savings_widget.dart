@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -13,6 +12,18 @@ import '../../services/renewal_report.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/saving_pill.dart';
+
+/// Card entrance for the dashboard stack: the fade always plays, but the
+/// upward settle (a transform) is dropped when the OS asks for reduced motion
+/// (`MediaQuery.disableAnimations`) — the honest fade-only degrade.
+Widget _cardEntrance(BuildContext context, Widget child,
+    {int delayMs = 0, int durationMs = 320, double slideBegin = 0.06}) {
+  final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  final faded = child.animate(delay: delayMs.ms).fadeIn(duration: durationMs.ms);
+  if (reduceMotion) return faded;
+  return faded.slideY(begin: slideBegin, end: 0, duration: durationMs.ms);
+}
 
 /// A whole-app savings dashboard: total potential, the biggest opportunity, a
 /// per-category breakdown, near renewals, and what the user has already saved.
@@ -112,37 +123,51 @@ class _SavingsWidgetState extends State<SavingsWidget> {
 
                   // Biggest opportunity
                   if (top != null && top.best != null) ...[
-                    _TopOpportunityCard(
-                      saving: top.annualSaving,
-                      categoryName: categoryById(top.categoryId)?.name ?? top.categoryId,
-                      providerAndPlan: '${top.best!.plan.provider} · ${top.best!.plan.plan}',
-                      personalized: personalized,
-                      ffTheme: ffTheme,
-                      onTap: () => context.pushNamed('PlanDetail',
-                          pathParameters: {'planId': top.best!.plan.id}),
-                    ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.08),
+                    _cardEntrance(
+                      context,
+                      _TopOpportunityCard(
+                        saving: top.annualSaving,
+                        categoryName: categoryById(top.categoryId)?.name ?? top.categoryId,
+                        providerAndPlan: '${top.best!.plan.provider} · ${top.best!.plan.plan}',
+                        personalized: personalized,
+                        ffTheme: ffTheme,
+                        onTap: () => context.pushNamed('PlanDetail',
+                            pathParameters: {'planId': top.best!.plan.id}),
+                      ),
+                      durationMs: 320,
+                      slideBegin: 0.08,
+                    ),
                     const SizedBox(height: 20),
                   ],
 
                   // Donut: potential annual saving split by category (real values).
                   if (summary.opportunities.isNotEmpty) ...[
-                    _PotentialDonutCard(
-                      opportunities: summary.opportunities,
-                      total: summary.totalAnnualPotential,
-                      personalized: personalized,
-                      ffTheme: ffTheme,
-                    ).animate().fadeIn(duration: 340.ms).slideY(begin: 0.06),
+                    _cardEntrance(
+                      context,
+                      _PotentialDonutCard(
+                        opportunities: summary.opportunities,
+                        total: summary.totalAnnualPotential,
+                        personalized: personalized,
+                        ffTheme: ffTheme,
+                      ),
+                      durationMs: 340,
+                    ),
                     const SizedBox(height: 16),
                   ],
 
                   // Progress bar: potential vs already-realized savings.
                   if (summary.totalAnnualPotential > 0 || appState.totalSavings > 0) ...[
-                    _ProgressCard(
-                      potential: summary.totalAnnualPotential,
-                      realized: appState.totalSavings,
-                      personalized: personalized,
-                      ffTheme: ffTheme,
-                    ).animate(delay: 60.ms).fadeIn(duration: 340.ms).slideY(begin: 0.06),
+                    _cardEntrance(
+                      context,
+                      _ProgressCard(
+                        potential: summary.totalAnnualPotential,
+                        realized: appState.totalSavings,
+                        personalized: personalized,
+                        ffTheme: ffTheme,
+                      ),
+                      delayMs: 60,
+                      durationMs: 340,
+                    ),
                     const SizedBox(height: 20),
                   ],
 
@@ -228,15 +253,36 @@ class _HeroFigure extends StatelessWidget {
           tween: IntTween(begin: reduceMotion ? total : 0, end: total),
           duration: const Duration(milliseconds: 1000),
           curve: Curves.easeOutCubic,
-          builder: (_, value, __) => Text(
-            hasBill ? '₪$value' : '₪—',
-            style: ffTheme.displaySmall.copyWith(
-                // Dark amber VALUE (AA on the now-white Geist header) for a real
-                // figure; a muted dark dash for the placeholder.
-                color: hasBill ? ffTheme.savingText : ffTheme.secondaryText,
-                fontWeight: FontWeight.bold,
-                // Fixed-width digits — the count-up doesn't jitter sideways.
-                fontFeatures: const [FontFeature.tabularFigures()]),
+          // FittedBox: the single big hero numeral scales DOWN (never clips)
+          // when the OS text scale is large — the user's scaling stays honored
+          // everywhere else on the page.
+          builder: (_, value, __) => FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              // The hero stays a big numeral (it's the page's main stat), but
+              // carries the same savings GLYPH as the shared SavingPill so every
+              // savings surface reads as one recognizable category.
+              children: [
+                if (hasBill) ...[
+                  Icon(Icons.savings_rounded,
+                      size: 22, color: ffTheme.savingText),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  hasBill ? '₪$value' : '₪—',
+                  // The hero count-up IS a stat headline numeral → sourced from the
+                  // numeric scale (Rubik / w800 / tabular figures), the same token
+                  // the wallet hero uses, so every savings hero reads identically.
+                  // The genuine deltas (the prior 22px size + the VALUE-green
+                  // colour, with a muted dark dash for the placeholder) ride via
+                  // copyWith. TRUTH-ONLY: the real $value figure is unchanged.
+                  style: ffTheme.numericLarge.copyWith(
+                      fontSize: 22,
+                      color: hasBill ? ffTheme.savingText : ffTheme.secondaryText),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 2),
@@ -325,7 +371,17 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(title, style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+        // Announced as a section heading so screen-reader users can jump
+        // between the dashboard's sections.
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(title,
+                style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+        ),
       ],
     );
   }
@@ -387,7 +443,7 @@ class _RealizedCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: ffTheme.brandAccent.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -397,20 +453,28 @@ class _RealizedCard extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               color: ffTheme.brandAccent.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
             ),
             child: Icon(Icons.savings_rounded, color: ffTheme.brandAccent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
+            // Text.rich (not raw RichText): it inherits the ambient
+            // MediaQuery textScaler, so the sentence grows with the user's
+            // OS text-size setting instead of staying frozen at 1.0x.
+            child: Text.rich(
+              TextSpan(
                 style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700),
                 children: [
                   const TextSpan(text: 'כבר חסכת '),
                   TextSpan(
                       text: '₪$amount',
-                      style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.brandAccentText,
+                          fontWeight: FontWeight.w800,
+                          // Tabular figures — the realized total aligns with the
+                          // shared savings treatment.
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                   const TextSpan(text: ' דרך Switchy AI'),
                 ],
               ),
@@ -453,13 +517,13 @@ class _TopOpportunityCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           splashColor: ffTheme.saving.withValues(alpha: 0.12),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: ffTheme.saving.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
               border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
             ),
             child: Row(
@@ -469,7 +533,7 @@ class _TopOpportunityCard extends StatelessWidget {
                   height: 46,
                   decoration: BoxDecoration(
                     color: ffTheme.saving.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   ),
                   child: Icon(Icons.rocket_launch_rounded, size: 24, color: ffTheme.savingDark),
                 ),
@@ -481,11 +545,15 @@ class _TopOpportunityCard extends StatelessWidget {
                       Text('ההזדמנות הכי גדולה שלך · $categoryName',
                           style: ffTheme.labelMedium
                               .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 3),
-                      Text(savingText,
-                          style: GoogleFonts.rubik(
-                              fontSize: 19, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 5),
+                      // The headline saving is the recognizable VALUE category:
+                      // tint pill + savings glyph + tabular figures, not plain
+                      // green text. TRUTH-ONLY: same real figure, only restyled.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SavingPill(text: savingText),
+                      ),
+                      const SizedBox(height: 4),
                       Text(providerAndPlan,
                           style: ffTheme.bodySmall.copyWith(
                               color: ffTheme.primaryText, fontWeight: FontWeight.w600),
@@ -557,7 +625,10 @@ class _PotentialDonutCard extends StatelessWidget {
               // Donut with the total in the hole. The slices sweep in clockwise
               // from 12 o'clock (a `t`-driven startDegreeOffset rotation paired
               // with a grow on radius) so the chart "draws itself".
-              SizedBox(
+              // RepaintBoundary: the 1.1s sweep repaints every frame — isolate
+              // it so the whole card/scroll view doesn't repaint with it.
+              RepaintBoundary(
+                child: SizedBox(
                 width: 116,
                 height: 116,
                 child: TweenAnimationBuilder<double>(
@@ -594,9 +665,21 @@ class _PotentialDonutCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(personalized ? '₪$total' : '~₪$total',
-                                  style: GoogleFonts.rubik(
+                                  // Sourced from the numeric scale (Rubik +
+                                  // tabular figures); the donut-hole total sits
+                                  // below the numericMedium size, so the genuine
+                                  // delta (18px / w800 / VALUE-green) rides via
+                                  // copyWith. Tabular keeps the total aligned
+                                  // with the savings-category style.
+                                  style: ffTheme.numericMedium.copyWith(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
+                                      // Neutralise the token's tracking/height so
+                                      // the donut total renders pixel-identical to
+                                      // the prior inline numeral (only the font
+                                      // family + tabular figures are re-sourced).
+                                      letterSpacing: 0,
+                                      height: 1,
                                       color: ffTheme.savingText)),
                               Text('לשנה',
                                   style: ffTheme.labelSmall
@@ -608,6 +691,7 @@ class _PotentialDonutCard extends StatelessWidget {
                     );
                   },
                 ),
+              ),
               ),
               const SizedBox(width: 16),
               // Legend.
@@ -675,9 +759,10 @@ class _LegendRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis),
         ),
         const SizedBox(width: 6),
-        Text(personalized ? '₪$amount' : '~₪$amount',
-            style: ffTheme.labelMedium
-                .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
+        // VALUE category treatment: the per-slice saving rides in the shared
+        // tint pill (glyph + tabular figures) instead of plain green text, so
+        // the legend matches every other savings surface. Real figure kept.
+        SavingPill(text: personalized ? '₪$amount' : '~₪$amount'),
       ],
     );
   }
@@ -719,7 +804,10 @@ class _ProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
+          // RepaintBoundary: the bar-grow entrance animates for 650ms — keep
+          // its repaints from invalidating the surrounding card and list.
+          RepaintBoundary(
+            child: SizedBox(
             height: 150,
             child: BarChart(
               BarChartData(
@@ -768,10 +856,15 @@ class _ProgressCard extends StatelessWidget {
                   _bar(1, realized.toDouble(), ffTheme.primary, ffTheme),
                 ],
               ),
-              // Bars grow up from the baseline on first paint.
-              swapAnimationDuration: const Duration(milliseconds: 650),
+              // Bars grow up from the baseline on first paint — skipped when
+              // the OS asks for reduced motion (bars just appear).
+              swapAnimationDuration:
+                  (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 650),
               swapAnimationCurve: ffTheme.easeOut,
             ),
+          ),
           ),
           const SizedBox(height: 8),
           Row(
@@ -809,7 +902,7 @@ class _ProgressCard extends StatelessWidget {
           toY: y,
           width: 46,
           color: color,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusSm)),
         ),
       ],
     );
@@ -833,8 +926,18 @@ class _ValueTag extends StatelessWidget {
     return Column(
       children: [
         Text(text,
-            style: GoogleFonts.rubik(
-                fontSize: 17, fontWeight: FontWeight.w800, color: color)),
+            // Stat numeral sourced from the numeric scale (Rubik + tabular);
+            // it sits below numericMedium's size, so the 17px / w800 / per-tag
+            // colour delta rides via copyWith.
+            style: ffTheme.numericMedium.copyWith(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                // Neutralise the token's tracking/height so the tag renders at the
+                // prior inline metrics; the figure now also gains tabular figures
+                // from the token, aligning the ₪ potential/realized columns.
+                letterSpacing: 0,
+                height: 1,
+                color: color)),
         const SizedBox(height: 2),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
       ],
@@ -927,16 +1030,14 @@ class _CategoryRow extends StatelessWidget {
                   ),
                 ),
                 if (opportunity)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: ffTheme.saving.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
-                        style: GoogleFonts.rubik(
-                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
-                  )
+                  // The per-category saving is the shared VALUE pill: tint bg +
+                  // savings glyph + tabular figures. Replaces the hand-rolled
+                  // green-text badge so every savings figure reads as one
+                  // category. TRUTH-ONLY: the real annual figure is unchanged.
+                  SavingPill(
+                      text: personalized
+                          ? '₪${saving.annualSaving}/שנה'
+                          : '~₪${saving.annualSaving}/שנה')
                 else if (has)
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -1022,25 +1123,23 @@ class _RenewalRow extends StatelessWidget {
                       Text('$provider · $planName',
                           style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700),
                           maxLines: 1, overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          if (timing != null) ...[
-                            Flexible(
-                              child: Text(timing,
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                                  maxLines: 1, overflow: TextOverflow.ellipsis),
-                            ),
-                            Text(' · ', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
-                          ],
-                          Text('חוסך ₪$saving/שנה',
-                              style: ffTheme.labelSmall.copyWith(
-                                  color: ffTheme.savingText, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
+                      // Timing reads on its own line; the saving moves to the
+                      // shared trailing VALUE pill so it matches every other
+                      // savings surface (mirrors the category row's layout).
+                      if (timing != null) ...[
+                        const SizedBox(height: 2),
+                        Text(timing,
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                // VALUE pill: tint bg + savings glyph + tabular figures. Real
+                // annual saving kept verbatim, only restyled.
+                SavingPill(text: 'חוסך ₪$saving/שנה'),
+                const SizedBox(width: 4),
                 Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.secondaryText),
               ],
             ),

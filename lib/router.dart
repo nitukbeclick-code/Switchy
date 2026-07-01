@@ -52,15 +52,36 @@ import 'pages/switch_kit/switch_kit_widget.dart';
 import 'pages/switch_kit/street_price_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-// One Navigator per bottom-nav tab so each tab keeps its OWN back-stack and
-// scroll position (true native tab behaviour). The branch order here is the
-// tab order in [_ScaffoldWithNav._tabs]: home, compare, community, tracker,
-// account.
+// One Navigator per shell branch so each keeps its OWN back-stack and scroll
+// position (true native tab behaviour). WAVE 4 slimmed the PRIMARY bottom-tab
+// bar to a tight funnel — home, tracker(מעבר), account(אישי) — but every branch
+// below stays a live, fully-reachable branch. Compare + Community are no longer
+// top-level tabs; their branches still exist (so /compare and /community resolve
+// and keep their own back-stacks) and are reached from in-page entry points:
+//   • Compare   ← the floating compare-tray on Home (home_widget.dart → goNamed('Compare'))
+//   • Community ← Home's community section (home_widget.dart) AND the Account
+//                 screen's "קהילה" quick-link (account_widget.dart → goNamed('Community')).
+// The branch ORDER here must match [_BranchIndex] (and the visible tabs come
+// first so the travelling pill maps cleanly): home, tracker, account, then the
+// two reachable-but-untabbed branches compare, community.
 final _homeNavKey = GlobalKey<NavigatorState>(debugLabel: 'home');
-final _compareNavKey = GlobalKey<NavigatorState>(debugLabel: 'compare');
-final _communityNavKey = GlobalKey<NavigatorState>(debugLabel: 'community');
 final _trackerNavKey = GlobalKey<NavigatorState>(debugLabel: 'tracker');
 final _accountNavKey = GlobalKey<NavigatorState>(debugLabel: 'account');
+final _compareNavKey = GlobalKey<NavigatorState>(debugLabel: 'compare');
+final _communityNavKey = GlobalKey<NavigatorState>(debugLabel: 'community');
+
+/// Stable branch indices into the [StatefulShellRoute] below. The first three
+/// (home/tracker/account) are the visible bottom-tab branches in RTL tab order;
+/// the last two (compare/community) are reachable-but-untabbed branches. Keeping
+/// these as named constants means the `_tabs` list, the selected-index logic and
+/// the branch list can never drift out of sync.
+class _BranchIndex {
+  static const int home = 0;
+  static const int tracker = 1;
+  static const int account = 2;
+  static const int compare = 3;
+  static const int community = 4;
+}
 
 /// The current app's router, set by [ChosechApp] at construction. Exposed so
 /// non-widget code — the auth-state listener in `main.dart` — can navigate (e.g.
@@ -69,6 +90,20 @@ final _accountNavKey = GlobalKey<NavigatorState>(debugLabel: 'account');
 GoRouter? appRouterInstance;
 
 GoRouter createRouter() {
+  // Debug guard: the branch list below MUST stay in [_BranchIndex] order, since
+  // the bottom nav drives goBranch()/currentIndex by those exact indices and the
+  // two untabbed branches (compare/community) are reached purely by index. This
+  // assert fails loudly in debug if anyone reorders the branches without updating
+  // the indices (it also keeps the untabbed constants referenced — they are the
+  // single source of truth for "which branch is Compare / Community").
+  assert(
+    _BranchIndex.home == 0 &&
+        _BranchIndex.tracker == 1 &&
+        _BranchIndex.account == 2 &&
+        _BranchIndex.compare == 3 &&
+        _BranchIndex.community == 4,
+    'Branch indices must match the StatefulShellRoute branch order.',
+  );
   // Returning users skip onboarding — but only on the app's *first* navigation
   // (cold start). Later explicit navigations to /onboarding (e.g. right after
   // logout) must actually land there, otherwise logout appears to do nothing.
@@ -129,7 +164,7 @@ GoRouter createRouter() {
       builder: (ctx, state, navigationShell) =>
           _ScaffoldWithNav(navigationShell: navigationShell),
       branches: [
-        // ── Branch 0 — Home tab ──────────────────────────────────────────────
+        // ── Branch 0 — Home tab (בית) ────────────────────────────────────────
         StatefulShellBranch(
           navigatorKey: _homeNavKey,
           routes: [
@@ -181,29 +216,13 @@ GoRouter createRouter() {
             GoRoute(path: '/analytics', name: 'Analytics', builder: (_, __) => const AnalyticsWidget()),
           ],
         ),
-        // ── Branch 1 — Compare tab ───────────────────────────────────────────
-        StatefulShellBranch(
-          navigatorKey: _compareNavKey,
-          routes: [
-            GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
-          ],
-        ),
-        // ── Branch 2 — Community tab ─────────────────────────────────────────
-        StatefulShellBranch(
-          navigatorKey: _communityNavKey,
-          routes: [
-            GoRoute(path: '/community', name: 'Community', builder: (_, __) => const CommunityWidget()),
-            GoRoute(path: '/advisor', name: 'AIAdvisor', builder: (_, __) => const AIAdvisorWidget()),
-            GoRoute(path: '/deals', name: 'Deals', builder: (_, __) => const DealsWidget()),
-          ],
-        ),
-        // ── Branch 3 — Tracker ("המעבר") tab ─────────────────────────────────
+        // ── Branch 1 — Tracker ("מעבר") tab ──────────────────────────────────
         StatefulShellBranch(
           navigatorKey: _trackerNavKey,
           routes: [
             GoRoute(path: '/tracker', name: 'Tracker', builder: (_, __) => const TrackerWidget()),
             GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!, source: s.uri.queryParameters['source'] ?? 'form')),
-            GoRoute(path: '/success', name: 'Success', builder: (_, __) => const SuccessWidget()),
+            GoRoute(path: '/success', name: 'Success', builder: (_, s) => SuccessWidget(leadAccepted: s.extra as bool?)),
             GoRoute(path: '/chat', name: 'Chat', builder: (_, __) => const ChatWidget()),
             GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
             GoRoute(
@@ -218,7 +237,7 @@ GoRouter createRouter() {
             GoRoute(path: '/porting', name: 'Porting', builder: (_, __) => const PortingWidget()),
           ],
         ),
-        // ── Branch 4 — Account ("אישי") tab ──────────────────────────────────
+        // ── Branch 2 — Account ("אישי") tab ──────────────────────────────────
         StatefulShellBranch(
           navigatorKey: _accountNavKey,
           routes: [
@@ -226,6 +245,28 @@ GoRouter createRouter() {
             GoRoute(path: '/profile', name: 'Profile', builder: (_, __) => const ProfileWidget()),
             GoRoute(path: '/bills', name: 'Bills', builder: (_, __) => const BillsWidget()),
             GoRoute(path: '/ratings', name: 'Ratings', builder: (_, __) => const RatingsWidget()),
+          ],
+        ),
+        // ── Branch 3 — Compare (reachable-but-untabbed) ──────────────────────
+        // No longer a primary tab (WAVE 4). Still a live branch with its own
+        // back-stack; reached from Home's floating compare-tray. Deep-links to
+        // /compare resolve here and auto-activate this branch.
+        StatefulShellBranch(
+          navigatorKey: _compareNavKey,
+          routes: [
+            GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
+          ],
+        ),
+        // ── Branch 4 — Community (reachable-but-untabbed) ────────────────────
+        // No longer a primary tab (WAVE 4). Still a live branch; reached from
+        // Home's community section and the Account screen's "קהילה" quick-link.
+        // Deep-links to /community, /advisor, /deals resolve here.
+        StatefulShellBranch(
+          navigatorKey: _communityNavKey,
+          routes: [
+            GoRoute(path: '/community', name: 'Community', builder: (_, __) => const CommunityWidget()),
+            GoRoute(path: '/advisor', name: 'AIAdvisor', builder: (_, __) => const AIAdvisorWidget()),
+            GoRoute(path: '/deals', name: 'Deals', builder: (_, __) => const DealsWidget()),
           ],
         ),
       ],
@@ -246,33 +287,26 @@ class _ScaffoldWithNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
 
-    // Subscribe ONLY to the compare-count slice so the shell (and its bottom
-    // nav / compare badge) rebuilds when plans are added/removed from the
-    // compare tray — not on every unrelated AppState notify (search keystroke,
-    // bill tap, etc.). The Selector recomputes the int and only rebuilds its
-    // child when that int changes.
-    return Selector<AppState, int>(
-      selector: (_, appState) => appState.comparePlans.length,
-      builder: (context, compareCount, _) => Scaffold(
-        // Let page content scroll *under* the frosted nav bar so it reads as glass.
-        extendBody: true,
-        body: navigationShell,
-        bottomNavigationBar: GlassPanel(
-          // Flat top edge — only the top hairline frames it against scrolled content.
-          borderRadius: BorderRadius.zero,
-          border: false,
-          alpha: 0.7,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: _BottomNavBar(
-                navigationShell: navigationShell,
-                compareCount: compareCount,
-              ),
-            ),
+    // The slimmed funnel bar (בית / מעבר / אישי) carries no compare-count badge,
+    // so the shell no longer needs to subscribe to the compare slice — the
+    // compare count is surfaced by Home's floating compare-tray instead. The bar
+    // only depends on the shell's active branch, which drives its own rebuilds.
+    return Scaffold(
+      // Let page content scroll *under* the frosted nav bar so it reads as glass.
+      extendBody: true,
+      body: navigationShell,
+      bottomNavigationBar: GlassPanel(
+        // Flat top edge — only the top hairline frames it against scrolled content.
+        borderRadius: BorderRadius.zero,
+        border: false,
+        alpha: 0.7,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: _BottomNavBar(navigationShell: navigationShell),
           ),
         ),
       ),
@@ -293,38 +327,44 @@ class _ScaffoldWithNav extends StatelessWidget {
 /// fast cadence. Press gives a subtle [pressScale] squeeze for tactile feedback.
 /// All transform/position motion is dropped under reduced-motion; colour stays.
 class _BottomNavBar extends StatelessWidget {
-  const _BottomNavBar({
-    required this.navigationShell,
-    required this.compareCount,
-  });
+  const _BottomNavBar({required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
-  final int compareCount;
 
-  // Tab order MUST match the branch order in [createRouter]'s
-  // StatefulShellRoute (home, compare, community, tracker, account) — the index
-  // is what drives [navigationShell.goBranch] / [currentIndex].
+  // The slimmed, funnel-focused PRIMARY tab bar (WAVE 4): בית / מעבר / אישי, in
+  // RTL reading order (right→left). Each tab carries the SHELL BRANCH it drives,
+  // so the visible-tab index is decoupled from the branch index — that lets the
+  // shell keep extra reachable-but-untabbed branches (Compare, Community) without
+  // a phantom tab slot. Compare is reached from Home's compare-tray; Community
+  // from Home's community section + the Account "קהילה" quick-link.
   static const _tabs = [
-    _Tab(icon: Icons.home_rounded, label: 'בית'),
-    _Tab(icon: Icons.bar_chart_rounded, label: 'השוואה'),
-    _Tab(icon: Icons.people_rounded, label: 'קהילה'),
-    _Tab(icon: Icons.sync_alt_rounded, label: 'המעבר'),
-    _Tab(icon: Icons.person_rounded, label: 'אישי'),
+    _Tab(icon: Icons.home_rounded, label: 'בית', branchIndex: _BranchIndex.home),
+    _Tab(icon: Icons.sync_alt_rounded, label: 'מעבר', branchIndex: _BranchIndex.tracker),
+    _Tab(icon: Icons.person_rounded, label: 'אישי', branchIndex: _BranchIndex.account),
   ];
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final idx = navigationShell.currentIndex;
+    // The shell's active BRANCH index (0..4). Map it to the VISIBLE-tab index by
+    // finding the tab that drives that branch. When a reachable-but-untabbed
+    // branch is active (Compare / Community), no tab is selected — `selectedTab`
+    // is -1, so the travelling pill hides and no glyph reads as active. (The
+    // back-stack still belongs to that branch; the user returns via the in-page
+    // entry point or the system back gesture.)
+    final branchIndex = navigationShell.currentIndex;
+    final selectedTab = _tabs.indexWhere((t) => t.branchIndex == branchIndex);
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     // Travelling pill: instant under reduced-motion (no transform animation),
-    // otherwise a snappy slide in the fast band. Map the active index to a
+    // otherwise a snappy slide in the fast band. Map the active tab to a
     // [-1, 1] Alignment.x across the n equal slots; RTL is handled by the
-    // ambient Directionality so the pill tracks the visually-active tab.
+    // ambient Directionality so the pill tracks the visually-active tab. When no
+    // tab is selected (untabbed branch) the pill is hidden entirely below.
+    final pillIndex = selectedTab < 0 ? 0 : selectedTab;
     final pillAlignX = _tabs.length == 1
         ? 0.0
-        : (idx / (_tabs.length - 1)) * 2 - 1;
+        : (pillIndex / (_tabs.length - 1)) * 2 - 1;
 
     return SizedBox(
       height: 64,
@@ -334,26 +374,40 @@ class _BottomNavBar extends StatelessWidget {
           // It SLIDES between slots so the eye follows one continuous object
           // instead of a fade swap. The AnimatedAlign fills the whole bar and
           // its child is exactly one slot wide ([widthFactor] 1/n), so an
-          // Alignment.x of (idx/(n-1))*2-1 centres that slot-box precisely over
+          // Alignment.x of (pillIndex/(n-1))*2-1 centres that slot-box over
           // the active tab for ANY bar width. The visible pill is inset within
           // the slot-box so it reads as a soft 56px-wide pill. Directionality is
           // resolved so RTL tracks the visually-active tab.
           Positioned.fill(
             child: IgnorePointer(
-              child: AnimatedAlign(
-                duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
-                curve: ffTheme.easeOut,
-                alignment: AlignmentDirectional(pillAlignX, 0)
-                    .resolve(Directionality.of(context)),
-                child: FractionallySizedBox(
-                  widthFactor: 1 / _tabs.length,
-                  child: Center(
-                    child: Container(
-                      width: 56,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: ffTheme.brandAccent.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(16),
+              // Hide the pill entirely while a reachable-but-untabbed branch
+              // (Compare / Community) is active — there's no tab for it to sit
+              // under, so a parked pill would falsely read as "Home selected".
+              //
+              // RepaintBoundary: the pill is the bar's continuously-animated
+              // layer (slide + fade on every tab switch); isolating it keeps
+              // those frames from repainting the icon/label row above it.
+              child: RepaintBoundary(
+                child: AnimatedOpacity(
+                  duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
+                  curve: ffTheme.easeOut,
+                  opacity: selectedTab < 0 ? 0 : 1,
+                  child: AnimatedAlign(
+                    duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
+                    curve: ffTheme.easeOut,
+                    alignment: AlignmentDirectional(pillAlignX, 0)
+                        .resolve(Directionality.of(context)),
+                    child: FractionallySizedBox(
+                      widthFactor: 1 / _tabs.length,
+                      child: Center(
+                        child: Container(
+                          width: 56,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccent.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -365,25 +419,27 @@ class _BottomNavBar extends StatelessWidget {
           Row(
             children: List.generate(_tabs.length, (i) {
               final tab = _tabs[i];
-              final active = i == idx;
-              final isCompare = i == 1;
+              final active = i == selectedTab;
               return Expanded(
                 child: Semantics(
                   button: true,
                   selected: active,
-                  label: isCompare && compareCount > 0
-                      ? '${tab.label}, $compareCount בהשוואה'
-                      : tab.label,
+                  label: tab.label,
                   excludeSemantics: true,
                   child: _NavTabButton(
                     onTap: () {
                       // Tactile confirm on tab change — the tabs were silent,
                       // a classic webview tell; every native bar buzzes here.
                       HapticFeedback.selectionClick();
-                      // Switch branch, preserving its stack + scroll. Re-tapping
-                      // the active tab pops it back to that branch's root route
-                      // (initialLocation: true) — standard native tab behaviour.
-                      navigationShell.goBranch(i, initialLocation: i == idx);
+                      // Switch to this tab's branch, preserving its stack +
+                      // scroll. Re-tapping the ALREADY-active tab pops it back to
+                      // that branch's root route (initialLocation: true) — the
+                      // standard native tab behaviour. Tab index is decoupled
+                      // from branch index, so drive goBranch by [tab.branchIndex].
+                      navigationShell.goBranch(
+                        tab.branchIndex,
+                        initialLocation: tab.branchIndex == branchIndex,
+                      );
                     },
                     reduceMotion: reduceMotion,
                     child: Column(
@@ -410,8 +466,11 @@ class _BottomNavBar extends StatelessWidget {
                                       : ffTheme.motionFast,
                                   curve: ffTheme.easeOut,
                                   tween: ColorTween(
+                                    // AA-safe darker green for the active glyph
+                                    // (the lighter brandAccent fill only ~3:1
+                                    // on white — fails AA). 24px glyph.
                                     end: active
-                                        ? ffTheme.brandAccent
+                                        ? ffTheme.brandAccentText
                                         : ffTheme.secondaryText,
                                   ),
                                   builder: (_, color, __) => Icon(
@@ -420,47 +479,34 @@ class _BottomNavBar extends StatelessWidget {
                                     color: color,
                                   ),
                                 ),
-                                if (isCompare && compareCount > 0)
-                                  PositionedDirectional(
-                                    top: -5,
-                                    end: -8,
-                                    child: Container(
-                                      width: 18,
-                                      height: 18,
-                                      decoration: BoxDecoration(
-                                        color: ffTheme.secondary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '$compareCount',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            color: ffTheme.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
                               ],
                             ),
                           ),
                         ),
                         const SizedBox(height: 2),
-                        AnimatedDefaultTextStyle(
-                          duration:
-                              reduceMotion ? Duration.zero : ffTheme.motionFast,
-                          curve: ffTheme.easeOut,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                            color: active
-                                ? ffTheme.brandAccent
-                                : ffTheme.secondaryText,
+                        // Flexible + ellipsis: at very large OS text scales the
+                        // label shrinks/truncates inside the fixed 64px bar
+                        // instead of overflowing the column — text scaling
+                        // itself stays fully enabled.
+                        Flexible(
+                          child: AnimatedDefaultTextStyle(
+                            duration:
+                                reduceMotion ? Duration.zero : ffTheme.motionFast,
+                            curve: ffTheme.easeOut,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight:
+                                  active ? FontWeight.w700 : FontWeight.w500,
+                              // AA-safe darker green for the active label (the
+                              // lighter brandAccent fill is only ~3:1 on white —
+                              // fails AA small-text contrast).
+                              color: active
+                                  ? ffTheme.brandAccentText
+                                  : ffTheme.secondaryText,
+                            ),
+                            child: Text(tab.label,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
-                          child: Text(tab.label),
                         ),
                       ],
                     ),
@@ -512,14 +558,27 @@ class _NavTabButtonState extends State<_NavTabButton> {
       onTapDown: (_) => _set(true),
       onTapUp: (_) => _set(false),
       onTapCancel: () => _set(false),
-      child: AnimatedScale(
-        scale: _down ? pressedScale : 1.0,
-        duration: _down ? t.motionPress : t.motionMedium,
-        curve: t.easeOut,
-        child: widget.child,
+      // RepaintBoundary: the press squeeze animates this slot's subtree on
+      // every tap — isolate it so the squeeze never repaints the sibling tabs
+      // or the pill layer.
+      child: RepaintBoundary(
+        child: AnimatedScale(
+          scale: _down ? pressedScale : 1.0,
+          duration: _down ? t.motionPress : t.motionMedium,
+          curve: t.easeOut,
+          child: widget.child,
+        ),
       ),
     );
   }
 }
 
-class _Tab { final IconData icon; final String label; const _Tab({required this.icon, required this.label}); }
+class _Tab {
+  final IconData icon;
+  final String label;
+  // The shell-branch index this tab drives (see [_BranchIndex]). Decoupling the
+  // visible-tab index from the branch index lets the shell keep extra
+  // reachable-but-untabbed branches (Compare, Community) with no phantom slot.
+  final int branchIndex;
+  const _Tab({required this.icon, required this.label, required this.branchIndex});
+}

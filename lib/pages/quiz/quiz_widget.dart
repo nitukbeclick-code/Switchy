@@ -14,6 +14,27 @@ import '../../data.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
+/// Reduced-motion-aware transforms for the reveal's entrance chains: each is a
+/// drop-in for its flutter_animate counterpart that KEEPS the fade already on
+/// the chain but DROPS the transform when the OS asks for reduced motion
+/// (`MediaQuery.disableAnimations`).
+extension _QuizSettleX on Animate {
+  Animate settleY(BuildContext context, {double begin = 0.06, Curve? curve}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideY(begin: begin, end: 0, curve: curve);
+  }
+
+  Animate settleScale(BuildContext context,
+      {double begin = 0.97, Curve? curve}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return scaleXY(begin: begin, end: 1, curve: curve);
+  }
+}
+
 class QuizWidget extends StatefulWidget {
   const QuizWidget({super.key});
 
@@ -97,6 +118,8 @@ class _QuizWidgetState extends State<QuizWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -148,12 +171,16 @@ class _QuizWidgetState extends State<QuizWidget> {
                   duration: const Duration(milliseconds: 260),
                   switchInCurve: ffTheme.easeOut,
                   switchOutCurve: ffTheme.easeOut,
+                  // Reduced motion: keep the crossfade, drop the slide
+                  // transform between steps.
                   transitionBuilder: (child, animation) => FadeTransition(
                     opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(begin: const Offset(0.08, 0), end: Offset.zero).animate(animation),
-                      child: child,
-                    ),
+                    child: reduceMotion
+                        ? child
+                        : SlideTransition(
+                            position: Tween<Offset>(begin: const Offset(0.08, 0), end: Offset.zero).animate(animation),
+                            child: child,
+                          ),
                   ),
                   child: _analyzing
                       ? _buildAnalyzing(ffTheme)
@@ -171,7 +198,9 @@ class _QuizWidgetState extends State<QuizWidget> {
                 // edit answers) are demoted into a low-emphasis "עוד אפשרויות"
                 // row that opens an AppSheet, so the reveal has one obvious CTA.
                 AppButton(
-                  text: 'רוצה את המסלול הזה — השאירו פרטים ←',
+                  // CONVERSION moment — enters the lead funnel. One committed
+                  // promise from the canonical family, never a savings-pushy verb.
+                  text: 'קבלו ליווי אישי ←',
                   onPressed: () async {
                     HapticFeedback.lightImpact();
                     context.pushNamed('Lead',
@@ -182,7 +211,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                   height: 56,
                   color: ffTheme.brandAccent,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
                 ),
                 const SizedBox(height: 8),
                 // SECONDARY — demoted to a single low-emphasis text button that
@@ -210,7 +239,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                           foregroundColor: ffTheme.secondaryText,
                           side: BorderSide(color: ffTheme.alternate),
                           minimumSize: const Size(52, 56),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSheet)),
                         ),
                         child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
                       ),
@@ -229,7 +258,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                       height: 56,
                       color: ffTheme.brandAccent,
                       textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
                     ),
                   ),
                 ],
@@ -351,12 +380,15 @@ class _QuizWidgetState extends State<QuizWidget> {
                 // The new digit enters with a fade + a slight scale-up from 0.85
                 // (never from scale(0), which would pop) — a calm count change,
                 // not a bounce, since the +/- stepper is a repeatable control.
+                // Reduced motion: fade only, no scale transform.
                 transitionBuilder: (child, anim) => FadeTransition(
                   opacity: anim,
-                  child: ScaleTransition(
-                    scale: Tween<double>(begin: 0.85, end: 1).animate(anim),
-                    child: child,
-                  ),
+                  child: (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
+                      ? child
+                      : ScaleTransition(
+                          scale: Tween<double>(begin: 0.85, end: 1).animate(anim),
+                          child: child,
+                        ),
                 ),
                 child: Text('$_lines',
                     key: ValueKey(_lines),
@@ -397,8 +429,8 @@ class _QuizWidgetState extends State<QuizWidget> {
         if (_cat == 'internet') {
           return _StepCard(
             step: 3,
-            title: 'מה עוד חשוב לך?',
-            subtitle: 'מעבר למהירות שבחרת',
+            title: 'מה עוד חשוב לכם?',
+            subtitle: 'מעבר למהירות שבחרתם',
             ffTheme: ffTheme,
             child: Column(
               children: [
@@ -419,8 +451,8 @@ class _QuizWidgetState extends State<QuizWidget> {
         if (_cat == 'tv') {
           return _StepCard(
             step: 3,
-            title: 'מה עוד חשוב לך?',
-            subtitle: 'מעבר לתוכן שבחרת',
+            title: 'מה עוד חשוב לכם?',
+            subtitle: 'מעבר לתוכן שבחרתם',
             ffTheme: ffTheme,
             child: Column(
               children: [
@@ -441,8 +473,8 @@ class _QuizWidgetState extends State<QuizWidget> {
         if (_cat == 'abroad') {
           return _StepCard(
             step: 3,
-            title: 'מה הכי חשוב לך בחו"ל?',
-            subtitle: 'בחר את הדבר הכי חשוב בנסיעות',
+            title: 'מה הכי חשוב לכם בחו"ל?',
+            subtitle: 'בחרו את מה שהכי משנה לכם בנסיעות',
             ffTheme: ffTheme,
             child: Column(
               children: [
@@ -486,7 +518,9 @@ class _QuizWidgetState extends State<QuizWidget> {
         return _StepCard(
           step: 4,
           title: _cat == 'abroad' ? 'כמה הוצאתם על גלישה בנסיעה האחרונה?' : 'כמה אתם משלמים היום?',
-          subtitle: 'לפי זה נחשב בדיוק כמה תוכלו לחסוך',
+          // Helpful, not a promise: this is the baseline the comparison is
+          // measured against — state the purpose, don't pitch a saving.
+          subtitle: 'זה הבסיס שלפיו נשווה לכם את המסלולים',
           ffTheme: ffTheme,
           child: Column(
             children: [
@@ -506,14 +540,19 @@ class _QuizWidgetState extends State<QuizWidget> {
                   overlayColor: ffTheme.brandAccent.withValues(alpha: 0.12),
                   thumbColor: ffTheme.brandAccent,
                 ),
-                child: Slider(
-                  value: clampedBill,
-                  min: billCfg.$1,
-                  max: billCfg.$2,
-                  divisions: billCfg.$3,
-                  activeColor: ffTheme.brandAccent,
-                  inactiveColor: ffTheme.secondary,
-                  onChanged: (v) => setState(() => _currentBill = v),
+                // Accessible name for the slider — otherwise screen readers
+                // announce only a bare value.
+                child: Semantics(
+                  label: 'הסכום שאתם משלמים היום',
+                  child: Slider(
+                    value: clampedBill,
+                    min: billCfg.$1,
+                    max: billCfg.$2,
+                    divisions: billCfg.$3,
+                    activeColor: ffTheme.brandAccent,
+                    inactiveColor: ffTheme.secondary,
+                    onChanged: (v) => setState(() => _currentBill = v),
+                  ),
                 ),
               ),
               Row(
@@ -579,14 +618,19 @@ class _QuizWidgetState extends State<QuizWidget> {
                   overlayColor: ffTheme.brandAccent.withValues(alpha: 0.12),
                   thumbColor: ffTheme.brandAccent,
                 ),
-                child: Slider(
-                  value: clampedBudget,
-                  min: sliderConfig.$1,
-                  max: sliderConfig.$2,
-                  divisions: sliderConfig.$3,
-                  activeColor: ffTheme.brandAccent,
-                  inactiveColor: ffTheme.secondary,
-                  onChanged: (v) => setState(() => _budget = v),
+                // Accessible name for the slider — otherwise screen readers
+                // announce only a bare value.
+                child: Semantics(
+                  label: 'התקציב המקסימלי',
+                  child: Slider(
+                    value: clampedBudget,
+                    min: sliderConfig.$1,
+                    max: sliderConfig.$2,
+                    divisions: sliderConfig.$3,
+                    activeColor: ffTheme.brandAccent,
+                    inactiveColor: ffTheme.secondary,
+                    onChanged: (v) => setState(() => _budget = v),
+                  ),
                 ),
               ),
               Row(
@@ -765,7 +809,7 @@ class _QuizWidgetState extends State<QuizWidget> {
         ),
         AppSheetAction(
           icon: Icons.tune_rounded,
-          label: 'ערוך תשובות',
+          label: 'עריכת התשובות',
           onTap: () {
             if (mounted) setState(() => _revealed = false);
           },
@@ -840,12 +884,13 @@ class _QuizWidgetState extends State<QuizWidget> {
                     // Savings strip ghost.
                     SkeletonBox(width: double.infinity, height: 56, radius: ffTheme.radiusLg),
                     const SizedBox(height: 14),
-                    // Badge row ghost.
-                    const Row(
+                    // Badge row ghost — pill radius sourced from the token so the
+                    // ghosts mirror the real radiusPill badges they stand in for.
+                    Row(
                       children: [
-                        SkeletonBox(width: 84, height: 24, radius: 20),
-                        SizedBox(width: 8),
-                        SkeletonBox(width: 96, height: 24, radius: 20),
+                        SkeletonBox(width: 84, height: 24, radius: ffTheme.radiusPill),
+                        const SizedBox(width: 8),
+                        SkeletonBox(width: 96, height: 24, radius: ffTheme.radiusPill),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -878,21 +923,25 @@ class _QuizWidgetState extends State<QuizWidget> {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: ffTheme.brandAccentTint,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ),
                 child: Icon(Icons.auto_awesome_rounded, color: ffTheme.brandAccent, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('המסלול שמתאים לפרופיל שלך',
-                    style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
+                // The reveal's headline is a section heading for screen readers.
+                child: Semantics(
+                  header: true,
+                  child: Text('המסלול שמתאים לפרופיל שלך',
+                      style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
+                ),
               ),
             ],
-          ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
+          ).animate().fadeIn(duration: 280.ms).settleY(context, begin: 0.06, curve: ffTheme.easeOut),
           const SizedBox(height: 4),
           Text('מבוסס על התשובות שלך',
               style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
-              .animate(delay: 80.ms).fadeIn(duration: 280.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
+              .animate(delay: 80.ms).fadeIn(duration: 280.ms).settleY(context, begin: 0.06, curve: ffTheme.easeOut),
           const SizedBox(height: 20),
 
           // Top match card
@@ -960,7 +1009,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('תחסכו עד',
+                                Text('חיסכון שנתי מוערך',
                                     style: ffTheme.labelSmall
                                         .copyWith(color: ffTheme.savingText)),
                                 Text('₪${top.annualSaving} בשנה',
@@ -986,7 +1035,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.saving.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
                         ),
                         child: Row(
@@ -1004,7 +1053,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           gradient: ffTheme.accentGradient,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1070,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.brandAccentTint,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
                         ),
                         child: Text(top.label,
@@ -1053,8 +1102,8 @@ class _QuizWidgetState extends State<QuizWidget> {
             ),
           ).animate(delay: 160.ms)
               .fadeIn(duration: 320.ms)
-              .slideY(begin: 0.08, end: 0, curve: ffTheme.easeOut)
-              .scaleXY(begin: 0.97, end: 1, curve: ffTheme.spring),
+              .settleY(context, begin: 0.08, curve: ffTheme.easeOut)
+              .settleScale(context, begin: 0.97, curve: ffTheme.spring),
 
           // Share affordance — let a delighted user spread the word.
           const SizedBox(height: 8),
@@ -1111,7 +1160,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: ffTheme.secondary,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                           ),
                           child: Text('${alt.scorePct}%',
                               style: ffTheme.labelSmall
@@ -1125,7 +1174,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                   ),
                 ).animate(delay: (240 + entry.key * 80).ms)
                     .fadeIn(duration: 300.ms)
-                    .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                    .settleY(context, begin: 0.06, curve: ffTheme.easeOut);
             }),
           ],
           const SizedBox(height: 8),
@@ -1160,7 +1209,7 @@ class _StepCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: ffTheme.brandAccentTint,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
               ),
               child: ExcludeSemantics(
                 child: Text('שלב $step מתוך 5',
@@ -1300,7 +1349,7 @@ class _PresetChip extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                 border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
               ),
               child: ExcludeSemantics(

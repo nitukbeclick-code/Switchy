@@ -10,22 +10,28 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-// The opt-in is CONTEXT-AWARE: it doesn't pop on first paint but after an
-// engagement delay (ENGAGE_DELAY_MS in PwaInstaller). Tests that expect the
-// dialog must first flush that delay. We use fake timers ONLY to advance the
-// engagement timer, then restore real timers before driving userEvent (which is
-// brittle under fake timers). Keep this >= the component's ENGAGE_DELAY_MS.
-const ENGAGE_DELAY_MS = 12_000;
+// The opt-in is ENGAGEMENT-GATED: it never pops on first paint. It surfaces only
+// after the FIRST of: the 2nd in-app navigation, >25s dwell (DWELL_MS in
+// PwaInstaller), or a first meaningful interaction. Tests that expect the dialog
+// flush the dwell timer (the deterministic signal under jsdom). We use fake
+// timers ONLY to advance the dwell timer, then restore real timers before
+// driving userEvent (which is brittle under fake timers). Keep this >= the
+// component's DWELL_MS.
+const DWELL_MS = 25_000;
 
-/** Render, then advance past the engagement delay so the prompt may surface. */
+// PwaInstaller counts client navigations via next/navigation's usePathname;
+// there is no app-router context under jsdom, so mock a stable pathname.
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+
+/** Render, then advance past the dwell window so the prompt may surface. */
 async function renderAndSettle() {
   vi.useFakeTimers();
   try {
     render(<PwaInstaller />);
     // Let the async effect (SW register + subscription check) run, then fire the
-    // engagement timer. advanceTimersByTimeAsync also drains awaited microtasks.
+    // dwell timer. advanceTimersByTimeAsync also drains awaited microtasks.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(ENGAGE_DELAY_MS + 50);
+      await vi.advanceTimersByTimeAsync(DWELL_MS + 50);
     });
   } finally {
     vi.useRealTimers();
@@ -75,7 +81,7 @@ describe("PwaInstaller — SW registration is unconditional", () => {
 });
 
 describe("PwaInstaller — push opt-in prompt", () => {
-  it("shows the prompt when push is supported and undecided (after the engagement delay)", async () => {
+  it("shows the prompt when push is supported and undecided (after the dwell window)", async () => {
     isPushSupported.mockReturnValue(true);
     await renderAndSettle();
 
@@ -84,12 +90,13 @@ describe("PwaInstaller — push opt-in prompt", () => {
     ).toBeInTheDocument();
   });
 
-  it("does NOT surface the prompt before the engagement delay elapses", async () => {
+  it("does NOT surface the prompt on first paint / before an engagement signal", async () => {
     isPushSupported.mockReturnValue(true);
     vi.useFakeTimers();
     try {
       render(<PwaInstaller />);
-      // Let the async effect resolve, but stop well short of ENGAGE_DELAY_MS.
+      // Let the async effect resolve, but stop well short of DWELL_MS and
+      // produce no navigation/interaction — the prompt must stay hidden.
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1_000);
       });
@@ -99,16 +106,16 @@ describe("PwaInstaller — push opt-in prompt", () => {
     }
   });
 
-  it("does NOT re-prompt within the cool-off after a recent dismissal", async () => {
+  it("does NOT re-prompt within 7 days of a dismissal", async () => {
     isPushSupported.mockReturnValue(true);
-    // A structured first-dismissal one day ago: inside the 3-day cool-off, so the
-    // prompt must stay hidden even after the engagement delay elapses.
+    // A structured first-dismissal 6 days ago: inside the 7-day cool-off, so the
+    // prompt must stay hidden even after the dwell window elapses.
     localStorage.setItem(
       "chosech-push-prompt",
       JSON.stringify({
         state: "dismissed",
         count: 1,
-        at: Date.now() - 24 * 60 * 60 * 1000,
+        at: Date.now() - 6 * 24 * 60 * 60 * 1000,
       }),
     );
     await renderAndSettle();
@@ -118,14 +125,14 @@ describe("PwaInstaller — push opt-in prompt", () => {
 
   it("DOES re-prompt after the cool-off window has elapsed", async () => {
     isPushSupported.mockReturnValue(true);
-    // First dismissal 4 days ago > the 3-day cool-off for the first re-ask: the
+    // First dismissal 8 days ago > the 7-day cool-off for the first re-ask: the
     // context-aware policy may surface the prompt again.
     localStorage.setItem(
       "chosech-push-prompt",
       JSON.stringify({
         state: "dismissed",
         count: 1,
-        at: Date.now() - 4 * 24 * 60 * 60 * 1000,
+        at: Date.now() - 8 * 24 * 60 * 60 * 1000,
       }),
     );
     await renderAndSettle();

@@ -17,6 +17,19 @@ import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 import '../../widgets/legal_disclosure.dart';
 
+/// Reduced-motion-aware settle for the secondary card stack: `.settleY()` is
+/// a drop-in for `.slideY(begin: …)` that KEEPS the fade already applied on
+/// the chain but DROPS the slide transform when the OS asks for reduced
+/// motion (`MediaQuery.disableAnimations`) — the same policy as [_settleCard].
+extension _SettleYX on Animate {
+  Animate settleY(BuildContext context, {double begin = 0.08}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideY(begin: begin, end: 0);
+  }
+}
+
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
   final String planId;
@@ -232,21 +245,24 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                // FittedBox: the single big price numeral
+                                // scales down instead of clipping when the OS
+                                // text scale is large; user scaling stays
+                                // honored on all the surrounding copy.
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
                                       '₪${plan.priceText}',
                                       // The plan's headline price is the page's
-                                      // single focal number — tabular figures so
-                                      // the hero figure reads crisp and aligned,
-                                      // matching every other ₪ figure on the page.
-                                      style: ffTheme.displaySmall.copyWith(
-                                          color: ffTheme.primary,
-                                          fontWeight: FontWeight.w800,
-                                          fontFeatures: const [
-                                            FontFeature.tabularFigures()
-                                          ]),
+                                      // single focal number — re-sourced to the
+                                      // shared [priceDisplay] numeral token (30 /
+                                      // w800 / tabular), the single source for the
+                                      // ₪ price figure across the app.
+                                      style: ffTheme.priceDisplay.copyWith(
+                                          color: ffTheme.primary),
                                     ),
                                     const SizedBox(width: 4),
                                     Padding(
@@ -256,6 +272,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                               color: ffTheme.secondaryText)),
                                     ),
                                   ],
+                                  ),
                                 ),
                                 if (plan.hasPromo)
                                   Text(
@@ -269,7 +286,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: ffTheme.background,
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                     border: Border.all(color: ffTheme.alternate),
                                   ),
                                   child: Text(plan.commitmentLabel,
@@ -307,7 +324,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       // §7b commission disclosure + §17 price caveat — directly
                       // under the headline price so the paid-relationship and the
                       // VAT/verify caveat sit with the price (and above the
-                      // "עברו למסלול" CTA in the sticky bar). Approved shared copy.
+                      // "קבלו ליווי אישי" lead CTA in the sticky bar). Approved
+                      // shared copy.
                       const SizedBox(height: 10),
                       const LegalDisclosure(),
 
@@ -362,7 +380,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       )
                           .animate(delay: 80.ms)
                           .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08),
+                          .settleY(context),
 
                       const SizedBox(height: 14),
 
@@ -398,7 +416,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       )
                           .animate(delay: 120.ms)
                           .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08),
+                          .settleY(context),
 
                       // Warning card (promo)
                       if (plan.hasPromo) ...[
@@ -407,7 +425,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color: ffTheme.warning.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                             border: Border.all(
                                 color: ffTheme.warning.withValues(alpha: 0.4)),
                           ),
@@ -442,7 +460,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
                               color: ffTheme.accent1,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                               border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                             ),
                             child: Row(
@@ -476,7 +494,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       )
                           .animate(delay: 270.ms)
                           .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08),
+                          .settleY(context),
 
                       // ── Quick-spec grid ─────────────────────────────────
                       if (plan.specs.isNotEmpty) ...[
@@ -484,7 +502,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         _SpecGrid(plan: plan)
                             .animate(delay: 285.ms)
                             .fadeIn(duration: 300.ms)
-                            .slideY(begin: 0.08),
+                            .settleY(context),
                       ],
 
                       // ── Detailed cost breakdown ──────────────────────────
@@ -492,7 +510,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       _CostBreakdownCard(plan: plan)
                           .animate(delay: 295.ms)
                           .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08),
+                          .settleY(context),
 
                       // ── Payments & equipment (router / installation) ─────
                       // An expandable section surfacing the plan's REAL fees
@@ -504,7 +522,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         _PaymentsEquipmentSection(plan: plan)
                             .animate(delay: 300.ms)
                             .fadeIn(duration: 300.ms)
-                            .slideY(begin: 0.08),
+                            .settleY(context),
                       ],
 
                       // Fine print
@@ -534,7 +552,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         _ExtraInfoSection(plan: plan)
                             .animate(delay: 305.ms)
                             .fadeIn(duration: 300.ms)
-                            .slideY(begin: 0.08),
+                            .settleY(context),
                       ],
 
                       // Savings timeline
@@ -552,7 +570,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               _SavingsPeriod(months: 24, saveYear: saveYear, ffTheme: ffTheme),
                             ],
                           ),
-                        ).animate(delay: 260.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
+                        ).animate(delay: 260.ms).fadeIn(duration: 300.ms).settleY(context),
                       ],
 
                       const SizedBox(height: 14),
@@ -567,7 +585,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                               onTap: () => context.pushNamed('Meeting', queryParameters: {
                                 'provider': plan.provider,
                                 'planId': plan.id,
@@ -592,7 +610,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               ),
                             ),
                           ),
-                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08)
+                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).settleY(context)
                       else
                         _Card(
                           child: Row(
@@ -606,7 +624,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               ),
                             ],
                           ),
-                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
+                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).settleY(context),
 
                       const SizedBox(height: 14),
 
@@ -617,26 +635,34 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Icon(Icons.notifications_outlined,
-                                    color: ffTheme.primary, size: 22),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    'עקוב אחר שינויי מחיר',
-                                    style: ffTheme.bodyMedium,
+                            // MergeSemantics: the switch and its row label are
+                            // announced as ONE toggle ("מעקב אחר שינויי מחיר")
+                            // instead of an unnamed switch next to loose text.
+                            MergeSemantics(
+                              child: Row(
+                                children: [
+                                  Icon(Icons.notifications_outlined,
+                                      color: ffTheme.primary, size: 22),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      // Section row reads as a noun label (was the
+                                      // imperative "עקוב אחר…"), consistent with
+                                      // the other card headers on the page.
+                                      'מעקב אחר שינויי מחיר',
+                                      style: ffTheme.bodyMedium,
+                                    ),
                                   ),
-                                ),
-                                Switch(
-                                  value: appState.isWatching(plan.id),
-                                  onChanged: (v) {
-                                    HapticFeedback.selectionClick();
-                                    appState.toggleWatch(plan.id);
-                                  },
-                                  activeThumbColor: ffTheme.primary,
-                                ),
-                              ],
+                                  Switch(
+                                    value: appState.isWatching(plan.id),
+                                    onChanged: (v) {
+                                      HapticFeedback.selectionClick();
+                                      appState.toggleWatch(plan.id);
+                                    },
+                                    activeThumbColor: ffTheme.primary,
+                                  ),
+                                ],
+                              ),
                             ),
                             // Explicit opt-in microcopy (Spam-Law §30A): only
                             // shown once watching is ON, stating that the user is
@@ -668,7 +694,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       )
                           .animate(delay: 280.ms)
                           .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08),
+                          .settleY(context),
 
                       // Similar plans section
                       Builder(builder: (_) {
@@ -682,7 +708,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 20),
-                            Text('מסלולים דומים', style: ffTheme.titleLarge),
+                            Semantics(
+                                header: true,
+                                child: Text('מסלולים דומים',
+                                    style: ffTheme.titleLarge)),
                             const SizedBox(height: 12),
                             SizedBox(
                               height: 110,
@@ -693,7 +722,15 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 itemBuilder: (ctx, i) {
                                   final p = topSimilar[i];
                                   final pSave = planSaveYear(p, bill);
-                                  return GestureDetector(
+                                  // Accessible name + button role for the
+                                  // tappable mini-card (GestureDetector alone
+                                  // exposes neither). Figures are the card's
+                                  // own real values.
+                                  return Semantics(
+                                    button: true,
+                                    label:
+                                        '${p.provider}, ₪${p.priceText} ל${priceUnitShort(p)}${pSave > 0 ? ', חוסך ₪$pSave בשנה' : ''}. הצג מסלול',
+                                    child: GestureDetector(
                                     onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.id}),
                                     child: Container(
                                       width: 160,
@@ -718,6 +755,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                             Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                                         ],
                                       ),
+                                    ),
                                     ),
                                   ).animate(delay: (i * 60).ms).fadeIn(duration: 250.ms);
                                 },
@@ -756,7 +794,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   children: [
                     Expanded(
                       child: AppButton(
-                        text: 'עברו למסלול הזה — נציג יסייע ←',
+                        // The page's single conversion moment — it submits a
+                        // lead. Use the one committed conversion promise
+                        // ("קבלו ליווי אישי"), not a sales verb like "בדקו כמה
+                        // תחסכו"; every other action on this page stays a calm
+                        // browse/compare verb so the accent is spent only here.
+                        text: 'קבלו ליווי אישי ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
 
@@ -771,7 +814,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    GestureDetector(
+                    // Icon-only control → explicit accessible name + toggle
+                    // state for screen readers (the icon alone says nothing).
+                    Semantics(
+                      button: true,
+                      label: inCompare ? 'הסר מהשוואה' : 'הוסף להשוואה',
+                      child: GestureDetector(
                       onTap: () {
                         HapticFeedback.selectionClick();
                         appState.toggleCompare(plan.id);
@@ -799,6 +847,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           size: 24,
                         ),
                       ),
+                    ),
                     ),
                   ],
                 ),
@@ -878,7 +927,10 @@ class _FitPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('למה המסלול הזה מתאים לך', style: t.titleMedium),
+                    Semantics(
+                        header: true,
+                        child: Text('למה המסלול הזה מתאים לך',
+                            style: t.titleMedium)),
                     const SizedBox(height: 4),
                     Text(
                       match.label,
@@ -1062,7 +1114,7 @@ class _EstimateTag extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: t.warning.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(t.radiusSm),
       ),
       child: Text(
         'הערכה',
@@ -1085,14 +1137,20 @@ class _ScoreRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final target = (percent / 100).clamp(0.0, 1.0);
     return Semantics(
       label: 'ציון התאמה $percent אחוז',
       child: ExcludeSemantics(
+        // RepaintBoundary: the ring's 700ms sweep repaints per frame — keep it
+        // from invalidating the whole fit panel.
+        child: RepaintBoundary(
         child: SizedBox(
           width: 64,
           height: 64,
           child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: (percent / 100).clamp(0.0, 1.0)),
+          // Reduced motion: land on the final value with no sweep.
+          tween: Tween(begin: reduceMotion ? target : 0, end: target),
           duration: const Duration(milliseconds: 700),
           curve: Curves.easeOutCubic,
           builder: (context, value, _) {
@@ -1129,6 +1187,7 @@ class _ScoreRing extends StatelessWidget {
             );
           },
         ),
+      ),
       ),
       ),
     );
@@ -1269,7 +1328,18 @@ class _ValueAnchor extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Bold ₪ saving anchor (VALUE = amber) vs the user's real bill.
+          // De-push: framed as an honest noun statement ("חיסכון שנתי") rather
+          // than the imperative promise "תחסכו" — a calm comparison figure, not
+          // a hard sell. The number itself stays the REAL engine figure.
           if (hasSaving) ...[
+            Text(
+              'חיסכון שנתי',
+              style: t.bodyMedium.copyWith(
+                color: t.secondaryText,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
             Text.rich(
               TextSpan(
                 // AA-safe amber ink for the savings figure on the light card —
@@ -1281,7 +1351,6 @@ class _ValueAnchor extends StatelessWidget {
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
                 children: [
-                  const TextSpan(text: 'תחסכו '),
                   TextSpan(text: '₪$saveYear'),
                   TextSpan(
                     text: '/שנה',
@@ -1316,7 +1385,9 @@ class _ValueAnchor extends StatelessWidget {
             Text(
               bill > 0
                   ? 'במחיר דומה לחשבון הנוכחי שלכם — הנה מה שמייחד אותו'
-                  : 'הוסיפו את החשבון הנוכחי כדי לראות כמה תחסכו',
+                  // De-push: honest helper, not "כמה תחסכו". We invite the
+                  // comparison rather than promise a saving we can't yet back.
+                  : 'הוסיפו את החשבון הנוכחי כדי להשוות אותו למסלול הזה',
               style: t.bodySmall.copyWith(color: t.secondaryText),
             ),
           ],
@@ -1583,7 +1654,8 @@ class _Card extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (title != null) ...[
-            Text(title!, style: ffTheme.titleSmall),
+            // Card titles are section headings for screen-reader navigation.
+            Semantics(header: true, child: Text(title!, style: ffTheme.titleSmall)),
             const SizedBox(height: 12),
           ],
           child,
@@ -1687,7 +1759,7 @@ class _SpecGrid extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('מפרט', style: ffTheme.titleSmall),
+          Semantics(header: true, child: Text('מפרט', style: ffTheme.titleSmall)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10,
@@ -1757,7 +1829,7 @@ class _CostBreakdownCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('עלות כוללת', style: ffTheme.titleSmall),
+          Semantics(header: true, child: Text('עלות כוללת', style: ffTheme.titleSmall)),
           const SizedBox(height: 12),
           // Monthly/package price row
           _PriceRow(
@@ -1860,7 +1932,7 @@ class _ExtraInfoSection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
               ),
               child: Row(
@@ -1902,7 +1974,14 @@ class _ExtraInfoSection extends StatelessWidget {
                     ),
                   ),
                 if (plan.sourceUrl != null)
-                  GestureDetector(
+                  // Accessible name + link role for the tiny "מקור" text link,
+                  // and a >=48dp hit area (the visible text stays the same
+                  // size — only the invisible tap zone grows).
+                  Semantics(
+                    link: true,
+                    label: 'פתיחת מקור המחיר בדפדפן',
+                    child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () async {
                       try {
                         final uri = Uri.parse(plan.sourceUrl!);
@@ -1919,14 +1998,21 @@ class _ExtraInfoSection extends StatelessWidget {
                         );
                       } catch (_) {}
                     },
-                    child: Text(
-                      'מקור',
-                      style: ffTheme.labelSmall.copyWith(
-                        color: ffTheme.primary,
-                        fontWeight: FontWeight.w700,
-                        decoration: TextDecoration.underline,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                          minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+                      child: Center(
+                        child: Text(
+                          'מקור',
+                          style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.primary,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
                     ),
+                  ),
                   ),
               ],
             ),

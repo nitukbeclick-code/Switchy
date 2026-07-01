@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../models.dart';
 import '../../data.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../logo_widget/logo_widget.dart';
 
 /// The compact plan row reused across home (hot deal / quiz match / top pick /
@@ -14,20 +16,24 @@ class MiniPlanCard extends StatelessWidget {
     required this.plan,
     this.savingsPerYear,
     this.onTap,
-    this.ctaLabel = 'בחר',
+    // Opens the plan detail (it does not convert) → the calm browse label
+    // "פרטים", consistent with the full plan card. Callers that need a different
+    // verb still override it, but the default never spends a conversion verb on
+    // a non-conversion tap.
+    this.ctaLabel = 'פרטים',
     this.showCta = true,
     this.isBest = false,
   });
 
   final Plan plan;
 
-  /// ₪/year savings badge; null hides the amber VALUE badge entirely.
+  /// ₪/year savings figure; null hides the VALUE pill entirely.
   final int? savingsPerYear;
   final VoidCallback? onTap;
   final String ctaLabel;
   final bool showCta;
 
-  /// De-push gate: the "חוסך ₪X/שנה" amber badge prints ONLY when this is the
+  /// De-push gate: the "חוסך ₪X/שנה" VALUE pill prints ONLY when this is the
   /// single best-match / curated card. Generic list rows (watchlist, account,
   /// profile) leave this false so they show price only and the saving figure is
   /// not repeated on every card. When shown, savingsPerYear is the REAL saving.
@@ -38,9 +44,22 @@ class MiniPlanCard extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     final showBadge = isBest && (savingsPerYear ?? 0) > 0;
 
+    // One-line summary for screen readers — provider, plan, the REAL price and
+    // (only when the VALUE pill is visible) the REAL saving, mirroring exactly
+    // what sighted users see on the row. Truth-only, no re-derived figures.
+    final cardLabel = [
+      '${plan.provider} — ${plan.plan}',
+      '₪${plan.priceText}/${priceUnitShort(plan)}',
+      if (showBadge) 'חוסך ₪$savingsPerYear/שנה',
+    ].join(', ');
+
     return Semantics(
       button: onTap != null,
-      label: '${plan.provider} — ${plan.plan}',
+      label: cardLabel,
+      // Perf: the row repeats across home/watchlist/similar-plans lists — a
+      // RepaintBoundary keeps its ink ripple from repainting the whole list
+      // when it sits inside an eager Column.
+      child: RepaintBoundary(
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
@@ -58,7 +77,11 @@ class MiniPlanCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              LogoWidget(provider: plan.provider, size: 52),
+              // Decorative provider logo/initials — hidden from screen readers
+              // (the provider name is already in the row's Semantics label).
+              ExcludeSemantics(
+                child: LogoWidget(provider: plan.provider, size: 52),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -72,22 +95,14 @@ class MiniPlanCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis),
                     if (showBadge) ...[
                       const SizedBox(height: 6),
-                      // Savings wear the VALUE accent (amber) — same treatment
-                      // as the full plan card and the site.
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: ffTheme.saving,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        ),
-                        child: Text(
-                          'חוסך ₪$savingsPerYear/שנה',
-                          style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.onSaving,
-                            fontWeight: FontWeight.w700,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
+                      // Savings wear the one shared VALUE treatment — the
+                      // [SavingPill] (pale-green tint + green text + savings
+                      // glyph + tabular figures) — same as the full plan card,
+                      // so savings read as a recognizable category, not a
+                      // competing green button. Truth-only: the REAL saving.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: SavingPill(text: 'חוסך ₪$savingsPerYear/שנה'),
                       ),
                     ],
                   ],
@@ -97,7 +112,12 @@ class MiniPlanCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
+                  // Money token (₪ + number + /unit) — rendered via [PriceText]
+                  // so the currency+digits keep a stable LTR bidi order inside
+                  // the RTL row. Style override keeps the row's titleMedium/ink
+                  // numeral (not the larger priceDisplay). Truth-only verbatim;
+                  // still a single Text node for find.textContaining(...).
+                  PriceText(
                     '₪${plan.priceText}/${priceUnitShort(plan)}',
                     style: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
                   ),
@@ -131,6 +151,7 @@ class MiniPlanCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

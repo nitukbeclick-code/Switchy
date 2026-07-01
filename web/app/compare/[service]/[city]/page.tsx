@@ -17,6 +17,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Icon from "@/components/Icon";
+import Money from "@/components/Money";
 import JsonLd from "@/components/JsonLd";
 import EmptyState from "@/components/EmptyState";
 import SgeSummary from "@/components/SgeSummary";
@@ -325,7 +326,7 @@ export default async function ServiceCityPage({ params }: Params) {
   const directAnswer = directAnswerFor(service, c.name, plans);
   const questions: AeoQuestion[] = pageQuestions(service, plans);
 
-  // Lowest headline price across the live plans — the amber (VALUE) hero stat.
+  // Lowest headline price across the live plans — the green (VALUE) hero stat.
   // Same `plans` the table renders; identical nationwide (no per-city price).
   const heroMin = cheapestOf(plans)?.price ?? null;
   const summary = buildSummary(svc, c, plans);
@@ -500,7 +501,7 @@ export default async function ServiceCityPage({ params }: Params) {
           cheapest <service> in <city>?") — answered directly by the AEO block.
           The eyebrow names the service × city (with the real district) so the
           local framing is honest and scannable; the stat row carries the REAL
-          catalogue facts, lowest price amber (VALUE). */}
+          catalogue facts, lowest price in the green VALUE text tier. */}
       <header className="mt-4">
         <span
           className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
@@ -544,7 +545,7 @@ export default async function ServiceCityPage({ params }: Params) {
             <div className="flex items-baseline gap-1.5">
               <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
               <dd className="font-display text-xl font-bold tracking-tight text-value-text">
-                {ils(heroMin)}
+                <Money amount={heroMin} />
               </dd>
               <span className="text-sm text-muted">החל מ-</span>
             </div>

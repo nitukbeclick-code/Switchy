@@ -46,12 +46,14 @@
   <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
   <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
   <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+  <!-- Fonts as a PLAIN stylesheet (no JS-dependent media swap) — guarantees
+       Rubik/Assistant load even when inline handlers are blocked (strict CSP),
+       so headings can never fall back to the browser's default serif. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=74b0f816" />
+  <link rel="stylesheet" href="styles.css?v=ae22c7d0" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -147,63 +149,92 @@
   <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
 </head>
 <body>
+  <!-- ── Navbar — UNIFIED header: same logo lockup + same curated nav as every
+       generated page (keep in sync with build.js navHtml). ─────────────── -->
   <a class="skip" href="#main">דלג לתוכן</a>
-  <!-- ── Navbar ─────────────────────────────────────────────────────────── -->
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="#top" aria-label="SWITCHY — דף הבית">
-        <svg class="brand__mark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3L14.2 9.8L21 12L14.2 14.2L12 21L9.8 14.2L3 12L9.8 9.8Z"/></svg>
-        <span class="brand__name">SWITCHY</span>
+        <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg><span class="brand__name">SWITCHY</span>
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
-        <div class="nav__item nav__item--mega">
-          <a href="plans.html" aria-haspopup="true" aria-expanded="false">כל החבילות</a>
-          <div class="mega-menu" role="menu" aria-label="קטגוריות תקשורת">
-            <a class="mega-menu__link" role="menuitem" href="cellular.html"><b>סלולר</b><span>מ-₪15 לחודש</span></a>
-            <a class="mega-menu__link" role="menuitem" href="internet.html"><b>אינטרנט</b><span>סיב עד גיגה</span></a>
-            <a class="mega-menu__link" role="menuitem" href="tv.html"><b>טלוויזיה</b><span>ערוצים וסטרימינג</span></a>
-            <a class="mega-menu__link" role="menuitem" href="triple.html"><b>חבילה משולבת</b><span>הכל ביחד, בזול</span></a>
-            <a class="mega-menu__link" role="menuitem" href="abroad.html"><b>חו״ל / eSIM</b><span>גלישה בכל העולם</span></a>
-            <a class="mega-menu__link" role="menuitem" href="plans.html"><b>כל המסלולים ←</b><span>120+ בהשוואה</span></a>
+        <a href="plans.html">כל החבילות</a>
+        <a href="compare.html">השוואה</a>
+        <a href="providers.html">ספקים</a>
+        <div class="mega" data-mega>
+          <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
+          <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="cellular.html">סלולר</a>
+            <a href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
+            <a href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
+            <a href="guide-family-lines.html">משפחה? כך חוסכים על כמה קווי סלולר</a>
+            <a href="guide-4g-vs-5g.html">4G vs. 5G — מה ההבדל בפועל?</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="internet.html">אינטרנט</a>
+            <a href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
+            <a href="guide-5g-home.html">אינטרנט 5G ביתי (FWA) בישראל: המדריך המלא</a>
+            <a href="guide-bezeq-review.html">בזק 2026: כל מה שצריך לדעת</a>
+            <a href="guide-business-internet.html">אינטרנט לעסקים קטנים: המדריך המלא לבחירה נכונה</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="tv.html">טלוויזיה</a>
+            <a href="guide-apple-tv-streaming.html">Apple TV+ — האם שווה בישראל?</a>
+            <a href="guide-choose-tv-plan.html">בחירת חבילת טלוויזיה: המדריך המלא</a>
+            <a href="guide-cordcutting.html">לחתוך את הכבלים — מעבר לסטרימינג בלבד</a>
+            <a href="guide-disney-plus-israel.html">Disney+ ישראל — האם שווה?</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="abroad.html">חו״ל</a>
+            <a href="guide-esim.html">מדריך eSIM לחו״ל — איך לבחור חבילה לכל יעד</a>
+            <a href="guide-abroad-amsterdam.html">סלולר בהולנד — מדריך לישראלים</a>
+            <a href="guide-abroad-asia.html">סלולר ואינטרנט לאסיה — מדריך מקיף</a>
+            <a href="guide-abroad-austria.html">סלולר באוסטריה — מדריך לישראלים</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="guides.html">כללי</a>
+            <a href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
+            <a href="guide-cancel-commitment.html">איך לבטל התחייבות בלי לשלם קנס</a>
+            <a href="guide-read-bill.html">איך לקרוא חשבון תקשורת ולמצוא חיובים מיותרים</a>
+            <a href="guide-cancel-contract.html">איך מבטלים חוזה תקשורת: HOT, yes, פרטנר, סלקום ועוד</a>
+          </div>
           </div>
         </div>
-        <a href="providers.html">ספקים</a>
-        <a href="book.html" class="nav__zoom-link">
-          <svg class="nav__zoom-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 10l4.553-2.069A1 1 0 0121 8.87v6.26a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/></svg>
-          שיחת ZOOM
-        </a>
+        <a href="app.html">האפליקציה</a>
+        <a href="book.html">פגישת ייעוץ</a>
       </nav>
-      <a class="nav__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener noreferrer" aria-label="יצירת קשר בוואטסאפ">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-      </a>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
       </button>
-      <a class="btn btn--primary nav__cta" href="book.html">קבעו שיחה ←</a>
-      <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu">
-        <span></span><span></span><span></span>
-      </button>
+      <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
+      <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
       <a href="plans.html">כל החבילות</a>
       <a href="providers.html">ספקים</a>
-      <a href="book.html">📹 שיחת ZOOM</a>
-      <a href="https://wa.me/972505037537" target="_blank" rel="noopener noreferrer">💬 יצירת קשר בוואטסאפ</a>
-      <a class="btn btn--primary" href="book.html">קבעו שיחה ←</a>
+      <a href="compare.html">השוואה</a>
+      <a href="community.html">קהילה</a>
+      <a href="book.html">תיאום פגישת וידאו</a>
+      <a href="app.html">האפליקציה</a>
+      <a href="guides.html">כל המדריכים</a>
+      <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
+      <a class="nav__mobile-sub" href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
+      <a class="nav__mobile-sub" href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
+      <a class="nav__mobile-sub" href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
+      <a href="index.html#calculator">מחשבון</a>
+      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>
 
   <main id="top"><span id="main"></span>
     <!-- ── Hero ─────────────────────────────────────────────────────────── -->
-    <section class="hero hero--video">
-      <div class="hero__bg" aria-hidden="true">
-        <video class="hero__bg-el" autoplay muted loop playsinline preload="metadata"
-               poster="assets/videos/switchy-hero-poster.jpg">
-          <source src="assets/videos/switchy-hero.mp4?v=3" type="video/mp4" />
-        </video>
-      </div>
-      <div class="container hero__inner hero__inner--overlay">
-        <div class="hero__copy reveal">
+    <!-- Calm INK hero — flat near-black panel (like the app hero), copy in
+         white/off-white on the solid surface. No photo/video art. -->
+    <section class="hero hero--ink">
+      <div class="container">
+        <div class="hero__panel reveal">
+        <div class="hero__copy">
           <span class="pill">גישה מוקדמת · חינם · בלי התחייבות</span>
           <h1>מפסיקים לשלם<br /><span class="hl">יותר מדי על תקשורת</span></h1>
           <p class="hero__sub">
@@ -223,9 +254,10 @@
             <li><b>120+</b><span>מסלולים בהשוואה</span></li>
             <li><b>18</b><span>ספקים</span></li>
             <li><b>5</b><span>קטגוריות</span></li>
-            <li><b>מ-₪15</b><span>מחיר התחלתי</span></li>
+            <li><b>מ-<span dir="ltr">₪15</span></b><span>מחיר התחלתי</span></li>
           </ul>
           <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
+        </div>
         </div>
       </div>
     </section>
@@ -277,7 +309,7 @@
             <div class="plan__name">הגזמנו 170GB</div>
             <div class="plan__chips"><span class="pchip">170GB</span><span class="pchip">5,000 דקות</span><span class="pchip">5,000 SMS</span></div>
             <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-            <div class="plan__bottom"><div class="plan__price"><b>₪25.90</b> <span>לחודש</span></div></div>
+            <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪25.90</b> <span>לחודש</span></div></div>
             <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20019%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20%D7%94%D7%92%D7%96%D7%9E%D7%A0%D7%95%20170GB%20(%E2%82%AA25.90)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
           </article>
           <article class="plan reveal" data-cat="internet">
@@ -285,7 +317,7 @@
             <div class="plan__name">Fiber 1000Mb</div>
             <div class="plan__chips"><span class="pchip">עד 1000/100</span><span class="pchip">WiFi7 כלול</span></div>
             <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
-            <div class="plan__bottom"><div class="plan__price"><b>₪39</b> <span>לחודש</span><span class="plan__after">ואז ₪159</span></div></div>
+            <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39</b> <span>לחודש</span><span class="plan__after">ואז <span dir="ltr">₪159</span></span></div></div>
             <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%A8%D7%98%D7%A0%D7%A8%20-%20Fiber%201000Mb%20(%E2%82%AA39)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
           </article>
           <article class="plan reveal" data-cat="tv">
@@ -293,7 +325,7 @@
             <div class="plan__name">HBO Max Standard</div>
             <div class="plan__chips"><span class="pchip">~70 ערוצים</span><span class="pchip">40,000+ VOD</span></div>
             <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
-            <div class="plan__bottom"><div class="plan__price"><b>₪49</b> <span>לחודש</span><span class="plan__after">ואז ₪150</span></div></div>
+            <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪49</b> <span>לחודש</span><span class="plan__after">ואז <span dir="ltr">₪150</span></span></div></div>
             <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20STING%20TV%20-%20HBO%20Max%20Standard%20(%E2%82%AA49)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
           </article>
         </div>
@@ -421,12 +453,12 @@
         <div class="calc__card reveal">
           <label class="calc__row">
             <span>חשבון חודשי נוכחי</span>
-            <output id="billOut">₪220</output>
+            <output id="billOut" dir="ltr">₪220</output>
           </label>
           <input type="range" id="billRange" min="50" max="600" step="10" value="220" aria-label="חשבון חודשי נוכחי" />
           <div class="calc__result">
             <span class="calc__resultLabel">תוכלו לחסוך עד</span>
-            <span class="calc__resultBig" id="saveOut">₪1,188</span>
+            <span class="calc__resultBig" id="saveOut" dir="ltr">₪1,188</span>
             <span class="calc__resultUnit">בשנה</span>
           </div>
           <a class="btn btn--primary btn--block" href="#cta">קבלו את ההמלצה המדויקת ←</a>
@@ -471,8 +503,8 @@
           </article>
         </div>
 
-        <!-- Email capture -->
-        <div class="subscribe reveal">
+        <!-- Email capture — centered balanced panel; order: email → consent → submit. -->
+        <div class="subscribe subscribe--panel reveal">
           <div class="subscribe__copy">
             <h3>קבלו התראה כשיורד מחיר</h3>
             <p>נשלח לכם מייל קצר כשמופיע מסלול משתלם יותר או כשמבצע עומד להסתיים. בלי ספאם, אפשר לבטל בכל עת.</p>
@@ -483,11 +515,11 @@
               <span class="sr-only">כתובת אימייל</span>
               <input type="email" id="subscribeEmail" name="email" placeholder="כתובת אימייל" autocomplete="email" inputmode="email" required />
             </label>
-            <button class="btn btn--primary" type="submit">הירשמו להתראות</button>
             <label class="subscribe__consent" for="subscribeConsent">
               <input type="checkbox" id="subscribeConsent" name="consent" required />
               <span>אני מאשר/ת קבלת עדכוני מחיר ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
             </label>
+            <button class="btn btn--primary" type="submit">הירשמו להתראות</button>
           </form>
           <p class="subscribe__note field-error" id="subscribeNote" role="status" aria-live="polite"></p>
         </div>
@@ -511,9 +543,9 @@
             </tr></thead>
             <tbody>
               <tr><th scope="row">מחיר</th>
-                <td><span class="cmp-price">₪30</span><small> לחודש</small></td>
-                <td><span class="cmp-price">₪34.90</span><small> לחודש</small></td>
-                <td><span class="cmp-price">₪35</span><small> לחודש</small></td></tr>
+                <td><span class="cmp-price" dir="ltr">₪30</span><small> לחודש</small></td>
+                <td><span class="cmp-price" dir="ltr">₪34.90</span><small> לחודש</small></td>
+                <td><span class="cmp-price" dir="ltr">₪35</span><small> לחודש</small></td></tr>
               <tr><th scope="row">גלישה</th><td>250GB</td><td>500GB</td><td>גלישה חופשית</td></tr>
               <tr><th scope="row">דקות</th><td>ללא הגבלה</td><td>5,000</td><td>5,000</td></tr>
               <tr><th scope="row">רשת 5G</th><td><span class="cmp-yes" aria-label="כן">✓</span></td><td><span class="cmp-yes" aria-label="כן">✓</span></td><td><span class="cmp-yes" aria-label="כן">✓</span></td></tr>
@@ -668,7 +700,7 @@
     <!-- ── SWITCHY AI (live advisor) ────────────────────────────────────── -->
     <section class="section">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">🤖 SWITCHY AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת לפי הנתונים האמיתיים שלנו.</p></header>
+        <header class="section__head reveal"><span class="eyebrow">SWITCHY AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת לפי הנתונים האמיתיים שלנו.</p></header>
         <div class="ai-demo reveal">
           <div class="ai-chat" id="aiChat">
             <div class="ai-bubble ai-bubble--bot">היי! אני SWITCHY AI — שאלו אותי על מסלולי סלולר, אינטרנט, טלוויזיה או חו״ל, ואני אענה לפי הנתונים האמיתיים שלנו.</div>
@@ -726,7 +758,7 @@
     <div class="container footer__inner">
       <div class="footer__brand">
         <a class="brand brand--light" href="#top">
-          <svg class="brand__mark" viewBox="0 0 24 24" fill="currentColor" aria-label="SWITCHY"><path d="M12 3L14.2 9.8L21 12L14.2 14.2L12 21L9.8 14.2L3 12L9.8 9.8Z"/></svg>
+          <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-label="SWITCHY"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg>
           <span class="brand__name">SWITCHY</span>
         </a>
         <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
@@ -794,6 +826,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when script.js changes. -->
-  <script src="script.js?v=cfe94c9a" defer></script>
+  <script src="script.js?v=e9a038bc" defer></script>
 </body>
 </html>

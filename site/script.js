@@ -583,9 +583,11 @@
       const cols = chosen.map((p) => `<th>${escHtml(p.provider)}<small>${escHtml(p.plan)}</small></th>`).join('');
       const row = (label, cells) =>
         `<tr><th scope="row">${escHtml(label)}</th>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+      // Money runs are bidi-isolated LTR (dir="ltr") so ₪ + digits render on the
+      // same side in EVERY column of the RTL table (no more ₪10.9 vs 12₪ drift).
       const priceCell = (p) =>
-        `<span class="cmp-price">₪${escHtml(p.price)}</span><small> ${per}</small>` +
-        (p.after && Number(p.after) !== Number(p.price) ? `<small class="cmp-after">ואז ₪${escHtml(p.after)}</small>` : '');
+        `<span class="cmp-price" dir="ltr">₪${escHtml(p.price)}</span><small> ${per}</small>` +
+        (p.after && Number(p.after) !== Number(p.price) ? `<small class="cmp-after">ואז <span dir="ltr">₪${escHtml(p.after)}</span></small>` : '');
       // No rating row: per-plan "rating" is a fabricated placeholder (0 real
       // reviews), so we never surface it as a comparison signal.
       const rows = [
@@ -2625,7 +2627,7 @@
       const price = '₪' + (p.priceExact != null ? p.priceExact : p.price);
       const afterVal = p.afterExact != null ? p.afterExact : p.after;
       const after = (p.after != null && p.after > p.price)
-        ? `<span class="pmodal__after">ואז ₪${afterVal} ${esc(unit)}</span>`
+        ? `<span class="pmodal__after">ואז <span dir="ltr">₪${afterVal}</span> ${esc(unit)}</span>`
         : `<span class="pmodal__fixed">מחיר קבוע</span>`;
       const flags = [];
       if (p.is5G) flags.push('5G');
@@ -2637,7 +2639,7 @@
         `<header class="pmodal__head">
           <div class="pmodal__brand">${esc(p.provider)}${p.net ? ` · ${esc(p.net)}` : ''}</div>
           <h2 class="pmodal__title" id="pmodalTitle">${esc(p.plan)}</h2>
-          <div class="pmodal__price"><b>${price}</b> <span>${esc(unit)}</span> ${after}</div>
+          <div class="pmodal__price"><b dir="ltr">${price}</b> <span>${esc(unit)}</span> ${after}</div>
           ${flags.length ? `<div class="pmodal__flags">${flags.map((f) => `<span class="pmodal__flag">${esc(f)}</span>`).join('')}</div>` : ''}
         </header>
         ${specs ? `<section class="pmodal__sec"><h3>מה מקבלים</h3><div class="pmodal__grid">${specs}</div></section>` : ''}

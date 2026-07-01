@@ -37,13 +37,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
-  <!-- Fonts via Google CDN, loaded non-render-blocking (preload as style →
-       swap media print→all on load), with a <noscript> fallback. Preconnected
-       above; font-display:swap so text never blocks on the webfont. -->
+  <!-- Fonts via Google CDN. Loaded as a PLAIN stylesheet (preloaded +
+       preconnected above, font-display:swap in the URL) — the old JS-dependent
+       media="print" onload swap left the whole site on the browser's default
+       (serif) faces whenever inline handlers were blocked (e.g. a strict CSP).
+       Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=74b0f816" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=ae22c7d0" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -59,11 +60,8 @@
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
         <a href="plans.html">כל החבילות</a>
-        <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
-        <a href="community.html">קהילה</a>
-        <a href="book.html">פגישת ייעוץ</a>
-        <a href="app.html">האפליקציה</a>
+        <a href="providers.html">ספקים</a>
         <div class="mega" data-mega>
           <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
           <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
@@ -104,7 +102,8 @@
           </div>
           </div>
         </div>
-        <a href="index.html#calculator">מחשבון</a>
+        <a href="app.html">האפליקציה</a>
+        <a href="book.html">פגישת ייעוץ</a>
       </nav>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
@@ -276,6 +275,6 @@
     </div>
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=c77a5746" defer></script>
+  <script src="script.js?v=e9a038bc" defer></script>
 </body>
 </html>

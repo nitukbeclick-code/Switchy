@@ -16,6 +16,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Icon from "@/components/Icon";
+import Money from "@/components/Money";
 import JsonLd from "@/components/JsonLd";
 import EmptyState from "@/components/EmptyState";
 import SgeSummary from "@/components/SgeSummary";
@@ -323,7 +324,7 @@ export default async function ServiceHubPage({ params }: Params) {
   const questions: AeoQuestion[] = pageQuestions(service, plans);
 
   const cities: City[] = getCities();
-  // Lowest headline price across the live plans — surfaced as the amber (VALUE)
+  // Lowest headline price across the live plans — surfaced as the green (VALUE)
   // hero stat. Derived from the SAME `plans` the table renders (no drift).
   const heroMin = minPriceOf(plans);
   const summary = buildSummary(svc, plans);
@@ -459,8 +460,8 @@ export default async function ServiceHubPage({ params }: Params) {
           Conversational, intent-matching H1 (the real query "what's the cheapest
           <service> in Israel?") — answered directly by the AEO block below. The
           eyebrow names the service axis (green = ACTION); the stat row surfaces
-          the REAL catalogue facts above the fold, with the lowest price amber
-          (VALUE) and everything else ink/structure. */}
+          the REAL catalogue facts above the fold, with the lowest price in the
+          green VALUE text tier and everything else ink/structure. */}
       <header className="mt-4">
         <span
           className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
@@ -504,7 +505,7 @@ export default async function ServiceHubPage({ params }: Params) {
             <div className="flex items-baseline gap-1.5">
               <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
               <dd className="font-display text-xl font-bold tracking-tight text-value-text">
-                {ils(heroMin)}
+                <Money amount={heroMin} />
               </dd>
               <span className="text-sm text-muted">החל מ-</span>
             </div>
@@ -619,7 +620,7 @@ export default async function ServiceHubPage({ params }: Params) {
                     </span>
                   </span>
                   <span className="text-sm text-muted">
-                    {pr.planCount} מסלולים · החל מ-{ils(pr.minPrice)}
+                    {pr.planCount} מסלולים · החל מ-<Money amount={pr.minPrice} />
                   </span>
                 </Link>
               </li>

@@ -90,6 +90,14 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Reduced-motion gate: flutter_animate does NOT read disableAnimations by
+    // itself, so every transform below (slide/scale) is explicitly dropped —
+    // reveals degrade to a plain fade — when the user asked for less motion.
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Dynamic type: the fixed-height horizontal chip bands scale with the OS
+    // text size (the app clamps at 1.3x globally) so large type never clips.
+    final textScaler = MediaQuery.textScalerOf(context);
     final appState = Provider.of<AppState>(context);
     final cat = appState.selectedCat;
     final catData = categoryById(cat);
@@ -167,8 +175,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         backgroundColor: headerColor,
         foregroundColor: onHeader,
         elevation: 0,
-        title: Text(catData?.name ?? 'תוצאות',
-            style: ffTheme.titleLarge.copyWith(color: onHeader)),
+        title: Semantics(
+            header: true,
+            child: Text(catData?.name ?? 'תוצאות',
+                style: ffTheme.titleLarge.copyWith(color: onHeader))),
         actions: [
           IconButton(
             icon: Stack(children: [
@@ -191,14 +201,18 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         ],
         bottom: PreferredSize(
           // Tighter category band (~40px) — calmer chrome above the results.
-          preferredSize: const Size.fromHeight(44),
+          // The band height follows the OS text scale so large type never
+          // clips the chips (dynamic-type resilience, no scale clamping).
+          preferredSize: Size.fromHeight(textScaler.scale(44)),
           child: Container(
             color: headerColor,
             child: SizedBox(
-              height: 44,
+              height: textScaler.scale(44),
               child: ListView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                // Vertical inset moved INTO each item (below) so the tap
+                // target spans the full 44px band, not just the 32px chip.
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: _categories.map((c) {
                   final active = appState.selectedCat == c.$1;
                   // The budget filter from the quiz silently applies to its own
@@ -212,10 +226,23 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   // inactive = a faint glass chip on the ink header.
                   return Padding(
                     padding: const EdgeInsetsDirectional.only(end: 8),
-                    child: GestureDetector(
+                    // Screen readers hear a proper toggle-button (name comes
+                    // from the chip's own Text; selected = the active tab).
+                    child: Semantics(
+                      button: true,
+                      selected: active,
+                      child: GestureDetector(
+                      // Opaque: the whole 44px-tall item (chip + the vertical
+                      // 6px insets moved in from the ListView padding) is
+                      // tappable — a full-height touch target, same visuals.
+                      behavior: HitTestBehavior.opaque,
                       onTap: () => _switchCategory(appState, c.$1),
+                      child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
                       child: AnimatedContainer(
-                        duration: ffTheme.motionFast,
+                        // Reduced motion: state flips snap instead of easing.
+                        duration:
+                            reduceMotion ? Duration.zero : ffTheme.motionFast,
                         curve: ffTheme.easeOut,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 5),
@@ -270,6 +297,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             ],
                           ],
                         ),
+                      ),
+                      ),
                       ),
                     ),
                   );
@@ -371,18 +400,25 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 2),
                             // Padded InkWell — a comfortable target with press
-                            // feedback instead of a bare 24px text tap.
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                                onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                  child: Text('נקה',
-                                      style: ffTheme.labelMedium.copyWith(
-                                          color: ffTheme.error,
-                                          fontWeight: FontWeight.w700)),
+                            // feedback instead of a bare 24px text tap. The
+                            // visible "נקה" is ambiguous without visual context,
+                            // so screen readers get the full action.
+                            Semantics(
+                              button: true,
+                              label: 'נקה את כל הסינונים',
+                              excludeSemantics: true,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                                  onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                    child: Text('נקה',
+                                        style: ffTheme.labelMedium.copyWith(
+                                            color: ffTheme.error,
+                                            fontWeight: FontWeight.w700)),
+                                  ),
                                 ),
                               ),
                             ),
@@ -399,9 +435,15 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
                         child: Row(
                           children: [
-                            Text('החשבון שלך:',
-                                style: ffTheme.bodyMedium
-                                    .copyWith(color: ffTheme.secondaryText)),
+                            // Flexible + ellipsis: overflow-safe when the OS
+                            // text scale is large (the steppers keep priority).
+                            Flexible(
+                              child: Text('החשבון שלך:',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: ffTheme.bodyMedium
+                                      .copyWith(color: ffTheme.secondaryText)),
+                            ),
                             const SizedBox(width: 8),
                             Semantics(
                               button: true,
@@ -480,11 +522,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               // Sort chips
               SliverToBoxAdapter(
                 child: SizedBox(
-                  height: 52,
+                  // Scales with the OS text size so large type never clips.
+                  height: textScaler.scale(52),
                   child: ListView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    // Vertical inset moved INTO each item so the tap target
+                    // spans the full 52px band (>=48px), not just the chip.
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     children: _sorts.map((s) {
                       final isSmart = s.$1 == 'smart';
                       final active = isSmart
@@ -492,7 +536,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           : (!_smartSort && appState.sortMode == s.$1);
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 8),
-                        child: GestureDetector(
+                        // Accessible name comes from the chip's Text; expose
+                        // button role + the selected sort state.
+                        child: Semantics(
+                          button: true,
+                          selected: active,
+                          child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () {
                             HapticFeedback.selectionClick();
                             if (isSmart) {
@@ -502,8 +552,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               appState.setSortMode(s.$1);
                             }
                           },
+                          child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
                           child: AnimatedContainer(
-                            duration: ffTheme.motionFast,
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : ffTheme.motionFast,
                             curve: ffTheme.easeOut,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 6),
@@ -542,6 +596,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 ),
                               ],
                             ),
+                          ),
+                          ),
                           ),
                         ),
                       );
@@ -706,7 +762,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ),
                         ),
                       ),
-                    ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05),
+                    // Reduced motion KEEPS the fade but DROPS the slide
+                    // transform (begin: 0 = no translation).
+                    ).animate().fadeIn(duration: 300.ms).slideX(
+                        begin: reduceMotion ? 0 : 0.05),
                   ),
                 ),
 
@@ -822,8 +881,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         // with the gentle overshoot spring, so the eye lands on
                         // the top pick first. PURPOSE = focal hierarchy, fired
                         // once on reveal (no loop). Every other row keeps the
-                        // calm fade+slide. flutter_animate already drops the
-                        // transform under reduced-motion.
+                        // calm fade+slide. Reduced motion (disableAnimations —
+                        // flutter_animate does NOT gate on it by itself) KEEPS
+                        // the fade but DROPS the scale/slide transforms, so the
+                        // list still resolves cleanly with no movement.
                         // Keying each row's animation by (listSignature, id)
                         // makes flutter_animate mint a fresh Animate whenever the
                         // list mutates (sort/filter/provider/search/category), so
@@ -836,7 +897,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               .animate(key: animKey)
                               .fadeIn(duration: 320.ms)
                               .scale(
-                                begin: const Offset(1.03, 1.03),
+                                begin: reduceMotion
+                                    ? const Offset(1, 1)
+                                    : const Offset(1.03, 1.03),
                                 end: const Offset(1, 1),
                                 duration: 360.ms,
                                 curve: ffTheme.spring,
@@ -848,7 +911,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             // few cards, slow past that.
                             .animate(key: animKey, delay: (index.clamp(0, 6) * 60).ms)
                             .fadeIn(duration: 300.ms)
-                            .slideX(begin: 0.05);
+                            .slideX(begin: reduceMotion ? 0 : 0.05);
                       },
                       childCount: plans.length,
                     ),
@@ -877,8 +940,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               offset: appState.comparePlans.isEmpty
                   ? const Offset(0, 2)
                   : Offset.zero,
-              duration: ffTheme.motionMedium,
+              // Reduced motion: the bar appears/disappears in place.
+              duration: reduceMotion ? Duration.zero : ffTheme.motionMedium,
               curve: ffTheme.emphasized,
+              // Perf: the sliding bar repaints on its own layer instead of
+              // dirtying the results list beneath it on every frame of the
+              // slide.
+              child: RepaintBoundary(
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -891,11 +959,15 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      // Plural imperative to match the app's "ענו / בחרו / נסו"
-                      // voice (was the singular "השווה").
-                      'השוו ${appState.comparePlans.length} מסלולים',
-                      style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                    Flexible(
+                      child: Text(
+                        // Plural imperative to match the app's "ענו / בחרו / נסו"
+                        // voice (was the singular "השווה").
+                        'השוו ${appState.comparePlans.length} מסלולים',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                      ),
                     ),
                     const Spacer(),
                     ElevatedButton(
@@ -922,6 +994,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ],
                 ),
               ),
+              ),
             ),
           ),
         ],
@@ -932,10 +1005,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   Widget _buildProviderChips(AppTheme ffTheme, List<String> providers) {
     if (providers.length <= 1) return const SizedBox();
     return SizedBox(
-      height: 44,
+      // Scales with the OS text size so large type never clips the chips.
+      height: MediaQuery.textScalerOf(context).scale(44),
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        // Vertical inset moved INTO each chip so the tap target spans the
+        // full 44px band, not just the ~36px pill.
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           _providerChip('הכל', ffTheme),
           ...providers.map((p) => _providerChip(p, ffTheme)),
@@ -947,29 +1023,41 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   Widget _providerChip(String label, AppTheme ffTheme) {
     final isAll = label == 'הכל';
     final active = isAll ? _providerFilter.isEmpty : _providerFilter == label;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _providerFilter = isAll ? '' : label),
-        child: AnimatedContainer(
-          duration: ffTheme.motionFast,
-          curve: ffTheme.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: active
-                ? ffTheme.brandAccent.withValues(alpha: 0.12)
-                : ffTheme.cardSurface,
-            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-            border: Border.all(
-              color: active ? ffTheme.brandAccent : ffTheme.alternate,
-              width: active ? 1.5 : 1,
-            ),
-          ),
-          child: Text(
-            label,
-            style: ffTheme.labelSmall.copyWith(
-              color: active ? ffTheme.brandAccent : ffTheme.primaryText,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+      // Accessible name comes from the chip's Text; expose button role + the
+      // selected provider-filter state.
+      child: Semantics(
+        button: true,
+        selected: active,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() => _providerFilter = isAll ? '' : label),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: AnimatedContainer(
+              duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
+              curve: ffTheme.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: active
+                    ? ffTheme.brandAccent.withValues(alpha: 0.12)
+                    : ffTheme.cardSurface,
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                border: Border.all(
+                  color: active ? ffTheme.brandAccent : ffTheme.alternate,
+                  width: active ? 1.5 : 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: ffTheme.labelSmall.copyWith(
+                  color: active ? ffTheme.brandAccent : ffTheme.primaryText,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
             ),
           ),
         ),
@@ -989,40 +1077,58 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     if (chips.isEmpty) return const SizedBox();
 
     final hasActiveFilters = appState.activeFilters.isNotEmpty;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return SizedBox(
-      height: 44,
+      // Scales with the OS text size so large type never clips the chips.
+      height: MediaQuery.textScalerOf(context).scale(44),
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        // Vertical inset moved INTO each chip so the tap target spans the
+        // full 44px band, not just the ~36px pill.
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           // "נקה" clear button — shown only when any filter is active
           if (hasActiveFilters)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 8),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  appState.clearFilters();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: ffTheme.error,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                    border: Border.all(color: ffTheme.error),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.close_rounded, size: 12, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text('נקה',
-                          style: ffTheme.labelSmall.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700)),
-                    ],
+              child: Semantics(
+                button: true,
+                // The visible "נקה" is ambiguous out of visual context — give
+                // screen readers the full action.
+                label: 'נקה את כל הסינונים',
+                excludeSemantics: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    appState.clearFilters();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: AnimatedContainer(
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: ffTheme.error,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(color: ffTheme.error),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.close_rounded, size: 12, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text('נקה',
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1031,37 +1137,48 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             final active = appState.activeFilters.contains(chip.$2);
             return Padding(
               padding: const EdgeInsetsDirectional.only(end: 8),
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  appState.toggleFilter(chip.$2);
-                },
-                child: AnimatedContainer(
-                  duration: ffTheme.motionFast,
-                  curve: ffTheme.easeOut,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    // Selected filter = green ACTION fill (consistent active cue).
-                    color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                    border: Border.all(
-                        color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                    boxShadow: active ? ffTheme.shadowAccent : null,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (active) ...[
-                        const Icon(Icons.check_rounded, size: 12, color: Colors.white),
-                        const SizedBox(width: 4),
-                      ],
-                      Text(chip.$1,
-                          style: ffTheme.labelSmall.copyWith(
-                              color: active ? Colors.white : ffTheme.primaryText,
-                              fontWeight: active
-                                  ? FontWeight.w700
-                                  : FontWeight.w600)),
-                    ],
+              // Accessible name comes from the chip's Text; expose button role
+              // + the selected filter state.
+              child: Semantics(
+                button: true,
+                selected: active,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    appState.toggleFilter(chip.$2);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: AnimatedContainer(
+                      duration:
+                          reduceMotion ? Duration.zero : ffTheme.motionFast,
+                      curve: ffTheme.easeOut,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        // Selected filter = green ACTION fill (consistent active cue).
+                        color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(
+                            color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                        boxShadow: active ? ffTheme.shadowAccent : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (active) ...[
+                            const Icon(Icons.check_rounded, size: 12, color: Colors.white),
+                            const SizedBox(width: 4),
+                          ],
+                          Text(chip.$1,
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: active ? Colors.white : ffTheme.primaryText,
+                                  fontWeight: active
+                                      ? FontWeight.w700
+                                      : FontWeight.w600)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

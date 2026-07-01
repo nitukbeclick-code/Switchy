@@ -53,15 +53,22 @@ class PlanCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<AppState>();
+    // Perf: SCOPED AppState dependency. The card used to watch() the whole
+    // AppState (rebuilding on ANY notify — bills, chat, telemetry…); now it
+    // rebuilds only when ITS OWN slice changes: this plan's compare/watch
+    // membership and the quiz-match inputs. Actions go through a
+    // non-listening read.
+    final appState = Provider.of<AppState>(context, listen: false);
+    final inCompare =
+        context.select<AppState, bool>((s) => s.isInCompare(plan.id));
+    final isWatching =
+        context.select<AppState, bool>((s) => s.isWatching(plan.id));
+    final matchLabel = context.select<AppState, String?>(_quizMatch);
     final ffTheme = AppTheme.of(context);
     final isBest = bestMatch ?? plan.highlight;
     final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
-    final inCompare = appState.isInCompare(plan.id);
-    final isWatching = appState.isWatching(plan.id);
     final displayPrice = '₪${plan.priceText}';
     final displayAfter = plan.hasPromo ? '₪${plan.afterText}' : null;
-    final matchLabel = _quizMatch(appState);
 
     // One-line summary read out by screen readers before the inner controls.
     // The saving line is announced only on the best-match card — the same place
@@ -76,6 +83,11 @@ class PlanCardWidget extends StatelessWidget {
     return Semantics(
       container: true,
       label: cardLabel,
+      // Perf: the card is a repeated list element with its own ink ripples and
+      // press feedback — a RepaintBoundary keeps those repaints from dirtying
+      // the surrounding scroll view (SliverList adds one per ITEM, but the card
+      // is also used inside eager Columns on other screens).
+      child: RepaintBoundary(
       child: Padding(
       // Room above for the floating badge to overhang the best-match card.
       padding: EdgeInsets.only(bottom: 12, top: isBest ? 10 : 0),
@@ -141,7 +153,10 @@ class PlanCardWidget extends StatelessWidget {
                                         ),
                                       ),
                                       const SizedBox(width: 6),
-                              Container(
+                              // Flexible + ellipsis: at large OS text scale the
+                              // header row must squeeze gracefully, never clip.
+                              Flexible(
+                                child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent4,
@@ -150,6 +165,8 @@ class PlanCardWidget extends StatelessWidget {
                                 ),
                                 child: Text(
                                   plan.netLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   // Rubik micro-chip: nearest Rubik scale token
                                   // is titleSmall (13/w600); the 10px size +
                                   // w700 + info colour are the genuine deltas.
@@ -159,10 +176,14 @@ class PlanCardWidget extends StatelessWidget {
                                     color: ffTheme.info,
                                   ),
                                 ),
+                                ),
                               ),
                               if (matchLabel != null) ...[
                                 const SizedBox(width: 6),
-                                Builder(builder: (context) {
+                                // Flexible + ellipsis: overflow-safe at large
+                                // OS text scale (dynamic-type resilience).
+                                Flexible(
+                                  child: Builder(builder: (context) {
                                   final fits = matchLabel == 'מתאים לתקציב';
                                   final tone = fits ? ffTheme.success : ffTheme.warning;
                                   return Container(
@@ -179,21 +200,26 @@ class PlanCardWidget extends StatelessWidget {
                                           Icon(Icons.check_rounded, size: 9, color: tone),
                                           const SizedBox(width: 2),
                                         ],
-                                        Text(
-                                          matchLabel,
-                                          // Rubik micro-chip: nearest Rubik token
-                                          // is titleSmall (13/w600); 9px + w700 +
-                                          // tone are the genuine deltas.
-                                          style: ffTheme.titleSmall.copyWith(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w700,
-                                            color: tone,
+                                        Flexible(
+                                          child: Text(
+                                            matchLabel,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            // Rubik micro-chip: nearest Rubik token
+                                            // is titleSmall (13/w600); 9px + w700 +
+                                            // tone are the genuine deltas.
+                                            style: ffTheme.titleSmall.copyWith(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: tone,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
                                   );
-                                }),
+                                  }),
+                                ),
                               ],
                             ],
                           ),
@@ -404,7 +430,10 @@ class PlanCardWidget extends StatelessWidget {
                       // rendered through the shared [SavingPill] so savings get
                       // the one consistent VALUE treatment (pale-green tint +
                       // green text + savings glyph + tabular figures).
-                      SavingPill(text: 'חוסך ₪$savings בשנה'),
+                      // Flexible: at large OS text scale the pill ellipsizes
+                      // (SavingPill is internally overflow-safe once
+                      // constrained) instead of overflowing the price row.
+                      Flexible(child: SavingPill(text: 'חוסך ₪$savings בשנה')),
                   ],
                 ),
 
@@ -513,6 +542,7 @@ class PlanCardWidget extends StatelessWidget {
               ),
             ),
         ],
+      ),
       ),
       ),
     );

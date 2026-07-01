@@ -54,6 +54,22 @@ class _LeadWidgetState extends State<LeadWidget> {
   bool _acceptPrivacy = false;
   bool _acceptMarketing = false;
 
+  /// OS reduced-motion flag — entrance FADES stay (opacity is vestibular-safe),
+  /// the slide legs are dropped (see [_reveal]).
+  bool get _reduceMotion =>
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
+  /// Shared entrance reveal for the form controls: fade always plays; the
+  /// small slide-up only when the OS allows motion.
+  Widget _reveal(Widget child, {required AppTheme ffTheme, int delayMs = 0}) {
+    final faded = child
+        .animate(delay: delayMs.ms)
+        .fadeIn(duration: 280.ms, curve: ffTheme.easeOut);
+    return _reduceMotion
+        ? faded
+        : faded.slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut);
+  }
+
   Widget _consentPanel(AppTheme t) => ConsentPanel(
         acceptTerms: _acceptTerms,
         acceptPrivacy: _acceptPrivacy,
@@ -195,7 +211,10 @@ class _LeadWidgetState extends State<LeadWidget> {
           tooltip: 'סגור',
           onPressed: () => context.safePop(),
         ),
-        title: Text('השאירו פרטים', style: ffTheme.titleMedium),
+        title: Semantics(
+          header: true,
+          child: Text('השאירו פרטים', style: ffTheme.titleMedium),
+        ),
         centerTitle: true,
       ),
       // The submit CTA + "ללא התחייבות" microcopy is pinned above the keyboard
@@ -229,32 +248,40 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Name field
               _FieldLabel(label: 'שם מלא', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameCtrl,
-                textDirection: TextDirection.rtl,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.name],
-                decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
-              ).animate(delay: 80.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
+              _reveal(
+                TextFormField(
+                  controller: _nameCtrl,
+                  textDirection: TextDirection.rtl,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.name],
+                  decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
+                ),
+                ffTheme: ffTheme,
+                delayMs: 80,
+              ),
 
               const SizedBox(height: 14),
 
               // Phone field
               _FieldLabel(label: 'מספר טלפון', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                textDirection: TextDirection.ltr,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.telephoneNumber],
-                decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
-                // Shared IL-phone validator (handles +972/972/national forms) so
-                // the lead + callback forms agree on what's valid.
-                validator: (v) =>
-                    AppState.isValidIlPhone(v ?? '') ? null : 'מספר טלפון לא תקין',
-              ).animate(delay: 120.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
+              _reveal(
+                TextFormField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  textDirection: TextDirection.ltr,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.telephoneNumber],
+                  decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
+                  // Shared IL-phone validator (handles +972/972/national forms) so
+                  // the lead + callback forms agree on what's valid.
+                  validator: (v) =>
+                      AppState.isValidIlPhone(v ?? '') ? null : 'מספר טלפון לא תקין',
+                ),
+                ffTheme: ffTheme,
+                delayMs: 120,
+              ),
 
               const SizedBox(height: 16),
 
@@ -360,7 +387,7 @@ class _LeadWidgetState extends State<LeadWidget> {
   // number) and a request-a-callback route — so a network hiccup never strands
   // the user mid-funnel.
   Widget _buildRecoveryPanel(AppTheme ffTheme, Plan? plan) {
-    return Container(
+    final panel = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ffTheme.error.withValues(alpha: 0.08),
@@ -409,7 +436,9 @@ class _LeadWidgetState extends State<LeadWidget> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.05);
+    ).animate().fadeIn(duration: 250.ms);
+    // Reduced motion: the failure panel still fades in, but never slides.
+    return _reduceMotion ? panel : panel.slideY(begin: 0.05);
   }
 
   Widget _buildAvailabilityBanner(AppTheme ffTheme) {
@@ -593,15 +622,16 @@ class _LeadWidgetState extends State<LeadWidget> {
 
                   const SizedBox(height: 20),
 
-                  // Trust badges
+                  // Trust badges — each badge is Flexible so the 3-up row wraps
+                  // its labels instead of overflowing at large OS text scales.
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _TrustBadge(icon: Icons.lock_outline_rounded, label: 'מאובטח', ffTheme: ffTheme),
+                      Flexible(child: _TrustBadge(icon: Icons.lock_outline_rounded, label: 'מאובטח', ffTheme: ffTheme)),
                       const SizedBox(width: 20),
-                      _TrustBadge(icon: Icons.list_alt_rounded, label: '100+ מסלולים', ffTheme: ffTheme),
+                      Flexible(child: _TrustBadge(icon: Icons.list_alt_rounded, label: '100+ מסלולים', ffTheme: ffTheme)),
                       const SizedBox(width: 20),
-                      _TrustBadge(icon: Icons.payments_outlined, label: 'ללא עלות', ffTheme: ffTheme),
+                      Flexible(child: _TrustBadge(icon: Icons.payments_outlined, label: 'ללא עלות', ffTheme: ffTheme)),
                     ],
                   ),
                 ],
@@ -776,13 +806,15 @@ class _LeadWidgetState extends State<LeadWidget> {
       ('evening', 'בערב', Icons.nights_stay_outlined),
       ('tomorrow', 'מחר', Icons.calendar_today_outlined),
     ];
+    // The picker reveal honours reduced motion via [_reveal] (fade-only there).
     // A single-select [SegmentedButton] replaces the old hand-rolled 4-up Row of
     // 11px chips: every segment is a real >=kMinTapTarget control, the selected
     // one fills with the green ACTION accent, and the per-option icon + Hebrew
     // label stay visible inline (no extra tap / no hidden sheet). The label text
     // is preserved verbatim so existing find.bySemanticsLabel(...) targets and
     // the readable copy both hold.
-    return SegmentedButton<String>(
+    return _reveal(
+      SegmentedButton<String>(
       showSelectedIcon: false,
       segments: [
         for (final opt in options)
@@ -824,7 +856,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                 ? Colors.white
                 : ffTheme.secondaryText),
       ),
-    ).animate(delay: 200.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut);
+      ),
+      ffTheme: ffTheme,
+      delayMs: 200,
+    );
   }
 
   Widget _buildNextStepsCard(AppTheme ffTheme) {
@@ -834,7 +869,10 @@ class _LeadWidgetState extends State<LeadWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('מה קורה אחרי שתשלחו?', style: ffTheme.titleSmall),
+          Semantics(
+            header: true,
+            child: Text('מה קורה אחרי שתשלחו?', style: ffTheme.titleSmall),
+          ),
           const SizedBox(height: 14),
           _TimelineStep(step: 1, title: 'בדרך כלל נחזור אליכם תוך שעה, בשעות הפעילות', sub: 'בימי א׳–ה׳, 9:00–21:00', ffTheme: ffTheme),
           _TimelineStep(step: 2, title: 'אישור המסלול יחד', sub: 'נבדוק יחד שהכל מתאים לכם', ffTheme: ffTheme),
@@ -924,7 +962,11 @@ class _TrustBadge extends StatelessWidget {
       children: [
         Icon(icon, color: ffTheme.brandAccent, size: 22),
         const SizedBox(height: 4),
-        Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+        Text(
+          label,
+          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }

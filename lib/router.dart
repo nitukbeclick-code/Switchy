@@ -383,24 +383,30 @@ class _BottomNavBar extends StatelessWidget {
               // Hide the pill entirely while a reachable-but-untabbed branch
               // (Compare / Community) is active — there's no tab for it to sit
               // under, so a parked pill would falsely read as "Home selected".
-              child: AnimatedOpacity(
-                duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
-                curve: ffTheme.easeOut,
-                opacity: selectedTab < 0 ? 0 : 1,
-                child: AnimatedAlign(
+              //
+              // RepaintBoundary: the pill is the bar's continuously-animated
+              // layer (slide + fade on every tab switch); isolating it keeps
+              // those frames from repainting the icon/label row above it.
+              child: RepaintBoundary(
+                child: AnimatedOpacity(
                   duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
                   curve: ffTheme.easeOut,
-                  alignment: AlignmentDirectional(pillAlignX, 0)
-                      .resolve(Directionality.of(context)),
-                  child: FractionallySizedBox(
-                    widthFactor: 1 / _tabs.length,
-                    child: Center(
-                      child: Container(
-                        width: 56,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: ffTheme.brandAccent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(16),
+                  opacity: selectedTab < 0 ? 0 : 1,
+                  child: AnimatedAlign(
+                    duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
+                    curve: ffTheme.easeOut,
+                    alignment: AlignmentDirectional(pillAlignX, 0)
+                        .resolve(Directionality.of(context)),
+                    child: FractionallySizedBox(
+                      widthFactor: 1 / _tabs.length,
+                      child: Center(
+                        child: Container(
+                          width: 56,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccent.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -478,22 +484,29 @@ class _BottomNavBar extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        AnimatedDefaultTextStyle(
-                          duration:
-                              reduceMotion ? Duration.zero : ffTheme.motionFast,
-                          curve: ffTheme.easeOut,
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                            // AA-safe darker green for the active label (the
-                            // lighter brandAccent fill is only ~3:1 on white —
-                            // fails AA small-text contrast).
-                            color: active
-                                ? ffTheme.brandAccentText
-                                : ffTheme.secondaryText,
+                        // Flexible + ellipsis: at very large OS text scales the
+                        // label shrinks/truncates inside the fixed 64px bar
+                        // instead of overflowing the column — text scaling
+                        // itself stays fully enabled.
+                        Flexible(
+                          child: AnimatedDefaultTextStyle(
+                            duration:
+                                reduceMotion ? Duration.zero : ffTheme.motionFast,
+                            curve: ffTheme.easeOut,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight:
+                                  active ? FontWeight.w700 : FontWeight.w500,
+                              // AA-safe darker green for the active label (the
+                              // lighter brandAccent fill is only ~3:1 on white —
+                              // fails AA small-text contrast).
+                              color: active
+                                  ? ffTheme.brandAccentText
+                                  : ffTheme.secondaryText,
+                            ),
+                            child: Text(tab.label,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
-                          child: Text(tab.label),
                         ),
                       ],
                     ),
@@ -545,11 +558,16 @@ class _NavTabButtonState extends State<_NavTabButton> {
       onTapDown: (_) => _set(true),
       onTapUp: (_) => _set(false),
       onTapCancel: () => _set(false),
-      child: AnimatedScale(
-        scale: _down ? pressedScale : 1.0,
-        duration: _down ? t.motionPress : t.motionMedium,
-        curve: t.easeOut,
-        child: widget.child,
+      // RepaintBoundary: the press squeeze animates this slot's subtree on
+      // every tap — isolate it so the squeeze never repaints the sibling tabs
+      // or the pill layer.
+      child: RepaintBoundary(
+        child: AnimatedScale(
+          scale: _down ? pressedScale : 1.0,
+          duration: _down ? t.motionPress : t.motionMedium,
+          curve: t.easeOut,
+          child: widget.child,
+        ),
       ),
     );
   }

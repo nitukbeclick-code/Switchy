@@ -14,6 +14,17 @@ import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/saving_pill.dart';
 
+/// Card entrance for the dashboard stack: the fade always plays, but the
+/// upward settle (a transform) is dropped when the OS asks for reduced motion
+/// (`MediaQuery.disableAnimations`) — the honest fade-only degrade.
+Widget _cardEntrance(BuildContext context, Widget child,
+    {int delayMs = 0, int durationMs = 320, double slideBegin = 0.06}) {
+  final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  final faded = child.animate(delay: delayMs.ms).fadeIn(duration: durationMs.ms);
+  if (reduceMotion) return faded;
+  return faded.slideY(begin: slideBegin, end: 0, duration: durationMs.ms);
+}
+
 /// A whole-app savings dashboard: total potential, the biggest opportunity, a
 /// per-category breakdown, near renewals, and what the user has already saved.
 class SavingsWidget extends StatefulWidget {
@@ -112,37 +123,51 @@ class _SavingsWidgetState extends State<SavingsWidget> {
 
                   // Biggest opportunity
                   if (top != null && top.best != null) ...[
-                    _TopOpportunityCard(
-                      saving: top.annualSaving,
-                      categoryName: categoryById(top.categoryId)?.name ?? top.categoryId,
-                      providerAndPlan: '${top.best!.plan.provider} · ${top.best!.plan.plan}',
-                      personalized: personalized,
-                      ffTheme: ffTheme,
-                      onTap: () => context.pushNamed('PlanDetail',
-                          pathParameters: {'planId': top.best!.plan.id}),
-                    ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.08),
+                    _cardEntrance(
+                      context,
+                      _TopOpportunityCard(
+                        saving: top.annualSaving,
+                        categoryName: categoryById(top.categoryId)?.name ?? top.categoryId,
+                        providerAndPlan: '${top.best!.plan.provider} · ${top.best!.plan.plan}',
+                        personalized: personalized,
+                        ffTheme: ffTheme,
+                        onTap: () => context.pushNamed('PlanDetail',
+                            pathParameters: {'planId': top.best!.plan.id}),
+                      ),
+                      durationMs: 320,
+                      slideBegin: 0.08,
+                    ),
                     const SizedBox(height: 20),
                   ],
 
                   // Donut: potential annual saving split by category (real values).
                   if (summary.opportunities.isNotEmpty) ...[
-                    _PotentialDonutCard(
-                      opportunities: summary.opportunities,
-                      total: summary.totalAnnualPotential,
-                      personalized: personalized,
-                      ffTheme: ffTheme,
-                    ).animate().fadeIn(duration: 340.ms).slideY(begin: 0.06),
+                    _cardEntrance(
+                      context,
+                      _PotentialDonutCard(
+                        opportunities: summary.opportunities,
+                        total: summary.totalAnnualPotential,
+                        personalized: personalized,
+                        ffTheme: ffTheme,
+                      ),
+                      durationMs: 340,
+                    ),
                     const SizedBox(height: 16),
                   ],
 
                   // Progress bar: potential vs already-realized savings.
                   if (summary.totalAnnualPotential > 0 || appState.totalSavings > 0) ...[
-                    _ProgressCard(
-                      potential: summary.totalAnnualPotential,
-                      realized: appState.totalSavings,
-                      personalized: personalized,
-                      ffTheme: ffTheme,
-                    ).animate(delay: 60.ms).fadeIn(duration: 340.ms).slideY(begin: 0.06),
+                    _cardEntrance(
+                      context,
+                      _ProgressCard(
+                        potential: summary.totalAnnualPotential,
+                        realized: appState.totalSavings,
+                        personalized: personalized,
+                        ffTheme: ffTheme,
+                      ),
+                      delayMs: 60,
+                      durationMs: 340,
+                    ),
                     const SizedBox(height: 20),
                   ],
 
@@ -228,30 +253,36 @@ class _HeroFigure extends StatelessWidget {
           tween: IntTween(begin: reduceMotion ? total : 0, end: total),
           duration: const Duration(milliseconds: 1000),
           curve: Curves.easeOutCubic,
-          builder: (_, value, __) => Row(
-            mainAxisSize: MainAxisSize.min,
-            // The hero stays a big numeral (it's the page's main stat), but
-            // carries the same savings GLYPH as the shared SavingPill so every
-            // savings surface reads as one recognizable category.
-            children: [
-              if (hasBill) ...[
-                Icon(Icons.savings_rounded,
-                    size: 22, color: ffTheme.savingText),
-                const SizedBox(width: 6),
+          // FittedBox: the single big hero numeral scales DOWN (never clips)
+          // when the OS text scale is large — the user's scaling stays honored
+          // everywhere else on the page.
+          builder: (_, value, __) => FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              // The hero stays a big numeral (it's the page's main stat), but
+              // carries the same savings GLYPH as the shared SavingPill so every
+              // savings surface reads as one recognizable category.
+              children: [
+                if (hasBill) ...[
+                  Icon(Icons.savings_rounded,
+                      size: 22, color: ffTheme.savingText),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  hasBill ? '₪$value' : '₪—',
+                  // The hero count-up IS a stat headline numeral → sourced from the
+                  // numeric scale (Rubik / w800 / tabular figures), the same token
+                  // the wallet hero uses, so every savings hero reads identically.
+                  // The genuine deltas (the prior 22px size + the VALUE-green
+                  // colour, with a muted dark dash for the placeholder) ride via
+                  // copyWith. TRUTH-ONLY: the real $value figure is unchanged.
+                  style: ffTheme.numericLarge.copyWith(
+                      fontSize: 22,
+                      color: hasBill ? ffTheme.savingText : ffTheme.secondaryText),
+                ),
               ],
-              Text(
-                hasBill ? '₪$value' : '₪—',
-                // The hero count-up IS a stat headline numeral → sourced from the
-                // numeric scale (Rubik / w800 / tabular figures), the same token
-                // the wallet hero uses, so every savings hero reads identically.
-                // The genuine deltas (the prior 22px size + the VALUE-green
-                // colour, with a muted dark dash for the placeholder) ride via
-                // copyWith. TRUTH-ONLY: the real $value figure is unchanged.
-                style: ffTheme.numericLarge.copyWith(
-                    fontSize: 22,
-                    color: hasBill ? ffTheme.savingText : ffTheme.secondaryText),
-              ),
-            ],
+            ),
           ),
         ),
         const SizedBox(height: 2),
@@ -340,7 +371,17 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(title, style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+        // Announced as a section heading so screen-reader users can jump
+        // between the dashboard's sections.
+        Expanded(
+          child: Semantics(
+            header: true,
+            child: Text(title,
+                style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
+          ),
+        ),
       ],
     );
   }
@@ -418,8 +459,11 @@ class _RealizedCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
+            // Text.rich (not raw RichText): it inherits the ambient
+            // MediaQuery textScaler, so the sentence grows with the user's
+            // OS text-size setting instead of staying frozen at 1.0x.
+            child: Text.rich(
+              TextSpan(
                 style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700),
                 children: [
                   const TextSpan(text: 'כבר חסכת '),
@@ -581,7 +625,10 @@ class _PotentialDonutCard extends StatelessWidget {
               // Donut with the total in the hole. The slices sweep in clockwise
               // from 12 o'clock (a `t`-driven startDegreeOffset rotation paired
               // with a grow on radius) so the chart "draws itself".
-              SizedBox(
+              // RepaintBoundary: the 1.1s sweep repaints every frame — isolate
+              // it so the whole card/scroll view doesn't repaint with it.
+              RepaintBoundary(
+                child: SizedBox(
                 width: 116,
                 height: 116,
                 child: TweenAnimationBuilder<double>(
@@ -644,6 +691,7 @@ class _PotentialDonutCard extends StatelessWidget {
                     );
                   },
                 ),
+              ),
               ),
               const SizedBox(width: 16),
               // Legend.
@@ -756,7 +804,10 @@ class _ProgressCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
+          // RepaintBoundary: the bar-grow entrance animates for 650ms — keep
+          // its repaints from invalidating the surrounding card and list.
+          RepaintBoundary(
+            child: SizedBox(
             height: 150,
             child: BarChart(
               BarChartData(
@@ -805,10 +856,15 @@ class _ProgressCard extends StatelessWidget {
                   _bar(1, realized.toDouble(), ffTheme.primary, ffTheme),
                 ],
               ),
-              // Bars grow up from the baseline on first paint.
-              swapAnimationDuration: const Duration(milliseconds: 650),
+              // Bars grow up from the baseline on first paint — skipped when
+              // the OS asks for reduced motion (bars just appear).
+              swapAnimationDuration:
+                  (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 650),
               swapAnimationCurve: ffTheme.easeOut,
             ),
+          ),
           ),
           const SizedBox(height: 8),
           Row(

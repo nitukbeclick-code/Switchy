@@ -44,9 +44,22 @@ class MiniPlanCard extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     final showBadge = isBest && (savingsPerYear ?? 0) > 0;
 
+    // One-line summary for screen readers — provider, plan, the REAL price and
+    // (only when the VALUE pill is visible) the REAL saving, mirroring exactly
+    // what sighted users see on the row. Truth-only, no re-derived figures.
+    final cardLabel = [
+      '${plan.provider} — ${plan.plan}',
+      '₪${plan.priceText}/${priceUnitShort(plan)}',
+      if (showBadge) 'חוסך ₪$savingsPerYear/שנה',
+    ].join(', ');
+
     return Semantics(
       button: onTap != null,
-      label: '${plan.provider} — ${plan.plan}',
+      label: cardLabel,
+      // Perf: the row repeats across home/watchlist/similar-plans lists — a
+      // RepaintBoundary keeps its ink ripple from repainting the whole list
+      // when it sits inside an eager Column.
+      child: RepaintBoundary(
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
@@ -64,7 +77,11 @@ class MiniPlanCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              LogoWidget(provider: plan.provider, size: 52),
+              // Decorative provider logo/initials — hidden from screen readers
+              // (the provider name is already in the row's Semantics label).
+              ExcludeSemantics(
+                child: LogoWidget(provider: plan.provider, size: 52),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -134,6 +151,7 @@ class MiniPlanCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

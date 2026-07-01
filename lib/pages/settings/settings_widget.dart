@@ -14,6 +14,19 @@ import '../../widgets/app_button.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
 
+/// Reduced-motion-aware settle for the section cards: `.settleY()` is a
+/// drop-in for `.slideY(begin: …)` that KEEPS the fade already on the chain
+/// but DROPS the slide transform when the OS asks for reduced motion —
+/// the same policy [_RowReveal] applies to the rows inside the cards.
+extension _SettleYX on Animate {
+  Animate settleY(BuildContext context, {double begin = 0.06}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideY(begin: begin, end: 0);
+  }
+}
+
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
 
@@ -176,7 +189,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 120.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 120.ms, duration: 350.ms).settleY(context),
 
             const SizedBox(height: 24),
 
@@ -224,7 +237,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 180.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 180.ms, duration: 350.ms).settleY(context),
 
             const SizedBox(height: 24),
 
@@ -272,7 +285,7 @@ class SettingsWidget extends StatelessWidget {
                   ],
                 ),
               ),
-            ).animate().fadeIn(delay: 250.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 250.ms, duration: 350.ms).settleY(context),
 
             const SizedBox(height: 24),
 
@@ -335,7 +348,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 320.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(delay: 320.ms, duration: 350.ms).settleY(context),
 
             // The logout CTA is pinned to the bottom (StickyCtaScaffold) instead
             // of scrolling with the list, so leave only breathing room here.
@@ -597,7 +610,11 @@ class _SectionHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+          // Section headings are marked for screen-reader navigation.
+          Semantics(
+            header: true,
+            child: Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
             Text(subtitle!, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
@@ -722,35 +739,39 @@ class _ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+    // MergeSemantics: the switch and its title/subtitle announce as ONE named
+    // toggle (e.g. "התראות מחיר, מופעל") instead of an unnamed switch.
+    return MergeSemantics(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+              ),
+              child: Icon(icon, color: ffTheme.secondaryText, size: 20),
             ),
-            child: Icon(icon, color: ffTheme.secondaryText, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: ffTheme.titleSmall),
-                Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: ffTheme.titleSmall),
+                  Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: ffTheme.brandAccent,
-          ),
-        ],
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: ffTheme.brandAccent,
+            ),
+          ],
+        ),
       ),
     );
   }

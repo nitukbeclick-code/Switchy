@@ -6,6 +6,29 @@ import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 
+/// Reduced-motion-aware transforms for the carousel's entrance chains: each is
+/// a drop-in for its flutter_animate counterpart that KEEPS the fade already on
+/// the chain but DROPS the slide/scale transform when the OS asks for reduced
+/// motion (`MediaQuery.disableAnimations`).
+extension _OnboardSettleX on Animate {
+  Animate settleY(BuildContext context, {double begin = 0.2}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return slideY(begin: begin, end: 0);
+  }
+
+  Animate settleScale(BuildContext context,
+      {Offset begin = const Offset(0.9, 0.9),
+      Duration? duration,
+      Curve? curve}) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion) return this;
+    return scale(begin: begin, duration: duration, curve: curve);
+  }
+}
+
 class OnboardingWidget extends StatefulWidget {
   const OnboardingWidget({super.key});
 
@@ -150,8 +173,11 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                       // (where am I in 3 steps). The width morph is the deliberate
                       // shape of this control, so [spring] gives it life without
                       // the gaudiness that an everyday control would forbid.
+                      // Reduced motion: the dot snaps to its new width instantly.
                       child: AnimatedContainer(
-                        duration: ffTheme.motionMedium,
+                        duration: (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
+                            ? Duration.zero
+                            : ffTheme.motionMedium,
                         curve: ffTheme.spring,
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         width: i == _page ? 28 : 8,
@@ -214,7 +240,7 @@ class _Page1 extends StatelessWidget {
               style: ffTheme.displayLarge.copyWith(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 0, height: 1.15),
               textAlign: TextAlign.center,
             ),
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
+          ).animate().fadeIn(delay: 150.ms).settleY(context),
           const SizedBox(height: 12),
           Text(
             'סלולר, אינטרנט וטלוויזיה — כל החבילות מכל הספקים, מסודרות במקום אחד וברורות להשוואה.',
@@ -232,7 +258,7 @@ class _Page1 extends StatelessWidget {
               const SizedBox(width: 10),
               _StatChip(value: '${categories.length}', label: 'קטגוריות', ffTheme: ffTheme),
             ],
-          ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
+          ).animate().fadeIn(delay: 350.ms).settleY(context, begin: 0.1),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(18),
@@ -295,7 +321,7 @@ class _Page2 extends StatelessWidget {
               style: ffTheme.displayLarge.copyWith(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 0, height: 1.15),
               textAlign: TextAlign.center,
             ),
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
+          ).animate().fadeIn(delay: 150.ms).settleY(context),
           const SizedBox(height: 12),
           Text(
             'מחירים, תנאים וביקורות של כל מובילי התקשורת — צד לצד, בלי הפתעות.',
@@ -318,7 +344,7 @@ class _Page2 extends StatelessWidget {
                   border: Border.all(color: p.$2.withValues(alpha: 0.25)),
                 ),
                 child: Text(p.$1, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700, color: p.$2)),
-              ).animate(delay: (300 + i * 60).ms).fadeIn(duration: 300.ms).scale(begin: const Offset(0.8, 0.8));
+              ).animate(delay: (300 + i * 60).ms).fadeIn(duration: 300.ms).settleScale(context, begin: const Offset(0.8, 0.8));
             }).toList(),
           ),
           const SizedBox(height: 20),
@@ -357,7 +383,7 @@ class _Page3 extends StatelessWidget {
               style: ffTheme.displayLarge.copyWith(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 0, height: 1.15),
               textAlign: TextAlign.center,
             ),
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
+          ).animate().fadeIn(delay: 150.ms).settleY(context),
           const SizedBox(height: 12),
           Text(
             'ליווי אישי בכל שלב — מהבחירה ועד ניוד הקו. אתם בוחרים, אנחנו מסדרים את השאר.',
@@ -387,7 +413,7 @@ class _Page3 extends StatelessWidget {
                     style: ffTheme.bodySmall.copyWith(color: Colors.white60), textAlign: TextAlign.center),
               ],
             ),
-          ).animate().fadeIn(delay: 550.ms).scale(begin: const Offset(0.95, 0.95)),
+          ).animate().fadeIn(delay: 550.ms).settleScale(context, begin: const Offset(0.95, 0.95)),
         ],
       ),
     );
@@ -416,7 +442,7 @@ class _HeroBadge extends StatelessWidget {
         boxShadow: ffTheme.glowAccent,
       ),
       child: ExcludeSemantics(child: Icon(icon, size: 52, color: ffTheme.brandAccent)),
-    ).animate().scale(begin: const Offset(0.9, 0.9), duration: 500.ms, curve: ffTheme.spring);
+    ).animate().settleScale(context, begin: const Offset(0.9, 0.9), duration: 500.ms, curve: ffTheme.spring);
   }
 }
 

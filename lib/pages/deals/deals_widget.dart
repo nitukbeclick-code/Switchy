@@ -127,8 +127,11 @@ class _DealsWidgetState extends State<DealsWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        title: Text('מבצעים בזמן אמת',
-            style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
+        title: Semantics(
+          header: true,
+          child: Text('מבצעים בזמן אמת',
+              style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w700)),
+        ),
         backgroundColor: ffTheme.background,
         foregroundColor: ffTheme.primaryText,
         elevation: 0,
@@ -190,7 +193,14 @@ class _DealsWidgetState extends State<DealsWidget> {
       );
     }
 
-    final appState = Provider.of<AppState>(context);
+    // PERF: scope the AppState dependency to the one field this list reads —
+    // the per-category bills. The previous Provider.of<AppState>(context)
+    // rebuilt the whole feed on ANY notify (likes, quiz, tracker...); now only
+    // a bill change re-renders. The selector's canonical string is cheap (5
+    // fixed categories) and only changes when a bill value changes.
+    context.select<AppState, String>((s) =>
+        s.currentBills.entries.map((e) => '${e.key}=${e.value}').join(','));
+    final appState = AppState();
     // Reduced-motion KEEPS the fade (opacity) but DROPS the translate (Emil:
     // a vestibular-safe reveal is opacity-only). Read once per build.
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
@@ -208,9 +218,12 @@ class _DealsWidgetState extends State<DealsWidget> {
           ffTheme: ffTheme,
           bill: appState.currentBill(drop.category),
         ).animate(delay: ((i - 1).clamp(0, 8) * 40).ms).fadeIn(duration: 280.ms);
-        return reduceMotion
-            ? card
-            : card.slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+        // RepaintBoundary: one card's entrance never repaints its neighbours.
+        return RepaintBoundary(
+          child: reduceMotion
+              ? card
+              : card.slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
+        );
       },
     );
   }
@@ -292,22 +305,29 @@ class _DealCard extends StatelessWidget {
                 Icon(Icons.trending_down_rounded, size: 18, color: ffTheme.savingText),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text.rich(
-                    TextSpan(children: [
-                      TextSpan(
-                        text: '₪${_fmt(drop.oldPrice)} ',
-                        style: ffTheme.labelMedium.copyWith(
-                          color: ffTheme.secondaryText,
-                          decoration: TextDecoration.lineThrough,
+                  // Screen readers get one coherent sentence (real figures)
+                  // instead of the visual strikethrough/arrow fragments.
+                  child: Semantics(
+                    label:
+                        'המחיר ירד מ-₪${_fmt(drop.oldPrice)} ל-₪${_fmt(drop.newPrice)}',
+                    excludeSemantics: true,
+                    child: Text.rich(
+                      TextSpan(children: [
+                        TextSpan(
+                          text: '₪${_fmt(drop.oldPrice)} ',
+                          style: ffTheme.labelMedium.copyWith(
+                            color: ffTheme.secondaryText,
+                            decoration: TextDecoration.lineThrough,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text: '← ₪${_fmt(drop.newPrice)}',
-                        style: ffTheme.labelLarge.copyWith(
-                            color: ffTheme.savingText, fontWeight: FontWeight.w800),
-                      ),
-                    ]),
-                    textDirection: TextDirection.rtl,
+                        TextSpan(
+                          text: '← ₪${_fmt(drop.newPrice)}',
+                          style: ffTheme.labelLarge.copyWith(
+                              color: ffTheme.savingText, fontWeight: FontWeight.w800),
+                        ),
+                      ]),
+                      textDirection: TextDirection.rtl,
+                    ),
                   ),
                 ),
                 Semantics(

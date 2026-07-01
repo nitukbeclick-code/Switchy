@@ -146,36 +146,42 @@ class _RealizedHeroFigure extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // The realized figure is the VALUE headline → amber. Capped at 30
-              // (was 44) so the hero reads calm, not shouty — the figure itself
-              // is KEPT, only the size is dialed down.
-              Text(
-                '₪${wallet.realizedSaving}',
-                // The hero realized total IS numericLarge (Rubik 30 / w800 /
-                // height 1 / tabular) — sourced from the numeric scale so it
-                // aligns with the shared savings treatment. The genuine deltas
-                // (VALUE-green colour + the tighter -1 tracking the hero wants)
-                // ride via copyWith.
-                style: ffTheme.numericLarge.copyWith(
-                  color: valueAmber,
-                  letterSpacing: -1,
+          // FittedBox: the single big hero numeral scales DOWN instead of
+          // clipping inside the fixed-height collapsing header when the OS
+          // text scale is large (~1.3x); scaling stays honored elsewhere.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // The realized figure is the VALUE headline → amber. Capped at 30
+                // (was 44) so the hero reads calm, not shouty — the figure itself
+                // is KEPT, only the size is dialed down.
+                Text(
+                  '₪${wallet.realizedSaving}',
+                  // The hero realized total IS numericLarge (Rubik 30 / w800 /
+                  // height 1 / tabular) — sourced from the numeric scale so it
+                  // aligns with the shared savings treatment. The genuine deltas
+                  // (VALUE-green colour + the tighter -1 tracking the hero wants)
+                  // ride via copyWith.
+                  style: ffTheme.numericLarge.copyWith(
+                    color: valueAmber,
+                    letterSpacing: -1,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 7),
-                child: Text('לשנה',
-                    // "per year" suffix → body scale (Assistant 15); the muted
-                    // colour and the original's w400 (vs the token's w500) are the
-                    // deltas, kept so the suffix renders unchanged.
-                    style: ffTheme.bodyLarge.copyWith(
-                        color: ffTheme.secondaryText, fontWeight: FontWeight.w400)),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Text('לשנה',
+                      // "per year" suffix → body scale (Assistant 15); the muted
+                      // colour and the original's w400 (vs the token's w500) are the
+                      // deltas, kept so the suffix renders unchanged.
+                      style: ffTheme.bodyLarge.copyWith(
+                          color: ffTheme.secondaryText, fontWeight: FontWeight.w400)),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           Text(
@@ -230,8 +236,12 @@ class _SocialProof extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('חיסכון אמיתי, לא הבטחות',
-                style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+            // Section heading for screen-reader navigation.
+            Semantics(
+              header: true,
+              child: Text('חיסכון אמיתי, לא הבטחות',
+                  style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+            ),
             const SizedBox(height: 8),
             Text(
               '${wallet.aggregateMembers} משקי בית כבר עברו דרכנו וחסכו — '

@@ -51,4 +51,31 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
     expect(find.byType(LogoWidget), findsOneWidget);
   });
+
+  // The rendered asset path for the current LogoWidget. Image.asset with a
+  // cacheWidth wraps its AssetImage in a ResizeImage — unwrap before reading.
+  String assetOf(WidgetTester tester) {
+    final img = tester.widget<Image>(find.byType(Image));
+    ImageProvider provider = img.image;
+    if (provider is ResizeImage) provider = provider.imageProvider;
+    return (provider as AssetImage).assetName;
+  }
+
+  testWidgets('bare הוט resolves to the HOT logo, not HOT Mobile', (tester) async {
+    // Regression: the substring scan let 'הוט מובייל' reverse-match the bare
+    // input 'הוט' (key.contains(provider)); the exact-match pass must win.
+    await tester.pumpWidget(_wrap(const LogoWidget(provider: 'הוט')));
+    expect(assetOf(tester), 'assets/providers/hot.png');
+  });
+
+  testWidgets('הוט מובייל still resolves to the HOT Mobile logo', (tester) async {
+    await tester.pumpWidget(_wrap(const LogoWidget(provider: 'הוט מובייל')));
+    expect(assetOf(tester), 'assets/providers/hot-mobile.png');
+  });
+
+  testWidgets('בזק resolves to the webp brand asset', (tester) async {
+    // Regression for the bezeq.png -> bezeq.webp swap (the .png was cropped).
+    await tester.pumpWidget(_wrap(const LogoWidget(provider: 'בזק')));
+    expect(assetOf(tester), 'assets/providers/bezeq.webp');
+  });
 }

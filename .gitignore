@@ -93,3 +93,16 @@ package-lock.json
 # reproducible; ignore only local overrides and transient worktrees.
 .claude/settings.local.json
 .claude/worktrees/
+
+# ── Local working dirs (never ship to the repo) ───────────────────────────────
+# Claude Code session/agent state and the local HyperFrames video projects
+# (multi-MB mp4/mp3 renders) live next to the repo but are machine-local.
+.claude/skills/
+.claude/worktrees/
+.agents/skills/
+android/.kotlin/
+videos/
+# root-level lock files minted by local tooling runs (the tracked deno.lock
+# lives under supabase/functions/)
+/skills-lock.json
+/deno.lock

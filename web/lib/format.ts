@@ -142,6 +142,10 @@ const PROVIDER_LOGO_FILES: Readonly<Record<string, string>> = {
   yes: "yes.webp",
   nexttv: "nexttv.png",
   airalo: "airalo.webp",
+  // providerSlug("Airalo eSIM") yields "airalo-esim" on the Next app (no
+  // SLUG_OVERRIDES entry, unlike the static site's PROVIDER_SLUGS) — alias it
+  // to the same brand asset instead of changing the public /providers URL.
+  "airalo-esim": "airalo.webp",
 };
 
 /**

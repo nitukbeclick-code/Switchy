@@ -382,7 +382,39 @@ class SupabaseBackend implements Backend {
   // ── Video meetings (Zoom) ────────────────────────────────────────────────────
 
   RealtimeChannel? _meetingChannel;
+  RealtimeChannel? _meetingEmailChannel;
   StreamController<BookedMeeting>? _meetingCtrl;
+  // Last emitted signature per meeting id — dedupes the SAME update arriving on
+  // both the user_id channel and the email channel (a row can match both).
+  final Map<String, String> _meetingEventSig = {};
+
+  /// The AUTHENTICATED Supabase user's email, normalized exactly like
+  /// meeting-book stores it (trim + lowercase) — NEVER a free-typed address.
+  /// Anonymous sessions carry no email → null, so they keep today's
+  /// user_id-only behavior bit-for-bit.
+  String? get _authedMeetingEmail =>
+      meetingEmailFilterValue(_db.auth.currentUser?.email);
+
+  /// Normalizes an authenticated email for embedding in a PostgREST filter,
+  /// mirroring meeting-book's normalizeEmail (trim + lowercase). Returns null
+  /// for missing/empty input AND for anything that can't be safely embedded in
+  /// a double-quoted PostgREST token (`"`, `\`, `,`, `(`, `)`) — such an
+  /// address simply keeps the user_id-only fetch instead of a broken query.
+  /// Exposed (static, pure) for tests.
+  static String? meetingEmailFilterValue(String? raw) {
+    final email = raw?.trim().toLowerCase() ?? '';
+    if (email.isEmpty) return null;
+    if (email.contains(RegExp(r'["\\,()]'))) return null;
+    return email;
+  }
+
+  /// Composes the PostgREST `or=` filter for the cross-surface meeting fetch:
+  /// rows owned by this auth uid OR rows booked on the WEB (user_id NULL) with
+  /// the same verified email. The email token is double-quoted so its '@'/'.'
+  /// read as a literal value, not PostgREST syntax; the client URL-encodes the
+  /// whole `or=` parameter on the wire. Exposed (static, pure) for tests.
+  static String meetingOrFilter(String uid, String email) =>
+      'user_id.eq.$uid,email.eq."$email"';
 
   /// Maps a meetings row/payload to [BookedMeeting], reading ONLY the
   /// client-granted columns — never rep identity / notes / IP (the Realtime
@@ -493,10 +525,21 @@ class SupabaseBackend implements Backend {
   @override
   Future<BookedMeeting?> fetchLatestMeeting() async {
     if (_uid == null) return null;
-    final row = await _db
+    final query = _db
         .from('meetings')
-        .select('id,status,provider,meeting_date,slot,starts_at,join_url,created_at')
-        .eq('user_id', _uid!)
+        .select('id,status,provider,meeting_date,slot,starts_at,join_url,created_at');
+    // Cross-surface visibility: a meeting booked on the WEB carries user_id
+    // NULL, so it can never match the uid filter. When the session has an
+    // AUTHENTICATED email we widen the fetch to user_id OR email. RLS stays
+    // the gate: until the owner applies the email SELECT policy
+    // (email = auth.jwt()->>'email'), the email branch matches zero visible
+    // rows and this returns exactly what the old uid-only query returned.
+    // Anonymous sessions (email null) run the identical uid-only query.
+    final email = _authedMeetingEmail;
+    final filtered = email == null
+        ? query.eq('user_id', _uid!)
+        : query.or(meetingOrFilter(_uid!, email));
+    final row = await filtered
         .order('created_at', ascending: false)
         .limit(1)
         .maybeSingle();
@@ -516,13 +559,62 @@ class SupabaseBackend implements Backend {
           table: 'meetings',
           filter: PostgresChangeFilter(
               type: PostgresChangeFilterType.eq, column: 'user_id', value: _uid!),
-          callback: (payload) {
-            _meetingCtrl?.add(_meetingFromRow(payload.newRecord));
-          },
+          callback: (payload) => _emitMeetingChange(payload.newRecord),
         )
         .subscribe();
+    // postgres_changes filters can't express OR, so web-booked rows (user_id
+    // NULL, same VERIFIED email) get a SECOND channel keyed on the email
+    // column — created only when the session carries an authenticated email
+    // (anonymous users keep exactly the single channel above). Same handler;
+    // _emitMeetingChange dedupes the event a row matching BOTH filters would
+    // otherwise deliver twice. Until the owner applies the email RLS policy,
+    // Realtime authorization simply never delivers on this channel — harmless.
+    _meetingEmailChannel?.unsubscribe();
+    _meetingEmailChannel = null;
+    final email = _authedMeetingEmail;
+    if (email != null) {
+      _meetingEmailChannel = _db
+          .channel('meetings-email-$_uid')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.update,
+            schema: 'public',
+            table: 'meetings',
+            filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'email',
+                value: email),
+            callback: (payload) => _emitMeetingChange(payload.newRecord),
+          )
+          .subscribe();
+    }
     return _meetingCtrl!.stream;
   }
+
+  /// Shared handler for both meeting channels: maps the payload row and emits
+  /// it at most once per distinct content (see [shouldEmitMeetingEvent]).
+  void _emitMeetingChange(Map<String, dynamic> record) {
+    final m = _meetingFromRow(record);
+    if (shouldEmitMeetingEvent(_meetingEventSig, m)) _meetingCtrl?.add(m);
+  }
+
+  /// Pure dedupe step (exposed static for tests): returns true — and records
+  /// the meeting's content signature in [lastSigById] — when this event should
+  /// reach listeners. The SAME update delivered on both channels produces an
+  /// identical signature, so the twin is dropped; any REAL change (status
+  /// flip, join_url landing, reschedule) yields a new signature and passes.
+  static bool shouldEmitMeetingEvent(
+      Map<String, String> lastSigById, BookedMeeting m) {
+    final sig = meetingEventSignature(m);
+    if (lastSigById[m.id] == sig) return false;
+    lastSigById[m.id] = sig;
+    return true;
+  }
+
+  /// Stable content signature over exactly the client-visible fields the app
+  /// reacts to. Exposed (static, pure) for tests.
+  static String meetingEventSignature(BookedMeeting m) =>
+      '${meetingStatusToDb(m.status)}|${m.joinUrl ?? ''}|${m.meetingDate}|'
+      '${m.slot}|${m.startsAt.toIso8601String()}';
 
   // ── Tracked plans ────────────────────────────────────────────────────────────
   @override

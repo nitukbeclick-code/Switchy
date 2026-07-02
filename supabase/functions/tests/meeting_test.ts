@@ -175,6 +175,57 @@ Deno.test("planMeetingFollowUps ignores non-pending and unparseable rows", () =>
   assertEquals(planMeetingFollowUps([meet({ starts_at: undefined })], NOW).length, 0);
 });
 
+// ── booker-email planner (user_confirmation / user_reminder) ─────────────────
+// MEETING carries NO confirmation_emailed_at / reminded_user_at keys at all —
+// exactly the shape select=* returns BEFORE the owner applies
+// supabase/meetings-user-emails-2026-07.sql. The planner must treat the
+// missing keys as null and never crash on them.
+
+const confirmed = (over: Partial<MeetingRow>): MeetingRow =>
+  meet({ status: "confirmed", join_url: "https://zoom.us/j/123", ...over });
+
+Deno.test("planMeetingFollowUps: confirmed + join_url + unsent → user_confirmation (missing stamp keys = null, no crash)", () => {
+  const m = confirmed({ starts_at: atOffset(30) });
+  assertEquals(planMeetingFollowUps([m], NOW), [{ meeting: m, kind: "user_confirmation" }]);
+});
+
+Deno.test("planMeetingFollowUps: confirmation takes precedence over the reminder in the same run", () => {
+  // inside the 24h window but never confirmed-by-email → ONE email (the
+  // confirmation, which already carries the link), never both at once
+  const m = confirmed({ starts_at: atOffset(3) });
+  assertEquals(planMeetingFollowUps([m], NOW), [{ meeting: m, kind: "user_confirmation" }]);
+});
+
+Deno.test("planMeetingFollowUps: <=24h + confirmation already emailed → user_reminder exactly once", () => {
+  const base = confirmed({ starts_at: atOffset(23), confirmation_emailed_at: atOffset(-48) });
+  assertEquals(planMeetingFollowUps([base], NOW), [{ meeting: base, kind: "user_reminder" }]);
+  // exactly 24h out — included (mirrors the rep 2h boundary)
+  assertEquals(planMeetingFollowUps([confirmed({ starts_at: atOffset(24), confirmation_emailed_at: atOffset(-48) })], NOW)[0].kind, "user_reminder");
+  // 24h01m out — not yet
+  assertEquals(
+    planMeetingFollowUps([confirmed({ starts_at: new Date(NOW + 24 * 3_600_000 + 60_000).toISOString(), confirmation_emailed_at: atOffset(-48) })], NOW).length,
+    0,
+  );
+  // already reminded — never twice
+  assertEquals(planMeetingFollowUps([meet({ ...base, reminded_user_at: atOffset(-1) })], NOW).length, 0);
+});
+
+Deno.test("planMeetingFollowUps: booker emails need a future start, an address, and something truthful to send", () => {
+  // pending → no booker email (rep flow only)
+  assertEquals(planMeetingFollowUps([meet({ starts_at: atOffset(3) })], NOW).some((f) => f.kind.startsWith("user_")), false);
+  // already started/past — never email a link for a meeting that began
+  assertEquals(planMeetingFollowUps([confirmed({ starts_at: atOffset(-1) })], NOW).length, 0);
+  // no email address — nothing to send to
+  assertEquals(planMeetingFollowUps([confirmed({ starts_at: atOffset(3), email: null })], NOW).length, 0);
+  // no join_url and no prior confirmation — nothing truthful to remind about
+  assertEquals(planMeetingFollowUps([confirmed({ starts_at: atOffset(3), join_url: null })], NOW).length, 0);
+  // no join_url but the confirmation DID go out → reminder still due
+  assertEquals(
+    planMeetingFollowUps([confirmed({ starts_at: atOffset(3), join_url: null, confirmation_emailed_at: atOffset(-48) })], NOW)[0].kind,
+    "user_reminder",
+  );
+});
+
 // ── Zoom ─────────────────────────────────────────────────────────────────────
 
 Deno.test("buildZoomMeetingBody is a 30-minute Israel-time meeting with a waiting room", () => {

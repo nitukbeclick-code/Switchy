@@ -40,6 +40,7 @@ import { israelDateOf, israelHourOf, planFollowUps } from "../_shared/followup.t
 import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
 import { type CronJobRow, evalCronHealth } from "../_shared/cron_health.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
+import { sendMeetingConfirmationEmail, sendMeetingUserReminderEmail } from "../_shared/meeting_user_emails.ts";
 import { buildRenewalReminderEmail, RENEWAL_EMAIL_SUBJECT } from "./email.ts";
 import { captureError } from "../_shared/observability.ts";
 
@@ -270,7 +271,10 @@ async function runFollowUp(cfg: Cfg) {
         // must not re-fire every hour until the meeting expires
         await patchCount(`/rest/v1/meetings?id=eq.${m.id}`, { reminded_rep_at: now.toISOString() });
         await logMeetingEvent({ meeting_id: m.id, event: "reminder" });
-      } else {
+      } else if (f.kind === "expire") {
+        // explicit kind guard: the planner now also emits booker-email kinds
+        // (for CONFIRMED rows — impossible here on a status=eq.pending fetch,
+        // but an expire must never be the fall-through for anything else)
         // status=eq.pending guard: a confirm racing this run wins
         const n = await patchCount(`/rest/v1/meetings?id=eq.${m.id}&status=eq.pending`, { status: "expired" });
         if (n === 0) continue;
@@ -280,9 +284,65 @@ async function runFollowUp(cfg: Cfg) {
       }
     }
   }
+  // Booker emails for CONFIRMED meetings: the confirmation safety-net (details
+  // + Zoom link for anyone whose confirm-time email failed or never fired —
+  // surface-independent, so web bookings that are invisible in-app still get
+  // their link) and the T-24h reminder. Planner: planMeetingFollowUps'
+  // user_confirmation / user_reminder kinds.
+  //
+  // CLAIM-BEFORE-SEND (same discipline as runRenewalEmails): stamp the column
+  // atomically where still null BEFORE sending so overlapping runs can't
+  // double-mail; revert ONLY our own stamp on a failed send so the next hourly
+  // run retries (bounded — the plannable window closes at the meeting start).
+  //
+  // DEPLOY-SAFE BEFORE THE MIGRATION (supabase/meetings-user-emails-2026-07.sql):
+  // select=* just omits the not-yet-existing stamp columns (rows still load),
+  // and the claim PATCH naming the unknown column 400s → patchCount 0 → the
+  // send is skipped. Logged no-op, never a throw — the rep loop above already
+  // ran to completion either way.
+  let userConfirmations = 0, userReminders = 0, userEmailsFailed = 0;
+  if (cfg.resend && cfg.resendFrom) {
+    const nowIso = enc(now.toISOString());
+    const confirmedMeetings = await fetchRows<MeetingRow>(
+      `/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gt.${nowIso}&order=starts_at.asc&limit=50`,
+    );
+    if (confirmedMeetings !== null) {
+      for (const f of planMeetingFollowUps(confirmedMeetings, now.getTime())) {
+        if (f.kind !== "user_confirmation" && f.kind !== "user_reminder") continue;
+        const m = f.meeting;
+        if (!m.id || !m.email) continue;
+        const stampCol = f.kind === "user_confirmation" ? "confirmation_emailed_at" : "reminded_user_at";
+        const claimTs = new Date().toISOString();
+        const claimed = await patchCount(
+          `/rest/v1/meetings?id=eq.${m.id}&status=eq.confirmed&${stampCol}=is.null`,
+          { [stampCol]: claimTs },
+        );
+        if (claimed === 0) continue; // already handled / lost race / pre-migration
+        const res = f.kind === "user_confirmation"
+          ? await sendMeetingConfirmationEmail(cfg, m)
+          : await sendMeetingUserReminderEmail(cfg, m);
+        if (res.ok) {
+          if (f.kind === "user_confirmation") userConfirmations++;
+          else userReminders++;
+        } else {
+          userEmailsFailed++;
+          // revert ONLY our own claim so the next run retries this meeting
+          await patchCount(
+            `/rest/v1/meetings?id=eq.${m.id}&${stampCol}=eq.${enc(claimTs)}`,
+            { [stampCol]: null },
+          );
+        }
+      }
+      if (userEmailsFailed > 0) {
+        jlog({ at: "meeting-user-emails", confirmations: userConfirmations, reminders: userReminders, failed: userEmailsFailed });
+      }
+    }
+  }
+
   return {
     ok: true, open: openLeads.length, planned: plan.length, sent,
     meeting_reminders: meetingReminders, meetings_expired: meetingsExpired,
+    user_confirmations: userConfirmations, user_reminders: userReminders,
   };
 }
 

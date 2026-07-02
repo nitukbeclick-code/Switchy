@@ -49,6 +49,11 @@ export type MeetingRow = {
   claimed_at?: string | null;
   confirmed_at?: string | null;
   reminded_rep_at?: string | null;
+  // Booker-email stamps — supabase/meetings-user-emails-2026-07.sql. May be
+  // ABSENT from prod rows until the owner applies it; readers must treat a
+  // missing key as null (select=* simply omits unknown columns).
+  confirmation_emailed_at?: string | null;
+  reminded_user_at?: string | null;
   created_at?: string;
   updated_at?: string;
 };

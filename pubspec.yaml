@@ -4,7 +4,7 @@ description: >
   abroad) in one place. Find the best deal, calculate your savings, and switch
   providers with step-by-step porting guidance. Hebrew-first, RTL Flutter app.
 publish_to: 'none'
-version: 1.0.7+8
+version: 1.0.8+9
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

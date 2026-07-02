@@ -37,4 +37,4 @@ Llms: https://switchy-ai.com/llms.txt
 Sitemap: https://switchy-ai.com/sitemap.xml
 
 # Contact
-Email: hello@chosech.co.il
+Email: hello@switchy-ai.com

@@ -36,6 +36,18 @@ int _dealSeq = 0;
 /// Payload prefix that routes a tapped price-drop notification to the Deals feed.
 const _dealPayloadPrefix = 'deal';
 
+const _leadChannelId = 'lead_updates';
+const _leadChannelName = 'עדכוני מעבר';
+const _leadChannelDesc = 'עדכון על התקדמות המעבר שלך';
+
+/// Lead-update ("switch progress") notifications live above the price-drop band
+/// so an immediate lead alert never overwrites a deal/renewal/meeting one.
+const _trackerIdBase = 3000;
+int _trackerSeq = 0;
+
+/// Payload that routes a tapped lead-update notification to the Tracker tab.
+const _trackerPayload = 'tracker';
+
 bool get _isMobile =>
     defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
 
@@ -64,10 +76,15 @@ Future<void> initPush() async {
 void _onTap(NotificationResponse response) {
   final id = response.payload;
   if (id == null || id.isEmpty) return;
-  // Meeting reminders land on the meeting screen; price drops land on the deals
-  // feed; renewal reminders deep-link into the tracked plan's renewal report.
+  // Meeting reminders land on the meeting screen; lead updates land on the
+  // Tracker tab; price drops land on the deals feed; renewal reminders
+  // deep-link into the tracked plan's renewal report.
   if (id == 'meeting') {
     appRouterInstance?.goNamed('Meeting');
+    return;
+  }
+  if (id == _trackerPayload) {
+    appRouterInstance?.goNamed('Tracker');
     return;
   }
   if (id == _dealPayloadPrefix || id.startsWith('$_dealPayloadPrefix:')) {
@@ -161,28 +178,44 @@ Future<void> scheduleAll(
   }
 }
 
-/// Show an immediate (un-scheduled) notification — used for live price drops,
-/// which arrive in real time rather than on a known date. Tapping it routes to
-/// the Deals feed via [_onTap]. No-op off mobile. Does NOT cancel anything, so
-/// it never disturbs the scheduled renewal/meeting reminders.
-Future<void> showNow({required String title, required String body}) async {
+/// Show an immediate (un-scheduled) notification — used for live price drops
+/// and lead ("switch progress") updates, which arrive in real time rather than
+/// on a known date. [payload] picks the channel, id band and tap destination:
+/// the default `'deal'` keeps existing callers on the price-drop channel
+/// (routing to the Deals feed via [_onTap]); `'tracker'` uses the lead-updates
+/// channel and routes to the Tracker tab. No-op off mobile. Does NOT cancel
+/// anything, so it never disturbs the scheduled renewal/meeting reminders.
+Future<void> showNow({
+  required String title,
+  required String body,
+  String payload = _dealPayloadPrefix,
+}) async {
   if (!_isMobile) return;
   _ensureTz();
-  const details = NotificationDetails(
-    android: AndroidNotificationDetails(
-      _dealChannelId,
-      _dealChannelName,
-      channelDescription: _dealChannelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
-    ),
-    iOS: DarwinNotificationDetails(),
+  final isLead = payload == _trackerPayload;
+  final details = NotificationDetails(
+    android: isLead
+        ? const AndroidNotificationDetails(
+            _leadChannelId,
+            _leadChannelName,
+            channelDescription: _leadChannelDesc,
+            importance: Importance.high,
+            priority: Priority.high,
+          )
+        : const AndroidNotificationDetails(
+            _dealChannelId,
+            _dealChannelName,
+            channelDescription: _dealChannelDesc,
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+    iOS: const DarwinNotificationDetails(),
   );
   await _plugin.show(
-    id: _dealIdBase + (_dealSeq++),
+    id: isLead ? _trackerIdBase + (_trackerSeq++) : _dealIdBase + (_dealSeq++),
     title: title,
     body: body,
     notificationDetails: details,
-    payload: _dealPayloadPrefix,
+    payload: payload,
   );
 }

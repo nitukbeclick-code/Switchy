@@ -15,4 +15,8 @@ Future<void> scheduleAll(
 
 Future<void> cancelAllPush() async {}
 
-Future<void> showNow({required String title, required String body}) async {}
+Future<void> showNow({
+  required String title,
+  required String body,
+  String payload = 'deal',
+}) async {}

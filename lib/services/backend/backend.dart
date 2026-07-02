@@ -96,6 +96,17 @@ class MeetingInput {
       };
 }
 
+/// Maps a `leads.status` to a tracker step: 'contacted'→2, 'won'→4,
+/// 'lost'→-1 (terminal — the rep closed the lead), anything else ('new')→1.
+/// Shared by [Backend.fetchLeadStep], [Backend.fetchLeadInfo] and
+/// [Backend.leadStepStream] so the mapping can never drift between them.
+int leadStepFromStatus(String? status) => switch (status) {
+      'contacted' => 2,
+      'won' => 4,
+      'lost' => -1,
+      _ => 1,
+    };
+
 /// Lifecycle of a meeting request. `noRep` ↔ the DB's 'no_rep'.
 enum MeetingStatus { pending, confirmed, noRep, cancelled, expired, completed }
 
@@ -980,6 +991,25 @@ abstract interface class Backend {
   /// [BillAnalysis] whose [BillAnalysis.error] carries the explanation.
   Future<BillAnalysis?> analyzeBill(String imageDataUri);
 
+  // ── Street price (street-price edge fn, GET) ─────────────────────────────────
+  /// Reads the threshold-gated street-price aggregate for a (provider, category)
+  /// from the DEPLOYED `street-price` edge function (GET → server-side
+  /// `get_street_price()`, SECURITY DEFINER). Returns the DECODED body verbatim —
+  /// `{ok, report_count, meets_threshold, reports_needed, typical_price,
+  /// median_price, min_price, max_price, avg_price, first_at, last_at}` — where
+  /// EVERY price is null below the server's 5-distinct-reporter threshold (the
+  /// DB nulls them; we never reconstruct a refused figure). Returns null on ANY
+  /// transport / non-2xx / parse failure so the caller fails soft (offline the
+  /// app behaves identically to having never called this). Note: the deployed
+  /// GET scopes the cohort by `provider` (plan-level via `plan_id`); `category`
+  /// is sent for forward-compatibility with a category-filtered cohort.
+  /// [LocalBackend] returns null (no network) → hydration is a no-op offline
+  /// and in tests. Interpretation/caching live in `services/street_price.dart`.
+  Future<Map<String, dynamic>?> fetchStreetPrice({
+    required String provider,
+    required String category,
+  });
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 
@@ -995,6 +1025,14 @@ abstract interface class Backend {
   /// Realtime channel so the tracker auto-advances when the rep updates
   /// the lead from the dashboard.
   Stream<int> leadStepStream();
+
+  /// The user's newest lead: its [fetchLeadStep]-style step plus the REAL
+  /// `created_at` of the row (the "joined" date the tracker timeline shows on
+  /// stage 1 — never fabricated). Reads ONLY the client-granted columns
+  /// (status, created_at). Returns `(step: 0, createdAt: null)` when there is
+  /// no lead, so the UI renders no date rather than inventing one.
+  /// [LocalBackend] returns `(0, null)` offline.
+  Future<({int step, DateTime? createdAt})> fetchLeadInfo();
 
   // ── Video meetings (Zoom) ────────────────────────────────────────────────────
   /// Step 1 of the email-gated booking: asks the `meeting-book` edge function to

@@ -57,4 +57,17 @@ void main() {
     final s = AppState()..setRenewalReminders(true);
     await expectLater(svc.syncRenewalReminders(s), completes);
   });
+
+  group('immediate alerts are gated on init()', () {
+    // Same readiness gate as syncAll: before init() the impl must never be
+    // touched (no platform channel in tests), and the caller learns nothing
+    // was shown via the `false` return.
+    test('notifyPriceDrop returns false before init', () async {
+      expect(await svc.notifyPriceDrop(title: 't', body: 'b'), isFalse);
+    });
+
+    test('notifyLeadUpdate returns false before init', () async {
+      expect(await svc.notifyLeadUpdate(title: 't', body: 'b'), isFalse);
+    });
+  });
 }

@@ -10,11 +10,17 @@ class CategorySaving {
     required this.categoryId,
     required this.currentBill,
     required this.best,
+    this.personalized = false,
   });
 
   final String categoryId;
   final int currentBill;
   final PlanMatch? best; // our recommended plan for this category, if a bill is set
+
+  /// TRUTH flag: true only when [currentBill] was PERSONALLY entered by the
+  /// user (never a seed default) — see [AppState.isBillPersonalized]. Only a
+  /// personalized figure may ever be presented as the user's own ₪.
+  final bool personalized;
 
   int get annualSaving => best?.annualSaving ?? 0;
   bool get hasBill => currentBill > 0;
@@ -32,6 +38,17 @@ class SavingsSummary {
   /// in every category where they've entered a bill.
   int get totalAnnualPotential =>
       categories.fold(0, (s, c) => s + c.annualSaving);
+
+  /// Sum of the user's PERSONALLY-entered monthly bills only (TRUTH-ONLY):
+  /// seed-default bills contribute nothing, so this is safe to show as "what
+  /// you pay today". 0 for a guest who never entered a bill.
+  int get personalizedMonthlyTotal => categories.fold(
+      0, (s, c) => s + (c.personalized ? c.currentBill : 0));
+
+  /// Annual saving potential over PERSONALLY-entered bills only (TRUTH-ONLY).
+  /// Always <= [totalAnnualPotential], which also counts seed-default bills.
+  int get personalizedAnnualPotential => categories.fold(
+      0, (s, c) => s + (c.personalized ? c.annualSaving : 0));
 
   /// The single category with the largest saving, or null if there is none.
   CategorySaving? get topOpportunity {
@@ -88,7 +105,12 @@ SavingsSummary computeSavings(AppState s) {
         wantsNoCommit: s.wantsNoCommit,
       ));
     }
-    out.add(CategorySaving(categoryId: c.id, currentBill: bill, best: best));
+    out.add(CategorySaving(
+      categoryId: c.id,
+      currentBill: bill,
+      best: best,
+      personalized: s.isBillPersonalized(c.id),
+    ));
   }
   return SavingsSummary(categories: out);
 }

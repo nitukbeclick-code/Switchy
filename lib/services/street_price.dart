@@ -1,5 +1,6 @@
 import '../data.dart';
 import '../models.dart' show Plan;
+import 'backend/local_backend.dart' show appBackend;
 
 /// ─────────────────────────────────────────────────────────────────────────────
 /// Street Price (מחיר הרחוב) — what real people actually pay, not the sticker.
@@ -30,6 +31,18 @@ import '../models.dart' show Plan;
 /// Pure & dependency-light: no widgets, no navigation, no persistence. The widget
 /// owns capture + storage; this is the single source of truth for "is there a
 /// street price, and what is it". Unit-tested in `test/street_price_test.dart`.
+///
+/// SERVER HYDRATION (fail-soft, cached): [StreetPriceService.hydrate] lazily GETs
+/// the DEPLOYED `street-price` edge function (via [Backend.fetchStreetPrice]) and
+/// caches the SERVER aggregate in memory, so the trust row / /StreetPrice figures
+/// light up from the real global report pool — not only from reports submitted in
+/// this session. [StreetPriceService.aggregateFor] stays SYNCHRONOUS: it reads the
+/// cache and prefers a server aggregate over the local session one (the server
+/// pool includes all accepted reports globally). The server enforces the SAME
+/// threshold (`get_street_price()` nulls every price below 5 distinct accepted
+/// reporters), so a hydrated figure is exactly as honest as a local one. Any
+/// network/parse error is a silent no-op — offline the app behaves identically to
+/// before. [LocalBackend] returns null (no network) → hydrate is a no-op in tests.
 /// ─────────────────────────────────────────────────────────────────────────────
 
 /// Minimum number of *accepted* reports for a (provider, category) before any
@@ -202,12 +215,153 @@ class StreetPriceAggregate {
   bool get hasSpread => high - low > (typical * 0.15);
 }
 
+/// Fetches the raw `street-price` edge-fn GET body for a (provider, category),
+/// or null on ANY failure (transport / non-2xx / no network). Injectable so the
+/// hydration cache is unit-testable without a real backend (see [StreetPriceService
+/// .fetchOverride]); the default delegates to [Backend.fetchStreetPrice].
+typedef StreetPriceFetcher = Future<Map<String, dynamic>?> Function(
+    String provider, String category);
+
+/// One cached server answer for a (provider, category) pair.
+/// [aggregate] == null means the server answered HONESTLY below-threshold
+/// ("known-empty") — cached so we don't refetch in a loop; an ERROR is never
+/// cached (no entry is written, so a later hydrate simply retries).
+class _ServerStreetPrice {
+  const _ServerStreetPrice({
+    required this.aggregate,
+    required this.reportCount,
+    required this.fetchedAt,
+  });
+  final StreetPriceAggregate? aggregate;
+
+  /// The server's REAL accepted-report count for the pair — returned even below
+  /// the threshold (the prices are nulled, the count is not), so "we need N more
+  /// reports" copy can be globally honest instead of session-local.
+  final int reportCount;
+  final DateTime fetchedAt;
+}
+
 /// The street-price engine. Stateless logic + an injectable session store so the
 /// provider page can submit and read without a DB round-trip (and tests can run
 /// fully in-memory). The aggregate is the only thing the UI trusts; everything
 /// below the threshold returns `null` by contract.
 class StreetPriceService {
   StreetPriceService._();
+
+  // ── Server hydration cache ───────────────────────────────────────────────────
+
+  /// How long a hydrated server answer (aggregate OR known-empty) stays fresh
+  /// before [hydrate] will re-GET it. Session-scoped; the aggregate moves slowly
+  /// so a slightly stale figure is harmless (it is still real server data).
+  /// Mutable ONLY so tests can shrink it — production never changes it.
+  static Duration serverTtl = const Duration(minutes: 15);
+
+  /// Test seam: replaces the network fetch with a fake (no real network in unit
+  /// tests). Null in production → [hydrate] uses [appBackend.fetchStreetPrice].
+  static StreetPriceFetcher? fetchOverride;
+
+  /// Hydrated server answers keyed by `provider|category`. Source marker is the
+  /// type itself: an entry here is ALWAYS server-sourced; the local session store
+  /// ([_reports]) is the only local source.
+  static final Map<String, _ServerStreetPrice> _serverCache = {};
+
+  /// In-flight GETs keyed like [_serverCache] — dedupes concurrent hydrate calls
+  /// for the same pair (both callers await the same future).
+  static final Map<String, Future<void>> _inflight = {};
+
+  static String _pairKey(String provider, String category) =>
+      '${provider.trim()}|$category';
+
+  /// Lazily hydrates the (provider, category) pair from the DEPLOYED
+  /// `street-price` edge function (GET → server-side `get_street_price()`:
+  /// median/min/max/count, every price NULL below the 5-report threshold — the
+  /// SERVER enforces the honesty gate, we only transport it).
+  ///
+  /// Fail-soft by contract: ANY error (offline / non-2xx / parse) is a silent
+  /// no-op — nothing is cached, [aggregateFor] keeps behaving exactly as before.
+  /// An honest below-threshold answer IS cached (as "known-empty") so we never
+  /// refetch it in a loop; both kinds of entry expire after [serverTtl].
+  /// Concurrent calls for the same pair share one request. [LocalBackend]
+  /// returns null (no network) → this is a no-op offline and in widget tests.
+  ///
+  /// Await it (or `.then`) and setState/notify to light the UI when data lands;
+  /// it never throws and never blocks the frame.
+  static Future<void> hydrate(String provider, String category) {
+    final p = provider.trim();
+    if (p.isEmpty || category.trim().isEmpty) return Future.value();
+    final key = _pairKey(p, category);
+
+    final cached = _serverCache[key];
+    if (cached != null &&
+        DateTime.now().difference(cached.fetchedAt) < serverTtl) {
+      return Future.value(); // fresh (aggregate or known-empty) — no refetch
+    }
+    final pending = _inflight[key];
+    if (pending != null) return pending; // in-flight dedupe
+
+    final future = _fetchAndCache(p, category, key);
+    _inflight[key] = future;
+    return future;
+  }
+
+  static Future<void> _fetchAndCache(
+      String provider, String category, String key) async {
+    try {
+      final fetch = fetchOverride ??
+          (String p, String c) =>
+              appBackend.fetchStreetPrice(provider: p, category: c);
+      final body = await fetch(provider, category);
+      // Transport failure / no network / error body → NO cache write: offline
+      // stays identical to today, and a later hydrate simply retries.
+      if (body == null || body['ok'] != true) return;
+      _serverCache[key] = _ServerStreetPrice(
+        aggregate: _aggregateFromServer(provider, category, body),
+        reportCount: (body['report_count'] as num?)?.toInt() ?? 0,
+        fetchedAt: DateTime.now(),
+      );
+    } catch (_) {
+      // Silent no-op — fail-soft is the whole contract.
+    } finally {
+      _inflight.remove(key);
+    }
+  }
+
+  /// Builds a [StreetPriceAggregate] from an honest server body, or null when
+  /// the server said "below threshold" (every price nulled by `get_street_price()`
+  /// — we NEVER reconstruct a figure the server refused to publish). The
+  /// catalogue baseline is re-derived locally from the REAL catalogue for the
+  /// requested category, exactly like the local path.
+  static StreetPriceAggregate? _aggregateFromServer(
+      String provider, String category, Map<String, dynamic> body) {
+    final count = (body['report_count'] as num?)?.toInt() ?? 0;
+    final meets = body['meets_threshold'] == true;
+    final typical =
+        ((body['typical_price'] ?? body['median_price']) as num?)?.toDouble();
+    if (!meets || count < kStreetPriceMinReports || typical == null || typical <= 0) {
+      return null; // honest below-threshold → known-empty
+    }
+    final low = (body['min_price'] as num?)?.toDouble();
+    final high = (body['max_price'] as num?)?.toDouble();
+    return StreetPriceAggregate(
+      provider: provider,
+      category: category,
+      reportCount: count,
+      typical: typical,
+      low: (low != null && low > 0) ? low : typical,
+      high: (high != null && high > 0) ? high : typical,
+      catalogueLowest: catalogueLowest(provider, category),
+    );
+  }
+
+  /// The hydrated SERVER aggregate for a pair, or null when none is cached
+  /// (never fetches — read-only view of the cache, for merge + tests).
+  static StreetPriceAggregate? serverAggregateFor(
+          String provider, String category) =>
+      _serverCache[_pairKey(provider, category)]?.aggregate;
+
+  /// True when the pair has a cached server answer (aggregate OR known-empty).
+  static bool hasServerAnswer(String provider, String category) =>
+      _serverCache.containsKey(_pairKey(provider, category));
 
   /// In-memory, session-scoped report store. This is deliberately NOT persisted
   /// here — persistence/sync is the caller's concern (own-row RLS server-side per
@@ -223,8 +377,14 @@ class StreetPriceService {
     return List.unmodifiable(out);
   }
 
-  /// Clear the in-memory store (tests + sign-out).
-  static void clear() => _reports.clear();
+  /// Clear the in-memory store AND the hydrated server cache (tests + sign-out).
+  /// In-flight fetches are forgotten too (their late completion writes into a
+  /// fresh cache at worst — still real server data, still TTL-bounded).
+  static void clear() {
+    _reports.clear();
+    _serverCache.clear();
+    _inflight.clear();
+  }
 
   /// Add already-trusted reports in bulk (e.g. hydrated from the server). Each is
   /// re-screened so a tampered/empty row can never sneak past the gate.
@@ -367,7 +527,17 @@ class StreetPriceService {
   /// The honest aggregate for a (provider, category), or `null` when fewer than
   /// [kStreetPriceMinReports] accepted reports back it. A non-null result ALWAYS
   /// represents real, sufficient data — the UI can render it without re-checking.
+  ///
+  /// Synchronous by contract (all existing call sites unchanged): reads the
+  /// hydrated SERVER cache first and PREFERS a server aggregate over the local
+  /// session one — the server pool includes ALL accepted reports globally, the
+  /// session store only this device's. A server "known-empty" (honest
+  /// below-threshold) falls through to the local session aggregate, so a user
+  /// who just contributed the unlocking reports here still sees them counted.
   static StreetPriceAggregate? aggregateFor(String provider, String category) {
+    final server = serverAggregateFor(provider, category);
+    if (server != null) return server;
+
     final accepted = acceptedReports(provider, category);
     if (accepted.length < kStreetPriceMinReports) return null;
 
@@ -405,8 +575,13 @@ class StreetPriceService {
   /// How many MORE accepted reports a (provider, category) needs before its
   /// aggregate unlocks. 0 once the threshold is met. Lets the UI say "עוד N דיווחים
   /// ויוצג מחיר הרחוב" honestly, without implying a number exists yet.
+  /// Counts the LARGER of the local session pool and the hydrated server count
+  /// (both are real report counts; the server's is the global one).
   static int reportsNeeded(String provider, String category) {
-    final have = acceptedReports(provider, category).length;
+    final local = acceptedReports(provider, category).length;
+    final server =
+        _serverCache[_pairKey(provider, category)]?.reportCount ?? 0;
+    final have = local > server ? local : server;
     final need = kStreetPriceMinReports - have;
     return need < 0 ? 0 : need;
   }

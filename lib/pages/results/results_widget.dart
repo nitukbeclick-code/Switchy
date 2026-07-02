@@ -9,7 +9,7 @@ import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../widgets/legal_disclosure.dart';
-import '../../widgets/price_text.dart';
+
 import '../../widgets/empty_state.dart';
 
 class ResultsWidget extends StatefulWidget {
@@ -49,6 +49,23 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     ('price', 'הכי זול'),
     ('save', 'מקסימום חיסכון'),
   ];
+
+  // Per-category feature filters — the ONE source for both the filter sheet
+  // and the inline active-filter chips (labels resolve from here).
+  static const Map<String, List<(String, String)>> _catFilters = {
+    'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
+    'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
+    'tv': [('סטרימינג', 'streaming'), ('ספורט', 'sport'), ('Netflix', 'netflix')],
+    'triple': [('Netflix', 'netflix'), ('ספורט', 'sport'), ('ללא התחייבות', 'nocommit')],
+    'abroad': [('eSIM', 'esim'), ('ללא התחייבות', 'nocommit')],
+  };
+
+  static String _filterLabel(String cat, String id) {
+    for (final f in _catFilters[cat] ?? const <(String, String)>[]) {
+      if (f.$2 == id) return f.$1;
+    }
+    return id;
+  }
 
   @override
   void dispose() {
@@ -165,10 +182,6 @@ class _ResultsWidgetState extends State<ResultsWidget> {
 
     final allCatProviders = plansByCat(cat).map((p) => p.provider).toSet().toList();
 
-    final topPlanMatch = plans.isNotEmpty ? matchMap[plans.first.id] : null;
-    final topPlan = topPlanMatch?.plan;
-    final topSave = topPlan != null ? planSaveYear(topPlan, bill) : 0;
-
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
@@ -196,7 +209,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 ),
             ]),
             tooltip: 'סינון',
-            onPressed: () => _showFilters(context, appState, ffTheme),
+            onPressed: () =>
+                _showFilters(context, appState, ffTheme, allCatProviders),
           ),
         ],
         bottom: PreferredSize(
@@ -222,8 +236,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   final fromQuiz = appState.quizCompleted &&
                       appState.quizCat == c.$1 &&
                       active;
-                  // Active = green ACTION fill (the brand's active-state cue);
-                  // inactive = a faint glass chip on the ink header.
+                  // ONE chip language (bank-grade): neutral = surface bg + 1px
+                  // hairline + ink text; ACTIVE = pale-green tint + green text
+                  // + green 1px border. No solid/black fills — solid green is
+                  // reserved for CTAs.
                   return Padding(
                     padding: const EdgeInsetsDirectional.only(end: 8),
                     // Screen readers hear a proper toggle-button (name comes
@@ -247,26 +263,29 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 5),
                         decoration: BoxDecoration(
-                          // Active = green ACTION fill (the only state cue);
-                          // inactive is a flat glass chip with NO border, so the
-                          // active chip is distinguished by fill, not a double
-                          // border outline.
                           color: active
-                              ? ffTheme.brandAccent
-                              : onHeader.withValues(alpha: 0.12),
+                              ? ffTheme.brandAccentTint
+                              : ffTheme.cardSurface,
                           borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                          boxShadow: active ? ffTheme.shadowAccent : null,
+                          border: Border.all(
+                              color: active
+                                  ? ffTheme.brandAccent
+                                  : ffTheme.alternate),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(categoryIconData(c.$1), size: 14,
-                                color: active ? Colors.white : onHeader),
+                                color: active
+                                    ? ffTheme.brandAccentText
+                                    : ffTheme.primaryText),
                             const SizedBox(width: 5),
                             Text(
                               c.$2,
                               style: ffTheme.labelMedium.copyWith(
-                                color: active ? Colors.white : onHeader,
+                                color: active
+                                    ? ffTheme.brandAccentText
+                                    : ffTheme.primaryText,
                                 fontWeight:
                                     active ? FontWeight.w700 : FontWeight.w500,
                               ),
@@ -277,18 +296,20 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.22),
+                                  color: ffTheme.brandAccent
+                                      .withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.filter_alt_rounded,
-                                        size: 10, color: Colors.white),
+                                    Icon(Icons.filter_alt_rounded,
+                                        size: 10,
+                                        color: ffTheme.brandAccentText),
                                     const SizedBox(width: 3),
                                     Text('מהשאלון',
                                         style: ffTheme.labelSmall.copyWith(
-                                            color: Colors.white,
+                                            color: ffTheme.brandAccentText,
                                             fontWeight: FontWeight.w700,
                                             height: 1.0)),
                                   ],
@@ -339,22 +360,20 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         borderSide: BorderSide.none,
                       ),
+                      isDense: true,
+                      // Slightly shorter pill — calmer chrome above the results.
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                          horizontal: 16, vertical: 10),
                     ),
                   ),
                 ),
               ),
 
-              // Info row + bill stepper
+              // Meta row — freshness + result count (one slim line)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Info row
-                      Row(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  child: Row(
                         children: [
                           // Honest freshness badge — driven by the real last live
                           // sync ([catalogueSyncedAt]). Shows "עודכן היום" only
@@ -424,227 +443,86 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             ),
                           ],
                         ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Bill stepper
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
-                        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
-                        child: Row(
-                          children: [
-                            // Flexible + ellipsis: overflow-safe when the OS
-                            // text scale is large (the steppers keep priority).
-                            Flexible(
-                              child: Text('החשבון שלך:',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: ffTheme.bodyMedium
-                                      .copyWith(color: ffTheme.secondaryText)),
-                            ),
-                            const SizedBox(width: 8),
-                            Semantics(
-                              button: true,
-                              label: 'ערוך את החשבון החודשי',
-                              child: Material(
-                                color: ffTheme.accent1,
-                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                                  onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Money token — [PriceText] pins the ₪
-                                        // before the digits (stable LTR bidi) in
-                                        // the RTL stepper. Style override keeps
-                                        // the titleMedium/ink numeral; priceDisplay
-                                        // already carries tabular figures.
-                                        PriceText('₪$bill',
-                                            style: ffTheme.titleMedium
-                                                .copyWith(color: ffTheme.primary)),
-                                        const SizedBox(width: 4),
-                                        Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            _StepButton(
-                              icon: Icons.remove,
-                              onTap: () =>
-                                  appState.setCurrentBill(cat, bill - 10),
-                              ffTheme: ffTheme,
-                              semanticLabel: 'הפחת ₪10 מהחשבון',
-                            ),
-                            const SizedBox(width: 8),
-                            _StepButton(
-                              icon: Icons.add,
-                              onTap: () =>
-                                  appState.setCurrentBill(cat, bill + 10),
-                              ffTheme: ffTheme,
-                              semanticLabel: 'הוסף ₪10 לחשבון',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
 
-              // Savings baseline banner — makes the comparison's reference point
-              // legible: every "חיסכון של ₪X" figure is computed against THIS bill.
-              // When the bill is still the default (not personalized), nudge the
-              // user to enter their real bill so the savings reflect reality.
+              // Merged baseline row — the old bill-stepper card and the
+              // "מחושב מול" strip collapsed into ONE slim line:
+              // "החיסכון מחושב מול ₪X/חודש · ערוך". Tapping ערוך opens the
+              // bill sheet, which now hosts the same ±10 steppers (identical
+              // setCurrentBill state logic, just relocated off the fold path).
               if (bill > 0)
                 SliverToBoxAdapter(
                   child: _buildBaselineBanner(
                       context, appState, ffTheme, cat, bill),
                 ),
 
-              // Quick filter chips per category
+              // ONE control rail — sort options as small chips (active = green
+              // TINT, never solid green) + a "סינון" chip with a count badge
+              // that opens the filter sheet (feature + provider chips live in
+              // the sheet). Inline, only currently-ACTIVE filters render, each
+              // dismissible — so the band stays one line tall.
               SliverToBoxAdapter(
-                child: _buildQuickFilters(context, appState, ffTheme, cat),
+                child: _buildControlRail(
+                    context, appState, ffTheme, cat, allCatProviders),
               ),
 
-              // Provider chips
-              SliverToBoxAdapter(
-                child: _buildProviderChips(ffTheme, allCatProviders),
-              ),
-
-              // Sort chips
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  // Scales with the OS text size so large type never clips.
-                  height: textScaler.scale(52),
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    // Vertical inset moved INTO each item so the tap target
-                    // spans the full 52px band (>=48px), not just the chip.
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: _sorts.map((s) {
-                      final isSmart = s.$1 == 'smart';
-                      final active = isSmart
-                          ? _smartSort
-                          : (!_smartSort && appState.sortMode == s.$1);
-                      return Padding(
-                        padding: const EdgeInsetsDirectional.only(end: 8),
-                        // Accessible name comes from the chip's Text; expose
-                        // button role + the selected sort state.
-                        child: Semantics(
-                          button: true,
-                          selected: active,
-                          child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            if (isSmart) {
-                              setState(() => _smartSort = true);
-                            } else {
-                              setState(() => _smartSort = false);
-                              appState.setSortMode(s.$1);
-                            }
-                          },
-                          child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: AnimatedContainer(
-                            duration: reduceMotion
-                                ? Duration.zero
-                                : ffTheme.motionFast,
-                            curve: ffTheme.easeOut,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                            decoration: BoxDecoration(
-                              // Active sort = green ACTION fill (works on both
-                              // themes); smart-sort wears the accent gradient +
-                              // glow as the AI-pick affordance.
-                              color: active
-                                  ? (isSmart ? null : ffTheme.brandAccent)
-                                  : ffTheme.cardSurface,
-                              gradient: active && isSmart ? ffTheme.accentGradient : null,
-                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                              border: Border.all(
-                                  color: active
-                                      ? ffTheme.brandAccent
-                                      : ffTheme.alternate),
-                              boxShadow: active ? ffTheme.shadowAccent : null,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isSmart) ...[
-                                  Icon(Icons.adjust,
-                                      size: active ? 13 : 12,
-                                      color: active ? Colors.white : ffTheme.brandAccent),
-                                  const SizedBox(width: 4),
-                                ],
-                                Text(
-                                  s.$2,
-                                  style: ffTheme.labelMedium.copyWith(
-                                    color: active ? Colors.white : ffTheme.primaryText,
-                                    fontWeight: active
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-
-              // Quiz context banner (only for the matching quiz category)
+              // Quiz filter line — compressed to one slim tint row (the old
+              // two-row banner): "מסונן לפי השאלון · עד ₪X" + עריכה + ✕.
               if (appState.quizCompleted && appState.quizCat == cat)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsetsDirectional.only(
+                          start: 12, end: 2, top: 2, bottom: 2),
                       decoration: BoxDecoration(
-                        color: ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
+                        color: ffTheme.brandAccentTint,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(
+                            color: ffTheme.brandAccent.withValues(alpha: 0.35)),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.filter_alt_rounded, size: 18, color: ffTheme.primary),
-                          const SizedBox(width: 8),
+                          Icon(Icons.filter_alt_rounded,
+                              size: 14, color: ffTheme.brandAccentText),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               cat == 'cellular' && appState.quizLines > 1
-                                  ? 'שאלון: ${appState.quizLines} קווים, עד ₪${appState.quizBudget}'
-                                  : 'שאלון: עד ₪${appState.quizBudget}${cat == 'abroad' ? '/חבילה' : '/חודש'}',
-                              style: ffTheme.labelMedium.copyWith(color: ffTheme.primary),
+                                  ? 'מסונן לפי השאלון · ${appState.quizLines} קווים · עד ₪${appState.quizBudget}'
+                                  : 'מסונן לפי השאלון · עד ₪${appState.quizBudget}${cat == 'abroad' ? '/חבילה' : '/חודש'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: ffTheme.brandAccentText,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ]),
                             ),
                           ),
                           Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                               onTap: () => context.pushNamed('Quiz'),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                child: Text('עריכה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                child: Text('עריכה',
+                                    style: ffTheme.labelSmall.copyWith(
+                                        color: ffTheme.brandAccentText,
+                                        fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ),
                           IconButton(
-                            icon: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                            icon: Icon(Icons.close_rounded,
+                                size: 16, color: ffTheme.brandAccentText),
                             tooltip: 'הסתר את סינון השאלון',
                             visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
                             onPressed: () => appState.setQuizCompleted(false),
                           ),
                         ],
@@ -697,77 +575,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ).animate().fadeIn(duration: 250.ms),
                 ),
 
-              // AI banner
-              if (topPlan != null && topSave > 0)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        // Const ink→slate wash — a premium dark band that stays
-                        // ink in BOTH themes (the theme-aware getters would turn
-                        // near-white on dark).
-                        gradient: ffTheme.freshGradient,
-                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                        boxShadow: ffTheme.shadowLifted,
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                          splashColor: Colors.white.withValues(alpha: 0.12),
-                          highlightColor: Colors.white.withValues(alpha: 0.06),
-                          onTap: () => context.pushNamed('PlanDetail',
-                              pathParameters: {'planId': topPlan.id}),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.14),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.auto_awesome_rounded, size: 20, color: Colors.white),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${topPlan.provider} מומלץ לך',
-                                        style: ffTheme.titleSmall
-                                            .copyWith(color: Colors.white),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        // De-pushed: the descriptive "חיסכון של"
-                                        // (honest comparison figure) instead of the
-                                        // second-person "תחסוך" hard sell.
-                                        'חיסכון של ₪$topSave בשנה',
-                                        style: ffTheme.bodySmall.copyWith(
-                                            color: ffTheme.savingText,
-                                            fontWeight: FontWeight.w800),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Icon(Icons.arrow_forward_ios_rounded,
-                                    color: Colors.white.withValues(alpha: 0.7), size: 16),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    // Reduced motion KEEPS the fade but DROPS the slide
-                    // transform (begin: 0 = no translation).
-                    ).animate().fadeIn(duration: 300.ms).slideX(
-                        begin: reduceMotion ? 0 : 0.05),
-                  ),
-                ),
+              // (The black "recommended" banner was DELETED — it duplicated the
+              // best-match card that renders directly below it in the list.)
 
               // No-match / empty state — the shared [EmptyState] (warm honest
               // copy + ONE clear next action), with a "switch category" helper
@@ -1002,189 +811,187 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     );
   }
 
-  Widget _buildProviderChips(AppTheme ffTheme, List<String> providers) {
-    if (providers.length <= 1) return const SizedBox();
+  /// ONE compact control rail (collapsed the former sort + feature + provider
+  /// bands): the sort options as small chips (active = green TINT — solid
+  /// green stays a CTA-only treatment), then a "סינון" chip with a live count
+  /// badge that opens the filter sheet, then ONLY the currently-active filter
+  /// chips (each dismissible in place).
+  Widget _buildControlRail(BuildContext context, AppState appState,
+      AppTheme ffTheme, String cat, List<String> providers) {
+    final activeCount =
+        appState.activeFilters.length + (_providerFilter.isEmpty ? 0 : 1);
     return SizedBox(
       // Scales with the OS text size so large type never clips the chips.
-      height: MediaQuery.textScalerOf(context).scale(44),
+      height: MediaQuery.textScalerOf(context).scale(48),
       child: ListView(
         scrollDirection: Axis.horizontal,
-        // Vertical inset moved INTO each chip so the tap target spans the
-        // full 44px band, not just the ~36px pill.
+        // Vertical inset lives INSIDE each item so the tap target spans the
+        // full 48px band, not just the pill.
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
-          _providerChip('הכל', ffTheme),
-          ...providers.map((p) => _providerChip(p, ffTheme)),
+          // Sort options — one shared chip language, active = tint.
+          ..._sorts.map((s) {
+            final isSmart = s.$1 == 'smart';
+            final active = isSmart
+                ? _smartSort
+                : (!_smartSort && appState.sortMode == s.$1);
+            return _railChip(
+              ffTheme: ffTheme,
+              label: s.$2,
+              active: active,
+              leading: isSmart
+                  ? Icon(Icons.adjust,
+                      size: 12,
+                      color: active
+                          ? ffTheme.brandAccentText
+                          : ffTheme.secondaryText)
+                  : null,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                if (isSmart) {
+                  setState(() => _smartSort = true);
+                } else {
+                  setState(() => _smartSort = false);
+                  appState.setSortMode(s.$1);
+                }
+              },
+            );
+          }),
+
+          // "סינון" chip — opens the filter sheet (feature + provider chips
+          // moved in there); the badge carries the active-filter count.
+          _railChip(
+            ffTheme: ffTheme,
+            label: 'סינון',
+            active: activeCount > 0,
+            semanticLabel: activeCount > 0
+                ? 'סינון, $activeCount סינונים פעילים'
+                : 'סינון',
+            leading: Icon(Icons.tune_rounded,
+                size: 13,
+                color: activeCount > 0
+                    ? ffTheme.brandAccentText
+                    : ffTheme.secondaryText),
+            trailing: activeCount > 0
+                ? Container(
+                    margin: const EdgeInsetsDirectional.only(start: 5),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccent.withValues(alpha: 0.18),
+                      borderRadius:
+                          BorderRadius.circular(ffTheme.radiusPill),
+                    ),
+                    child: Text('$activeCount',
+                        style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.brandAccentText,
+                            fontWeight: FontWeight.w700,
+                            height: 1.0,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ])),
+                  )
+                : null,
+            onTap: () =>
+                _showFilters(context, appState, ffTheme, providers),
+          ),
+
+          // ONLY the currently-active feature filters, dismissible inline.
+          ...appState.activeFilters.map((id) => _railChip(
+                ffTheme: ffTheme,
+                label: _filterLabel(cat, id),
+                active: true,
+                semanticLabel: 'הסר את הסינון ${_filterLabel(cat, id)}',
+                trailing: Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 4),
+                  child: Icon(Icons.close_rounded,
+                      size: 13, color: ffTheme.brandAccentText),
+                ),
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  appState.toggleFilter(id);
+                },
+              )),
+
+          // The active provider filter, dismissible inline.
+          if (_providerFilter.isNotEmpty)
+            _railChip(
+              ffTheme: ffTheme,
+              label: _providerFilter,
+              active: true,
+              semanticLabel: 'הסר את סינון הספק $_providerFilter',
+              trailing: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 4),
+                child: Icon(Icons.close_rounded,
+                    size: 13, color: ffTheme.brandAccentText),
+              ),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _providerFilter = '');
+              },
+            ),
         ],
       ),
     );
   }
 
-  Widget _providerChip(String label, AppTheme ffTheme) {
-    final isAll = label == 'הכל';
-    final active = isAll ? _providerFilter.isEmpty : _providerFilter == label;
+  /// The single chip primitive of the rail — neutral = surface + 1px hairline
+  /// + ink text; active = pale-green tint + green text + green 1px border.
+  Widget _railChip({
+    required AppTheme ffTheme,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+    Widget? leading,
+    Widget? trailing,
+    String? semanticLabel,
+  }) {
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 8),
-      // Accessible name comes from the chip's Text; expose button role + the
-      // selected provider-filter state.
       child: Semantics(
         button: true,
         selected: active,
+        label: semanticLabel,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => setState(() => _providerFilter = isAll ? '' : label),
+          onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: 7),
             child: AnimatedContainer(
               duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
               curve: ffTheme.easeOut,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: active
-                    ? ffTheme.brandAccent.withValues(alpha: 0.12)
-                    : ffTheme.cardSurface,
+                color: active ? ffTheme.brandAccentTint : ffTheme.cardSurface,
                 borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                 border: Border.all(
-                  color: active ? ffTheme.brandAccent : ffTheme.alternate,
-                  width: active ? 1.5 : 1,
-                ),
+                    color:
+                        active ? ffTheme.brandAccent : ffTheme.alternate),
               ),
-              child: Text(
-                label,
-                style: ffTheme.labelSmall.copyWith(
-                  color: active ? ffTheme.brandAccent : ffTheme.primaryText,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (leading != null) ...[
+                    leading,
+                    const SizedBox(width: 4),
+                  ],
+                  Text(label,
+                      style: ffTheme.labelMedium.copyWith(
+                        color: active
+                            ? ffTheme.brandAccentText
+                            : ffTheme.primaryText,
+                        fontWeight:
+                            active ? FontWeight.w700 : FontWeight.w500,
+                      )),
+                  if (trailing != null) trailing,
+                ],
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildQuickFilters(BuildContext context, AppState appState, AppTheme ffTheme, String cat) {
-    const quickFilters = <String, List<(String, String)>>{
-      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
-      'internet': [('סיב אופטי', 'fiber'), ('מחיר קבוע', 'fixed'), ('ללא התחייבות', 'nocommit')],
-      'tv': [('ספורט', 'sport'), ('Netflix', 'netflix'), ('סטרימינג', 'streaming')],
-      'triple': [('Netflix', 'netflix'), ('ספורט', 'sport'), ('ללא התחייבות', 'nocommit')],
-      'abroad': [('eSIM', 'esim'), ('ללא התחייבות', 'nocommit')],
-    };
-    final chips = quickFilters[cat] ?? const [];
-    if (chips.isEmpty) return const SizedBox();
-
-    final hasActiveFilters = appState.activeFilters.isNotEmpty;
-    final reduceMotion =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-
-    return SizedBox(
-      // Scales with the OS text size so large type never clips the chips.
-      height: MediaQuery.textScalerOf(context).scale(44),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        // Vertical inset moved INTO each chip so the tap target spans the
-        // full 44px band, not just the ~36px pill.
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          // "נקה" clear button — shown only when any filter is active
-          if (hasActiveFilters)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
-              child: Semantics(
-                button: true,
-                // The visible "נקה" is ambiguous out of visual context — give
-                // screen readers the full action.
-                label: 'נקה את כל הסינונים',
-                excludeSemantics: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    appState.clearFilters();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: AnimatedContainer(
-                      duration: reduceMotion
-                          ? Duration.zero
-                          : const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: ffTheme.error,
-                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        border: Border.all(color: ffTheme.error),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.close_rounded, size: 12, color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text('נקה',
-                              style: ffTheme.labelSmall.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ...chips.map((chip) {
-            final active = appState.activeFilters.contains(chip.$2);
-            return Padding(
-              padding: const EdgeInsetsDirectional.only(end: 8),
-              // Accessible name comes from the chip's Text; expose button role
-              // + the selected filter state.
-              child: Semantics(
-                button: true,
-                selected: active,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    appState.toggleFilter(chip.$2);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: AnimatedContainer(
-                      duration:
-                          reduceMotion ? Duration.zero : ffTheme.motionFast,
-                      curve: ffTheme.easeOut,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                      decoration: BoxDecoration(
-                        // Selected filter = green ACTION fill (consistent active cue).
-                        color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        border: Border.all(
-                            color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                        boxShadow: active ? ffTheme.shadowAccent : null,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (active) ...[
-                            const Icon(Icons.check_rounded, size: 12, color: Colors.white),
-                            const SizedBox(width: 4),
-                          ],
-                          Text(chip.$1,
-                              style: ffTheme.labelSmall.copyWith(
-                                  color: active ? Colors.white : ffTheme.primaryText,
-                                  fontWeight: active
-                                      ? FontWeight.w700
-                                      : FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
       ),
     );
   }
@@ -1234,24 +1041,29 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 ),
               ),
             ),
-            // When the baseline is still the default, point the user to Bills to
-            // enter their real spend; otherwise let them tweak it inline.
+            // ערוך opens the bill sheet, which hosts the exact ±10 stepper
+            // logic of the old inline card (setCurrentBill state unchanged) —
+            // entering a real amount there also personalizes the baseline.
             const SizedBox(width: 4),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                onTap: () => isDefault
-                    ? context.pushNamed('Bills')
-                    : _showBillEditor(context, appState, cat, bill, ffTheme),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  child: Text(
-                    isDefault ? 'הזן חשבון אמיתי' : 'עדכון',
-                    style: ffTheme.labelSmall.copyWith(
-                        color: ffTheme.brandAccentText,
-                        fontWeight: FontWeight.w700),
+            Semantics(
+              button: true,
+              label: 'ערוך את החשבון החודשי',
+              excludeSemantics: true,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  onTap: () =>
+                      _showBillEditor(context, appState, cat, bill, ffTheme),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    child: Text(
+                      isDefault ? 'הזן חשבון אמיתי' : 'ערוך',
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.brandAccentText,
+                          fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ),
               ),
@@ -1281,19 +1093,52 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             const SizedBox(height: 6),
             Text(cat == 'abroad' ? 'הכניסו את התקציב שלכם לחבילת חו"ל' : 'הכניסו את הסכום שאתם משלמים כרגע', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
             const SizedBox(height: 16),
-            TextField(
-              controller: ctrl,
-              keyboardType: TextInputType.number,
-              autofocus: true,
-              textDirection: TextDirection.ltr,
-              style: ffTheme.displaySmall.copyWith(color: ffTheme.primaryText),
-              decoration: InputDecoration(
-                prefixText: '₪',
-                prefixStyle: ffTheme.displaySmall.copyWith(color: ffTheme.brandAccent),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 2)),
-                filled: true, fillColor: ffTheme.accent1,
-              ),
+            // The ±10 steppers flank the amount field — the SAME state logic
+            // as the old inline stepper card (setCurrentBill ±10, clamped by
+            // AppState), relocated into this sheet.
+            Row(
+              children: [
+                _StepButton(
+                  icon: Icons.remove,
+                  onTap: () {
+                    final v = int.tryParse(ctrl.text) ??
+                        appState.currentBill(cat);
+                    appState.setCurrentBill(cat, v - 10);
+                    ctrl.text = '${appState.currentBill(cat)}';
+                  },
+                  ffTheme: ffTheme,
+                  semanticLabel: 'הפחת ₪10 מהחשבון',
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: ctrl,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    textDirection: TextDirection.ltr,
+                    style: ffTheme.displaySmall.copyWith(color: ffTheme.primaryText),
+                    decoration: InputDecoration(
+                      prefixText: '₪',
+                      prefixStyle: ffTheme.displaySmall.copyWith(color: ffTheme.brandAccent),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 2)),
+                      filled: true, fillColor: ffTheme.accent1,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _StepButton(
+                  icon: Icons.add,
+                  onTap: () {
+                    final v = int.tryParse(ctrl.text) ??
+                        appState.currentBill(cat);
+                    appState.setCurrentBill(cat, v + 10);
+                    ctrl.text = '${appState.currentBill(cat)}';
+                  },
+                  ffTheme: ffTheme,
+                  semanticLabel: 'הוסף ₪10 לחשבון',
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             SizedBox(
@@ -1318,17 +1163,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     ).then((_) => ctrl.dispose());
   }
 
-  void _showFilters(
-      BuildContext context, AppState appState, AppTheme ffTheme) {
-    const Map<String, List<(String, String)>> catFilters = {
-      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
-      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
-      'tv': [('סטרימינג', 'streaming'), ('ספורט', 'sport'), ('Netflix', 'netflix')],
-      'triple': [('Netflix', 'netflix'), ('ספורט', 'sport'), ('ללא התחייבות', 'nocommit')],
-      'abroad': [('eSIM', 'esim'), ('ללא התחייבות', 'nocommit')],
-    };
+  void _showFilters(BuildContext context, AppState appState, AppTheme ffTheme,
+      List<String> providers) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       // The single bottom-sheet top-corner token (was a 24 literal).
       shape: RoundedRectangleBorder(
           borderRadius:
@@ -1346,6 +1185,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 TextButton(
                   onPressed: () {
                     appState.clearFilters();
+                    setState(() => _providerFilter = '');
                     Navigator.pop(ctx);
                   },
                   child: Text('נקה הכל',
@@ -1353,14 +1193,20 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
                 ),
               ]),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+              Text('מאפיינים',
+                  style: ffTheme.labelMedium
+                      .copyWith(color: ffTheme.secondaryText)),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final chip in catFilters[appState.selectedCat] ?? [])
+                  for (final chip in _catFilters[appState.selectedCat] ?? const <(String, String)>[])
                     Builder(builder: (ctx) {
                       final selected = appState.activeFilters.contains(chip.$2);
+                      // ONE chip language — active = green TINT + green text
+                      // + green border (never a solid-green fill).
                       return FilterChip(
                         label: Text(chip.$1),
                         selected: selected,
@@ -1368,16 +1214,59 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           appState.toggleFilter(chip.$2);
                           setModalState(() {});
                         },
-                        selectedColor: ffTheme.brandAccent,
-                        backgroundColor: ffTheme.accent1,
+                        selectedColor: ffTheme.brandAccentTint,
+                        backgroundColor: ffTheme.cardSurface,
                         side: BorderSide(color: selected ? ffTheme.brandAccent : ffTheme.alternate),
                         labelStyle: ffTheme.bodyMedium.copyWith(
-                            color: selected ? Colors.white : ffTheme.primaryText),
-                        checkmarkColor: Colors.white,
+                            color: selected
+                                ? ffTheme.brandAccentText
+                                : ffTheme.primaryText),
+                        checkmarkColor: ffTheme.brandAccentText,
                       );
                     }),
                 ],
               ),
+              // Provider quick-filter — moved off the fold into the sheet.
+              if (providers.length > 1) ...[
+                const SizedBox(height: 16),
+                Text('ספק',
+                    style: ffTheme.labelMedium
+                        .copyWith(color: ffTheme.secondaryText)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final p in ['הכל', ...providers])
+                      Builder(builder: (ctx) {
+                        final isAll = p == 'הכל';
+                        final selected = isAll
+                            ? _providerFilter.isEmpty
+                            : _providerFilter == p;
+                        return FilterChip(
+                          label: Text(p),
+                          selected: selected,
+                          onSelected: (_) {
+                            setState(() =>
+                                _providerFilter = isAll ? '' : p);
+                            setModalState(() {});
+                          },
+                          selectedColor: ffTheme.brandAccentTint,
+                          backgroundColor: ffTheme.cardSurface,
+                          side: BorderSide(
+                              color: selected
+                                  ? ffTheme.brandAccent
+                                  : ffTheme.alternate),
+                          labelStyle: ffTheme.bodyMedium.copyWith(
+                              color: selected
+                                  ? ffTheme.brandAccentText
+                                  : ffTheme.primaryText),
+                          checkmarkColor: ffTheme.brandAccentText,
+                        );
+                      }),
+                  ],
+                ),
+              ],
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,

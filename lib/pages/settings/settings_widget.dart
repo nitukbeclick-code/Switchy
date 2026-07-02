@@ -144,29 +144,6 @@ class SettingsWidget extends StatelessWidget {
                   _Divider(ffTheme: ffTheme),
                   _RowReveal(index: 1, child:
                     _ActionRow(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      title: 'נקה שיחת תמיכה',
-                      subtitle: 'מחק את היסטוריית הצ\'אט',
-                      iconColor: ffTheme.secondaryText,
-                      onTap: () => _confirmAction(
-                        context: context,
-                        ffTheme: ffTheme,
-                        title: 'נקה שיחת תמיכה',
-                        message: 'למחוק את היסטוריית שיחת התמיכה?',
-                        confirmLabel: 'מחק',
-                        holdHint: 'החזק כדי למחוק',
-                        confirmColor: ffTheme.error,
-                        onConfirm: () {
-                          Provider.of<AppState>(context, listen: false).clearChatHistory();
-                          _showSnack(context, 'שיחת התמיכה נוקתה');
-                        },
-                      ),
-                      ffTheme: ffTheme,
-                    ),
-                  ),
-                  _Divider(ffTheme: ffTheme),
-                  _RowReveal(index: 2, child:
-                    _ActionRow(
                       icon: Icons.psychology_rounded,
                       title: 'נקה שיחת יועץ',
                       subtitle: 'מחק את היסטוריית שיחת ה-AI',

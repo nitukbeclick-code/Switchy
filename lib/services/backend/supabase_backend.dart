@@ -334,13 +334,27 @@ class SupabaseBackend implements Backend {
         .limit(1)
         .maybeSingle();
     if (row == null) return 0;
-    final status = row['status'] as String? ?? 'new';
-    switch (status) {
-      case 'contacted': return 2;
-      case 'won': return 4;
-      case 'lost': return -1; // terminal — the rep closed the lead
-      default: return 1;
-    }
+    return leadStepFromStatus(row['status'] as String?);
+  }
+
+  @override
+  Future<({int step, DateTime? createdAt})> fetchLeadInfo() async {
+    if (_uid == null) return (step: 0, createdAt: null);
+    // ONLY the client-granted columns — the leads grant is (id, status,
+    // created_at, user_id); selecting anything else would fail under RLS.
+    final row = await _db
+        .from('leads')
+        .select('status, created_at')
+        .eq('user_id', _uid!)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return (step: 0, createdAt: null);
+    return (
+      step: leadStepFromStatus(row['status'] as String?),
+      createdAt:
+          DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal(),
+    );
   }
 
   @override
@@ -357,15 +371,8 @@ class SupabaseBackend implements Backend {
           filter: PostgresChangeFilter(
               type: PostgresChangeFilterType.eq, column: 'user_id', value: _uid!),
           callback: (payload) {
-            final status = payload.newRecord['status'] as String? ?? 'new';
-            int step;
-            switch (status) {
-              case 'contacted': step = 2; break;
-              case 'won': step = 4; break;
-              case 'lost': step = -1; break; // terminal — the rep closed the lead
-              default: step = 1;
-            }
-            _leadStepCtrl?.add(step);
+            _leadStepCtrl
+                ?.add(leadStepFromStatus(payload.newRecord['status'] as String?));
           },
         )
         .subscribe();
@@ -924,6 +931,44 @@ class SupabaseBackend implements Backend {
     return ((data['leads'] as List?) ?? const [])
         .map((l) => CrmLead.fromJson((l as Map).cast<String, dynamic>()))
         .toList();
+  }
+
+  // ── Street price (street-price edge fn) ──────────────────────────────────────
+  // Read-only GET of the threshold-gated aggregate (mirrors the fetchAdminMetrics
+  // GET pattern; the fn is deployed --no-verify-jwt and functions.invoke attaches
+  // the anon/session JWT + apikey headers exactly like the web's proxy does). The
+  // server (`get_street_price()`) enforces the 5-report honesty gate and nulls
+  // every price below it — we transport the body verbatim and NEVER synthesize a
+  // figure. Fail-soft: ANY error → null (the service caches nothing and the app
+  // behaves exactly as offline/today).
+  @override
+  Future<Map<String, dynamic>?> fetchStreetPrice({
+    required String provider,
+    required String category,
+  }) async {
+    final p = provider.trim();
+    if (p.isEmpty) return null;
+    try {
+      final res = await _db.functions.invoke(
+        'street-price',
+        method: HttpMethod.get,
+        queryParameters: {
+          'provider': p,
+          // The deployed GET scopes by provider (see the fn's handleRead);
+          // category rides along for forward-compat with a category cohort.
+          'category': category,
+        },
+      );
+      final data = res.data;
+      if (data is Map) return data.cast<String, dynamic>();
+      if (data is String && data.isNotEmpty) {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) return decoded.cast<String, dynamic>();
+      }
+      return null;
+    } catch (_) {
+      return null; // transport / non-2xx / parse — fail soft, never throw
+    }
   }
 
   // ── Owner observability (admin-metrics edge fn) ──────────────────────────────

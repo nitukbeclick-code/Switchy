@@ -145,7 +145,7 @@ export default function TermsPage() {
           "לבקש לתקנו, לבקש למחקו ולחזור בכם מהסכמתכם — בכל עת וללא תנאי. חזרה " +
           "מהסכמה אינה פוגעת בחוקיות העיבוד שבוצע עד למועד החזרה.",
         "למימוש זכויות אלה, או להסרה מרשימת יצירת הקשר, ניתן להגיש בקשה דרך עמוד " +
-          "מימוש הזכויות שלנו, או לפנות אלינו בכתובת hello@chosech.co.il. פרטים " +
+          "מימוש הזכויות שלנו, או לפנות אלינו בכתובת hello@switchy-ai.com. פרטים " +
           "נוספים מצויים ב",
       ],
     },
@@ -158,7 +158,7 @@ export default function TermsPage() {
         "ההסכמה לכל ערוץ היא אופציונלית ונפרדת מההסכמה ליצירת קשר בנוגע לפנייה; " +
           "תיבות ההסכמה לדיוור אינן מסומנות כברירת מחדל.",
         "ניתן להסיר את ההסכמה לקבלת דיוור בכל עת — בתשובת ״הסר״ להודעה, או " +
-          "בפנייה אלינו בכתובת hello@chosech.co.il או בוואטסאפ 050-503-7537.",
+          "בפנייה אלינו בכתובת hello@switchy-ai.com או בוואטסאפ 050-503-7537.",
       ],
     },
     {
@@ -190,7 +190,7 @@ export default function TermsPage() {
       h: "יצירת קשר",
       paras: [
         "לשאלות בנוגע לתנאים אלה ניתן לפנות אלינו בכתובת " +
-          "hello@chosech.co.il או בוואטסאפ 050-503-7537.",
+          "hello@switchy-ai.com או בוואטסאפ 050-503-7537.",
       ],
     },
   ];
@@ -422,10 +422,10 @@ export default function TermsPage() {
         <p className="mt-1.5 leading-relaxed">
           אפשר לכתוב לנו לכתובת{" "}
           <a
-            href="mailto:hello@chosech.co.il"
+            href="mailto:hello@switchy-ai.com"
             className="interactive text-accent-text hover:text-accent-hover"
           >
-            hello@chosech.co.il
+            hello@switchy-ai.com
           </a>{" "}
           או בוואטסאפ 050-503-7537.
         </p>

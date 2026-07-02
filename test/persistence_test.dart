@@ -110,5 +110,44 @@ void main() {
       expect(r.hasLiked('u1'), isTrue);
       expect(r.isBookmarked('u1'), isTrue);
     });
+
+    test('billsPersonalizedCats and lastNotifiedLeadStep survive reload; leadLost does not', () async {
+      final s = AppState();
+      s.setCurrentBill('cellular', 175);
+      s.setCurrentBill('tv', 95);
+      s.setCurrentBill('internet', 0); // explicit 0 → NOT personalized
+      s.setLastNotifiedLeadStep(3);
+      s.setLeadLost(true); // session-scoped — must NOT persist
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      AppState.reset();
+      final r = AppState();
+      await r.initializePersistedState();
+
+      expect(r.isBillPersonalized('cellular'), isTrue);
+      expect(r.isBillPersonalized('tv'), isTrue);
+      expect(r.isBillPersonalized('internet'), isFalse);
+      expect(r.personalizedCats, equals({'cellular', 'tv'}));
+      expect(r.billsPersonalized, isTrue);
+      expect(r.lastNotifiedLeadStep, 3);
+      expect(r.leadLost, isFalse); // never persisted, like isAdmin
+    });
+
+    test('LEGACY: stored bool true without the StringList key leaves the set empty', () async {
+      // An install predating per-category tracking: only the old bool exists.
+      SharedPreferences.setMockInitialValues({
+        'billsPersonalized': true,
+        'bill_cellular': 150,
+      });
+      AppState.reset();
+      final r = AppState();
+      await r.initializePersistedState();
+
+      // The bool stays true, but we NEVER guess which categories were real.
+      expect(r.billsPersonalized, isTrue);
+      expect(r.personalizedCats, isEmpty);
+      expect(r.isBillPersonalized('cellular'), isFalse);
+    });
   });
 }

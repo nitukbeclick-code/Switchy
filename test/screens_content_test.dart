@@ -178,21 +178,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('home hero: no pushed figure for a guest, personalized after a real bill', (tester) async {
+  testWidgets('home hero: no pushed figure for a guest, real guardian figures after a bill', (tester) async {
     await _bootApp(tester);
     _go(tester, '/home');
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    // De-push + truth-only: a fresh guest (no personalised bills) sees NO ₪
-    // savings figure — just a calm comparison invite. We never estimate a
+    // De-push + truth-only: a fresh guest (no personalised bills) sees the
+    // 30-second setup prompt and NO ₪ savings figure — we never estimate a
     // saving for someone who hasn't entered their bills.
-    expect(find.text('השוו מחירים והתחילו לחסוך'), findsOneWidget);
-    expect(find.textContaining('חיסכון פוטנציאלי עד'), findsNothing);
+    expect(find.text('הזינו את החשבון שלכם ב-30 שניות'), findsOneWidget);
+    expect(find.textContaining('חיסכון זמין'), findsNothing);
 
-    // Enter a real bill → the hero switches to the personalised, bill-based line.
+    // Enter a real bill → the guardian hero shows the EXACT entered figure
+    // (₪200/month, a single PriceText node) and a REAL available saving.
     AppState().setCurrentBill('cellular', 200);
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('מחושב לפי החשבונות שלך'), findsOneWidget);
+    expect(find.text('₪200'), findsOneWidget);
+    expect(find.textContaining('חיסכון זמין: ₪'), findsOneWidget);
   });
 }

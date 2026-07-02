@@ -19,7 +19,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 /** Public contact channels (owner-confirmed). */
-export const CONTACT_EMAIL = "hello@chosech.co.il";
+export const CONTACT_EMAIL = "hello@switchy-ai.com";
 export const CONTACT_WHATSAPP = "050-503-7537";
 /** WhatsApp number in international E.164 form for wa.me deep links. */
 export const CONTACT_WHATSAPP_INTL = "972505037537";

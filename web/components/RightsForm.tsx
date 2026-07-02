@@ -360,12 +360,12 @@ export default function RightsForm() {
       <p className="mt-3 text-center text-xs text-muted">
         אם תעדיפו, ניתן גם לפנות אלינו ישירות בכתובת{" "}
         <a
-          href={`mailto:hello@chosech.co.il?subject=${encodeURIComponent(
+          href={`mailto:hello@switchy-ai.com?subject=${encodeURIComponent(
             "בקשת מימוש זכויות",
           )}`}
           className="text-accent-text underline hover:text-accent-hover"
         >
-          hello@chosech.co.il
+          hello@switchy-ai.com
         </a>
         .
       </p>

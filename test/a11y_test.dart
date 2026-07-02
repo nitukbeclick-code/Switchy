@@ -82,15 +82,19 @@ void main() {
     });
   });
 
-  testWidgets('Chat input row exposes a labelled send button', (tester) async {
+  testWidgets('Team channel exposes a labelled WhatsApp CTA', (tester) async {
     await _ignoringOverflow(() async {
       final handle = tester.ensureSemantics();
       await _bootApp(tester);
 
       _go(tester, '/chat');
+      // Extra settle: the CTA's entrance fade must fully finish before its
+      // subtree re-enters the semantics tree (FadeTransition drops semantics
+      // at opacity 0).
+      await _settle(tester);
       await _settle(tester);
 
-      expect(find.bySemanticsLabel('שלח הודעה'), findsOneWidget);
+      expect(find.bySemanticsLabel('דברו איתנו בוואטסאפ'), findsWidgets);
 
       handle.dispose();
       tester.takeException();

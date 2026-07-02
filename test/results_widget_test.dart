@@ -9,11 +9,12 @@ import 'package:chosech/app_state.dart';
 import 'package:chosech/data.dart' show catalogueSyncedAt;
 
 /// Widget tests for the results / catalogue-browse screen
-/// (lib/pages/results/results_widget.dart): the category tab bar + sort chips
-/// render, the bill-baseline banner and its stepper expose accessible labels,
-/// a real category lists plans, and a nonsense search collapses to the empty
-/// state with its recovery CTAs. Boots the full app through GoRouter like the
-/// existing harnesses (test/bills_widget_test.dart).
+/// (lib/pages/results/results_widget.dart): the category tab bar renders, the
+/// single control rail (sort chips + the "סינון" chip) renders, the merged
+/// bill-baseline row opens the bill sheet whose ±10 steppers expose accessible
+/// labels, a real category lists plans, and a nonsense search collapses to the
+/// empty state with its recovery CTAs. Boots the full app through GoRouter
+/// like the existing harnesses (test/bills_widget_test.dart).
 Future<void> _bootApp(WidgetTester tester) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   SharedPreferences.setMockInitialValues({});
@@ -48,7 +49,8 @@ Future<void> _ignoringOverflow(Future<void> Function() body) async {
 }
 
 void main() {
-  testWidgets('Results renders category tabs, sort chips and the bill stepper',
+  testWidgets(
+      'Results renders category tabs, the control rail and the baseline row',
       (tester) async {
     await _ignoringOverflow(() async {
       await _bootApp(tester);
@@ -64,20 +66,24 @@ void main() {
         expect(find.text(name), findsWidgets, reason: 'missing tab $name');
       }
 
-      // Sort chips, including the AI smart-sort.
+      // The ONE control rail: sort chips (incl. the AI smart-sort) + the
+      // "סינון" chip that opens the filter sheet.
       expect(find.text('התאמה חכמה'), findsOneWidget);
       expect(find.text('הכי זול'), findsOneWidget);
+      expect(find.text('סינון'), findsWidgets);
 
-      // The freshness cue + bill baseline.
+      // The freshness cue + the merged bill-baseline row (the old stepper
+      // card and the "מחושב מול" strip collapsed into one line).
       expect(find.text('עודכן היום'), findsOneWidget);
-      expect(find.text('החשבון שלך:'), findsOneWidget);
+      expect(find.textContaining('החיסכון מחושב מול'), findsOneWidget);
 
       await tester.pumpAndSettle();
       tester.takeException();
     });
   });
 
-  testWidgets('Bill stepper and editor expose accessible labels', (tester) async {
+  testWidgets('Baseline row opens the bill sheet with labelled ±10 steppers',
+      (tester) async {
     await _ignoringOverflow(() async {
       final handle = tester.ensureSemantics();
       await _bootApp(tester);
@@ -88,14 +94,28 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
-      // The +/- stepper buttons and the inline bill-edit chip are labelled for
-      // screen readers (they are otherwise icon-only / glyph controls). The
-      // step buttons wrap a bare InkWell so their label matches exactly; the
-      // edit chip wraps the "₪{bill}" Text, which merges into the node — a
-      // screen reader hears "ערוך את החשבון החודשי ₪…" — so match the prefix.
+      // The merged baseline row exposes the labelled edit action (the visible
+      // text is the ambiguous "ערוך"/"הזן חשבון אמיתי").
+      final editAction = find.bySemanticsLabel('ערוך את החשבון החודשי');
+      expect(editAction, findsOneWidget);
+
+      // Tapping it opens the bill sheet — where the ±10 stepper buttons now
+      // live (relocated from the old inline card, same setCurrentBill logic)
+      // — each labelled for screen readers.
+      await tester.tap(editAction);
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+
       expect(find.bySemanticsLabel('הוסף ₪10 לחשבון'), findsOneWidget);
       expect(find.bySemanticsLabel('הפחת ₪10 מהחשבון'), findsOneWidget);
-      expect(find.bySemanticsLabel(RegExp('ערוך את החשבון החודשי')), findsOneWidget);
+
+      // The steppers drive the same AppState bill (119 default → 129 → 119).
+      await tester.tap(find.bySemanticsLabel('הוסף ₪10 לחשבון'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(AppState().currentBill('cellular'), 129);
+      await tester.tap(find.bySemanticsLabel('הפחת ₪10 מהחשבון'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(AppState().currentBill('cellular'), 119);
 
       await tester.pumpAndSettle();
       tester.takeException();

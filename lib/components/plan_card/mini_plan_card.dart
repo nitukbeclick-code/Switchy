@@ -89,9 +89,13 @@ class MiniPlanCard extends StatelessWidget {
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
                     const SizedBox(height: 2),
+                    // Two lines: on the narrow carousel card long plan names
+                    // ('אינטרנט סיבים 1000 מגה…') used to chop mid-word after
+                    // one line; the card's height budget fits a second line, so
+                    // wrap before ellipsizing (live-tour truncation fix).
                     Text(plan.plan,
                         style: ffTheme.bodySmall,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis),
                     if (showBadge) ...[
                       const SizedBox(height: 6),
@@ -100,9 +104,17 @@ class MiniPlanCard extends StatelessWidget {
                       // glyph + tabular figures) — same as the full plan card,
                       // so savings read as a recognizable category, not a
                       // competing green button. Truth-only: the REAL saving.
+                      // COMPACT-aware: when the middle column is too narrow
+                      // for the full copy the pill drops '/שנה' (same real
+                      // figure), and hides entirely rather than render an
+                      // unreadable 'חו…' half-pill — the full copy stays in
+                      // the row's Semantics label above either way.
                       Align(
                         alignment: AlignmentDirectional.centerStart,
-                        child: SavingPill(text: 'חוסך ₪$savingsPerYear/שנה'),
+                        child: SavingPill(
+                          text: 'חוסך ₪$savingsPerYear/שנה',
+                          shortText: 'חוסך ₪$savingsPerYear',
+                        ),
                       ),
                     ],
                   ],

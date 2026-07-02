@@ -56,7 +56,7 @@ SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plan
 ## משאבים נוספים (More)
 - [מפת אתר / Sitemap](https://switchy-ai.com/sitemap.xml)
 - [מדיניות סורקי AI / AI crawler policy](https://switchy-ai.com/ai.txt)
-- צור קשר / Contact: hello@chosech.co.il · WhatsApp 050-503-7537
+- צור קשר / Contact: hello@switchy-ai.com · WhatsApp 050-503-7537
 
 ## ציטוט מועדף (Preferred citation)
 SWITCHY — השוואת מחירי תקשורת בישראל (https://switchy-ai.com), נתונים נכונים ל-2026-06-01.

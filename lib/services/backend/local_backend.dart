@@ -138,6 +138,12 @@ class LocalBackend implements Backend {
   @override
   Stream<int> leadStepStream() => const Stream.empty();
 
+  @override
+  Future<({int step, DateTime? createdAt})> fetchLeadInfo() async =>
+      // No leads table offline — no step and, crucially, no date to show
+      // (the tracker renders no timestamp rather than fabricating one).
+      (step: 0, createdAt: null);
+
   // ── Video meetings (Zoom) — simulated demo flow ─────────────────────────────
   // Without Supabase there is no rep team; the booking is stored locally and a
   // pretend confirmation (with a placeholder Zoom link) arrives after
@@ -629,6 +635,17 @@ class LocalBackend implements Backend {
         : _crmLeads.where((l) => l.status == status).toList();
     return List.unmodifiable(list);
   }
+
+  // ── Street price ─────────────────────────────────────────────────────────────
+  // No network offline — return null so StreetPriceService.hydrate is a strict
+  // no-op (nothing cached, aggregateFor unchanged). NEVER a fake aggregate: a
+  // street price is real crowd data or nothing.
+  @override
+  Future<Map<String, dynamic>?> fetchStreetPrice({
+    required String provider,
+    required String category,
+  }) async =>
+      null;
 
   // ── Owner observability ──────────────────────────────────────────────────────
   // A deterministic, plausible fake mirroring the `admin-metrics` edge-fn shape

@@ -66,6 +66,108 @@ void main() {
     });
   });
 
+  // ── isBillPersonalized — per-category TRUTH tracking ────────────────────────
+
+  group('isBillPersonalized', () {
+    test('no category is personalized by default (seed bills are not real)', () {
+      final s = AppState();
+      expect(s.isBillPersonalized('cellular'), isFalse);
+      expect(s.isBillPersonalized('internet'), isFalse);
+      expect(s.personalizedCats, isEmpty);
+    });
+
+    test('setting a positive bill personalizes exactly that category', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 150);
+      expect(s.isBillPersonalized('cellular'), isTrue);
+      expect(s.isBillPersonalized('internet'), isFalse);
+      expect(s.personalizedCats, equals({'cellular'}));
+    });
+
+    test('setting a bill back to 0 removes the personalization', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 150);
+      s.setCurrentBill('cellular', 0);
+      expect(s.isBillPersonalized('cellular'), isFalse);
+      expect(s.billsPersonalized, isFalse); // set empty → flag follows
+    });
+
+    test('a bill clamped to 0 (negative input) does not personalize', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', -50);
+      expect(s.isBillPersonalized('cellular'), isFalse);
+      expect(s.billsPersonalized, isFalse);
+    });
+
+    test('billsPersonalized mirrors set non-emptiness across categories', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 100);
+      s.setCurrentBill('internet', 120);
+      expect(s.billsPersonalized, isTrue);
+      s.setCurrentBill('cellular', 0);
+      expect(s.billsPersonalized, isTrue); // internet still personalized
+      s.setCurrentBill('internet', 0);
+      expect(s.billsPersonalized, isFalse);
+    });
+
+    test('resetAllBills clears the personalized set', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 150);
+      s.setCurrentBill('tv', 90);
+      s.resetAllBills();
+      expect(s.personalizedCats, isEmpty);
+      expect(s.isBillPersonalized('cellular'), isFalse);
+      expect(s.isBillPersonalized('tv'), isFalse);
+    });
+
+    test('personalizedCats is an unmodifiable view', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 150);
+      expect(() => s.personalizedCats.add('hacked'), throwsUnsupportedError);
+      expect(s.personalizedCats, equals({'cellular'}));
+    });
+  });
+
+  // ── Tracker state slots — leadLost (session) + lastNotifiedLeadStep ─────────
+
+  group('leadLost', () {
+    test('defaults to false', () {
+      expect(AppState().leadLost, isFalse);
+    });
+
+    test('setLeadLost updates the flag and notifies listeners', () {
+      final s = AppState();
+      var notified = false;
+      s.addListener(() => notified = true);
+      s.setLeadLost(true);
+      expect(s.leadLost, isTrue);
+      expect(notified, isTrue);
+      s.setLeadLost(false);
+      expect(s.leadLost, isFalse);
+    });
+
+    test('is session-scoped: a fresh instance starts false again', () {
+      AppState().setLeadLost(true);
+      AppState.reset();
+      expect(AppState().leadLost, isFalse);
+    });
+  });
+
+  group('lastNotifiedLeadStep', () {
+    test('defaults to 0 (never notified)', () {
+      expect(AppState().lastNotifiedLeadStep, equals(0));
+    });
+
+    test('setter updates the value and notifies listeners', () {
+      final s = AppState();
+      var notified = false;
+      s.addListener(() => notified = true);
+      s.setLastNotifiedLeadStep(2);
+      expect(s.lastNotifiedLeadStep, equals(2));
+      expect(notified, isTrue);
+    });
+  });
+
   // ── recent searches ──────────────────────────────────────────────────────────
 
   group('recentSearches', () {
@@ -400,37 +502,9 @@ void main() {
     });
   });
 
-  // ── Chat & AI-advisor history ────────────────────────────────────────────────
-
-  group('chat history', () {
-    test('addChatMessage stores messages with role + text', () {
-      final state = AppState();
-      expect(state.chatHistory, isEmpty);
-      state.addChatMessage(text: 'שלום', isUser: true);
-      state.addChatMessage(text: 'היי, איך אפשר לעזור?', isUser: false);
-      expect(state.chatHistory.length, equals(2));
-      expect(state.chatHistory.first['text'], equals('שלום'));
-      expect(state.chatHistory.first['isUser'], isTrue);
-      expect(state.chatHistory.last['isUser'], isFalse);
-    });
-
-    test('chat history is capped at 100 entries (keeps most recent)', () {
-      final state = AppState();
-      for (var i = 0; i < 130; i++) {
-        state.addChatMessage(text: 'm$i', isUser: i.isEven);
-      }
-      expect(state.chatHistory.length, equals(100));
-      expect(state.chatHistory.last['text'], equals('m129'));
-      expect(state.chatHistory.first['text'], equals('m30'));
-    });
-
-    test('clearChatHistory empties the conversation', () {
-      final state = AppState();
-      state.addChatMessage(text: 'x', isUser: true);
-      state.clearChatHistory();
-      expect(state.chatHistory, isEmpty);
-    });
-  });
+  // ── AI-advisor history ───────────────────────────────────────────────────────
+  // (The mocked support-chat history was removed with the honest team channel;
+  // the advisor conversation is the only persisted chat store left.)
 
   group('advisor history', () {
     test('addAdvisorMessage stores and clearAdvisorHistory empties', () {
@@ -442,14 +516,14 @@ void main() {
       expect(state.advisorHistory, isEmpty);
     });
 
-    test('chat and advisor histories are independent stores', () {
+    test('advisor history is capped at 100 entries (keeps most recent)', () {
       final state = AppState();
-      state.addChatMessage(text: 'chat', isUser: true);
-      state.addAdvisorMessage(text: 'advisor', isUser: true);
-      expect(state.chatHistory.length, equals(1));
-      expect(state.advisorHistory.length, equals(1));
-      expect(state.chatHistory.first['text'], equals('chat'));
-      expect(state.advisorHistory.first['text'], equals('advisor'));
+      for (var i = 0; i < 130; i++) {
+        state.addAdvisorMessage(text: 'm$i', isUser: i.isEven);
+      }
+      expect(state.advisorHistory.length, equals(100));
+      expect(state.advisorHistory.last['text'], equals('m129'));
+      expect(state.advisorHistory.first['text'], equals('m30'));
     });
   });
 

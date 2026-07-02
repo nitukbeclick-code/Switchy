@@ -1,19 +1,27 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
+import '../../core/contact.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
-import '../../widgets/app_button.dart';
-import '../../widgets/app_sheet.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/whatsapp_button.dart';
 
+/// The honest team channel — a contact-card screen for the accompaniment team
+/// ("צוות הליווי"). Replaces the old simulated "דנה" chat: no fake presence
+/// dot, no invented response SLA, no scripted bot replies. Every path here
+/// leads to a REAL channel — WhatsApp (primary), a phone call, or the existing
+/// human-callback flow — and every word of context in the prefilled message is
+/// built from real AppState (lead name, chosen plan, tracker step) with null
+/// pieces omitted, never fabricated.
+///
+/// Keeps the ChatWidget class name and the '/chat' route so the tracker's
+/// existing pushers keep working unchanged.
 class ChatWidget extends StatefulWidget {
   const ChatWidget({super.key});
 
@@ -22,766 +30,274 @@ class ChatWidget extends StatefulWidget {
 }
 
 class _ChatWidgetState extends State<ChatWidget> {
-  final _inputCtrl = TextEditingController();
-  final _scrollCtrl = ScrollController();
-  bool _isTyping = false;
-  final bool _agentOnline = true;
-
-  late List<_Msg> _messages;
   Plan? _contextPlan;
-
-  // Quick replies that adapt to context
-  List<String> _quickReplies = ['מה הסטטוס?', 'מתי הניוד?', 'שאלה על מחיר', 'תודה!'];
 
   @override
   void initState() {
     super.initState();
     final appState = AppState();
     _contextPlan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
+  }
 
-    final history = appState.chatHistory;
-    if (history.isNotEmpty) {
-      _messages = history.map((m) => _Msg(
-        text: m['text'] as String,
-        isUser: m['isUser'] as bool,
-        time: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
-        isRead: m['isRead'] as bool? ?? true,
-      )).toList();
-    } else {
-      final name = appState.isLoggedIn ? appState.firstName : '';
-      final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
-      final planLine = _contextPlan != null
-          ? '\nראיתי שהתעניינת ב${_contextPlan!.provider} – ${_contextPlan!.plan}. אני כאן לכל שאלה!'
-          : '';
-      final seed1 = _Msg(
-        text: '$greetingאני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.$planLine',
-        isUser: false,
-        time: DateTime.now().subtract(const Duration(minutes: 2)),
-        isRead: true,
-      );
-      final seed2 = _Msg(
-        text: 'הבקשה שלכם התקבלה ואנחנו בודקים זמינות בספק. תוך 24 שעות נחזור אליכם עם תאריך מעבר מוצע.',
-        isUser: false,
-        time: DateTime.now().subtract(const Duration(minutes: 1)),
-        isRead: true,
-      );
-      _messages = [seed1, seed2];
-      // Persist after the first frame — notifying listeners synchronously here
-      // would mark the AppState provider dirty during the build phase.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        appState.addChatMessage(text: seed1.text, isUser: false, isRead: true);
-        appState.addChatMessage(text: seed2.text, isUser: false, isRead: true);
-      });
+  /// The WhatsApp prefill — built ONLY from real state; each missing piece is
+  /// omitted gracefully (no placeholders, no invented details).
+  String _prefillText(AppState appState) {
+    final name = (appState.leadName ?? '').trim();
+    final plan = _contextPlan;
+    final step = appState.trackerStep;
+    final buf = StringBuffer();
+    buf.write(name.isNotEmpty ? 'היי, אני $name. ' : 'היי. ');
+    if (plan != null) {
+      buf.write('פנייה לגבי ${plan.provider} — ${plan.plan}');
+      if (step >= 1 && step <= 4) buf.write(' (שלב $step מתוך 4)');
+      buf.write('. ');
     }
+    buf.write('אשמח לעדכון.');
+    return buf.toString();
   }
 
-  void _resetToSeed() {
-    final appState = AppState();
-    appState.clearChatHistory();
-    final name = appState.isLoggedIn ? appState.firstName : '';
-    final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
-    final planLine = _contextPlan != null
-        ? '\nראיתי שהתעניינת ב${_contextPlan!.provider} – ${_contextPlan!.plan}. אני כאן לכל שאלה!'
-        : '';
-    final seed1 = _Msg(
-      text: '$greetingאני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.$planLine',
-      isUser: false,
-      time: DateTime.now().subtract(const Duration(minutes: 2)),
-      isRead: true,
-    );
-    final seed2 = _Msg(
-      text: 'הבקשה שלכם התקבלה ואנחנו בודקים זמינות בספק. תוך 24 שעות נחזור אליכם עם תאריך מעבר מוצע.',
-      isUser: false,
-      time: DateTime.now().subtract(const Duration(minutes: 1)),
-      isRead: true,
-    );
-    setState(() {
-      _messages = [seed1, seed2];
-      _quickReplies = ['מה הסטטוס?', 'מתי הניוד?', 'שאלה על מחיר', 'תודה!'];
-    });
-    appState.addChatMessage(text: seed1.text, isUser: false, isRead: true);
-    appState.addChatMessage(text: seed2.text, isUser: false, isRead: true);
-  }
-
-  @override
-  void dispose() {
-    _inputCtrl.dispose();
-    _scrollCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _send(String text) async {
-    if (text.trim().isEmpty || _isTyping) return;
-    HapticFeedback.lightImpact();
-    _inputCtrl.clear();
-    AppState().addChatMessage(text: text, isUser: true, isRead: false);
-    setState(() {
-      _messages.add(_Msg(text: text, isUser: true, time: DateTime.now(), isRead: false));
-      _isTyping = true;
-    });
-    _scrollToBottom();
-
-    // Simulate read receipt after short delay
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) {
-      setState(() {
-        final last = _messages.lastWhere((m) => m.isUser);
-        final idx = _messages.lastIndexWhere((m) => m.isUser);
-        _messages[idx] = _Msg(text: last.text, isUser: true, time: last.time, isRead: true);
-      });
-    }
-
-    await Future.delayed(Duration(milliseconds: 400 + (text.length * 15).clamp(0, 800)));
-
-    final lower = text.toLowerCase();
-    final String reply;
-    List<String> nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'שאלה על מחיר', 'תודה!'];
-
-    if (lower.contains('סטטוס') || lower.contains('מצב') || lower.contains('איפה') || lower.contains('מה קורה')) {
-      reply = 'הסטטוס הנוכחי: הבקשה בטיפול ✅\nאנחנו בשלב אישור המסלול מול הספק.\nצפי השלמה: 24-48 שעות נוספות.';
-      nextReplies = ['ספר לי יותר', 'מתי הניוד?', 'יש עיכוב?', 'תודה!'];
-    } else if (lower.contains('מתי') || lower.contains('כמה זמן') || lower.contains('זמן')) {
-      reply = 'תהליך הניוד לוקח בדרך כלל 1-3 ימי עסקים לאחר האישור. 📅\nהמספר שלכם יישמר לאורך כל התהליך — לא תצטרכו לשנות כלום.';
-      nextReplies = ['מה הסטטוס?', 'שאלה על מחיר', 'צור קשר בדחיפות', 'תודה!'];
-    } else if (lower.contains('ביטול') || lower.contains('לבטל') || lower.contains('לא רוצ')) {
-      reply = 'מבין. אפשר לבטל את הבקשה בכל שלב לפני השלמת הניוד ☎️\nנציג שלנו ייצור קשר לאישור. האם להעביר את הבקשה?';
-      nextReplies = ['כן, בטלו', 'לא, המשיכו', 'שאלה על מחיר', 'תודה!'];
-    } else if (lower.contains('מחיר') || lower.contains('עלות') || lower.contains('כסף') || lower.contains('תשלום')) {
-      reply = 'המחיר שסוכם איתכם נשאר קבוע 💰\nאין עמלות נסתרות ואין עלויות ניוד — הכל כולל.\nאם יש שינוי במחיר, ניידע אתכם מראש בהחלט.';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'אפשר להוזיל?', 'תודה!'];
-    } else if (lower.contains('תודה') || lower.contains('תנקס') || lower.contains('מעולה') || lower.contains('כייף') || lower == '😊') {
-      reply = 'בשמחה! 🙏 תמיד כאן לעזור.\nיש עוד שאלות? אפשר לכתוב בכל עת.';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'שאלה על מחיר', '😊'];
-    } else if (lower.contains('שלום') || lower.contains('היי') || lower.contains('ערב טוב') || lower.contains('בוקר טוב')) {
-      reply = 'שלום! 😊 כיף לשמוע מכם.\nאיך אפשר לעזור היום?';
-    } else if (lower.contains('ניוד') || lower.contains('מספר') || lower.contains('לנייד')) {
-      reply = 'ניוד המספר שלכם יתבצע ביום המעבר 📱\nהמספר יישמר בדיוק כמו שהוא — ללא שינויים.\nבמהלך הניוד ייתכן הפסקה קצרה של עד שעה.';
-      nextReplies = ['מה קורה בזמן ההפסקה?', 'מה הסטטוס?', 'מתי הניוד?', 'תודה!'];
-    } else if (lower.contains('מה קורה בזמן') || lower.contains('הפסקה')) {
-      reply = 'בזמן הניוד יש הפסקה קצרה של כ-15–60 דקות ⏳\nבמהלכה לא ניתן לבצע שיחות וצרכי אינטרנט.\nהפסקה זו אוטומטית ולא דורשת כלום מצדכם.';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'תודה!'];
-    } else if (lower.contains('כיסוי') || lower.contains('אנטנה') || lower.contains('קליטה') || lower.contains('בדוק זמינות')) {
-      reply = 'כיסוי הרשת תלוי באזור המגורים שלכם 📶\nאם יש לכם ספק חדש, הכיסוי בדרך כלל זהה לספק הקודם. מומלץ לבדוק בעמוד הבדיקה שלנו.';
-      nextReplies = ['מה הסטטוס?', 'שאלה על מחיר', 'תודה!'];
-    } else if (lower.contains('דחוף') || lower.contains('חירום') || lower.contains('דחופ')) {
-      reply = 'הבנתי, נטפל בזה בדחיפות! 🚨\nמספר הטלפון שלנו: 1-800-555-0123\nאפשר להגיע גם בוואטסאפ — נחזור תוך דקות.';
-      nextReplies = ['התקשרו אליי', 'שלחו וואטסאפ', 'תודה!'];
-    } else if (lower.contains('התקשרו אליי') || lower.contains('להתקשר') || lower.contains('שיחה')) {
-      reply = 'בוודאי! 📞 נציג יחזור אליכם תוך 10 דקות.\nאם לא קיבלתם שיחה, אפשר ליצור קשר ישירות:\n1-800-555-0123 (ראשון–שישי, 8:00–21:00)';
-      nextReplies = ['מה הסטטוס?', 'שלחו וואטסאפ', 'תודה!'];
-    } else if (lower.contains('וואטסאפ') || lower.contains('ווצאפ') || lower.contains('שלחו הודעה')) {
-      reply = 'נציג ישלח לכם וואטסאפ עוד מעט 💬\nמספר השירות: 050-555-0123\nזמן תגובה ממוצע: 5 דקות בשעות פעילות.';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'תודה!'];
-    } else if (lower.contains('אפשר להוזיל') || lower.contains('הנחה') || lower.contains('זול יותר') || lower.contains('להוריד מחיר')) {
-      reply = 'בהחלט שווה לבדוק! 💰\nלפעמים יש מבצעים שלא מופיעים באתר.\nהנציג שלנו יכול לבדוק עם הספק על הנחות נוספות — רוצים שנבדוק?';
-      nextReplies = ['כן, תבדקו', 'מה הסטטוס?', 'שאלה על מחיר', 'תודה!'];
-    } else if (lower == 'כן, תבדקו' || lower.contains('כן בדקו') || lower.contains('כן תבדקו')) {
-      reply = 'מעולה! 🔍 נבדוק עבורכם מה הכי טוב שאפשר לקבל.\nנציג יחזור אליכם עם תשובה תוך שעה.';
-      nextReplies = ['מה הסטטוס?', 'תודה!'];
-    } else if (lower.contains('כן, בטלו') || lower.contains('לבטל הכל') || lower.contains('רוצה לבטל')) {
-      reply = 'מבין, אין בעיה 🙏\nהבקשה לביטול התקבלה. נציג שלנו יאשר את הביטול תוך 24 שעות ויוודא שאין חיובים.\nתוכלו לחזור ולהצטרף בכל עת!';
-      nextReplies = ['תודה!', 'רגע, לא לבטל'];
-    } else if (lower.contains('לא, המשיכו') || lower.contains('רגע, לא לבטל') || lower.contains('לא לבטל')) {
-      reply = 'מצוין! 😊 ממשיכים כרגיל.\nתהליך המעבר ממשיך כמתוכנן. נדאג לכם!';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'תודה!'];
-    } else if (lower.contains('ספר לי יותר') || lower.contains('עוד מידע') || lower.contains('פרטים נוספים')) {
-      reply = 'כמובן! 📋 הנה מה שקורה כרגע:\n• הבקשה שלכם בטיפול פעיל\n• נציג מול הספק כרגע\n• תוך 24–48 שעות נחזור עם תאריך מוצע\nכל שאלה — כאן בשבילכם!';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'יש עיכוב?', 'תודה!'];
-    } else if (lower.contains('יש עיכוב') || lower.contains('עיכוב') || lower.contains('מתעכב')) {
-      reply = 'לא חייב להיות עיכוב! ✅\nאם הצפי השתנה, נעדכן אתכם מיד. כרגע הכל מתקדם בזמן.\nיש משהו ספציפי שמדאיג אתכם?';
-      nextReplies = ['מה הסטטוס?', 'מתי הניוד?', 'צור קשר בדחיפות', 'תודה!'];
-    } else if (lower.contains('צור קשר בדחיפות') || lower.contains('דחיפות') || lower.contains('מהר')) {
-      reply = 'מבין, נזדרז! 🚀\nמחבר אתכם לנציג הזמין כרגע — תוך דקות תוכלו לדבר ישירות.\nאו להתקשר ישירות: 1-800-555-0123';
-      nextReplies = ['התקשרו אליי', 'שלחו וואטסאפ', 'תודה!'];
-    } else {
-      reply = 'הבנתי. אני בודקת ומחזירה לכם תשובה בהקדם 🔍\nאם זה דחוף, אפשר גם לפנות לשירות הלקוחות שלנו ישירות.';
-    }
-
-    if (mounted) {
-      AppState().addChatMessage(text: reply, isUser: false, isRead: true);
-      setState(() {
-        _isTyping = false;
-        _messages.add(_Msg(text: reply, isUser: false, time: DateTime.now(), isRead: true));
-        _quickReplies = nextReplies;
-      });
-    }
-    _scrollToBottom();
-  }
-
-  /// Escalate to a human: route to the callback flow so a real rep calls back.
-  /// Honest hand-off — we never invent a phone number or a live agent.
-  void _escalateToHuman() {
-    context.pushNamed('Callback');
-  }
-
-  /// End the chat: confirm via an AppSheet bottom-sheet, then leave the screen
-  /// (the transcript is kept in AppState so the user can return to it).
-  Future<void> _endChat() async {
-    final ffTheme = AppTheme.of(context);
-    final confirmed = await AppSheet.show<bool>(
-      context,
-      title: 'סיום שיחה',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text('לסיים את השיחה? תוכלו לחזור אליה בכל עת.', style: ffTheme.bodyMedium),
-          const SizedBox(height: 16),
-          AppButton(
-            text: 'סיים',
-            color: ffTheme.error,
-            width: double.infinity,
-            onPressed: () async => Navigator.pop(context, true),
-          ),
-          const SizedBox(height: 8),
-          AppButton.secondary(
-            text: 'המשך שיחה',
-            width: double.infinity,
-            onPressed: () async => Navigator.pop(context, false),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) context.safePop();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollCtrl.hasClients) {
-        _scrollCtrl.animateTo(
-          _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+  /// Dial the real support line. Best-effort: on platforms without a dialer
+  /// (desktop/web test envs) this is a silent no-op, never a crash.
+  Future<void> _callSupport() async {
+    final uri = Uri(scheme: 'tel', path: kSupportPhoneTel);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
       }
-    });
+    } catch (_) {
+      // No dialer available — the callback tile below remains the fallback.
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    Provider.of<AppState>(context, listen: false);
+    final appState = context.watch<AppState>();
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      appBar: _buildAppBar(ffTheme, context),
-      body: Column(
-        children: [
-          // Plan context banner
-          if (_contextPlan != null) _buildPlanBanner(ffTheme, context),
-
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollCtrl,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
-              itemBuilder: (ctx, i) {
-                if (i == _messages.length && _isTyping) return _buildTyping(ffTheme);
-
-                final msg = _messages[i];
-                final prevIsUser = i > 0 ? _messages[i - 1].isUser : null;
-                final showDate = i == 0 || !_sameDay(_messages[i - 1].time, msg.time);
-                return Column(
-                  children: [
-                    if (showDate) _buildDateDivider(msg.time, ffTheme),
-                    _buildBubble(msg, ffTheme, showAvatar: prevIsUser != msg.isUser || prevIsUser == null),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          // Escalate-to-human strip — a persistent, honest hand-off to a real
-          // rep (the callback flow) whenever the bot isn't enough.
-          _buildEscalateStrip(ffTheme),
-
-          // Quick replies
-          _buildQuickReplies(ffTheme),
-
-          // Input bar
-          _buildInputBar(ffTheme),
-        ],
+      appBar: AppBar(
+        title: Text('צוות הליווי', style: ffTheme.titleMedium),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: ffTheme.primaryText,
       ),
-    );
-  }
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(ffTheme.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTeamHeader(ffTheme),
 
-  PreferredSizeWidget _buildAppBar(AppTheme ffTheme, BuildContext context) {
-    return AppBar(
-      backgroundColor: ffTheme.brandAccent,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(gradient: ffTheme.accentGradient),
-      ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
-        tooltip: 'חזרה',
-        onPressed: () => context.safePop(),
-      ),
-      titleSpacing: 0,
-      title: Row(
-        children: [
-          ExcludeSemantics(
-            child: Stack(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.brandAccent))),
-                ),
-                if (_agentOnline)
-                  Positioned(
-                    bottom: 1,
-                    right: 1,
-                    child: Container(
-                      width: 11,
-                      height: 11,
-                      decoration: BoxDecoration(
-                        color: ffTheme.brandAccent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('דנה – Switchy AI', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
-              Row(
-                children: [
-                  Text(_agentOnline ? 'מחוברת' : 'לא מחוברת', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
-                ],
-              ),
+            if (_contextPlan != null) ...[
+              SizedBox(height: ffTheme.space12),
+              _buildLeadContext(ffTheme, appState),
             ],
-          ),
-        ],
-      ),
-      actions: [
-        // Escalate to a human kept visible (not buried in the menu) — it's the
-        // key recovery path when the bot can't help.
-        IconButton(
-          icon: const Icon(Icons.support_agent_rounded, color: Colors.white),
-          tooltip: 'דברו עם נציג אנושי',
-          onPressed: _escalateToHuman,
-        ),
-        PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-          tooltip: 'אפשרויות נוספות',
-          onSelected: (value) async {
-            switch (value) {
-              case 'track':
-                context.pushNamed('Tracker');
-              case 'clear':
-                final confirmed = await AppSheet.show<bool>(
-                  context,
-                  title: 'נקה שיחה',
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text('לנקות את השיחה?', style: ffTheme.bodyMedium),
-                      const SizedBox(height: 16),
-                      AppButton(
-                        text: 'נקה',
-                        color: ffTheme.error,
-                        width: double.infinity,
-                        onPressed: () async => Navigator.pop(context, true),
-                      ),
-                      const SizedBox(height: 8),
-                      AppButton.secondary(
-                        text: 'ביטול',
-                        width: double.infinity,
-                        onPressed: () async => Navigator.pop(context, false),
-                      ),
-                    ],
+
+            SizedBox(height: ffTheme.space24),
+
+            // PRIMARY: the real WhatsApp channel (green = CTA fill, per the
+            // bank language). Context prefilled from real state only.
+            WhatsAppButton(
+              phone: kSupportWhatsAppNumber,
+              source: 'tracker-chat',
+              prefillText: _prefillText(appState),
+              width: double.infinity,
+            ).animate().fadeIn(duration: 300.ms),
+
+            SizedBox(height: ffTheme.space12),
+
+            // SECONDARY: a real phone call to the same line.
+            _buildContactTile(
+              ffTheme,
+              icon: Icons.call_rounded,
+              title: 'שיחת טלפון',
+              subtitle: kSupportPhoneDisplay,
+              subtitleLtr: true,
+              semanticsLabel: 'התקשרו אלינו: $kSupportPhoneDisplay',
+              onTap: _callSupport,
+            ).animate().fadeIn(delay: 60.ms, duration: 300.ms),
+
+            SizedBox(height: ffTheme.space8),
+
+            // SECONDARY: the existing human-callback flow.
+            _buildContactTile(
+              ffTheme,
+              icon: Icons.phone_callback_rounded,
+              title: 'תיאום שיחה חוזרת',
+              subtitle: 'השאירו פרטים ונציג יחזור אליכם',
+              semanticsLabel: 'תיאום שיחה חוזרת',
+              onTap: () => context.pushNamed('Callback'),
+            ).animate().fadeIn(delay: 120.ms, duration: 300.ms),
+
+            SizedBox(height: ffTheme.space16),
+
+            // Honesty line — no invented SLA, just the truthful commitment.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.schedule_rounded, size: 16, color: ffTheme.secondaryText),
+                SizedBox(width: ffTheme.space8),
+                Flexible(
+                  child: Text(
+                    'נחזור אליכם בהקדם בשעות הפעילות',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                   ),
-                );
-                if (confirmed == true) _resetToSeed();
-              case 'end':
-                await _endChat();
-            }
-          },
-          itemBuilder: (ctx) => const [
-            PopupMenuItem(
-              value: 'track',
-              child: ListTile(
-                leading: Icon(Icons.track_changes_rounded),
-                title: Text('מעקב תהליך'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: 'clear',
-              child: ListTile(
-                leading: Icon(Icons.delete_sweep_rounded),
-                title: Text('נקה שיחה'),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            PopupMenuItem(
-              value: 'end',
-              child: ListTile(
-                leading: Icon(Icons.logout_rounded),
-                title: Text('סיים שיחה'),
-                contentPadding: EdgeInsets.zero,
-              ),
+                ),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildPlanBanner(AppTheme ffTheme, BuildContext context) {
-    final plan = _contextPlan!;
+  /// Team header — ink-dominant card, NO presence dot and NO response-time
+  /// claim (we don't know either; inventing them is exactly what this screen
+  /// replaced).
+  Widget _buildTeamHeader(AppTheme ffTheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.all(ffTheme.space16),
       decoration: BoxDecoration(
-        color: ffTheme.brandAccentTint,
-        border: Border(bottom: BorderSide(color: ffTheme.brandAccent.withValues(alpha: 0.15))),
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+        border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
         children: [
-          LogoWidget(provider: plan.provider, size: 32),
-          const SizedBox(width: 10),
+          ExcludeSemantics(
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: ffTheme.background,
+                shape: BoxShape.circle,
+                border: Border.all(color: ffTheme.alternate),
+              ),
+              child: Icon(Icons.support_agent_rounded, size: 26, color: ffTheme.primaryText),
+            ),
+          ),
+          SizedBox(width: ffTheme.space12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(plan.provider, style: ffTheme.labelLarge.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
-                Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text('צוות הליווי של Switchy',
+                    style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                SizedBox(height: ffTheme.space4),
+                Text(
+                  'אנשים אמיתיים שמלווים אתכם לאורך תהליך המעבר',
+                  style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(20)),
-            child: Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     ).animate().fadeIn(duration: 300.ms);
   }
 
-  Widget _buildDateDivider(DateTime time, AppTheme ffTheme) {
-    final now = DateTime.now();
-    final diff = now.difference(time).inDays;
-    final label = diff == 0 ? 'היום' : diff == 1 ? 'אתמול' : '${time.day}/${time.month}/${time.year}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+  /// Lead-context strip — the plan the user actually asked about (real state
+  /// via leadPlanId → planById) plus the real tracker step. Shown only when a
+  /// lead exists; nothing here is placeholder data.
+  Widget _buildLeadContext(AppTheme ffTheme, AppState appState) {
+    final plan = _contextPlan!;
+    final step = appState.trackerStep;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: ffTheme.space16, vertical: ffTheme.space12),
+      decoration: BoxDecoration(
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+        border: Border.all(color: ffTheme.alternate),
+      ),
       child: Row(
         children: [
-          Expanded(child: Divider(color: ffTheme.lineColor)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+          LogoWidget(provider: plan.provider, size: 36),
+          SizedBox(width: ffTheme.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(plan.provider,
+                    style: ffTheme.labelLarge
+                        .copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                Text(plan.plan,
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ],
+            ),
           ),
-          Expanded(child: Divider(color: ffTheme.lineColor)),
+          if (step >= 1 && step <= 4) ...[
+            SizedBox(width: ffTheme.space8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: ffTheme.space12, vertical: ffTheme.space4),
+              decoration: BoxDecoration(
+                color: ffTheme.background,
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                border: Border.all(color: ffTheme.alternate),
+              ),
+              child: Text('שלב $step מתוך 4',
+                  style: ffTheme.labelSmall
+                      .copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+            ),
+          ],
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 300.ms);
   }
 
-  Widget _buildEscalateStrip(AppTheme ffTheme) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _escalateToHuman,
+  /// A secondary contact tile — full-width, ≥48px tap target, one labelled
+  /// Semantics button (children excluded so screen readers hear it once).
+  Widget _buildContactTile(
+    AppTheme ffTheme, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String semanticsLabel,
+    required VoidCallback onTap,
+    bool subtitleLtr = false,
+  }) {
+    return Semantics(
+      button: true,
+      label: semanticsLabel,
+      excludeSemantics: true,
+      child: Pressable(
+        onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: EdgeInsets.symmetric(horizontal: ffTheme.space16, vertical: ffTheme.space12),
           decoration: BoxDecoration(
-            color: ffTheme.brandAccentTint,
-            border: Border(top: BorderSide(color: ffTheme.brandAccent.withValues(alpha: 0.15))),
+            color: ffTheme.secondaryBackground,
+            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+            border: Border.all(color: ffTheme.alternate),
           ),
           child: Row(
             children: [
-              Icon(Icons.support_agent_rounded, size: 18, color: ffTheme.brandAccent),
-              const SizedBox(width: 8),
+              Icon(icon, size: 22, color: ffTheme.primaryText),
+              SizedBox(width: ffTheme.space12),
               Expanded(
-                child: Text(
-                  'צריכים נציג אנושי? נשמח לחזור אליכם',
-                  style: ffTheme.labelMedium
-                      .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(title,
+                        style: ffTheme.labelLarge
+                            .copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                    Text(
+                      subtitle,
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                      textDirection: subtitleLtr ? TextDirection.ltr : null,
+                      textAlign: subtitleLtr ? TextAlign.end : null,
+                    ),
+                  ],
                 ),
               ),
-              Semantics(
-                button: true,
-                label: 'דברו עם נציג אנושי',
-                excludeSemantics: true,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: ffTheme.brandAccent,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('דברו עם נציג',
-                      style: ffTheme.labelSmall
-                          .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                ),
-              ),
+              Icon(Icons.chevron_left_rounded, size: 20, color: ffTheme.secondaryText),
             ],
           ),
         ),
       ),
     );
   }
-
-  Widget _buildQuickReplies(AppTheme ffTheme) {
-    return SizedBox(
-      height: 46,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        itemCount: _quickReplies.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (ctx, i) => Semantics(
-          button: true,
-          label: _quickReplies[i],
-          child: Pressable(
-            onTap: () => _send(_quickReplies[i]),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: ffTheme.brandAccentTint,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.28)),
-              ),
-              child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputBar(AppTheme ffTheme) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: ffTheme.secondaryBackground,
-        border: Border(top: BorderSide(color: ffTheme.alternate)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _inputCtrl,
-                textDirection: TextDirection.rtl,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.send,
-                decoration: InputDecoration(
-                  hintText: 'כתוב הודעה...',
-                  hintTextDirection: TextDirection.rtl,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-                  filled: true,
-                  fillColor: ffTheme.background,
-                ),
-                onSubmitted: _send,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Semantics(
-              button: true,
-              label: 'שלח הודעה',
-              child: Pressable(
-                onTap: () => _send(_inputCtrl.text),
-                child: Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    gradient: ffTheme.accentGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: ffTheme.shadowAccent,
-                  ),
-                  child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  bool _sameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
-  String _timeLabel(DateTime t) {
-    final now = DateTime.now();
-    final diff = now.difference(t);
-    if (diff.inMinutes < 1) return 'עכשיו';
-    if (diff.inMinutes < 60) return 'לפני ${diff.inMinutes} דקות';
-    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-  }
-
-  Widget _buildBubble(_Msg msg, AppTheme ffTheme, {required bool showAvatar}) {
-    final isUser = msg.isUser;
-    // Emil: chat messages are a HIGH-FREQUENCY append, so they get ONE crisp
-    // single-bubble entrance — never a staggered cascade (that delight belongs
-    // to occasional list reveals, not every keystroke-driven message). Enter is
-    // ease-out (settling motion). Reduced-motion keeps the fade, drops the 8px
-    // slide so the transcript never lurches for users who asked for less.
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final bubble = Padding(
-      padding: EdgeInsetsDirectional.only(
-        bottom: 4,
-        start: isUser ? 0 : 48,
-        end: isUser ? 48 : 0,
-      ),
-      child: Column(
-        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (!isUser && showAvatar) ...[
-                ExcludeSemantics(
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
-                    decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
-                    child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.brandAccent))),
-                  ),
-                ),
-              ] else if (!isUser) ...[
-                const SizedBox(width: 38),
-              ],
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: isUser ? ffTheme.accentGradient : null,
-                    color: isUser ? null : ffTheme.secondaryBackground,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(18),
-                      topRight: const Radius.circular(18),
-                      bottomLeft: isUser ? const Radius.circular(18) : const Radius.circular(4),
-                      bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(18),
-                    ),
-                    boxShadow: isUser ? ffTheme.shadowAccent : ffTheme.shadowSoft,
-                  ),
-                  child: Text(
-                    msg.text,
-                    style: ffTheme.bodyMedium.copyWith(
-                      color: isUser ? Colors.white : ffTheme.primaryText,
-                      height: 1.5,
-                    ),
-                    textDirection: TextDirection.rtl,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: EdgeInsetsDirectional.only(top: 3, start: isUser ? 4 : 38, end: isUser ? 0 : 4),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-              children: [
-                Text(_timeLabel(msg.time), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
-                if (isUser) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
-                    size: 14,
-                    color: msg.isRead ? ffTheme.brandAccent : ffTheme.secondaryText,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (reduceMotion) {
-      return bubble.animate().fadeIn(duration: 250.ms);
-    }
-    return bubble
-        .animate()
-        .fadeIn(duration: 250.ms, curve: const Cubic(0.22, 1, 0.36, 1))
-        .slideY(begin: 0.08, end: 0, duration: 250.ms, curve: const Cubic(0.22, 1, 0.36, 1));
-  }
-
-  Widget _buildTyping(AppTheme ffTheme) {
-    // Emil: a typing indicator is the ONE sanctioned exception to "no idle
-    // loops" — it's a GENUINE loader that says work is in flight, so the three
-    // dots may pulse on repeat. Under reduced-motion the loop is dropped (no
-    // infinite animation): the dots render static so the bubble still reads as
-    // "typing" without movement. The whole bubble fades in once (ease-out).
-    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    Widget dot(int i) {
-      final d = Container(
-        width: 7,
-        height: 7,
-        margin: EdgeInsetsDirectional.only(start: i > 0 ? 4 : 0),
-        decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
-      );
-      if (reduceMotion) return d;
-      return d
-          .animate(onPlay: (c) => c.repeat())
-          .fadeIn(delay: (i * 200).ms, duration: 300.ms)
-          .then()
-          .fadeOut(duration: 300.ms);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          ExcludeSemantics(
-            child: Container(
-              width: 30,
-              height: 30,
-              margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
-              decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
-              child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.brandAccent))),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: ffTheme.secondaryBackground,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomRight: Radius.circular(18),
-                bottomLeft: Radius.circular(4),
-              ),
-              boxShadow: ffTheme.shadowSoft,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, dot),
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 200.ms, curve: const Cubic(0.22, 1, 0.36, 1));
-  }
-}
-
-class _Msg {
-  final String text;
-  final bool isUser;
-  final DateTime time;
-  final bool isRead;
-  const _Msg({required this.text, required this.isUser, required this.time, this.isRead = false});
 }

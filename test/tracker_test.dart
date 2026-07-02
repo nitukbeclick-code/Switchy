@@ -20,10 +20,12 @@ import 'package:chosech/services/backend/local_backend.dart';
 ///      the collapsible pre-switch checklist (whose header carries an explicit
 ///      Semantics button label), and the expected-saving VALUE figure.
 ///
-/// The default LocalBackend.fetchLeadStep() returns 0 and leadStepStream() is
-/// empty, so neither the hydrate-on-init nor the live stream advances the step —
-/// the rendered state is driven purely by AppState, keeping the tests
-/// deterministic. No source is modified.
+/// The page no longer owns a lead-step subscription (that lives in the
+/// app-scope LeadStepSync, wired in main.dart which tests never run); its only
+/// backend read is LocalBackend.fetchLeadInfo(), which returns (0, null) — so
+/// the rendered state is driven purely by AppState (trackerStep / leadLost)
+/// and no timeline date renders, keeping the tests deterministic. No source is
+/// modified.
 
 Future<void> _bootApp(WidgetTester tester) async {
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -117,6 +119,18 @@ void main() {
       // visible copy rather than scroll-and-compile its off-screen semantics.)
       expect(find.text('משימות לפני המעבר'), findsOneWidget);
       expect(find.textContaining('הושלמו 0 מתוך'), findsOneWidget);
+      // The honest per-ACTIVE-stage helper line (step 1 copy) replaced the
+      // fabricated '~24 שעות' SLA chip.
+      expect(find.textContaining('צוות הליווי בודק את הבקשה'), findsOneWidget);
+      expect(find.textContaining('~24 שעות'), findsNothing);
+      // The quiet-guarantee card now sits ABOVE the timeline (copy unchanged).
+      expect(find.text('ערבות שקט'), findsOneWidget);
+      // No fabricated timeline date offline: LocalBackend.fetchLeadInfo()
+      // returns a null created_at, so stage 1 renders without a timestamp.
+      expect(find.textContaining('הצטרפות ·'), findsNothing);
+      // The invented persona is gone — the tracker speaks as the real team.
+      expect(find.textContaining('דנה'), findsNothing);
+      expect(find.text('דברו עם צוות הליווי'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

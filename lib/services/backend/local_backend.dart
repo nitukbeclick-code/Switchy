@@ -138,6 +138,12 @@ class LocalBackend implements Backend {
   @override
   Stream<int> leadStepStream() => const Stream.empty();
 
+  @override
+  Future<({int step, DateTime? createdAt})> fetchLeadInfo() async =>
+      // No leads table offline — no step and, crucially, no date to show
+      // (the tracker renders no timestamp rather than fabricating one).
+      (step: 0, createdAt: null);
+
   // ── Video meetings (Zoom) — simulated demo flow ─────────────────────────────
   // Without Supabase there is no rep team; the booking is stored locally and a
   // pretend confirmation (with a placeholder Zoom link) arrives after

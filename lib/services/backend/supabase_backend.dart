@@ -334,13 +334,27 @@ class SupabaseBackend implements Backend {
         .limit(1)
         .maybeSingle();
     if (row == null) return 0;
-    final status = row['status'] as String? ?? 'new';
-    switch (status) {
-      case 'contacted': return 2;
-      case 'won': return 4;
-      case 'lost': return -1; // terminal — the rep closed the lead
-      default: return 1;
-    }
+    return leadStepFromStatus(row['status'] as String?);
+  }
+
+  @override
+  Future<({int step, DateTime? createdAt})> fetchLeadInfo() async {
+    if (_uid == null) return (step: 0, createdAt: null);
+    // ONLY the client-granted columns — the leads grant is (id, status,
+    // created_at, user_id); selecting anything else would fail under RLS.
+    final row = await _db
+        .from('leads')
+        .select('status, created_at')
+        .eq('user_id', _uid!)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return (step: 0, createdAt: null);
+    return (
+      step: leadStepFromStatus(row['status'] as String?),
+      createdAt:
+          DateTime.tryParse(row['created_at'] as String? ?? '')?.toLocal(),
+    );
   }
 
   @override
@@ -357,15 +371,8 @@ class SupabaseBackend implements Backend {
           filter: PostgresChangeFilter(
               type: PostgresChangeFilterType.eq, column: 'user_id', value: _uid!),
           callback: (payload) {
-            final status = payload.newRecord['status'] as String? ?? 'new';
-            int step;
-            switch (status) {
-              case 'contacted': step = 2; break;
-              case 'won': step = 4; break;
-              case 'lost': step = -1; break; // terminal — the rep closed the lead
-              default: step = 1;
-            }
-            _leadStepCtrl?.add(step);
+            _leadStepCtrl
+                ?.add(leadStepFromStatus(payload.newRecord['status'] as String?));
           },
         )
         .subscribe();

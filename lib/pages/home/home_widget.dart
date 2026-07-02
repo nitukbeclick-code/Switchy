@@ -14,6 +14,8 @@ import '../../services/meeting_slots.dart' show meetingLocalStart;
 import '../meeting/meeting_status_card.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../services/recommendation_engine.dart';
@@ -147,6 +149,10 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               // ── 2. ONE primary hero (single calm CTA, quiet savings sub-line)
               SliverToBoxAdapter(child: _buildHero(context, ffTheme, appState, savings)),
+
+              // ── 2b. "הערך שלי" row — the user's own value surfaces (savings,
+              // wallet, recap, referral), directly under the guardian hero.
+              SliverToBoxAdapter(child: _buildMyValueRow(context, ffTheme)),
 
               // ── 3. ONE "המלצות" carousel (top-pick + quiz-match + hot-deal) ─
               SliverToBoxAdapter(child: _buildRecommendations(context, ffTheme, appState)),
@@ -500,30 +506,182 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  /// ONE primary hero with a SINGLE calm CTA. The potential-savings figure is a
-  /// quiet sub-line (small label), never a giant numeral — this is the only
-  /// potential-savings figure on the browse surfaces. The CTA routes to Results
-  /// when bills are set, else the Quiz, with one fixed label per state.
+  /// The GUARDIAN HERO — a bank-balance status card with ONE calm CTA and four
+  /// TRUTH-ONLY states:
+  ///
+  ///  A  personalized + available saving  → "המצב שלך" + the REAL entered
+  ///     monthly total ([SavingsSummary.personalizedMonthlyTotal]) + the REAL
+  ///     available annual saving in the shared [SavingPill] treatment.
+  ///  A2 personalized + zero saving       → same balance row + an honest
+  ///     "you're on a good price" line (soft copy — the app has no closed-app
+  ///     market-drop alert, so it must NOT promise "נתריע").
+  ///  L  LEGACY (pre-upgrade installs: the stored `billsPersonalized` bool is
+  ///     true but the per-category set is empty) → the previous personalized
+  ///     hero verbatim: hedged potential line, zero regression.
+  ///  B  guest (no personalised bills)    → a setup prompt with NO ₪ figures
+  ///     and NO digits pretending to be savings — we never estimate for
+  ///     someone who hasn't entered their bills.
+  ///
+  /// Every figure comes from the personalized-only aggregates of the shared
+  /// [SavingsSummary] (same engine as the /savings dashboard), so the hero can
+  /// never disagree with the dashboard nor surface a seed-default bill as "you".
   Widget _buildHero(BuildContext context, AppTheme ffTheme, AppState appState, SavingsSummary savings) {
-    // Shared summary (same engine the /savings dashboard uses), so the quiet
-    // figure never disagrees with the dashboard. Real value only — when there
-    // is nothing computed yet we simply omit the figure (no fabricated number).
+    // TRUTH-ONLY figures — both fold over PERSONALLY-entered bills only.
+    final monthly = savings.personalizedMonthlyTotal;
+    final annual = savings.personalizedAnnualPotential;
+    final personalized = appState.billsPersonalized && monthly > 0;
+    final legacy = appState.billsPersonalized && monthly == 0;
+    // Legacy-only hedged total (may include seed-default bills — that is
+    // exactly what the pre-upgrade hero showed, kept verbatim for state L).
     final totalSave = savings.totalAnnualPotential;
-    final personalized = appState.billsPersonalized;
-    // BROWSE moment (routes to Results / Quiz, never submits a lead) — a calm
-    // browse verb per the canonical CRO decision, NOT a savings-pushy promise.
-    // Both states use the same honest "compare plans" framing.
-    final ctaLabel = personalized ? 'השוו מסלולים ←' : 'חפשו חבילות ←';
     // Honour the OS "reduce motion" setting: the entrance fade/slide below is
     // skipped entirely (the card just appears) when the user asked for less.
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
+    // ONE route per state, shared by the card-level tap and the CTA button so
+    // they can never disagree. BROWSE moment — routes to Results / Quiz, never
+    // submits a lead.
+    Future<void> open() async {
+      if (personalized || legacy) {
+        // Land the user on their BIGGEST real opportunity when there is one.
+        final top = savings.topOpportunity;
+        if (top != null) appState.setCategory(top.categoryId);
+        context.pushNamed('Results');
+      } else {
+        context.pushNamed('Quiz');
+      }
+    }
+
+    final ctaText = (personalized || legacy) ? 'השוו מסלולים' : 'הזינו את החשבון';
+    // SINGLE calm green ACTION CTA — the only conversion cue on the hero.
+    // Routed through the unified [AppButton] (pill variant); the button fires
+    // its own selectionClick haptic, so the wrapping [Semantics] keeps the
+    // a11y label and the outer card Pressable stays silent (haptic: false).
+    final cta = Semantics(
+      button: true,
+      label: ctaText,
+      child: AppButton(
+        text: '$ctaText ←',
+        color: AppColors.brandAccent,
+        pill: true,
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        textStyle: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        onPressed: open,
+      ),
+    );
+
+    final List<Widget> content;
+    if (personalized) {
+      // Bank-balance status: overline + the REAL monthly total + the value line.
+      // FittedBox(scaleDown): a large total at a huge OS text scale shrinks to
+      // fit instead of striping — money is never ellipsized.
+      final balanceRow = FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: AlignmentDirectional.centerStart,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('משלם', style: ffTheme.bodyMedium.copyWith(color: Colors.white)),
+            const SizedBox(width: 8),
+            // The exact sum of the user's OWN entered bills — via [PriceText]
+            // (LTR isolate keeps ₪+digits stable inside the RTL hero).
+            PriceText('₪$monthly', style: ffTheme.numericLarge.copyWith(color: Colors.white)),
+            const SizedBox(width: 8),
+            Text('לחודש', style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.72))),
+          ],
+        ),
+      );
+      final valueLine = annual > 0
+          // The one recognizable VALUE treatment, sized up to hero weight via
+          // the pill's verbatim [SavingPill.textStyle] override (numericMedium
+          // already carries tabular figures).
+          ? SavingPill(
+              text: 'חיסכון זמין: ₪$annual בשנה',
+              icon: Icons.trending_down_rounded,
+              textStyle: ffTheme.numericMedium.copyWith(color: ffTheme.savingText, fontSize: 20),
+            )
+          // A2 — honest good-price state: no fabricated saving, no alert
+          // promise (the app cannot watch the market while closed).
+          : Row(
+              children: [
+                Icon(Icons.verified_outlined, size: 16, color: Colors.white.withValues(alpha: 0.78)),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'אתם במחיר טוב — כדאי לבדוק שוב מדי כמה חודשים',
+                    style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+                  ),
+                ),
+              ],
+            );
+      content = [
+        // One Hebrew sentence for screen readers carrying BOTH real figures;
+        // the visual pieces are excluded so nothing is announced twice.
+        Semantics(
+          label: annual > 0
+              ? 'המצב שלך: משלמים ₪$monthly לחודש, וניתן לחסוך ₪$annual בשנה'
+              : 'המצב שלך: משלמים ₪$monthly לחודש — אתם במחיר טוב',
+          child: ExcludeSemantics(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('המצב שלך', style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.72))),
+                const SizedBox(height: 6),
+                balanceRow,
+                const SizedBox(height: 10),
+                valueLine,
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        cta,
+      ];
+    } else if (legacy) {
+      // LEGACY (state L) — the pre-upgrade personalized hero, verbatim.
+      content = [
+        Text(
+          'המסלולים שמתאימים לך',
+          style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        // Quiet hedged potential SUB-LINE (small label, not a hero numeral).
+        Text(
+          totalSave > 0
+              ? 'חיסכון פוטנציאלי עד ₪$totalSave בשנה — מחושב לפי החשבונות שלך'
+              : 'השוו מחירים והתחילו לחסוך',
+          style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+        ),
+        const SizedBox(height: 16),
+        cta,
+      ];
+    } else {
+      // Guest (state B) — a 30-second setup prompt. NO ₪, NO digits posing as
+      // a saving: the honest pitch is "real numbers, not estimates".
+      content = [
+        Text(
+          'הזינו את החשבון שלכם ב-30 שניות',
+          style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'בלי הערכות — נחשב לכם חיסכון אמיתי מהמספרים שלכם',
+          style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+        ),
+        const SizedBox(height: 16),
+        cta,
+      ];
+    }
+
     final card = Pressable(
-      // The CTA fires its own lightImpact; keep the card-level press silent.
+      // The CTA fires its own haptic; keep the card-level press silent.
       haptic: false,
       onTap: () {
         HapticFeedback.lightImpact();
-        personalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
+        open();
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -537,47 +695,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              personalized ? 'המסלולים שמתאימים לך' : 'בואו נמצא לך מסלול משתלם',
-              style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 6),
-            // Quiet potential-savings SUB-LINE (small label, not a hero numeral).
-            // Truth-only + de-push: show a ₪ figure ONLY when the user has
-            // personalised bills (a REAL saving). A fresh guest gets a neutral,
-            // non-pushy line — we never estimate a saving for someone who hasn't
-            // entered their bills.
-            Text(
-              (personalized && totalSave > 0)
-                  ? 'חיסכון פוטנציאלי עד ₪$totalSave בשנה — מחושב לפי החשבונות שלך'
-                  : 'השוו מחירים והתחילו לחסוך',
-              style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.78)),
-            ),
-            const SizedBox(height: 16),
-            // SINGLE calm green ACTION CTA — the only conversion cue on the hero.
-            // Routed through the unified [AppButton] (pill variant) so the hero
-            // capsule is the same one source of truth as every other CTA. Green
-            // brandAccent fill + white w700 label preserves the prior visual; the
-            // pill flag rounds it to [radiusPill]. The button fires its own
-            // selectionClick haptic, so the wrapping [Semantics] keeps the a11y
-            // label and the outer card Pressable stays silent (haptic: false).
-            Semantics(
-              button: true,
-              label: personalized ? 'השוו מסלולים' : 'חפשו חבילות',
-              child: AppButton(
-                text: ctaLabel,
-                color: AppColors.brandAccent,
-                pill: true,
-                height: 44,
-                padding: const EdgeInsets.symmetric(horizontal: 22),
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                onPressed: () async {
-                  personalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
-                },
-              ),
-            ),
-          ],
+          children: content,
         ),
       ),
     );
@@ -937,7 +1055,10 @@ class _HomeWidgetState extends State<HomeWidget> {
     final Map<String, int> actualSavings = {};
     final Map<String, bool> hasActual = {};
     for (final cs in savings.categories) {
-      if (cs.hasBill) {
+      // TRUTH gate: only a PERSONALLY-entered bill earns the "your saving"
+      // cell treatment ([CategorySaving.personalized], not merely hasBill —
+      // seed-default bills fall through to the honest catalogue line below).
+      if (cs.personalized) {
         actualSavings[cs.categoryId] = cs.annualSaving;
         hasActual[cs.categoryId] = true;
       }
@@ -1366,6 +1487,73 @@ class _HomeWidgetState extends State<HomeWidget> {
                 if (i > 0) const SizedBox(width: 10),
                 Expanded(
                   // Each tool tile is one tappable control — button ROLE; the
+                  // visible label is the accessible name (icon stays decorative).
+                  child: Semantics(
+                    button: true,
+                    child: Pressable(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.pushNamed(tools[i].route);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+                        decoration: ffTheme.cardDecoration(),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(tools[i].icon, size: 20, color: ffTheme.primaryText),
+                            const SizedBox(height: 6),
+                            Text(
+                              tools[i].label,
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              // Large-type safety in a quarter-width tile.
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "הערך שלי" row — four MY-VALUE destinations (savings dashboard, wallet,
+  /// annual recap, referral), rendered with the exact same quiet tile treatment
+  /// as [_buildToolsRow]. TRUTH-ONLY: the tiles carry NO ₪ figures — they are
+  /// entry points, and each destination screen shows only its own real data.
+  /// Icons stay ink ([AppTheme.primaryText]); green remains CTA-only.
+  Widget _buildMyValueRow(BuildContext context, AppTheme ffTheme) {
+    const tools = [
+      _Tool(icon: Icons.savings_outlined, label: 'החיסכון שלי', route: 'Savings'),
+      _Tool(icon: Icons.account_balance_wallet_outlined, label: 'הארנק', route: 'Wallet'),
+      _Tool(icon: Icons.auto_awesome_outlined, label: 'סיכום שנתי', route: 'AnnualRecap'),
+      _Tool(icon: Icons.card_giftcard_outlined, label: 'הזמינו חברים', route: 'Referral'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            // Section title — a HEADER for screen-reader section jumping.
+            child: Semantics(header: true, child: Text('הערך שלי', style: ffTheme.titleLarge)),
+          ),
+          Row(
+            children: [
+              for (var i = 0; i < tools.length; i++) ...[
+                if (i > 0) const SizedBox(width: 10),
+                Expanded(
+                  // Each tile is one tappable control — button ROLE; the
                   // visible label is the accessible name (icon stays decorative).
                   child: Semantics(
                     button: true,

@@ -96,6 +96,17 @@ class MeetingInput {
       };
 }
 
+/// Maps a `leads.status` to a tracker step: 'contacted'→2, 'won'→4,
+/// 'lost'→-1 (terminal — the rep closed the lead), anything else ('new')→1.
+/// Shared by [Backend.fetchLeadStep], [Backend.fetchLeadInfo] and
+/// [Backend.leadStepStream] so the mapping can never drift between them.
+int leadStepFromStatus(String? status) => switch (status) {
+      'contacted' => 2,
+      'won' => 4,
+      'lost' => -1,
+      _ => 1,
+    };
+
 /// Lifecycle of a meeting request. `noRep` ↔ the DB's 'no_rep'.
 enum MeetingStatus { pending, confirmed, noRep, cancelled, expired, completed }
 
@@ -995,6 +1006,14 @@ abstract interface class Backend {
   /// Realtime channel so the tracker auto-advances when the rep updates
   /// the lead from the dashboard.
   Stream<int> leadStepStream();
+
+  /// The user's newest lead: its [fetchLeadStep]-style step plus the REAL
+  /// `created_at` of the row (the "joined" date the tracker timeline shows on
+  /// stage 1 — never fabricated). Reads ONLY the client-granted columns
+  /// (status, created_at). Returns `(step: 0, createdAt: null)` when there is
+  /// no lead, so the UI renders no date rather than inventing one.
+  /// [LocalBackend] returns `(0, null)` offline.
+  Future<({int step, DateTime? createdAt})> fetchLeadInfo();
 
   // ── Video meetings (Zoom) ────────────────────────────────────────────────────
   /// Step 1 of the email-gated booking: asks the `meeting-book` edge function to

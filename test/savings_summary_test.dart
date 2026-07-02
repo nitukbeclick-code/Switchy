@@ -121,6 +121,48 @@ void main() {
     });
   });
 
+  group('personalized totals (TRUTH-ONLY)', () {
+    test('only the personally-entered category counts, never seed defaults', () {
+      final s = AppState();
+      // Fresh state carries seed defaults (cellular 119, internet 140, tv 130,
+      // triple 260) — none personalized. The user enters ONLY cellular.
+      s.setCurrentBill('cellular', 220);
+      final summary = computeSavings(s);
+
+      final cell = summary.categories.firstWhere((c) => c.categoryId == 'cellular');
+      expect(cell.personalized, isTrue);
+      for (final c in summary.categories.where((c) => c.categoryId != 'cellular')) {
+        expect(c.personalized, isFalse,
+            reason: 'seed-default ${c.categoryId} must not be personalized');
+      }
+
+      // 220 exactly — NOT 220+140+130+260: seed bills contribute nothing.
+      expect(summary.personalizedMonthlyTotal, equals(220));
+
+      // Annual potential counts only cellular's real saving.
+      expect(summary.personalizedAnnualPotential, equals(cell.annualSaving));
+      expect(summary.personalizedAnnualPotential, greaterThan(0));
+
+      // The all-categories total (which still includes seed-default bills) can
+      // never be below the personalized-only figure.
+      expect(summary.totalAnnualPotential,
+          greaterThanOrEqualTo(summary.personalizedAnnualPotential));
+    });
+
+    test('guest with no personalized bills has zero personalized figures', () {
+      final s = AppState();
+      final summary = computeSavings(s);
+      expect(summary.categories.any((c) => c.personalized), isFalse);
+      expect(summary.personalizedMonthlyTotal, 0);
+      expect(summary.personalizedAnnualPotential, 0);
+    });
+
+    test('CategorySaving.personalized defaults to false', () {
+      const c = CategorySaving(categoryId: 'cellular', currentBill: 100, best: null);
+      expect(c.personalized, isFalse);
+    });
+  });
+
   group('savingsCreditedOnLead', () {
     test('credits the real computed saving when it is positive', () {
       const plan = Plan(

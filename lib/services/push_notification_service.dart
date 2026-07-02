@@ -64,4 +64,15 @@ class PushNotificationService {
     await impl.showNow(title: title, body: body);
     return true;
   }
+
+  /// Fire an immediate lead-update ("switch progress") alert — tapping it opens
+  /// the Tracker tab. Used when a real status change lands on the user's switch
+  /// request while the app is open. No-op on web and before [init]. The copy is
+  /// the caller's (grounded in the actual status transition) so this layer never
+  /// fabricates a milestone or timestamp. Returns whether a notification was shown.
+  Future<bool> notifyLeadUpdate({required String title, required String body}) async {
+    if (!_ready) return false;
+    await impl.showNow(title: title, body: body, payload: 'tracker');
+    return true;
+  }
 }

@@ -34,10 +34,19 @@ class SavingPill extends StatelessWidget {
   /// [Icons.trending_down_rounded] for a "cost going down" emphasis.
   final IconData icon;
 
+  /// Optional text-style override. `null` (the default) keeps the canonical
+  /// pill treatment (labelMedium, [AppTheme.savingText] green, w700, tabular
+  /// figures) — fully backwards-compatible. When given, the style is used
+  /// VERBATIM, so callers wanting a larger numeral (e.g. the guardian hero's
+  /// `numericMedium`) must pass a complete style, ideally one that already
+  /// carries tabular figures.
+  final TextStyle? textStyle;
+
   const SavingPill({
     super.key,
     required this.text,
     this.icon = Icons.savings_rounded,
+    this.textStyle,
   });
 
   @override
@@ -63,13 +72,14 @@ class SavingPill extends StatelessWidget {
               text,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: t.labelMedium.copyWith(
-                color: green,
-                fontWeight: FontWeight.w700,
-                // Tabular figures keep ₪/% columns from shifting as the real
-                // value updates (e.g. a recomputed savings number).
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              style: textStyle ??
+                  t.labelMedium.copyWith(
+                    color: green,
+                    fontWeight: FontWeight.w700,
+                    // Tabular figures keep ₪/% columns from shifting as the
+                    // real value updates (e.g. a recomputed savings number).
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
             ),
           ),
         ],

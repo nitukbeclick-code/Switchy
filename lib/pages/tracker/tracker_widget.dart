@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -22,42 +21,31 @@ class TrackerWidget extends StatefulWidget {
 }
 
 class _TrackerWidgetState extends State<TrackerWidget> {
-  StreamSubscription<int>? _leadStepSub;
+  // The step + 'lost' state are owned by the app-scope LeadStepSync service
+  // (lib/services/lead_step_sync.dart, wired in main.dart) and mirrored into
+  // AppState (trackerStep / leadLost) — this page only renders them.
 
-  // A 'lost' lead (step -1) is terminal: the rep closed the pipeline. It can't
-  // flow through AppState.setTrackerStep (which only accepts forward steps 1–4),
-  // so we hold it as page-local state and render a closed screen.
-  bool _leadLost = false;
+  // The REAL created_at of the newest lead — the only timestamp the timeline
+  // may show (stage 1's joining date). Null (offline / no lead) renders no
+  // date; nothing here is ever fabricated.
+  DateTime? _leadCreatedAt;
 
   @override
   void initState() {
     super.initState();
-    // Hydrate current step immediately (handles users who were offline when
-    // the rep updated the lead status).
-    appBackend.fetchLeadStep().then((step) {
-      if (!mounted) return;
-      if (step == -1) {
-        setState(() => _leadLost = true);
-      } else if (step > AppState().trackerStep) {
-        AppState().setTrackerStep(step);
-      }
+    appBackend.fetchLeadInfo().then((info) {
+      if (!mounted || info.createdAt == null) return;
+      setState(() => _leadCreatedAt = info.createdAt);
     }).catchError((_) {});
-    // Then subscribe for live updates.
-    _leadStepSub = appBackend.leadStepStream().listen((step) {
-      if (!mounted) return;
-      if (step == -1) {
-        setState(() => _leadLost = true);
-      } else {
-        if (_leadLost) setState(() => _leadLost = false);
-        AppState().setTrackerStep(step);
-      }
-    });
   }
 
-  @override
-  void dispose() {
-    _leadStepSub?.cancel();
-    super.dispose();
+  /// Honest per-stage guidance for the ACTIVE stage — what the user can do or
+  /// expect right now. Replaces the fabricated '~24 שעות' SLA chip; no
+  /// response-time or presence claims.
+  String _whatNowForStep(int step) {
+    if (step <= 1) return 'צוות הליווי בודק את הבקשה ויחזור אליכם לאישור המסלול';
+    if (step == 2) return 'עוברים על מדריך הניתוק — הכינו את פרטי הספק הנוכחי';
+    return 'הניוד בעיצומו — ודאו שה-SIM והציוד החדש אצלכם';
   }
 
   @override
@@ -67,16 +55,23 @@ class _TrackerWidgetState extends State<TrackerWidget> {
     final step = appState.trackerStep;
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
+    // Stage 1 carries the ONLY timestamp on the timeline — the lead row's real
+    // created_at (when fetched). Stages 2–4 show no dates: the rep sets their
+    // timing and we never fabricate one.
+    final joinTitle = _leadCreatedAt == null
+        ? 'הצטרפות'
+        : 'הצטרפות · ${_leadCreatedAt!.day}.${_leadCreatedAt!.month}.${_leadCreatedAt!.year}';
     final steps = [
-      _TrackerStep(icon: Icons.person_add_rounded, title: 'הצטרפות', subtitle: 'פרטים נשלחו בהצלחה', done: step >= 1),
-      _TrackerStep(icon: Icons.task_alt_rounded, title: 'אישור מסלול', subtitle: 'נציג אישר את הבקשה', done: step >= 2, active: step == 1),
+      _TrackerStep(icon: Icons.person_add_rounded, title: joinTitle, subtitle: 'פרטים נשלחו בהצלחה', done: step >= 1),
+      _TrackerStep(icon: Icons.task_alt_rounded, title: 'אישור מסלול', subtitle: 'נציג אישר את הבקשה', done: step >= 2, active: step <= 1),
       _TrackerStep(icon: Icons.swap_horiz_rounded, title: 'מדריך ניתוק', subtitle: 'תהליך הניוד בעיצומו', done: step >= 3, active: step == 2),
-      _TrackerStep(icon: Icons.check_circle_rounded, title: 'הושלם', subtitle: 'ברוכים הבאים לחבילה החדשה', done: step >= 4),
+      _TrackerStep(icon: Icons.check_circle_rounded, title: 'הושלם', subtitle: 'ברוכים הבאים לחבילה החדשה', done: step >= 4, active: step == 3),
     ];
 
-    // Terminal 'lost' state — the rep closed the lead. Show a calm, honest
-    // closed screen instead of leaving the user "in progress" forever.
-    if (_leadLost) {
+    // Terminal 'lost' state — the rep closed the lead (mirrored into
+    // AppState.leadLost by LeadStepSync). Show a calm, honest closed screen
+    // instead of leaving the user "in progress" forever.
+    if (appState.leadLost) {
       return Scaffold(
         backgroundColor: ffTheme.background,
         appBar: AppBar(
@@ -358,6 +353,34 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               const SizedBox(height: 20),
             ],
 
+            // Guarantee card — the reassurance belongs BEFORE the journey, so
+            // the user reads "you're covered" and then the steps (copy unchanged).
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ffTheme.accent2,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.shield_outlined, size: 24, color: ffTheme.primaryText),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('ערבות שקט', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primaryText)),
+                        Text('מבטיחים שלא תחויבו פעמיים במהלך המעבר', style: ffTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 200.ms),
+
+            const SizedBox(height: 20),
+
             // Timeline
             Row(
               children: [
@@ -457,9 +480,15 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                                   decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6)),
                                   child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ),
-                                const SizedBox(width: 8),
-                                Text('~24 שעות', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                               ],
+                            ),
+                            const SizedBox(height: 6),
+                            // Honest per-stage guidance — replaces the
+                            // fabricated '~24 שעות' SLA chip. Describes what
+                            // happens now, never a response-time promise.
+                            Text(
+                              'מה עכשיו · ${_whatNowForStep(step)}',
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                             ),
                           ],
                           if (s.done) ...[
@@ -484,7 +513,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             const SizedBox(height: 24),
 
-            // Rep card
+            // Support-team card — opens the chat with the real support channel.
             Pressable(
               onTap: () {
                 HapticFeedback.lightImpact();
@@ -496,44 +525,21 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
                 child: Row(
                   children: [
-                    Stack(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                          child: Center(
-                            child: Text('ד', style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, color: ffTheme.primary)),
-                          ),
-                        ),
-                        PositionedDirectional(
-                          end: 0, bottom: 0,
-                          // Green "online" dot — a presence cue (ACTION/active
-                          // green), ringed in the card surface so it reads as a badge.
-                          child: Container(
-                            width: 14, height: 14,
-                            decoration: BoxDecoration(
-                              color: ffTheme.brandAccent,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: ffTheme.cardSurface, width: 2),
-                            ),
-                          ),
-                        ),
-                      ],
+                    // The real support channel — no invented persona, no
+                    // presence dot and no response-time promise (truth-only).
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                      child: Icon(Icons.support_agent_rounded, size: 26, color: ffTheme.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('דנה — הנציגה שלכם', style: ffTheme.titleSmall),
-                          Row(
-                            children: [
-                              Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
-                              const SizedBox(width: 4),
-                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
+                          Text('צוות הליווי', style: ffTheme.titleSmall),
+                          Text('לכל שאלה לאורך המעבר', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                         ],
                       ),
                     ),
@@ -550,7 +556,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             const SizedBox(height: 16),
 
             AppButton(
-              text: 'שליחת הודעה לדנה',
+              text: 'דברו עם צוות הליווי',
               onPressed: () async {
                 HapticFeedback.lightImpact();
                 context.pushNamed('Chat');
@@ -608,33 +614,6 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ).animate().fadeIn(delay: 450.ms),
-
-            const SizedBox(height: 16),
-
-            // Guarantee card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: ffTheme.accent2,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.shield_outlined, size: 24, color: ffTheme.primaryText),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('ערבות שקט', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primaryText)),
-                        Text('מבטיחים שלא תחויבו פעמיים במהלך המעבר', style: ffTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 500.ms),
 
             const SizedBox(height: 24),
           ],

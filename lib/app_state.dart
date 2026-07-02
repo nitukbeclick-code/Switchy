@@ -107,6 +107,12 @@ class AppState extends ChangeNotifier {
     _currentBills['triple'] = p.getInt('bill_triple') ?? 260;
     _currentBills['abroad'] = p.getInt('bill_abroad') ?? 0;
     _billsPersonalized = p.getBool('billsPersonalized') ?? false;
+    // TRUTH foundation: which categories the user personally entered. LEGACY
+    // RULE — if the stored bool is true but this list was never written (an
+    // install predating per-category tracking), the set stays EMPTY and the
+    // bool stays true: we never guess which categories were real.
+    _personalizedCats
+        .addAll(p.getStringList('billsPersonalizedCats') ?? const []);
     // Quiz
     _quizCompleted = p.getBool('quizCompleted') ?? false;
     _quizBudget = p.getInt('quizBudget') ?? 90;
@@ -130,6 +136,7 @@ class AppState extends ChangeNotifier {
     _leadEmail = p.getString('leadEmail');
     _leadCallbackTime = p.getString('leadCallbackTime');
     _trackerStep = p.getInt('trackerStep') ?? 0;
+    _lastNotifiedLeadStep = p.getInt('lastNotifiedLeadStep') ?? 0;
     // Booked video meeting (Zoom)
     _meetingId = p.getString('meetingId');
     _meetingProvider = p.getString('meetingProvider');
@@ -178,12 +185,6 @@ class AppState extends ChangeNotifier {
       decoded.forEach((postId, value) {
         _communityReplies[postId] = (value as List).cast<Map<String, dynamic>>();
       });
-    }
-    // Chat history
-    final chatHistoryJson = p.getString('chatHistory');
-    if (chatHistoryJson != null) {
-      final list = jsonDecode(chatHistoryJson) as List<dynamic>;
-      _chatHistory.addAll(list.cast<Map<String, dynamic>>());
     }
     // My plans (renewal radar) + reminder consent
     final myPlansJson = p.getString('myPlans');
@@ -261,6 +262,8 @@ class AppState extends ChangeNotifier {
         case 'bills':
           for (final e in _currentBills.entries) { await p.setInt('bill_${e.key}', e.value); }
           await p.setBool('billsPersonalized', _billsPersonalized);
+          await p.setStringList(
+              'billsPersonalizedCats', _personalizedCats.toList());
           break;
         case 'quiz':
           await p.setBool('quizCompleted', _quizCompleted);
@@ -330,6 +333,9 @@ class AppState extends ChangeNotifier {
         case 'trackerStep':
           await p.setInt('trackerStep', _trackerStep);
           break;
+        case 'lastNotifiedLeadStep':
+          await p.setInt('lastNotifiedLeadStep', _lastNotifiedLeadStep);
+          break;
         case 'watchedPlans':
           await p.setStringList('watchedPlans', _watchedPlans.toList());
           // The §30A opt-in stamp travels with the watch list: null ⇒ no
@@ -360,9 +366,6 @@ class AppState extends ChangeNotifier {
           break;
         case 'communityReplies':
           await p.setString('communityReplies', jsonEncode(_communityReplies));
-          break;
-        case 'chatHistory':
-          await p.setString('chatHistory', jsonEncode(_chatHistory));
           break;
         case 'advisorHistory':
           await p.setString('advisorHistory', jsonEncode(_advisorHistory));
@@ -409,8 +412,8 @@ class AppState extends ChangeNotifier {
   @visibleForTesting
   Future<void> flushPersistence() => _flush();
 
-  // The "light" groups: scalars and small StringLists/JSON. The four heavy
-  // collections (communityPosts, communityReplies, chatHistory, advisorHistory)
+  // The "light" groups: scalars and small StringLists/JSON. The three heavy
+  // collections (communityPosts, communityReplies, advisorHistory)
   // can carry base64 media, so they are deliberately EXCLUDED here and written
   // only by their own setters via _markDirty — a like/search/bill must never
   // re-serialize a photo blob. [_persist] is the catch-all the light setters
@@ -419,7 +422,7 @@ class AppState extends ChangeNotifier {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds',
     'quizDraft', 'lead',
     'meeting', 'telegram', 'supportTicket',
-    'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
+    'trackerStep', 'lastNotifiedLeadStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'themeMode', 'dismissedNotifications', 'prefs',
     'seenOnboarding',
@@ -478,13 +481,43 @@ class AppState extends ChangeNotifier {
   final Map<String, int> _currentBills = {'cellular': 119, 'internet': 140, 'tv': 130, 'triple': 260, 'abroad': 0};
   Map<String, int> get currentBills => Map.unmodifiable(_currentBills);
   int currentBill(String cat) => _currentBills[cat] ?? 0;
-  void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); _billsPersonalized = true; notifyListeners(); _persist(); }
-  void resetAllBills() { _currentBills.updateAll((_, __) => 0); _billsPersonalized = false; notifyListeners(); _persist(); }
+  void setCurrentBill(String cat, int v) {
+    final clamped = v.clamp(0, 2000);
+    _currentBills[cat] = clamped;
+    if (clamped > 0) {
+      _personalizedCats.add(cat);
+    } else {
+      _personalizedCats.remove(cat);
+    }
+    _billsPersonalized = _personalizedCats.isNotEmpty;
+    notifyListeners();
+    _persist();
+  }
+  void resetAllBills() {
+    _currentBills.updateAll((_, __) => 0);
+    _personalizedCats.clear();
+    _billsPersonalized = false;
+    notifyListeners();
+    _persist();
+  }
 
   /// True once the user has entered at least one real bill (via the quiz or the
   /// bills editor), so savings figures reflect them — not the seed defaults.
   bool _billsPersonalized = false;
   bool get billsPersonalized => _billsPersonalized;
+
+  /// TRUTH foundation: exactly which categories the user has PERSONALLY entered
+  /// a real bill for (quiz or bills editor). Seed defaults never qualify — only
+  /// these categories may ever present a ₪ figure as the user's own. Persisted
+  /// with the 'bills' group under `billsPersonalizedCats`.
+  final Set<String> _personalizedCats = {};
+
+  /// Whether [cat]'s current bill was entered by the user (a REAL figure).
+  /// False for seed defaults — callers must not present those as personal.
+  bool isBillPersonalized(String cat) => _personalizedCats.contains(cat);
+
+  /// Read-only view of the personally-entered categories.
+  Set<String> get personalizedCats => Set.unmodifiable(_personalizedCats);
 
   // Quiz
   int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false; String _quizCat = 'cellular';
@@ -724,6 +757,24 @@ class AppState extends ChangeNotifier {
   void advanceTracker() { if (_trackerStep < 4) { _trackerStep++; notifyListeners(); _persist(); } }
   void setTrackerStep(int step) { if (step > _trackerStep && step <= 4) { _trackerStep = step; notifyListeners(); _persist(); } }
 
+  // Session-scoped (NOT persisted — like isAdmin): whether the CRM reported
+  // this lead as lost/closed. Set only from live backend data each session; it
+  // must never be invented locally nor survive a cold start on its own.
+  bool _leadLost = false;
+  bool get leadLost => _leadLost;
+  void setLeadLost(bool v) { _leadLost = v; notifyListeners(); }
+
+  /// The highest tracker step the user has already been notified about, so a
+  /// reopened app never re-announces an old step. 0 = never notified. Persisted
+  /// in its own small group.
+  int _lastNotifiedLeadStep = 0;
+  int get lastNotifiedLeadStep => _lastNotifiedLeadStep;
+  void setLastNotifiedLeadStep(int step) {
+    _lastNotifiedLeadStep = step;
+    _markDirty('lastNotifiedLeadStep');
+    notifyListeners();
+  }
+
   // Savings
   int _totalSavings = 0;
   int get totalSavings => _totalSavings;
@@ -936,17 +987,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _markDirty('communityReplies');
   }
-
-  // Chat history — persisted support-chat messages
-  final List<Map<String, dynamic>> _chatHistory = [];
-  List<Map<String, dynamic>> get chatHistory => List.unmodifiable(_chatHistory);
-  void addChatMessage({required String text, required bool isUser, bool isRead = true}) {
-    _chatHistory.add({'text': text, 'isUser': isUser, 'isRead': isRead, 'ts': DateTime.now().toIso8601String()});
-    if (_chatHistory.length > 100) _chatHistory.removeAt(0);
-    notifyListeners();
-    _markDirty('chatHistory');
-  }
-  void clearChatHistory() { _chatHistory.clear(); notifyListeners(); _markDirty('chatHistory'); }
 
   // Advisor history — persisted AI-advisor conversation messages
   final List<Map<String, dynamic>> _advisorHistory = [];

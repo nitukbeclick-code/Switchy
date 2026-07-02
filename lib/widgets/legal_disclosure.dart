@@ -17,10 +17,18 @@ import '../legal.dart';
 /// claims are derived here. Muted, compact, RTL-native (start-aligned) and
 /// theme-aware so it reads correctly in light and dark.
 class LegalDisclosure extends StatelessWidget {
-  const LegalDisclosure({super.key, this.padding});
+  const LegalDisclosure({super.key, this.padding, this.decorated = false});
 
   /// Optional outer padding. Defaults to none so callers control spacing.
   final EdgeInsetsGeometry? padding;
+
+  /// Opt-in "honest model" trust treatment: wraps the SAME approved copy in a
+  /// quiet pale-tint surface (hairline border + a small shield icon).
+  /// Presentation only — the §7b/§17 wording is byte-identical to the plain
+  /// variant, so no new legal copy is introduced. Defaults to false, which is
+  /// zero visual change for every existing call site. Tokens only (neutral
+  /// tint + hairline + muted ink icon) so dark parity comes from AppTheme.
+  final bool decorated;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +67,30 @@ class LegalDisclosure extends StatelessWidget {
       ],
     );
 
-    return padding == null ? block : Padding(padding: padding!, child: block);
+    // Opt-in quiet trust wrapper. The [block] inside is the same widget tree —
+    // the approved copy is rendered once either way, so tests that pin the §7b
+    // lead to findsOneWidget stay valid at a decorated call site.
+    final content = !decorated
+        ? block
+        : Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: t.accent1, // neutral pale tint — ink dominates, no accent
+              borderRadius: BorderRadius.circular(t.radiusMd),
+              border: Border.all(color: t.lineColor),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.shield_outlined, size: 16, color: muted),
+                const SizedBox(width: 8),
+                Expanded(child: block),
+              ],
+            ),
+          );
+
+    return padding == null
+        ? content
+        : Padding(padding: padding!, child: content);
   }
 }

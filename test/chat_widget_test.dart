@@ -6,25 +6,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
+import 'package:chosech/core/contact.dart';
 import 'package:chosech/pages/chat/chat_widget.dart';
 import 'package:chosech/pages/callback/callback_widget.dart';
 
-/// Widget tests for the support chat (lib/pages/chat/chat_widget.dart): that it
-/// renders its seeded conversation, and — the focus of this surface — that the
-/// recovery affordances exist: an "escalate to a human" hand-off that routes to
-/// the real callback flow, and an "end chat" affordance. Boots the full app
-/// through GoRouter like the other harnesses.
-///
-/// NOTE: the typing indicator uses a repeating flutter_animate animation, so we
-/// never call pumpAndSettle here (it would never settle); bounded pumps only.
+/// Widget tests for the honest team channel (lib/pages/chat/chat_widget.dart):
+/// a contact-card screen for "צוות הליווי" that replaced the old simulated
+/// "דנה" chat. The tests assert the truth-only contract — the team header with
+/// NO fabricated agent, a real WhatsApp CTA, a phone tile with an a11y label,
+/// and a callback tile that routes to the real human-callback flow. Boots the
+/// full app through GoRouter like the other harnesses.
 
 Future<void> _bootApp(WidgetTester tester) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   SharedPreferences.setMockInitialValues({});
   AppState.reset();
   await AppState().initializePersistedState();
-  // A taller-than-default surface so the escalate strip + input bar sit on
-  // screen (no off-screen taps); reset (in-test) when this test ends.
+  // A taller-than-default surface so every tile sits on screen (no off-screen
+  // taps); reset (in-test) when this test ends.
   await tester.binding.setSurfaceSize(const Size(900, 1400));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
@@ -53,42 +52,54 @@ Future<void> _ignoringOverflow(Future<void> Function() body) async {
 }
 
 void main() {
-  testWidgets('Chat renders its seeded conversation and recovery affordances',
+  testWidgets('Team channel renders the honest contact card — no mocked agent',
       (tester) async {
     await _ignoringOverflow(() async {
       final handle = tester.ensureSemantics();
       await _bootApp(tester);
       _go(tester, '/chat');
-      await tester.pump(const Duration(milliseconds: 700));
-      await tester.pump(const Duration(milliseconds: 700));
+      // Four bounded pumps: the page transition plus the staggered entrance
+      // fades must fully finish before the faded subtrees re-enter the
+      // semantics tree (FadeTransition drops semantics at opacity 0).
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 700));
+      }
 
       expect(find.byType(ChatWidget), findsOneWidget);
-      // The seeded agent intro is present.
-      expect(find.textContaining('דנה'), findsWidgets);
+      // The team header is present (app-bar title + header card).
+      expect(find.textContaining('צוות הליווי'), findsWidgets);
+      // The primary WhatsApp CTA exposes its labelled button semantics.
+      expect(find.bySemanticsLabel('דברו איתנו בוואטסאפ'), findsWidgets);
+      // The honesty line — a truthful commitment, not an invented SLA.
+      expect(find.textContaining('בשעות הפעילות'), findsOneWidget);
 
-      // The persistent escalate-to-human strip is shown (visible copy).
-      expect(find.textContaining('נציג אנושי'), findsWidgets);
-      // The icon-only app-bar escalate control carries a tooltip a11y label.
-      expect(find.byTooltip('דברו עם נציג אנושי'), findsOneWidget);
+      // TRUTH-ONLY: the fabricated agent persona is gone — no "דנה", and no
+      // fake presence status.
+      expect(find.textContaining('דנה'), findsNothing);
+      expect(find.textContaining('מחוברת'), findsNothing);
 
       expect(tester.takeException(), isNull);
       handle.dispose();
     });
   });
 
-  testWidgets('Escalate-to-human routes to the callback flow', (tester) async {
+  testWidgets('Callback tile routes to the real human-callback flow',
+      (tester) async {
     await _ignoringOverflow(() async {
       await _bootApp(tester);
       _go(tester, '/chat');
-      await tester.pump(const Duration(milliseconds: 700));
-      await tester.pump(const Duration(milliseconds: 700));
+      // Four bounded pumps: the page transition plus the staggered entrance
+      // fades must fully finish before the faded subtrees re-enter the
+      // semantics tree (FadeTransition drops semantics at opacity 0).
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 700));
+      }
 
-      // Tap the in-conversation escalate strip ("דברו עם נציג").
-      final escalate = find.text('דברו עם נציג');
-      expect(escalate, findsOneWidget);
-      await tester.ensureVisible(escalate);
+      final callbackTile = find.text('תיאום שיחה חוזרת');
+      expect(callbackTile, findsOneWidget);
+      await tester.ensureVisible(callbackTile);
       await tester.pump();
-      await tester.tap(escalate);
+      await tester.tap(callbackTile);
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pump(const Duration(milliseconds: 700));
 
@@ -98,31 +109,29 @@ void main() {
     });
   });
 
-  testWidgets('Overflow menu exposes an end-chat affordance', (tester) async {
+  testWidgets('Phone tile exposes a labelled button with the real number',
+      (tester) async {
     await _ignoringOverflow(() async {
+      final handle = tester.ensureSemantics();
       await _bootApp(tester);
       _go(tester, '/chat');
-      await tester.pump(const Duration(milliseconds: 700));
-      await tester.pump(const Duration(milliseconds: 700));
+      // Four bounded pumps: the page transition plus the staggered entrance
+      // fades must fully finish before the faded subtrees re-enter the
+      // semantics tree (FadeTransition drops semantics at opacity 0).
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 700));
+      }
 
-      // Open the "more options" menu (let it finish opening).
-      await tester.tap(find.byIcon(Icons.more_vert_rounded));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
+      // The phone tile is one labelled Semantics button carrying the real
+      // support number (children excluded, so screen readers hear it once).
+      final phoneTile =
+          find.bySemanticsLabel('התקשרו אלינו: $kSupportPhoneDisplay');
+      expect(phoneTile, findsOneWidget);
+      final semantics = tester.getSemantics(phoneTile);
+      expect(semantics.flagsCollection.isButton, isTrue);
 
-      // The end-chat entry exists; selecting it opens a confirm dialog. Tap the
-      // menu item's ListTile (its tappable region) rather than the inner Text.
-      expect(find.text('סיים שיחה'), findsOneWidget);
-      await tester.tap(find.widgetWithText(ListTile, 'סיים שיחה'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 600));
-      expect(find.text('סיום שיחה'), findsOneWidget); // dialog title
-
-      // Dismiss without leaving (keeps the test self-contained).
-      await tester.tap(find.text('המשך שיחה'));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.byType(ChatWidget), findsOneWidget);
       expect(tester.takeException(), isNull);
+      handle.dispose();
     });
   });
 }

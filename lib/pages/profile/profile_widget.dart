@@ -19,6 +19,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/savings_summary.dart';
+import '../../services/session_actions.dart';
 
 /// Reduced-motion-aware transforms for the profile's entrance chains: each is
 /// a drop-in for its flutter_animate counterpart that KEEPS the fade already
@@ -355,7 +356,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
   /// Logout confirm — the same AppSheet pattern the settings screen uses:
   /// destructive primary (error fill) + quiet cancel. Only a confirmed sheet
-  /// runs the exact pre-existing logout behaviour (logout → Onboarding).
+  /// runs the shared full sign-out (Supabase revoke + local state → Onboarding).
   Future<void> _confirmLogout(BuildContext context, AppState appState) async {
     final ffTheme = AppTheme.of(context);
     final confirmed = await AppSheet.show<bool>(
@@ -383,8 +384,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       ),
     );
     if (confirmed == true && context.mounted) {
-      appState.logout();
-      context.goNamed('Onboarding');
+      // Root cause of the "logout that doesn't log out": clearing only the
+      // AppState mirror left the Supabase session alive, so the next launch
+      // came back signed in. The shared action revokes the real session too.
+      await signOutCompletely(appState);
+      if (context.mounted) context.goNamed('Onboarding');
     }
   }
 

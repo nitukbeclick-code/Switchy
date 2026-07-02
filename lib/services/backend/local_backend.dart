@@ -39,6 +39,13 @@ class LocalBackend implements Backend {
     throw StateError('aiChat unavailable offline (LocalBackend)');
   }
 
+  // ── Account deletion — nothing server-side to erase offline ──────────────────
+  // There is no `account-delete` edge function without Supabase; the on-device
+  // wipe (AppState.wipeForAccountDeletion) IS the whole deletion, so this
+  // always reports success and the demo/test flow behaves like the real one.
+  @override
+  Future<bool> deleteAccount({String? advisorSessionId}) async => true;
+
   // ── Live catalogue — the compiled snapshot offline ───────────────────────────
   // Without Supabase there is no live `public.plans` table, so the catalogue is
   // the compiled const lists baked into the binary (the offline / cold-start

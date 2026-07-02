@@ -14,8 +14,10 @@ import { jlog } from "./log.ts";
 
 // Resolve the user id behind a JWT via GoTrue (/auth/v1/user). We pass the
 // user's token as the Authorization bearer and the service role as the apikey —
-// GoTrue returns the authenticated user for that token.
-async function uidFromJwt(jwt: string): Promise<string | null> {
+// GoTrue returns the authenticated user for that token. Exported (fail-closed:
+// null on ANY doubt) so account-delete can identify the caller without the
+// is_admin gate.
+export async function uidFromJwt(jwt: string): Promise<string | null> {
   const url = Deno.env.get("SUPABASE_URL") ?? "";
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!url || !key || !jwt) return null;

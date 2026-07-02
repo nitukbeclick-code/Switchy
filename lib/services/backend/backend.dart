@@ -1201,4 +1201,18 @@ abstract interface class Backend {
   /// [SupabaseBackend] calls functions.invoke. Throws on a transport / non-2xx so
   /// the tab can show an honest retry state.
   Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14});
+
+  // ── Account deletion (account-delete edge fn) ────────────────────────────────
+  /// Permanently erases the signed-in identity's server-side data via the
+  /// `account-delete` edge function. The function derives WHO to erase from the
+  /// request JWT (never from the body) and requires the explicit
+  /// `confirm:'DELETE'` token so a stray invoke can never delete anything.
+  /// [advisorSessionId] — when the device holds an AI-advisor session id — lets
+  /// the server purge that chat transcript too. Returns true ONLY when the
+  /// function answers `{ok:true}`; any transport / non-2xx / unexpected body is
+  /// false (fail-soft: the caller must leave local data untouched and show an
+  /// honest error instead of half-deleting). [LocalBackend] returns true —
+  /// there is no server-side data offline/demo, so the local wipe IS the whole
+  /// deletion.
+  Future<bool> deleteAccount({String? advisorSessionId});
 }

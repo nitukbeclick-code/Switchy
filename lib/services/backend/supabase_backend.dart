@@ -52,6 +52,26 @@ class SupabaseBackend implements Backend {
     throw StateError('site-ai-chat returned no JSON body');
   }
 
+  // ── Account deletion (account-delete edge fn) ────────────────────────────────
+  // functions.invoke auto-attaches the session JWT — the function derives the
+  // identity to erase from it, never from the body; the explicit confirm token
+  // is its guard against a stray invoke. Fail-soft: ANY transport / non-2xx /
+  // unexpected-body failure returns false so the caller leaves local data
+  // untouched and shows an honest error instead of half-deleting.
+  @override
+  Future<bool> deleteAccount({String? advisorSessionId}) async {
+    try {
+      final res = await _db.functions.invoke('account-delete', body: {
+        'confirm': 'DELETE',
+        if (advisorSessionId != null) 'advisorSessionId': advisorSessionId,
+      });
+      final data = res.data;
+      return data is Map && data['ok'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Live catalogue (public.plans) ────────────────────────────────────────────
   // public.plans is "publicly readable" (anon SELECT grant + RLS) — see
   // schema.sql §grants and web/lib/live-catalogue.ts, which this mirrors in Dart.

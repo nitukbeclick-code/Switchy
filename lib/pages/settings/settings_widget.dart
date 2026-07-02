@@ -9,6 +9,7 @@ import '../../widgets/app_sheet.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/auth_service.dart';
+import '../../services/session_actions.dart';
 import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/pressable.dart';
@@ -26,6 +27,20 @@ extension _SettleYX on Animate {
     return slideY(begin: begin, end: 0);
   }
 }
+
+/// Factual copy for the account-deletion confirm sheet (truth-only: it states
+/// exactly what the `account-delete` edge function + the local wipe erase, and
+/// what the law obliges us to keep). Two variants, picked by whether a REAL
+/// (non-anonymous) account is signed in on this device. Exposed for tests.
+@visibleForTesting
+const String kDeleteAccountSummaryLoggedIn =
+    'המחיקה מסירה לצמיתות את החשבון והמידע האישי: פרופיל, חשבונות שהזנתם, העדפות ומעקבים, פוסטים ותגובות בקהילה והיסטוריית הצ׳אט. פרטים אישיים בפניות ובפגישות נמחקים מהרשומות. מידע שחובה לשמור לפי דין (רישומי הסכמה והסרה) נשמר. הפעולה אינה הפיכה.';
+
+/// The guest-device variant: no registered account, so the deletion clears the
+/// local data plus the server traces of the device's ANONYMOUS identity.
+@visibleForTesting
+const String kDeleteAccountSummaryGuest =
+    'אין חשבון רשום במכשיר הזה. המחיקה תנקה את הנתונים המקומיים ואת עקבות השרת של הזהות האנונימית של המכשיר. הפעולה אינה הפיכה.';
 
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
@@ -173,8 +188,10 @@ class SettingsWidget extends StatelessWidget {
             // ── Section: Legal & account deletion ─────────────────────────
             // Google Play requires apps that support accounts to surface the
             // privacy policy AND a clear account/data-deletion path INSIDE the
-            // app (not only on the store listing). These open the canonical web
-            // pages (privacy / terms / account-deletion) via the external browser.
+            // app (not only on the store listing). Privacy/terms open the
+            // canonical web pages via the external browser; the deletion row
+            // runs the REAL in-app flow ([_confirmDeleteAccount]), which links
+            // to the full web policy from inside its sheet.
             _SectionHeader(title: 'משפטי ומחיקת חשבון', subtitle: 'מדיניות, תנאים ומחיקת המידע שלך', ffTheme: ffTheme),
             _Card(
               ffTheme: ffTheme,
@@ -206,9 +223,9 @@ class SettingsWidget extends StatelessWidget {
                     _ActionRow(
                       icon: Icons.delete_forever_outlined,
                       title: 'מחיקת חשבון ונתונים',
-                      subtitle: 'איך לבקש מחיקה של החשבון והמידע',
+                      subtitle: 'מחיקה לצמיתות של החשבון והמידע',
                       iconColor: ffTheme.error,
-                      onTap: () => _openUrl(context, 'https://switchy-ai.com/account-deletion'),
+                      onTap: () => _confirmDeleteAccount(context),
                       ffTheme: ffTheme,
                     ),
                   ),
@@ -364,8 +381,8 @@ class SettingsWidget extends StatelessWidget {
   /// HOLD-TO-CONFIRM ([_HoldToConfirm]): logging out is destructive (signs out +
   /// wipes local AppState), so the user must press-and-HOLD to commit — a slow,
   /// deliberate ~1.5s LINEAR fill; releasing early SNAPS back. On completion it
-  /// pops the sheet `true`, preserving the prior contract exactly (the outer
-  /// branch below is byte-for-byte unchanged), then signs out + returns Home.
+  /// pops the sheet `true`, then runs the FULL sign-out ([signOutCompletely] —
+  /// server token revoke + complete local session teardown) and returns Home.
   Future<void> _confirmLogout(BuildContext context) async {
     final ffTheme = AppTheme.of(context);
     final confirmed = await AppSheet.show<bool>(
@@ -394,10 +411,102 @@ class SettingsWidget extends StatelessWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
-      await AuthService.instance.signOut();
+      final appState = Provider.of<AppState>(context, listen: false);
+      await signOutCompletely(appState);
       if (!context.mounted) return;
-      Provider.of<AppState>(context, listen: false).logout();
       context.goNamed('Home');
+    }
+  }
+
+  /// Account deletion confirm — the REAL in-app deletion path (Play requires a
+  /// working in-app deletion, not just a web page explaining how to ask). The
+  /// sheet states factually what gets erased — different copy for a registered
+  /// account ([kDeleteAccountSummaryLoggedIn]) vs. a guest device whose only
+  /// identity is the anonymous session ([kDeleteAccountSummaryGuest]) — links
+  /// to the full web policy, and gates the irreversible action behind the same
+  /// hold-to-confirm gesture as logout (error colour: this deletes, it doesn't
+  /// just sign out). A confirmed hold runs [deleteAccountCompletely] behind a
+  /// blocking progress barrier: success lands on onboarding with a
+  /// confirmation snackbar; failure changes NOTHING locally and shows an
+  /// honest error with the support address.
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final ffTheme = AppTheme.of(context);
+    final summary = AuthService.instance.isRealUser
+        ? kDeleteAccountSummaryLoggedIn
+        : kDeleteAccountSummaryGuest;
+    final confirmed = await AppSheet.show<bool>(
+      context,
+      title: 'מחיקת חשבון ונתונים',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(summary, style: ffTheme.bodyMedium),
+          const SizedBox(height: 12),
+          // Quiet secondary link to the canonical web policy for full details.
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Semantics(
+              button: true,
+              child: Pressable(
+                onTap: () =>
+                    _openUrl(context, 'https://switchy-ai.com/account-deletion'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    'למדיניות המחיקה המלאה',
+                    style: ffTheme.bodySmall.copyWith(
+                      color: ffTheme.secondaryText,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          _HoldToConfirm(
+            label: 'מחק חשבון',
+            holdHint: 'החזיקו כדי למחוק',
+            color: ffTheme.error,
+            ffTheme: ffTheme,
+            onConfirmed: () => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 8),
+          AppButton.secondary(
+            text: 'ביטול',
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    // Blocking progress while the server erase + local wipe run — nothing else
+    // is tappable (no barrier dismiss, no back-pop) until the outcome is known.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (_) => const PopScope(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+    );
+    final ok = await deleteAccountCompletely(appState);
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // drop the progress barrier
+    if (ok) {
+      // Everything is gone (server-side + local) — restart at onboarding.
+      context.goNamed('Onboarding');
+      AppSnackBar.success(context, 'החשבון והנתונים נמחקו');
+    } else {
+      // Fail-soft: the server refused / was unreachable, so NOTHING local was
+      // changed — the user keeps their data and can retry or contact us.
+      AppSnackBar.error(
+          context, 'המחיקה נכשלה — נסו שוב או כתבו ל-hello@switchy-ai.com');
     }
   }
 

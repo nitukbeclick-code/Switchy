@@ -636,6 +636,17 @@ class LocalBackend implements Backend {
     return List.unmodifiable(list);
   }
 
+  // ── Street price ─────────────────────────────────────────────────────────────
+  // No network offline — return null so StreetPriceService.hydrate is a strict
+  // no-op (nothing cached, aggregateFor unchanged). NEVER a fake aggregate: a
+  // street price is real crowd data or nothing.
+  @override
+  Future<Map<String, dynamic>?> fetchStreetPrice({
+    required String provider,
+    required String category,
+  }) async =>
+      null;
+
   // ── Owner observability ──────────────────────────────────────────────────────
   // A deterministic, plausible fake mirroring the `admin-metrics` edge-fn shape
   // so the events-and-audit tab renders offline and in tests. The numbers are

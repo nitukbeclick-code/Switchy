@@ -77,7 +77,7 @@ describe("granular marketing consent (Spam Law)", () => {
 
 describe("contact details (owner-confirmed)", () => {
   it("uses the real contact email and WhatsApp number", () => {
-    expect(CONTACT_EMAIL).toBe("hello@chosech.co.il");
+    expect(CONTACT_EMAIL).toBe("hello@switchy-ai.com");
     expect(CONTACT_WHATSAPP).toBe("050-503-7537");
   });
 });

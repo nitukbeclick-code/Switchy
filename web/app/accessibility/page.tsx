@@ -105,7 +105,7 @@ export default function AccessibilityPage() {
       ],
       items: [
         "הגורם האחראי: צוות Switchy AI",
-        "דוא״ל: hello@chosech.co.il",
+        "דוא״ל: hello@switchy-ai.com",
         "וואטסאפ: 050-503-7537",
       ],
     },
@@ -113,7 +113,7 @@ export default function AccessibilityPage() {
       h: "דיווח על בעיית נגישות ומנגנון טיפול בפנייה",
       paras: [
         "אם נתקלתם בבעיית נגישות באתר, או אם דרושה לכם התאמת נגישות, נשמח שתדווחו " +
-          "לנו ונפעל לתקן. ניתן לדווח/לפנות בכתובת hello@chosech.co.il או בוואטסאפ " +
+          "לנו ונפעל לתקן. ניתן לדווח/לפנות בכתובת hello@switchy-ai.com או בוואטסאפ " +
           "050-503-7537. כדי שנוכל לסייע במהירות, נשמח אם תפרטו בפנייה:",
       ],
       items: [
@@ -308,10 +308,10 @@ export default function AccessibilityPage() {
         <p className="mt-1.5 leading-relaxed">
           נשמח שתדווחו לנו בכתובת{" "}
           <a
-            href="mailto:hello@chosech.co.il"
+            href="mailto:hello@switchy-ai.com"
             className="interactive text-accent-text hover:text-accent-hover"
           >
-            hello@chosech.co.il
+            hello@switchy-ai.com
           </a>{" "}
           או בוואטסאפ 050-503-7537, ונפעל לתקן.
         </p>

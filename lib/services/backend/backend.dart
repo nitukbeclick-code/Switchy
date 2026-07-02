@@ -991,6 +991,25 @@ abstract interface class Backend {
   /// [BillAnalysis] whose [BillAnalysis.error] carries the explanation.
   Future<BillAnalysis?> analyzeBill(String imageDataUri);
 
+  // ── Street price (street-price edge fn, GET) ─────────────────────────────────
+  /// Reads the threshold-gated street-price aggregate for a (provider, category)
+  /// from the DEPLOYED `street-price` edge function (GET → server-side
+  /// `get_street_price()`, SECURITY DEFINER). Returns the DECODED body verbatim —
+  /// `{ok, report_count, meets_threshold, reports_needed, typical_price,
+  /// median_price, min_price, max_price, avg_price, first_at, last_at}` — where
+  /// EVERY price is null below the server's 5-distinct-reporter threshold (the
+  /// DB nulls them; we never reconstruct a refused figure). Returns null on ANY
+  /// transport / non-2xx / parse failure so the caller fails soft (offline the
+  /// app behaves identically to having never called this). Note: the deployed
+  /// GET scopes the cohort by `provider` (plan-level via `plan_id`); `category`
+  /// is sent for forward-compatibility with a category-filtered cohort.
+  /// [LocalBackend] returns null (no network) → hydration is a no-op offline
+  /// and in tests. Interpretation/caching live in `services/street_price.dart`.
+  Future<Map<String, dynamic>?> fetchStreetPrice({
+    required String provider,
+    required String category,
+  });
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

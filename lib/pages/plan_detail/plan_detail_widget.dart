@@ -65,6 +65,18 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     zoomSupportedProviders().then((_) {
       if (mounted) setState(() {});
     });
+    // Light up the street-price trust row from the deployed edge fn's REAL,
+    // threshold-gated aggregate (lazy + cached + fail-soft — see
+    // StreetPriceService.hydrate). Rebuild when data lands so aggregateFor
+    // (still synchronous) picks up the hydrated server figure. Under
+    // LocalBackend (offline / tests) this is a strict no-op — the row stays
+    // truth-gated exactly as before.
+    if (viewedPlan != null) {
+      StreetPriceService.hydrate(viewedPlan.provider, viewedPlan.cat)
+          .then((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override
@@ -111,9 +123,11 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     final planMatch = RecommendationEngine.scorePlan(plan, matchProfile);
 
     // Trust signals — both truth-gated upstream, computed once per build:
-    //   • street price: aggregateFor is SYNCHRONOUS in-memory and returns null
-    //     below kStreetPriceMinReports ACCEPTED reports, so a non-null value is
-    //     always real, sufficient, screened data;
+    //   • street price: aggregateFor is SYNCHRONOUS in-memory (session reports
+    //     + the server aggregate hydrated in initState) and returns null below
+    //     kStreetPriceMinReports ACCEPTED reports — the server enforces the same
+    //     threshold — so a non-null value is always real, sufficient, screened
+    //     data;
     //   • rating: hasData is false until at least one REAL review (catalogue or
     //     the signed-in user's own) backs the provider.
     final streetAgg = StreetPriceService.aggregateFor(plan.provider, plan.cat);

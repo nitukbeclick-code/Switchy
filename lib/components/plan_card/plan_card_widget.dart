@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -142,87 +144,30 @@ class PlanCardWidget extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          plan.provider,
-                                          // 15/w700/ink — the title scale exactly.
-                                          style: ffTheme.titleLarge,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                              // Flexible + ellipsis: at large OS text scale the
-                              // header row must squeeze gracefully, never clip.
-                              Flexible(
-                                child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: ffTheme.accent4,
-                                  borderRadius: BorderRadius.circular(ffTheme.radiusXs),
-                                  border: Border.all(color: ffTheme.info.withValues(alpha: 0.3)),
-                                ),
-                                child: Text(
-                                  plan.netLabel,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  // Rubik micro-chip: nearest Rubik scale token
-                                  // is titleSmall (13/w600); the 10px size +
-                                  // w700 + info colour are the genuine deltas.
-                                  style: ffTheme.titleSmall.copyWith(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: ffTheme.info,
-                                  ),
-                                ),
-                                ),
-                              ),
-                              if (matchLabel != null) ...[
-                                const SizedBox(width: 6),
-                                // Flexible + ellipsis: overflow-safe at large
-                                // OS text scale (dynamic-type resilience).
-                                Flexible(
-                                  child: Builder(builder: (context) {
-                                  final fits = matchLabel == 'מתאים לתקציב';
-                                  final tone = fits ? ffTheme.success : ffTheme.warning;
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: tone.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
-                                      border: Border.all(color: tone.withValues(alpha: 0.4)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (fits) ...[
-                                          Icon(Icons.check_rounded, size: 9, color: tone),
-                                          const SizedBox(width: 2),
-                                        ],
-                                        Flexible(
-                                          child: Text(
-                                            matchLabel,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            // Rubik micro-chip: nearest Rubik token
-                                            // is titleSmall (13/w600); 9px + w700 +
-                                            // tone are the genuine deltas.
-                                            style: ffTheme.titleSmall.copyWith(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w700,
-                                              color: tone,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
+                                  // Name row — PRIORITY layout (live-tour
+                                  // truncation fix: '019 מו…' while the chips
+                                  // kept full width). The PROVIDER NAME is the
+                                  // card's identity, so it claims its width
+                                  // FIRST; the net chip takes what it needs
+                                  // from the remainder; the quiz-match chip
+                                  // shrinks LAST — full text when it fits, an
+                                  // icon-only tonal glyph (tooltip + semantics
+                                  // keep the label) when tight, hidden when
+                                  // even the glyph can't fit. Widths are
+                                  // measured with the SAME styles + ambient
+                                  // textScaler the row renders with, so the
+                                  // allocation stays honest at 390px / 1.3x.
+                                  LayoutBuilder(builder: (context, nameBox) {
+                                    return _HeaderNameRow(
+                                      maxWidth: nameBox.hasBoundedWidth
+                                          ? nameBox.maxWidth
+                                          : double.infinity,
+                                      provider: plan.provider,
+                                      netLabel: plan.netLabel,
+                                      matchLabel: matchLabel,
+                                      ffTheme: ffTheme,
+                                    );
                                   }),
-                                ),
-                              ],
-                            ],
-                          ),
                                   const SizedBox(height: 2),
                                   Text(
                                     plan.plan,
@@ -247,13 +192,19 @@ class PlanCardWidget extends StatelessWidget {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Text(
+                                            // Flexible + ellipsis: overflow-safe
+                                            // even on degenerate-narrow layouts.
+                                            Flexible(
+                                              child: Text(
                                               'פרופיל הספק',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                               // 11/w600 labelSmall; w700 + primary
                                               // (link ink) are the genuine deltas.
                                               style: ffTheme.labelSmall.copyWith(
                                                 fontWeight: FontWeight.w700,
                                                 color: ffTheme.primary,
+                                              ),
                                               ),
                                             ),
                                             Icon(Icons.chevron_left_rounded, size: 14, color: ffTheme.primary),
@@ -438,10 +389,16 @@ class PlanCardWidget extends StatelessWidget {
                       // rendered through the shared [SavingPill] so savings get
                       // the one consistent VALUE treatment (pale-green tint +
                       // green text + savings glyph + tabular figures).
-                      // Flexible: at large OS text scale the pill ellipsizes
-                      // (SavingPill is internally overflow-safe once
-                      // constrained) instead of overflowing the price row.
-                      Flexible(child: SavingPill(text: 'חוסך ₪$savings בשנה')),
+                      // Flexible + COMPACT-aware: at large OS text scale the
+                      // pill first drops 'בשנה' (same real figure) and hides
+                      // entirely rather than render an unreadable half-word —
+                      // the full copy stays in the card's Semantics label.
+                      Flexible(
+                        child: SavingPill(
+                          text: 'חוסך ₪$savings בשנה',
+                          shortText: 'חוסך ₪$savings',
+                        ),
+                      ),
                   ],
                 ),
 
@@ -553,6 +510,186 @@ class PlanCardWidget extends StatelessWidget {
       ),
       ),
       ),
+    );
+  }
+}
+
+/// The header's provider-name + chips row, laid out by PRIORITY rather than
+/// equal flex shares (the equal-share Flexible row truncated the provider to
+/// '019 מו…' at 390px while the chips kept full width):
+///
+///  1. the PROVIDER NAME (the card's identity) claims its full width first;
+///  2. the net chip takes what it needs from the remainder;
+///  3. the quiz-match chip shrinks LAST — full text when it fits, an icon-only
+///     tonal glyph (Tooltip + Semantics keep the label readable/announceable)
+///     when tight, hidden entirely when even the glyph can't fit.
+///
+/// All widths are measured with the exact render styles + the ambient
+/// [TextScaler], so the allocation holds at any OS text scale (incl. 1.3x on a
+/// 390px viewport). Presentation-only: no copy is altered, only what fits.
+class _HeaderNameRow extends StatelessWidget {
+  const _HeaderNameRow({
+    required this.maxWidth,
+    required this.provider,
+    required this.netLabel,
+    required this.matchLabel,
+    required this.ffTheme,
+  });
+
+  final double maxWidth;
+  final String provider;
+  final String netLabel;
+  final String? matchLabel;
+  final AppTheme ffTheme;
+
+  /// Chip chrome around its text: 2×6 horizontal padding + 2×1 border.
+  static const double _chipChrome = 14;
+
+  /// Gap between the row's segments.
+  static const double _gap = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    // 15/w700/ink — the title scale exactly.
+    final providerStyle = ffTheme.titleLarge;
+    // Rubik micro-chip: nearest Rubik scale token is titleSmall (13/w600);
+    // the 10px size + w700 + info colour are the genuine deltas.
+    final netStyle = ffTheme.titleSmall.copyWith(
+      fontSize: 10,
+      fontWeight: FontWeight.w700,
+      color: ffTheme.info,
+    );
+
+    final scaler = MediaQuery.maybeTextScalerOf(context) ?? TextScaler.noScaling;
+    // Measure with the SAME effective style [Text] renders with — an
+    // inherit:true style merges over the ambient DefaultTextStyle (which can
+    // contribute letterSpacing etc.), so the raw token alone under-measures.
+    final ambient = DefaultTextStyle.of(context).style;
+    double textW(String s, TextStyle st) {
+      final painter = TextPainter(
+        text: TextSpan(text: s, style: st.inherit ? ambient.merge(st) : st),
+        textDirection: TextDirection.rtl,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      return painter.width.ceilToDouble();
+    }
+
+    // 1) Identity first: the provider name takes what it needs (capped only by
+    // the row itself; the ellipsis below is the degenerate-case backstop).
+    final providerW = math.min(textW(provider, providerStyle), maxWidth);
+    var remaining = maxWidth - providerW - _gap;
+
+    // 2) The net chip takes what it needs from the remainder.
+    final netW = remaining.clamp(0.0, textW(netLabel, netStyle) + _chipChrome);
+    remaining -= netW + _gap;
+
+    // 3) The quiz-match chip gets whatever is left — full → icon-only → hidden.
+    Widget? matchChip;
+    final label = matchLabel;
+    if (label != null) {
+      final fits = label == 'מתאים לתקציב';
+      final tone = fits ? ffTheme.success : ffTheme.warning;
+      // Rubik micro-chip: nearest Rubik token is titleSmall (13/w600); 9px +
+      // w700 + tone are the genuine deltas.
+      final matchStyle = ffTheme.titleSmall.copyWith(
+        fontSize: 9,
+        fontWeight: FontWeight.w700,
+        color: tone,
+      );
+      final deco = BoxDecoration(
+        color: tone.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+        border: Border.all(color: tone.withValues(alpha: 0.4)),
+      );
+      final fullNeed =
+          textW(label, matchStyle) + _chipChrome + (fits ? 11 : 0);
+      // Icon-only glyph chip: 10 icon + 2×6 padding + 2×1 border.
+      const iconNeed = 24.0;
+      if (fullNeed <= remaining) {
+        matchChip = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: deco,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (fits) ...[
+                Icon(Icons.check_rounded, size: 9, color: tone),
+                const SizedBox(width: 2),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: matchStyle,
+                ),
+              ),
+            ],
+          ),
+        );
+      } else if (iconNeed <= remaining) {
+        // Too tight for the words — keep the tonal signal as a glyph-only
+        // chip; the Tooltip + Semantics label carry the exact copy for
+        // long-press / assistive tech. Better than the 'מתאי…' half-word.
+        matchChip = Tooltip(
+          message: label,
+          child: Semantics(
+            label: label,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: deco,
+              child: Icon(
+                // Check = fits the budget; trending-up = slightly above it.
+                fits ? Icons.check_rounded : Icons.trending_up_rounded,
+                size: 10,
+                color: tone,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    // Every segment is already measured-and-capped above, so the Row needs no
+    // Flexible children — a Flexible here would SPLIT the free space by flex
+    // share and re-starve the provider (the very bug being fixed).
+    return Row(
+      children: [
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: math.max(providerW, 0)),
+          child: Text(
+            provider,
+            maxLines: 1,
+            style: providerStyle,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (netW > 0) ...[
+          const SizedBox(width: _gap),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: netW),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: ffTheme.accent4,
+                borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                border: Border.all(color: ffTheme.info.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                netLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: netStyle,
+              ),
+            ),
+          ),
+        ],
+        if (matchChip != null) ...[
+          const SizedBox(width: _gap),
+          matchChip,
+        ],
+      ],
     );
   }
 }

@@ -72,6 +72,21 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
         _category = cats.first;
       }
     }
+    _hydrate();
+  }
+
+  /// Lazily hydrates the selected (provider, category) pair from the deployed
+  /// street-price edge fn and repaints when REAL server data lands, so the
+  /// aggregate card lights up from the global report pool — not only from
+  /// reports submitted in this session. Fail-soft + cached + deduped inside
+  /// [StreetPriceService.hydrate]; offline (LocalBackend) it's a strict no-op,
+  /// so this never blocks, throws, or fabricates.
+  void _hydrate() {
+    final p = _provider, c = _category;
+    if (p == null || c == null) return;
+    StreetPriceService.hydrate(p, c).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -105,6 +120,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
       final cats = providerCategoryIds(p);
       _category = cats.isNotEmpty ? cats.first : null;
     });
+    _hydrate();
   }
 
   void _submit() {
@@ -245,6 +261,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
             onTap: () {
               HapticFeedback.selectionClick();
               setState(() => _category = id);
+              _hydrate();
             });
       }).toList(),
     );

@@ -933,6 +933,44 @@ class SupabaseBackend implements Backend {
         .toList();
   }
 
+  // ── Street price (street-price edge fn) ──────────────────────────────────────
+  // Read-only GET of the threshold-gated aggregate (mirrors the fetchAdminMetrics
+  // GET pattern; the fn is deployed --no-verify-jwt and functions.invoke attaches
+  // the anon/session JWT + apikey headers exactly like the web's proxy does). The
+  // server (`get_street_price()`) enforces the 5-report honesty gate and nulls
+  // every price below it — we transport the body verbatim and NEVER synthesize a
+  // figure. Fail-soft: ANY error → null (the service caches nothing and the app
+  // behaves exactly as offline/today).
+  @override
+  Future<Map<String, dynamic>?> fetchStreetPrice({
+    required String provider,
+    required String category,
+  }) async {
+    final p = provider.trim();
+    if (p.isEmpty) return null;
+    try {
+      final res = await _db.functions.invoke(
+        'street-price',
+        method: HttpMethod.get,
+        queryParameters: {
+          'provider': p,
+          // The deployed GET scopes by provider (see the fn's handleRead);
+          // category rides along for forward-compat with a category cohort.
+          'category': category,
+        },
+      );
+      final data = res.data;
+      if (data is Map) return data.cast<String, dynamic>();
+      if (data is String && data.isNotEmpty) {
+        final decoded = jsonDecode(data);
+        if (decoded is Map) return decoded.cast<String, dynamic>();
+      }
+      return null;
+    } catch (_) {
+      return null; // transport / non-2xx / parse — fail soft, never throw
+    }
+  }
+
   // ── Owner observability (admin-metrics edge fn) ──────────────────────────────
   // The `admin-metrics` function is a read-only GET with a ?days= window (1..90,
   // default 7). functions.invoke auto-attaches the signed-in user's JWT; the

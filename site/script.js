@@ -1870,6 +1870,23 @@
       noteEl.classList.toggle('booking__note--err', !!isErr);
     };
 
+    // Honest send-failure notice (mirrors the Next client's copy): the fn
+    // accepted the request but the OTP email itself didn't go out — offer a
+    // retry and a WhatsApp CTA. Built with safe DOM methods; all content is
+    // fixed copy (no user input).
+    const setSendFailNote = () => {
+      if (!noteEl) return;
+      noteEl.textContent = 'לא הצלחנו לשלוח מייל כרגע — אפשר לנסות שוב בעוד רגע, או ';
+      const wa = document.createElement('a');
+      wa.href = 'https://wa.me/972505037537?text=' +
+        encodeURIComponent('היי, ניסיתי לקבוע שיחת ייעוץ בזום באתר וקוד האימות למייל לא נשלח — אשמח לקבוע דרככם');
+      wa.target = '_blank';
+      wa.rel = 'noopener';
+      wa.textContent = 'לקבוע דרך וואטסאפ';
+      noteEl.appendChild(wa);
+      noteEl.classList.add('booking__note--err');
+    };
+
     // ── Israel-time helpers ──────────────────────────────────────────────────
     // Compute "now" in Asia/Jerusalem regardless of the visitor's own TZ, so
     // the ≥4h window matches the server. We read the IL wall-clock parts and
@@ -2085,15 +2102,24 @@
       return { name: name, phone: phone, email: email };
     };
 
-    // Step 1 — request a code (always {ok:true}) then reveal the verify step.
+    // Step 1 — request a code, then reveal the verify step. The fn replies
+    // {ok:true, sent:false} when the OTP email itself failed to send — honour
+    // it: stay on this step with an honest notice + WhatsApp fallback instead
+    // of advancing the user to wait for a code that will never arrive. A
+    // MISSING `sent` field (older deployed fn) is treated as sent (back-compat).
     const requestCode = async (vals) => {
       busy = true;
       let btnLabel = '';
       if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'שולח קוד…'; }
       try {
-        await callMeetingBook({ action: 'request-code', email: vals.email, name: vals.name });
-        setNote('', false);
-        showVerifyStep(vals.email);
+        const data = await callMeetingBook({ action: 'request-code', email: vals.email, name: vals.name });
+        const sent = data && data.sent !== false;
+        if (sent) {
+          setNote('', false);
+          showVerifyStep(vals.email);
+        } else {
+          setSendFailNote();
+        }
       } catch (_) {
         const msg = 'לא הצלחנו לשלוח קוד אימות — נסו שוב, או דברו איתנו בוואטסאפ 💬';
         setNote(msg, true);

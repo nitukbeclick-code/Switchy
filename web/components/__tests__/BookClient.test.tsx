@@ -11,10 +11,13 @@
 //     body shape at each step: request-code → verify-code (wrong → error, right →
 //     advance) → book → success.
 //   • A server { ok:false, error } is surfaced verbatim (rate-limited / slot taken).
+//   • The request-code `sent` flag is HONORED: an explicit sent:false keeps the
+//     user in place with a retry + WhatsApp fallback (no phantom code step), while
+//     a missing `sent` (the older deployed fn) still advances — back-compat.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import BookClient from "@/components/BookClient";
 import { availableSlots } from "@/lib/slots";
@@ -79,7 +82,8 @@ describe("BookClient — request → verify → book happy path", () => {
   it("walks the full flow, calling meeting-book with the right action/body each step", async () => {
     const fetchMock = vi
       .fn()
-      // 1) request-code → always {ok:true}
+      // 1) request-code → {ok:true} with NO sent field (the older deployed fn) —
+      //    missing sent is treated as sent, so the flow advances.
       .mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) })
       // 2) verify-code (wrong) → {ok:false,error}
       .mockResolvedValueOnce({
@@ -189,6 +193,130 @@ describe("BookClient — server errors are surfaced", () => {
       await screen.findByText("יותר מדי בקשות. נסו שוב מאוחר יותר."),
     ).toBeInTheDocument();
     expect(screen.queryByText("הבקשה נשלחה!")).not.toBeInTheDocument();
+  });
+});
+
+describe("BookClient — the request-code `sent` flag is honored", () => {
+  /** Fill + consent + submit the details step (shared by the sent-flag cases). */
+  async function submitDetails(user: ReturnType<typeof userEvent.setup>) {
+    await fillDetails(user);
+    await user.click(screen.getByRole("checkbox"));
+    await user.click(requestBtn());
+  }
+
+  it("sent:false stays on the details step and offers the WhatsApp fallback", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, sent: false }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(<BookClient />);
+    await submitDetails(user);
+
+    // The honest inline fallback appears…
+    expect(
+      await screen.findByText(/לא הצלחנו לשלוח מייל כרגע/),
+    ).toBeInTheDocument();
+    // …with a WhatsApp deep link to the site-wide business number…
+    const wa = screen.getByRole("link", { name: "לקביעה דרך וואטסאפ" });
+    expect(wa.getAttribute("href")).toContain("https://wa.me/972505037537");
+    // …and we did NOT advance to the code step.
+    expect(screen.queryByText(/שלחנו קוד בן 6 ספרות/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("קוד אימות (6 ספרות)"),
+    ).not.toBeInTheDocument();
+    // The normal retry stays available.
+    expect(requestBtn()).toBeEnabled();
+  });
+
+  it("sent:true advances to the code step as today", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true, sent: true }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(<BookClient />);
+    await submitDetails(user);
+
+    expect(
+      await screen.findByText(/שלחנו קוד בן 6 ספרות ל-/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/לא הצלחנו לשלוח מייל כרגע/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a missing sent field (older deployed fn) still advances — back-compat", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = userEvent.setup();
+    render(<BookClient />);
+    await submitDetails(user);
+
+    expect(
+      await screen.findByText(/שלחנו קוד בן 6 ספרות ל-/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/לא הצלחנו לשלוח מייל כרגע/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("a resend that returns sent:false shows the fallback and does NOT restart the cooldown", async () => {
+    // shouldAdvanceTime keeps waitFor/user-event's own timers ticking while we
+    // jump the 30s resend cooldown manually.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const user = userEvent.setup({
+        advanceTimers: vi.advanceTimersByTime.bind(vi),
+      });
+      const fetchMock = vi
+        .fn()
+        // initial request-code → the email went out, the 30s cooldown starts
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ ok: true, sent: true }),
+        })
+        // resend → the send FAILED
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ ok: true, sent: false }),
+        });
+      vi.stubGlobal("fetch", fetchMock);
+
+      render(<BookClient />);
+      await submitDetails(user);
+      await screen.findByText(/שלחנו קוד בן 6 ספרות ל-/);
+
+      // Let the 30s cooldown fully elapse, then resend.
+      await act(async () => {
+        vi.advanceTimersByTime(31_000);
+      });
+      await user.click(
+        screen.getByRole("button", { name: "לא קיבלתם? שליחת קוד חדש" }),
+      );
+
+      // The honest fallback appears on the verify step…
+      expect(
+        await screen.findByText(/לא הצלחנו לשלוח מייל כרגע/),
+      ).toBeInTheDocument();
+      // …the cooldown was NOT restarted as if a code went out — the resend
+      // button offers an immediate retry, not a countdown…
+      expect(
+        screen.getByRole("button", { name: "לא קיבלתם? שליחת קוד חדש" }),
+      ).toBeEnabled();
+      // …and we stay on the verify step (the code field is still there).
+      expect(screen.getByLabelText("קוד אימות (6 ספרות)")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

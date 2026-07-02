@@ -221,6 +221,11 @@ class AppState extends ChangeNotifier {
   final Set<String> _dirtyKeys = {};
   bool _flushScheduled = false;
 
+  /// Bumped by [wipeForAccountDeletion] so a [_flush] that is already in
+  /// flight (its dirty batch captured, awaiting storage) aborts instead of
+  /// writing pre-wipe values back into the just-cleared store.
+  int _wipeEpoch = 0;
+
   /// Record that [key]'s logical group changed and schedule a single debounced
   /// disk flush. Notifications are independent of this — callers still invoke
   /// notifyListeners() themselves so the UI updates synchronously.
@@ -237,6 +242,7 @@ class AppState extends ChangeNotifier {
   Future<void> _flush() async {
     _flushScheduled = false;
     if (_dirtyKeys.isEmpty) return;
+    final epoch = _wipeEpoch;
     final dirty = _dirtyKeys.toSet();
     _dirtyKeys.clear();
     // Guard the disk writes: on web, localStorage has a ~5MB quota and a setter
@@ -246,6 +252,9 @@ class AppState extends ChangeNotifier {
     try {
     final p = await SharedPreferences.getInstance();
     for (final key in dirty) {
+      // An account wipe ran while this batch was pending — its values are
+      // pre-wipe and writing them would resurrect deleted data. Drop the rest.
+      if (epoch != _wipeEpoch) return;
       switch (key) {
         case 'auth':
           await p.setBool('isLoggedIn', _isLoggedIn);
@@ -411,6 +420,125 @@ class AppState extends ChangeNotifier {
   /// Production code never needs this — the microtask flush runs on its own.
   @visibleForTesting
   Future<void> flushPersistence() => _flush();
+
+  // ── Account deletion — total local wipe ─────────────────────────────────────
+  /// Erases EVERY user-scoped field on this singleton IN PLACE and clears
+  /// SharedPreferences, preserving only [themeMode] (a device display
+  /// preference, not personal data). The Provider tree holds this exact
+  /// instance, so the object must be scrubbed in place — swapping it via
+  /// [reset] would leave every listening widget bound to the stale, un-wiped
+  /// singleton. Contract, in order:
+  ///
+  ///  1. Pending debounced persists are neutralized FIRST: the dirty set is
+  ///     cleared and [_wipeEpoch] is bumped, so a flush queued (or already in
+  ///     flight) just before the wipe can never write deleted data back.
+  ///  2. Every field of the [initializePersistedState] inventory returns to
+  ///     its pristine default — auth mirror, savings, bills (back to the demo
+  ///     seeds, nothing personalized), quiz + needs + draft, lead/tracker,
+  ///     meeting, telegram, support ticket, watchlist + §30A stamp, browsing
+  ///     traces, reviews, community mirrors, advisor history + session id,
+  ///     renewal radar, notification prefs, and seenOnboarding=false so the
+  ///     app restarts at onboarding. Session-only personal state (compare
+  ///     list, filters, isAdmin, leadLost) resets with it.
+  ///  3. Storage is cleared wholesale, then ONLY the theme mode is re-written.
+  ///
+  /// This is purely the LOCAL half of account deletion and never touches the
+  /// network — `services/session_actions.dart` orchestrates the server-side
+  /// erase + sign-out around it.
+  Future<void> wipeForAccountDeletion() async {
+    // (1) Neutralize the debounced persist BEFORE mutating anything: a queued
+    // microtask flush must find nothing to write, and one already awaiting
+    // storage must abort (epoch check in [_flush]).
+    _dirtyKeys.clear();
+    _wipeEpoch++;
+
+    // (2) Every persisted field back to its initializePersistedState default.
+    // Auth mirror + savings + category
+    _isLoggedIn = false;
+    _userName = '';
+    _userPhone = '';
+    _userEmail = '';
+    _totalSavings = 0;
+    _selectedCat = 'cellular';
+    // Bills — back to the demo seeds; nothing personalized.
+    _currentBills
+      ..['cellular'] = 119
+      ..['internet'] = 140
+      ..['tv'] = 130
+      ..['triple'] = 260
+      ..['abroad'] = 0;
+    _personalizedCats.clear();
+    _billsPersonalized = false;
+    // Quiz + needs + resume draft
+    _quizCompleted = false;
+    _quizBudget = 90;
+    _quizPriority = 'price';
+    _quizLines = 1;
+    _quizCat = 'cellular';
+    _wants5G = false;
+    _wantsAbroad = false;
+    _wantsNoCommit = false;
+    _quizDraft = null;
+    // Lead + tracker
+    _leadPlanId = null;
+    _leadProvider = null;
+    _leadName = null;
+    _leadPhone = null;
+    _leadEmail = null;
+    _leadCallbackTime = null;
+    _trackerStep = 0;
+    _lastNotifiedLeadStep = 0;
+    // Booked video meeting
+    _meetingId = null;
+    _meetingProvider = null;
+    _meetingDate = null;
+    _meetingSlot = null;
+    _meetingStatus = null;
+    _meetingJoinUrl = null;
+    _meetingStartsAtIso = null;
+    _meetingCreatedAtIso = null;
+    // Telegram link + support ticket
+    _userTelegramChatId = '';
+    _telegramEnabled = false;
+    _supportTicketId = null;
+    // Watchlist + the §30A consent stamp (consent dies with the account)
+    _watchedPlans.clear();
+    _watchOptInAt = null;
+    // Browsing traces
+    _recentlyViewed.clear();
+    _recentSearches.clear();
+    // Reviews + community mirrors
+    _userReviews.clear();
+    _communityPosts.clear();
+    _likedPosts.clear();
+    _bookmarkedPosts.clear();
+    _communityReplies.clear();
+    // Advisor conversation + edge session
+    _advisorHistory.clear();
+    _advisorSessionId = null;
+    // Renewal radar + notification state + prefs
+    _myPlans.clear();
+    _renewalReminders = false;
+    _dismissedNotifications.clear();
+    _prefPriceAlerts = true;
+    _prefRequestUpdates = true;
+    _prefCommunityNotifs = false;
+    _seenOnboarding = false;
+    // Session-only state — never persisted, still personal.
+    _comparePlans.clear();
+    _activeFilters.clear();
+    _searchQuery = '';
+    _sortMode = 'match';
+    _isAdmin = false;
+    _leadLost = false;
+    // NOTE: _themeMode is deliberately KEPT — a device display preference.
+
+    // (3) Clear storage wholesale, then re-write ONLY the theme mode.
+    final p = await SharedPreferences.getInstance();
+    await p.clear();
+    await p.setString('themeMode', _themeModeKey(_themeMode));
+    notifyListeners();
+  }
 
   // The "light" groups: scalars and small StringLists/JSON. The three heavy
   // collections (communityPosts, communityReplies, advisorHistory)

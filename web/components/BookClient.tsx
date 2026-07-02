@@ -5,7 +5,10 @@
 //
 // A clean 4-step flow for an ANONYMOUS visitor (no account):
 //   1) details   — name, phone (IL), email, category, day + time, MANDATORY consent.
-//   2) request   — "שלח קוד אימות למייל" → POST {action:"request-code"} → code step.
+//   2) request   — "שלח קוד אימות למייל" → POST {action:"request-code"} → code step,
+//      but ONLY when the email actually went out: an explicit {sent:false} keeps
+//      the user in place with an honest retry + WhatsApp fallback (a missing
+//      `sent` — the older deployed fn — is treated as sent, so nobody strands).
 //   3) verify    — 6-digit code → POST {action:"verify-code"} → on ok, confirm step.
 //   4) confirm   — "קבע פגישה" → POST {action:"book"} → success state.
 //
@@ -34,6 +37,7 @@ import { isValidIsraeliPhone } from "@/lib/phone";
 import { CATEGORY_HE } from "@/lib/categories";
 import { availableSlots } from "@/lib/slots";
 import { MEETING_PROVIDERS } from "@/lib/meeting-providers";
+import { CONTACT_WHATSAPP_INTL } from "@/lib/legal";
 
 // The categories the booking form offers (same set + order as <LeadForm>).
 const SERVICE_CATEGORIES = [
@@ -60,6 +64,19 @@ const MEETING_BOOK_URL = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/meetin
 const GENERIC_ERROR = "אירעה שגיאה. נסו שוב בעוד רגע או דברו איתנו בוואטסאפ.";
 const NETWORK_ERROR = "החיבור נכשל. בדקו את הרשת ונסו שוב.";
 
+/**
+ * Honest send-failure copy: the server accepted the request ({ok:true}) but
+ * reported the email SEND itself failed (sent:false — Resend down / sender
+ * domain issue). Mirrors the Flutter app (meeting_widget._sendCode): never
+ * advance the user to wait for a code that will never arrive — offer a retry
+ * and the WhatsApp path where a live agent can book them directly.
+ */
+const EMAIL_SEND_FAILED_ERROR =
+  "לא הצלחנו לשלוח מייל כרגע — אפשר לנסות שוב בעוד רגע, או לקבוע דרך וואטסאפ";
+const WHATSAPP_BOOK_HREF = `https://wa.me/${CONTACT_WHATSAPP_INTL}?text=${encodeURIComponent(
+  "היי, ניסיתי לקבוע שיחת ייעוץ בזום באתר וקוד האימות למייל לא נשלח — אשמח לקבוע דרככם",
+)}`;
+
 /** Seconds to disable the resend button after a code request. */
 const RESEND_COOLDOWN_SEC = 30;
 
@@ -67,6 +84,13 @@ type Step = "details" | "verify" | "confirm" | "done";
 
 interface BookResponse {
   ok?: boolean;
+  /**
+   * request-code only: whether the verification email actually went out. The
+   * current server always returns it; the previously-deployed version omits it
+   * entirely, so a MISSING sent must be treated as true (back-compat) while an
+   * explicit sent:false is honoured as a real send failure.
+   */
+  sent?: boolean;
   error?: string;
 }
 
@@ -130,6 +154,9 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
   const [code, setCode] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The last request-code/resend came back {ok:true, sent:false} — show the
+  // honest fallback (retry + WhatsApp) instead of advancing to the code step.
+  const [sendFailed, setSendFailed] = useState(false);
   const [resendIn, setResendIn] = useState(0);
 
   // The day list is derived once from the real clock (deterministic per mount).
@@ -185,6 +212,7 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
   // ── Step 2: request a verification code ────────────────────────────────────
   async function requestCode() {
     setError(null);
+    setSendFailed(false);
     // Re-validate the gate client-side so we never POST an unconsented/invalid set.
     if (name.trim().length < 2) return setError("נא להזין שם מלא");
     if (!isValidIsraeliPhone(phone)) return setError("מספר הטלפון אינו תקין");
@@ -196,14 +224,21 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
 
     setPending(true);
     try {
-      // request-code always returns {ok:true} (generic) — we advance regardless,
-      // so a prober can't learn whether the address exists. A network failure is
-      // the only thing that keeps us on the details step.
-      await callMeetingBook({
+      // request-code answers {ok:true} whether or not the address exists (so a
+      // prober learns nothing) — but it DOES report a real send failure via
+      // sent:false. Only advance when the email actually went out; a missing
+      // `sent` (the older deployed fn) is treated as sent so users are never
+      // stranded during the redeploy.
+      const data = await callMeetingBook({
         action: "request-code",
         email: email.trim(),
         name: name.trim(),
       });
+      const sent = data?.sent !== false;
+      if (!sent) {
+        setSendFailed(true);
+        return;
+      }
       setCode("");
       setResendIn(RESEND_COOLDOWN_SEC);
       setStep("verify");
@@ -217,6 +252,7 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
   // ── Step 3: verify the 6-digit code ────────────────────────────────────────
   async function verifyCode() {
     setError(null);
+    setSendFailed(false);
     if (!/^\d{6}$/.test(code.trim())) {
       return setError("יש להזין קוד בן 6 ספרות");
     }
@@ -243,13 +279,22 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
   async function resendCode() {
     if (resendIn > 0 || pending) return;
     setError(null);
+    setSendFailed(false);
     setPending(true);
     try {
-      await callMeetingBook({
+      const data = await callMeetingBook({
         action: "request-code",
         email: email.trim(),
         name: name.trim(),
       });
+      // Same honesty as requestCode: sent:false means nothing went out, so do
+      // NOT restart the cooldown as if it had — leave the retry immediately
+      // available and show the WhatsApp fallback.
+      const sent = data?.sent !== false;
+      if (!sent) {
+        setSendFailed(true);
+        return;
+      }
       setResendIn(RESEND_COOLDOWN_SEC);
     } catch {
       setError(NETWORK_ERROR);
@@ -324,6 +369,27 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
   const stepIndex = step === "details" ? 0 : step === "verify" ? 1 : 2;
   const STEP_TITLES = ["פרטים ומועד", "אימות מייל", "אישור הפגישה"];
   const progress = Math.round(((stepIndex + 1) / STEP_TITLES.length) * 100);
+
+  // Honest send-failure block (shared by the details + verify steps): the
+  // server said the email didn't go out, so instead of a code field the user
+  // gets the truth, an immediate retry (the normal buttons stay live) and a
+  // WhatsApp deep link to the same business number used site-wide.
+  const sendFailedBlock = sendFailed && (
+    <div
+      role="alert"
+      className="rounded-xl border border-border/60 bg-background/60 p-3"
+    >
+      <p className="text-sm text-danger-text">{EMAIL_SEND_FAILED_ERROR}</p>
+      <a
+        href={WHATSAPP_BOOK_HREF}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="interactive press mt-2 inline-block rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-border/60"
+      >
+        לקביעה דרך וואטסאפ
+      </a>
+    </div>
+  );
 
   return (
     <div className="bento sw-reveal p-6 sm:p-7" aria-labelledby={id("heading")}>
@@ -602,6 +668,8 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
             </p>
           )}
 
+          {sendFailedBlock}
+
           <button
             type="button"
             onClick={requestCode}
@@ -658,11 +726,14 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
             </p>
           )}
 
+          {sendFailedBlock}
+
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => {
                 setError(null);
+                setSendFailed(false);
                 setStep("details");
               }}
               disabled={pending}

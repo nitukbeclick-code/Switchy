@@ -237,11 +237,18 @@ class AuthService {
     }
   }
 
-  Future<void> signOut() async {
+  /// Global scope so the refresh token is REVOKED server-side, not just
+  /// cleared locally — protects a shared/lost device or an exfiltrated token.
+  Future<void> signOut() => _signOut(SignOutScope.global);
+
+  /// Local-only sign-out: clears THIS device's session without the server-side
+  /// revoke. Needed after account deletion, where the auth user no longer
+  /// exists and a global revoke call would 403 (see `session_actions.dart`).
+  Future<void> signOutLocal() => _signOut(SignOutScope.local);
+
+  Future<void> _signOut(SignOutScope scope) async {
     try {
-      // Global scope so the refresh token is REVOKED server-side, not just
-      // cleared locally — protects a shared/lost device or an exfiltrated token.
-      await _auth?.signOut(scope: SignOutScope.global);
+      await _auth?.signOut(scope: scope);
     } catch (_) {/* fail-soft — still clear local state below */}
     // Clear the biometric gate so a stale "armed" flag can't lock (or be
     // bypassed for) a different/empty session after sign-out. Fail-soft: a
@@ -250,6 +257,20 @@ class AuthService {
       _biometricEnabledCached = false;
       _unlockedThisSession = false;
       await setBiometricEnabled(false);
+    } catch (_) {/* fail-soft */}
+  }
+
+  /// Re-arm the anonymous device identity when no session is left — mirrors the
+  /// startup call in `main.dart`'s `_initBackend` so RLS policies scoped to
+  /// auth.uid() (tracked plans, reviews, community writes) keep working after a
+  /// local sign-out. Single attempt, fail-soft: if anonymous sign-ins are
+  /// disabled (or we're offline) the app still runs — anonymous lead capture
+  /// works regardless because the `leads` insert policy allows anyone.
+  Future<void> ensureAnonymousSession() async {
+    final auth = _auth;
+    if (auth == null || auth.currentUser != null) return;
+    try {
+      await auth.signInAnonymously();
     } catch (_) {/* fail-soft */}
   }
 

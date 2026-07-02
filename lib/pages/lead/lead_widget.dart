@@ -81,6 +81,17 @@ class _LeadWidgetState extends State<LeadWidget> {
       );
 
   @override
+  void initState() {
+    super.initState();
+    // Funnel beacon — opening the lead form IS the intent signal (leadSubmit
+    // below fires only once the backend accepts). Fire-and-forget, scalars
+    // only, no PII.
+    AnalyticsService.track(AnalyticsEvent.leadStart, props: {
+      'source': widget.source,
+    });
+  }
+
+  @override
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();

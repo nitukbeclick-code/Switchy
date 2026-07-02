@@ -21,6 +21,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import Icon from "@/components/Icon";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 
@@ -84,13 +85,14 @@ export default function TrustSignals({
           ·
         </span>
         <span className="inline-flex items-center gap-1 font-medium text-accent-text">
-          <span aria-hidden="true">✓</span> השוואה חינמית · ללא התחייבות
+          <span aria-hidden="true">✓</span> השוואה חינמית · ללא התחייבות · פנייה רק באישורכם
         </span>
         <Link
           href="/transparency"
-          className="interactive ms-auto rounded font-medium text-accent-text underline ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive ms-auto inline-flex items-center gap-1 rounded font-medium text-accent-text underline ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          איך אנחנו מדרגים? ←
+          איך אנחנו מדרגים?
+          <Icon name="arrow" size={15} aria-hidden className="rotate-180" />
         </Link>
       </aside>
     );
@@ -107,12 +109,19 @@ export default function TrustSignals({
         .join(" ")
         .trim()}
     >
-      {/* Real catalogue counts — the only numbers here, all verifiable. */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat figure={planTxt} label="מסלולים בהשוואה" />
-        <Stat figure={providerTxt} label="ספקים" />
-        {catTxt && <Stat figure={catTxt} label="קטגוריות תקשורת" />}
-        <Stat figure="₪0" label="עלות השימוש באתר" />
+      {/* Real catalogue counts — the only numbers here, all verifiable. The three
+          counts stand undiluted; "free" is a labeled reassurance chip, NOT a giant
+          ₪0 that reads as "zero savings". */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="grid grid-cols-3 gap-4">
+          <Stat figure={planTxt} label="מסלולים בהשוואה" />
+          <Stat figure={providerTxt} label="ספקים" />
+          {catTxt && <Stat figure={catTxt} label="קטגוריות תקשורת" />}
+        </div>
+        <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-accent/30 px-3 py-1.5 text-xs font-medium text-accent-text sm:self-center">
+          <span aria-hidden="true">✓</span>
+          השירות חינם — אין עלות שימוש
+        </span>
       </div>
 
       {/* Honest, verifiable trust points — no fabricated claims. */}

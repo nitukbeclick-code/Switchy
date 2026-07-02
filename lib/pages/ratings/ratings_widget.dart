@@ -44,6 +44,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   // First remote load shows skeleton rows instead of a hard empty state.
   bool _loading = true;
 
+  // Set when the most recent remote fetch threw. While nothing remote has
+  // loaded yet, the board renders an honest "couldn't load" + retry instead of
+  // masquerading as "no ratings yet" (or eating the error silently).
+  Object? _error;
+
   // Live community reviews from the backend (provider → reviews).
   Map<String, List<ReviewInput>> _remoteReviews = {};
 
@@ -63,22 +68,31 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     super.initState();
     _tabCtrl = TabController(length: _cats.length, vsync: this);
     _tabCtrl.addListener(() => setState(() => _selectedCat = _cats[_tabCtrl.index]));
-    _loadRemoteReviews().catchError((_) {
-      if (mounted) setState(() => _loading = false);
-    });
+    _loadRemoteReviews();
   }
 
   Future<void> _loadRemoteReviews() async {
-    final all = await appBackend.fetchAllReviews();
-    if (!mounted) return;
-    final grouped = <String, List<ReviewInput>>{};
-    for (final r in all) {
-      grouped.putIfAbsent(r.provider, () => []).add(r);
+    try {
+      final all = await appBackend.fetchAllReviews();
+      if (!mounted) return;
+      final grouped = <String, List<ReviewInput>>{};
+      for (final r in all) {
+        grouped.putIfAbsent(r.provider, () => []).add(r);
+      }
+      setState(() {
+        _remoteReviews = grouped;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      // Offline / backend-down — keep whatever loaded before; the build only
+      // surfaces the error boundary when there is nothing remote to show.
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
     }
-    setState(() {
-      _remoteReviews = grouped;
-      _loading = false;
-    });
   }
 
   @override
@@ -306,6 +320,28 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
               sliver: SliverToBoxAdapter(child: _LeaderboardSkeleton()),
             )
+          // First load failed with nothing remote cached — an honest "couldn't
+          // load" + retry (the Deals-screen error idiom) instead of eating the
+          // error and rendering a false "no ratings yet" board. A later refresh
+          // failure keeps the already-loaded reviews on screen.
+          else if (_error != null && _remoteReviews.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: EmptyState(
+                icon: Icons.cloud_off_rounded,
+                headline: 'לא הצלחנו לטעון את הדירוגים',
+                subtitle: 'בדקו את החיבור ונסו שוב.',
+                ctaLabel: 'נסו שוב',
+                onCtaTap: () async {
+                  // Back to the skeleton rows while the retry runs.
+                  setState(() {
+                    _loading = true;
+                    _error = null;
+                  });
+                  await _loadRemoteReviews();
+                },
+              ),
+            )
           else ...[
             // Top 3 podium + sort row — fixed leading block above the lazy list.
             SliverPadding(
@@ -432,8 +468,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                   // AA-safe green for small link text (the
                                   // fill hue only reaches ~3:1 at this size).
                                   foregroundColor: t.brandAccentText,
-                                  visualDensity: VisualDensity.compact,
+                                  // No compact density: it shaved the button to
+                                  // 40dp despite minimumSize — under the 48dp
+                                  // tap-target guideline.
                                   minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+                                  tapTargetSize: MaterialTapTargetSize.padded,
                                   textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w800),
                                 ),
                                 child: const Text('דרגו ראשונים'),

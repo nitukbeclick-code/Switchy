@@ -30,6 +30,11 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
   // replaced the moment a server-side reply/mention lands.
   bool _loadingCommunity = true;
 
+  // Set when the most recent community fetch failed. Computed alerts render
+  // regardless; this only keeps an otherwise-empty inbox honest — offline it
+  // shows "couldn't load" + retry instead of a false "all caught up".
+  bool _communityLoadFailed = false;
+
   // Swipe-to-dismiss is staged locally first: an id lands here the moment its
   // card is swiped (or its X is tapped) so it disappears from the list, but the
   // commit to AppState.dismissNotification — which persists and is NOT
@@ -47,21 +52,29 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
 
   Future<void> _loadCommunity() async {
     // [fetchCommunityNotifications] already degrades a backend failure to an
-    // empty list, but guard with try/finally so any unexpected throw still
-    // clears the in-flight flag — the spinner must never hang forever, and the
-    // computed alerts (+ the honest "all caught up" state) always get to show.
+    // empty list so the computed alerts always render — but that also makes a
+    // failed fetch indistinguishable from a genuinely-empty inbox. When the
+    // mapped result is empty, classify it with one direct backend probe: a
+    // throw there means "couldn't load", not "all caught up". Guarded with
+    // try/finally so any throw still clears the in-flight flag — the ghost
+    // cards must never hang forever.
     List<AppNotification> items = const [];
+    var failed = false;
     try {
       items = await fetchCommunityNotifications();
+      if (items.isEmpty) await appBackend.fetchCommunityNotifications();
       // Opening the center counts as seeing them — clear the unread state.
       appBackend.markCommunityNotificationsRead().catchError((_) {});
     } catch (_) {
-      // Degrade silently to the computed alerts; nothing fabricated.
+      // Degrade to the computed alerts; nothing fabricated. The flag below
+      // only swaps the EMPTY-inbox state for an honest "couldn't load".
+      failed = true;
     } finally {
       if (mounted) {
         setState(() {
           _community = items;
           _loadingCommunity = false;
+          _communityLoadFailed = failed;
         });
       }
     }
@@ -243,16 +256,32 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
                   slivers: [
                     SliverFillRemaining(
                       hasScrollBody: false,
-                      child: EmptyState(
-                        icon: Icons.notifications_none_rounded,
-                        headline: 'הכל מעודכן',
-                        subtitle: 'אין התראות חדשות כרגע. נעדכן אתכם כשמבצע מסתיים או כשנמצא לכם עסקה זולה יותר.',
-                        // Never dead-end: an idle inbox still routes to the core
-                        // flow — a fresh comparison — so the screen always has
-                        // somewhere to go.
-                        ctaLabel: 'השוואת מסלולים',
-                        onCtaTap: () async => context.goNamed('Results'),
-                      ),
+                      child: _communityLoadFailed
+                          // The community fetch failed and nothing computed is
+                          // pending — an honest "couldn't load" + retry (the
+                          // Deals-screen error idiom), never a false "all
+                          // caught up" while offline.
+                          ? EmptyState(
+                              icon: Icons.cloud_off_rounded,
+                              headline: 'לא הצלחנו לטעון התראות',
+                              subtitle: 'בדקו את החיבור ונסו שוב.',
+                              ctaLabel: 'נסו שוב',
+                              onCtaTap: () async {
+                                // Back to the ghost cards while the retry runs.
+                                setState(() => _loadingCommunity = true);
+                                await _loadCommunity();
+                              },
+                            )
+                          : EmptyState(
+                              icon: Icons.notifications_none_rounded,
+                              headline: 'הכל מעודכן',
+                              subtitle: 'אין התראות חדשות כרגע. נעדכן אתכם כשמבצע מסתיים או כשנמצא לכם עסקה זולה יותר.',
+                              // Never dead-end: an idle inbox still routes to
+                              // the core flow — a fresh comparison — so the
+                              // screen always has somewhere to go.
+                              ctaLabel: 'השוואת מסלולים',
+                              onCtaTap: () async => context.goNamed('Results'),
+                            ),
                     ),
                   ],
                 )

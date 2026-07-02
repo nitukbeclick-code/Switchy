@@ -155,6 +155,7 @@ export function summariseAudit(rows: AuditRow[] | null): { total: number; byEven
 // with the writer means we never silently miss a real event nor invent one the
 // app can't actually emit.
 export const KNOWN_EVENTS: readonly string[] = [
+  "appOpen",
   "leadStart",
   "leadSubmit",
   "quizComplete",
@@ -163,4 +164,5 @@ export const KNOWN_EVENTS: readonly string[] = [
   "whatsappClick",
   "savingsViewed",
   "planView",
+  "meetingRequest",
 ] as const;

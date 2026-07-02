@@ -115,10 +115,42 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     // Dynamic type: the fixed-height horizontal chip bands scale with the OS
     // text size (the app clamps at 1.3x globally) so large type never clips.
     final textScaler = MediaQuery.textScalerOf(context);
-    final appState = Provider.of<AppState>(context);
-    final cat = appState.selectedCat;
+    // ── Granular AppState scope ────────────────────────────────────────────
+    // Was one full listening Provider.of, so EVERY notify (a community like,
+    // a watch toggle, a recently-viewed bump…) rebuilt the whole screen. Each
+    // context.select below registers ONE narrow dependency (provider compares
+    // select results with deep equality, so the unmodifiable list copies are
+    // change-scoped too) — the build re-runs only when a field it actually
+    // renders changes. Per-card watch/compare membership is already scoped
+    // inside plan_card's own selects. All MUTATING calls go through the
+    // non-listening [appState] read below.
+    final appState = Provider.of<AppState>(context, listen: false);
+    final cat = context.select<AppState, String>((s) => s.selectedCat);
+    final sortMode = context.select<AppState, String>((s) => s.sortMode);
+    final searchQuery =
+        context.select<AppState, String>((s) => s.searchQuery);
+    final activeFilters =
+        context.select<AppState, List<String>>((s) => s.activeFilters);
+    final bill =
+        context.select<AppState, int>((s) => s.currentBill(s.selectedCat));
+    final quizCompleted =
+        context.select<AppState, bool>((s) => s.quizCompleted);
+    final quizCat = context.select<AppState, String>((s) => s.quizCat);
+    final quizBudget = context.select<AppState, int>((s) => s.quizBudget);
+    final quizLines = context.select<AppState, int>((s) => s.quizLines);
+    // Scorer-only profile inputs (consumed via MatchProfile.fromAppState):
+    // not rendered directly, but a change must re-rank the visible match
+    // scores — register the dependency without keeping the value.
+    context.select<AppState, String>((s) => s.quizPriority);
+    context.select<AppState, bool>((s) => s.wants5G);
+    context.select<AppState, bool>((s) => s.wantsAbroad);
+    context.select<AppState, bool>((s) => s.wantsNoCommit);
+    // Baseline-banner wording ("הערכה ברירת מחדל") flips on personalization.
+    context.select<AppState, bool>((s) => s.billsPersonalized);
+    // The sticky compare bar renders only the basket SIZE.
+    final compareCount =
+        context.select<AppState, int>((s) => s.comparePlans.length);
     final catData = categoryById(cat);
-    final bill = appState.currentBill(cat);
 
     // The header is a permanently-ink band on light; on dark it must become the
     // raised dark surface (ffTheme.primary resolves to off-white INK on dark, so
@@ -132,7 +164,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     // gate below.
     final profile = MatchProfile.fromAppState(appState, cat);
 
-    final effectiveSort = _smartSort ? 'match' : appState.sortMode;
+    final effectiveSort = _smartSort ? 'match' : sortMode;
 
     // Honest, data-driven catalogue-freshness label (null = hide the badge).
     final freshnessLabel = _freshnessLabel();
@@ -140,9 +172,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     final rawPlans = filteredPlans(
       cat: cat,
       sort: effectiveSort,
-      filters: appState.activeFilters,
-      query: appState.searchQuery,
-      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 9999,
+      filters: activeFilters,
+      query: searchQuery,
+      budget: (quizCompleted && quizCat == cat) ? quizBudget : 9999,
       currentBill: bill,
     );
     final filteredByProvider = _providerFilter.isEmpty
@@ -196,7 +228,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           IconButton(
             icon: Stack(children: [
               Icon(Icons.tune_rounded, color: onHeader),
-              if (appState.activeFilters.isNotEmpty)
+              if (activeFilters.isNotEmpty)
                 PositionedDirectional(
                   top: 0, end: 0,
                   child: Container(
@@ -228,14 +260,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 // target spans the full 44px band, not just the 32px chip.
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: _categories.map((c) {
-                  final active = appState.selectedCat == c.$1;
+                  final active = cat == c.$1;
                   // The budget filter from the quiz silently applies to its own
                   // category only — surface that with a "מהשאלון" badge on the
                   // active chip so users see WHY this view is personalized (and
                   // understand why the budget cap vanishes on other categories).
-                  final fromQuiz = appState.quizCompleted &&
-                      appState.quizCat == c.$1 &&
-                      active;
+                  final fromQuiz = quizCompleted && quizCat == c.$1 && active;
                   // ONE chip language (bank-grade): neutral = surface bg + 1px
                   // hairline + ink text; ACTIVE = pale-green tint + green text
                   // + green 1px border. No solid/black fills — solid green is
@@ -345,7 +375,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       hintText: 'חיפוש ספק או חבילה...',
                       filled: true,
                       fillColor: ffTheme.cardSurface,
-                      prefixIcon: appState.searchQuery.isNotEmpty
+                      prefixIcon: searchQuery.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear_rounded),
                               tooltip: 'נקה חיפוש',
@@ -416,7 +446,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               style: ffTheme.labelMedium.copyWith(
                                   color: ffTheme.secondaryText,
                                   fontFeatures: const [FontFeature.tabularFigures()])),
-                          if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
+                          if (activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 2),
                             // Padded InkWell — a comfortable target with press
                             // feedback instead of a bare 24px text tap. The
@@ -470,7 +500,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
 
               // Quiz filter line — compressed to one slim tint row (the old
               // two-row banner): "מסונן לפי השאלון · עד ₪X" + עריכה + ✕.
-              if (appState.quizCompleted && appState.quizCat == cat)
+              if (quizCompleted && quizCat == cat)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -490,9 +520,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              cat == 'cellular' && appState.quizLines > 1
-                                  ? 'מסונן לפי השאלון · ${appState.quizLines} קווים · עד ₪${appState.quizBudget}'
-                                  : 'מסונן לפי השאלון · עד ₪${appState.quizBudget}${cat == 'abroad' ? '/חבילה' : '/חודש'}',
+                              cat == 'cellular' && quizLines > 1
+                                  ? 'מסונן לפי השאלון · $quizLines קווים · עד ₪$quizBudget'
+                                  : 'מסונן לפי השאלון · עד ₪$quizBudget${cat == 'abroad' ? '/חבילה' : '/חודש'}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: ffTheme.labelSmall.copyWith(
@@ -534,8 +564,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               // Quiz nudge — when the user is browsing WITHOUT a quiz for this
               // category, offer the 2-minute path to personalized matches so the
               // funnel always points onward instead of leaving them to scroll.
-              if (!(appState.quizCompleted && appState.quizCat == cat) &&
-                  plans.isNotEmpty)
+              if (!(quizCompleted && quizCat == cat) && plans.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -593,19 +622,19 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (appState.searchQuery.isNotEmpty)
+                        if (searchQuery.isNotEmpty)
                           EmptyState(
                             icon: Icons.search_off_rounded,
                             headline: 'לא נמצאו תוצאות',
                             subtitle:
-                                'לא מצאנו מסלולים שתואמים ל"${appState.searchQuery}".\nנסו מילה אחרת או נקו את החיפוש.',
+                                'לא מצאנו מסלולים שתואמים ל"$searchQuery".\nנסו מילה אחרת או נקו את החיפוש.',
                             ctaLabel: 'נקו חיפוש',
                             onCtaTap: () async {
                               _searchController.clear();
                               appState.setSearch('');
                             },
                           )
-                        else if (appState.activeFilters.isNotEmpty)
+                        else if (activeFilters.isNotEmpty)
                           EmptyState(
                             icon: Icons.filter_alt_off_rounded,
                             headline: 'אין מסלולים בסינון הזה',
@@ -746,7 +775,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             left: 16,
             right: 16,
             child: AnimatedSlide(
-              offset: appState.comparePlans.isEmpty
+              offset: compareCount == 0
                   ? const Offset(0, 2)
                   : Offset.zero,
               // Reduced motion: the bar appears/disappears in place.
@@ -772,7 +801,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       child: Text(
                         // Plural imperative to match the app's "ענו / בחרו / נסו"
                         // voice (was the singular "השווה").
-                        'השוו ${appState.comparePlans.length} מסלולים',
+                        'השוו $compareCount מסלולים',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: ffTheme.titleSmall.copyWith(color: Colors.white),

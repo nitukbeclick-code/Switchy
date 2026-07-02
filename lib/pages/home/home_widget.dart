@@ -55,6 +55,19 @@ class _HomeWidgetState extends State<HomeWidget> {
       '${s.currentBills}|${s.quizCompleted}|${s.quizBudget}|${s.quizPriority}|'
       '${s.quizLines}|${s.quizCat}|${s.wants5G}|${s.wantsAbroad}|${s.wantsNoCommit}';
 
+  /// The COMPLETE input fingerprint of [_computeRecs] — exactly what the
+  /// carousel's engine work consumes and nothing more: the savings fingerprint
+  /// (bills + the full quiz profile), the active category (feeds the hot-deal
+  /// pick), and the live-catalogue signature (the engine ranks over
+  /// [allPlans], which [hydrateCatalogue] swaps in place — [catalogueSyncedAt]
+  /// stamps every successful swap, and the plan count guards the never-synced
+  /// bundled snapshot). The watchlist is deliberately NOT folded in: the recs
+  /// computation never reads it, and keying on it would re-run the engine on
+  /// every watch toggle — the exact waste this memo exists to prevent.
+  String _recsFingerprint(AppState s) =>
+      '${_savingsFingerprint(s)}|${s.selectedCat}|'
+      '${catalogueSyncedAt?.millisecondsSinceEpoch ?? 0}|${allPlans.length}';
+
   SavingsSummary _savingsFor(AppState s) {
     final key = _savingsFingerprint(s);
     if (key != _savingsKey || _savingsMemo == null) {
@@ -712,10 +725,11 @@ class _HomeWidgetState extends State<HomeWidget> {
   /// [MiniPlanCard], which hides the badge when the saving is 0). No section is
   /// lost: every card still routes to PlanDetail / Results as before.
   Widget _buildRecommendations(BuildContext context, AppTheme ffTheme, AppState appState) {
-    // Memoised: the engine scans below are pure over bills+quiz+selectedCat
-    // (the exact savings fingerprint plus the active category, which feeds the
-    // hot-deal pick) — don't redo them on every unrelated AppState notify.
-    final recsKey = '${_savingsFingerprint(appState)}|${appState.selectedCat}';
+    // Memoised: the engine scans below are pure over the full recs fingerprint
+    // (bills + quiz profile + active category + the live-catalogue signature —
+    // see [_recsFingerprint]) — don't redo them on every unrelated AppState
+    // notify, and don't serve stale picks across a live catalogue sync.
+    final recsKey = _recsFingerprint(appState);
     if (recsKey != _recsKey || _recsMemo == null) {
       _recsMemo = _computeRecs(appState);
       _recsKey = recsKey;

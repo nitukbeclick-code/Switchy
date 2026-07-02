@@ -32,7 +32,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { resolveCfgCached } from "../_shared/config.ts";
 import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
-import { fetchRows, insertRow, patchCount, rpcRows } from "../_shared/db.ts";
+import { fetchRows, insertRow, patchCount, rpcScalar } from "../_shared/db.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
 import { buildOtpEmailHtml } from "../_shared/meetings.ts";
 import { jlog } from "../_shared/log.ts";
@@ -211,7 +211,7 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
   const L = DEFAULT_OTP_RATE_LIMITS;
   const code = genCode();
   const codeHash = await hashCode(code);
-  const rpc = await rpcRows<boolean>("meeting_otp_try_send", {
+  const rpc = await rpcScalar<boolean>("meeting_otp_try_send", {
     p_email: email,
     p_email_canon: emailCanon,
     p_ip: ip || null,
@@ -224,9 +224,12 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
     p_ip_window_seconds: Math.round(L.ipWindowMs / 1000),
     p_ip_max: L.ipMax,
   });
-  // rpcRows returns the scalar boolean wrapped in an array (PostgREST RPC shape);
+  // The RPC `returns boolean`, so PostgREST answers with the BARE scalar —
+  // rpcScalar, not rpcRows (rpcRows collapses a bare scalar to [], which read
+  // as "denied" here and silently dropped every OTP send for four days while
+  // the SECURITY DEFINER function had already inserted the row server-side).
   // null = the call itself failed. Distinguish "denied" (false) from "errored" (null).
-  const allowed = rpc === null ? null : rpc[0] === true;
+  const allowed = rpc === null ? null : rpc === true;
 
   if (allowed === false) {
     jlog({ at: "rate-limit", fn: "meeting-book", action: "request-code", durable: true, atomic: true, email_fp: canonFp });

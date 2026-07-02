@@ -68,6 +68,12 @@ export async function insertRow(table: string, body: Record<string, unknown>): P
 }
 
 // Same null-vs-empty contract as fetchRows.
+// ⚠️ ROWS ONLY: use this only for set/table-returning RPCs. A scalar-returning
+// RPC (`returns boolean` etc.) comes back from PostgREST as a BARE JSON value
+// (`true`, not `[true]`), which this helper collapses to [] — use rpcScalar.
+// That exact mismatch silently killed every OTP email for four days
+// (meeting_otp_try_send inserted the row server-side, the caller read [] and
+// took the outcome-blind "denied" path, so the send never fired).
 export async function rpcRows<T = Record<string, unknown>>(name: string, args: Record<string, unknown>): Promise<T[] | null> {
   try {
     const r = await serviceFetch(`/rest/v1/rpc/${name}`, { method: "POST", body: JSON.stringify(args) });
@@ -79,6 +85,25 @@ export async function rpcRows<T = Record<string, unknown>>(name: string, args: R
     return Array.isArray(j) ? j as T[] : [];
   } catch (e) {
     jlog({ at: "rpcRows", name, ok: false, error: String(e) });
+    return null;
+  }
+}
+
+// Scalar-returning RPC (`returns boolean` / `returns int` …): PostgREST answers
+// with the bare JSON value. null = transport/HTTP failure (indistinguishable
+// callers should fail-soft); a one-element array is unwrapped defensively in
+// case the function is ever redefined as `returns table`/`setof`.
+export async function rpcScalar<T>(name: string, args: Record<string, unknown>): Promise<T | null> {
+  try {
+    const r = await serviceFetch(`/rest/v1/rpc/${name}`, { method: "POST", body: JSON.stringify(args) });
+    if (!r || !r.ok) {
+      jlog({ at: "rpcScalar", name, ok: false, status: r?.status });
+      return null;
+    }
+    const j = await r.json();
+    return (Array.isArray(j) ? j[0] : j) as T;
+  } catch (e) {
+    jlog({ at: "rpcScalar", name, ok: false, error: String(e) });
     return null;
   }
 }

@@ -7,6 +7,16 @@ import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
 import 'package:chosech/data.dart';
+import 'package:chosech/services/backend/backend.dart';
+import 'package:chosech/services/backend/local_backend.dart';
+
+/// Community-notification fetch throws — the offline / backend-down path for
+/// the notification center's server-side inbox.
+class _ErrorNotifBackend extends LocalBackend {
+  @override
+  Future<List<CommunityNotification>> fetchCommunityNotifications() async =>
+      throw Exception('offline');
+}
 
 /// Boot the full app exactly like the existing harnesses
 /// (test/screens_content_test.dart, test/nav_smoke_test.dart).
@@ -53,6 +63,30 @@ String _isoInDays(int days) {
 }
 
 void main() {
+  tearDown(() {
+    appBackend = LocalBackend();
+  });
+
+  testWidgets(
+      'Notification center failed community fetch shows error + retry, not "all caught up"',
+      (tester) async {
+    // Backend down + nothing computed to act on → the empty inbox must be an
+    // honest "couldn't load" + retry, never the "all caught up" lie.
+    appBackend = _ErrorNotifBackend();
+    await _bootApp(tester);
+
+    _go(tester, '/notifications');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('לא הצלחנו לטעון התראות'), findsOneWidget);
+    expect(find.text('נסו שוב'), findsOneWidget);
+    expect(find.text('הכל מעודכן'), findsNothing);
+    expect(tester.takeException(), isNull);
+    // Drain the empty-state entrance so no animation frame is left mid-flight.
+    await tester.pump(const Duration(milliseconds: 500));
+  });
+
   testWidgets(
       'Notification center renders the renewal alert card for a near-renewal tracked plan',
       (tester) async {

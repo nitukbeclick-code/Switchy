@@ -151,9 +151,11 @@ Deno.test("KNOWN_EVENTS mirrors the analytics-track writer allowlist", () => {
   assertEquals(
     [...KNOWN_EVENTS].sort(),
     [
+      "appOpen",
       "compareView",
       "leadStart",
       "leadSubmit",
+      "meetingRequest",
       "planView",
       "quizComplete",
       "savingsViewed",

@@ -18,6 +18,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from "react";
+import Icon from "@/components/Icon";
 import { trackEvent } from "@/lib/tracking";
 
 export interface StickyLeadCtaProps {
@@ -48,12 +49,23 @@ export default function StickyLeadCta({
     // Show the bar only while the lead form is OUT of view; hide it once the
     // user reaches the form (avoids two competing CTAs stacking up).
     const io = new IntersectionObserver(
-      ([entry]) => setVisible(!entry.isIntersecting),
+      ([entry]) => {
+        const isVisible = !entry.isIntersecting;
+        setVisible(isVisible);
+        // Publish a global signal so the single floating affordance in the
+        // thumb-zone (the <AiConcierge> FAB) can LIFT above this bar — or hide —
+        // while it shows, so the two never collide in the bottom-start corner.
+        document.body.dataset.leadCta = isVisible ? "visible" : "";
+      },
       { rootMargin: "0px 0px -10% 0px", threshold: 0 },
     );
     io.observe(target);
     observerRef.current = io;
-    return () => io.disconnect();
+    return () => {
+      io.disconnect();
+      // Clear the signal on unmount so a stale "visible" never strands the FAB.
+      document.body.dataset.leadCta = "";
+    };
   }, [targetId]);
 
   function handleClick() {
@@ -89,7 +101,10 @@ export default function StickyLeadCta({
         className="interactive press flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-float hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {label}
-        <span aria-hidden="true">←</span>
+        {/* Page is always dir="rtl"; flip the end-pointing arrow so it points to
+            the logical "forward" (left) like the prior ← — direction-aware, never
+            a hardcoded glyph. */}
+        <Icon name="arrow" size={18} aria-hidden="true" className="-scale-x-100" />
       </button>
       <p className="mt-1.5 text-center text-[11px] leading-snug text-muted">
         השוואה חינמית · ללא התחייבות · פנייה רק באישורכם

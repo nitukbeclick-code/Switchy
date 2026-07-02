@@ -17,12 +17,29 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/analytics_service.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/comparison_export.dart';
 import '../../services/comparison_share.dart';
 
-class CompareWidget extends StatelessWidget {
+class CompareWidget extends StatefulWidget {
   const CompareWidget({super.key});
+
+  @override
+  State<CompareWidget> createState() => _CompareWidgetState();
+}
+
+class _CompareWidgetState extends State<CompareWidget> {
+  @override
+  void initState() {
+    super.initState();
+    // Funnel beacon — one compareView per screen open. Fire-and-forget
+    // (track swallows every failure and no-ops when the backend keys are
+    // absent, e.g. in tests). Scalars only, no PII: just the basket size.
+    AnalyticsService.track(AnalyticsEvent.compareView, props: {
+      'count': AppState().comparePlans.length,
+    });
+  }
 
   MatchProfile _profileFor(Plan p, AppState appState) =>
       MatchProfile.fromAppState(appState, p.cat);
@@ -30,9 +47,31 @@ class CompareWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final appState = Provider.of<AppState>(context);
-    final ids = appState.comparePlans;
+    // ── Granular AppState scope ────────────────────────────────────────────
+    // Was one full listening Provider.of, so EVERY notify (a community like,
+    // a watch toggle…) re-scored every compared plan. The selects below scope
+    // the rebuild to exactly what this screen derives its UI from: the
+    // compare basket itself plus the profile inputs the scorer consumes
+    // (provider compares select results with deep equality, so the
+    // unmodifiable list copy is change-scoped too). MUTATING calls
+    // (clearCompare / toggleCompare) go through the non-listening read.
+    final appState = Provider.of<AppState>(context, listen: false);
+    final ids = context.select<AppState, List<String>>((s) => s.comparePlans);
     final plans = ids.map((id) => planById(id)).whereType<Plan>().toList();
+    // Scorer inputs via MatchProfile.fromAppState: the quiz profile…
+    context.select<AppState, bool>((s) => s.quizCompleted);
+    context.select<AppState, String>((s) => s.quizCat);
+    context.select<AppState, int>((s) => s.quizBudget);
+    context.select<AppState, String>((s) => s.quizPriority);
+    context.select<AppState, int>((s) => s.quizLines);
+    context.select<AppState, bool>((s) => s.wants5G);
+    context.select<AppState, bool>((s) => s.wantsAbroad);
+    context.select<AppState, bool>((s) => s.wantsNoCommit);
+    // …and the user's own bill in each COMPARED category (savings + winner +
+    // hero figure all fold over it). Joined into one stable string so a bill
+    // edit in an unrelated category doesn't re-score the comparison.
+    context.select<AppState, String>(
+        (s) => plans.map((p) => '${p.cat}:${s.currentBill(p.cat)}').join('|'));
 
     // Compute PlanMatch scores once, keyed by plan id.
     final Map<String, PlanMatch> matchMap = {

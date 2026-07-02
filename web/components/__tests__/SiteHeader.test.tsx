@@ -60,10 +60,14 @@ describe("SiteHeader — primary nav links resolve to real routes", () => {
 });
 
 describe("SiteHeader — the single ACTION CTA + theme toggle", () => {
-  it("renders one consultation CTA pointing at the Zoom scheduler", () => {
+  it("renders the consultation CTA(s) pointing at the Zoom scheduler", () => {
     render(<SiteHeader />);
-    const cta = screen.getByRole("link", { name: "שיחת ייעוץ בזום" });
-    expect(cta).toHaveAttribute("href", "/book");
+    // Two DOM nodes exist by design: the md+ masthead CTA (hidden md:inline-flex)
+    // and the mobile <details> menu row. jsdom applies no responsive CSS, so both
+    // render — assert every one targets /book (only one is visible per breakpoint).
+    const ctas = screen.getAllByRole("link", { name: "שיחת ייעוץ בזום" });
+    expect(ctas.length).toBeGreaterThanOrEqual(1);
+    for (const cta of ctas) expect(cta).toHaveAttribute("href", "/book");
   });
 
   it("renders the accessible light/dark toggle button", () => {

@@ -81,7 +81,7 @@ export default function Home() {
     `אחרי המבצע; פנייה לספק נשלחת רק לאחר אישורכם.`;
 
   return (
-    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pt-10 pb-20 sm:px-6">
       {/* Page-scoped motion (Emil Kowalski rules): a one-time entrance reveal that
           fades + lifts each block in, staggered 30–80ms via inline animationDelay.
           Server-rendered CSS only (no JS) — references the shared --ease-out token
@@ -125,53 +125,50 @@ export default function Home() {
           a hairline border keeps it defined on the dark page background. */}
       <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
         <div className="mx-auto max-w-2xl">
+          {/* H1 — the promise is a CHECK ("בודקים כמה תוכלו לחסוך"), never a
+              promised amount. Green is applied ONLY to the price clause (VALUE),
+              bound to the real catalogue entry price (minFeatured). */}
           <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
-            משווים תקשורת.{" "}
-            <span className="text-accent">חוסכים כסף.</span>
+            בודקים כמה תוכלו לחסוך על התקשורת.{" "}
+            <span className="text-accent">מסלולים מ-{ils(minFeatured)} לחודש.</span>
           </h1>
           <p
             className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
             style={{ animationDelay: "60ms" }}
           >
-            השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
-            וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
+            השוואה חינמית של כל ספקי התקשורת בישראל — כולל המחיר שאחרי המבצע.
           </p>
+          {/* CTA row — exactly ONE primary (three-tier PRIMARY: solid green,
+              glow, press). The Zoom /book path is demoted to a SECONDARY quiet
+              white text link, so only one action reads as primary per viewport. */}
           <div
-            className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3"
+            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
             style={{ animationDelay: "120ms" }}
           >
             <TrackedCtaLink
               href={`/compare/${featuredCat}`}
               location="hero"
               label="compare"
-              className="interactive press rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast hover:bg-accent-hover"
+              className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
             >
-              להשוואת מסלולים
+              בדקו כמה תחסכו
+              <Icon name="chevron" size={18} aria-hidden="true" />
             </TrackedCtaLink>
             <TrackedCtaLink
               href="/book"
               location="hero"
               label="consult"
-              className="interactive press rounded-xl border border-white/30 px-6 py-3 font-medium text-white hover:border-white/50 hover:bg-white/10"
+              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
             >
-              שיחת ייעוץ חינם בזום
+              או דברו עם יועץ
             </TrackedCtaLink>
           </div>
-          {/* Quiet value line (was an amber pill) — honest, qualitative framing
-              (no fabricated figure), restyled as a muted single line with a
-              small green tick for positive emphasis. */}
+          {/* Trust band — REAL catalogue counts, placed ABOVE the soft hedge
+              line. The entry price is the hook so it carries the green VALUE
+              emphasis (text-accent), NOT a button. */}
           <p
-            className="sw-reveal mt-6 inline-flex items-center gap-1.5 text-sm text-white/75"
+            className="sw-reveal mt-8 text-sm text-white/70"
             style={{ animationDelay: "150ms" }}
-          >
-            <Icon name="check" size={16} className="shrink-0 text-accent" />
-            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
-          </p>
-          {/* Trust band — REAL catalogue counts; the entry price is the hook so
-              it carries the green positive emphasis (no amber). */}
-          <p
-            className="sw-reveal mt-2 text-sm text-white/70"
-            style={{ animationDelay: "180ms" }}
           >
             {planCount} מסלולים · {providers.length} ספקים · החל מ-
             <span className="font-display font-bold text-accent">
@@ -179,20 +176,70 @@ export default function Home() {
             </span>{" "}
             לחודש
           </p>
+          {/* Quiet value line — honest, qualitative framing (no fabricated
+              figure), a muted single line with a small green tick. Sits BELOW
+              the hard counts band so the real numbers lead the hedge. */}
+          <p
+            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
+            style={{ animationDelay: "180ms" }}
+          >
+            <Icon name="check" size={16} className="shrink-0 text-accent" />
+            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
+          </p>
         </div>
       </section>
 
-      {/* ── Trust signals — REAL catalogue counts + honest trust points + the
-          §7b commission disclosure (inline) + the §17 price caveat, all in one
-          block. Prominent near the hero, NOT buried. Every number here is
+      {/* ── Trust strip (compact) — REAL catalogue counts + the transparent
+          methodology link, as a lean inline strip directly under the hero. The
+          HEAVY full TrustSignals panel (+ §7b commission disclosure + §17 price
+          caveat) is not removed — it still lives down beside #lead, where those
+          legal components belong right before the hand-off. Every number here is
           catalogue-derived; nothing is fabricated. ───────────────────────── */}
       <div className="mx-auto mt-8 max-w-3xl">
         <TrustSignals
+          variant="compact"
           planCount={planCount}
           providerCount={providers.length}
           categoryCount={categories.length}
         />
       </div>
+
+      {/* ── Cheapest-in-cellular teaser (hoisted) ─────────────────────────────
+          The tool-first payoff, pulled up to sit immediately under the hero/trust
+          strip: the three cheapest plans in the featured category so a visitor
+          sees a real, catalogue-derived comparison before any editorial band.
+          Reuses cheapestIn(featuredCat, 3) + the shared <ComparisonTable> (same
+          bundle as the full featured section lower down — they can't drift) and
+          the §17 <PriceCaveat>. The link into the full category uses a direction
+          -aware <Icon name="chevron"> (never a hardcoded ←/→). ─────────────── */}
+      <section aria-labelledby="teaser-h" className="mt-12">
+        <h2
+          id="teaser-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          הזולים ביותר ב{CATEGORY_HE[featuredCat] ?? featuredCat}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          שלושת המסלולים הזולים ביותר בקטגוריה לפי המחיר ההתחלתי — מהקטלוג
+          המעודכן, כולל המחיר שאחרי המבצע.
+        </p>
+        <div className="mt-6">
+          <ComparisonTable
+            plans={cheapestIn(featuredCat, 3)}
+            caption={`שלושת מסלולי ה${CATEGORY_HE[featuredCat] ?? featuredCat} הזולים — מחירים בשקלים`}
+          />
+          <PriceCaveat className="mt-3" />
+        </div>
+        <TrackedCtaLink
+          href={`/compare/${featuredCat}`}
+          location="home-teaser"
+          label="compare"
+          className="interactive mt-5 inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-hover"
+        >
+          לכל מסלולי ה{CATEGORY_HE[featuredCat] ?? featuredCat}
+          <Icon name="chevron" size={16} aria-hidden="true" />
+        </TrackedCtaLink>
+      </section>
 
       {/* ── Provider logo strip (trust band) ──────────────────────────────────
           A horizontal wrap of EVERY real carrier mark in the catalogue, via the

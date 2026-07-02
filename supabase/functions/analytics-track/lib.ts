@@ -19,6 +19,7 @@ export const MAX_PROPS_BYTES = 2048; // keep the jsonb bag small; no payloads/by
 // and KNOWN_EVENTS in admin-metrics/metrics.ts). An unknown name is rejected
 // rather than stored.
 export const ALLOWED_EVENTS = new Set<string>([
+  "appOpen",
   "leadStart",
   "leadSubmit",
   "quizComplete",
@@ -27,6 +28,7 @@ export const ALLOWED_EVENTS = new Set<string>([
   "whatsappClick",
   "savingsViewed",
   "planView",
+  "meetingRequest",
 ]);
 
 // True iff `event` is a non-empty, length-bounded, known funnel event name.

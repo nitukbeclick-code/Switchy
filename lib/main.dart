@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show PlatformDispatcher, kIsWeb;
 import 'app_state.dart';
 import 'app.dart';
 import 'router.dart';
+import 'services/analytics_service.dart';
 import 'services/auth_service.dart';
 import 'services/catalogue_sync.dart';
 import 'services/lead_step_sync.dart';
@@ -44,6 +47,37 @@ void main() async {
   await AuthService.instance.warmUpBiometricLock();
   // Init OS push (no-op on web) so renewal reminders can be (re)scheduled.
   await PushNotificationService.instance.init();
+
+  // Crash reporting — opt-in by DSN, exactly like the edge observability
+  // stack: dark until SENTRY_DSN is supplied at build time (--dart-define).
+  // With the const empty the whole branch tree-shakes away: SentryFlutter
+  // never initializes and no error handler is touched, so plain `flutter run`
+  // / `flutter test` (which override FlutterError.onError per-test) behave
+  // byte-identically to before.
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+  if (sentryDsn.isEmpty) {
+    _startApp();
+    return;
+  }
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.tracesSampleRate = 0; // crashes only — no performance tracing
+      options.sendDefaultPii = false; // house rule: no PII in telemetry, ever
+      // Release/dist/environment come from SentryFlutter's package-info
+      // defaults — nothing manual, nothing user-identifying.
+    },
+    appRunner: () {
+      _wireSentryErrorHandlers();
+      _startApp();
+    },
+  );
+}
+
+/// Brings the UI up and kicks off every app-scope background sync. Split out
+/// of [main] so the Sentry `appRunner` and the unconfigured (no-DSN) path run
+/// one and the same startup sequence.
+void _startApp() {
   runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
   _appStarted = true;
   // Reschedule renewal reminders from the restored state (fire-and-forget).
@@ -60,6 +94,29 @@ void main() async {
   // release, with the compiled snapshot as the cold-start / fallback value.
   // Fire-and-forget — the compiled catalogue already renders meanwhile.
   CatalogueSync.start();
+  // App-open beacon — fire-and-forget like every analytics call: never blocks
+  // the first frame, no-ops entirely when the Supabase keys are absent.
+  unawaited(AnalyticsService.track(AnalyticsEvent.appOpen));
+}
+
+/// Routes uncaught framework + platform errors to Sentry. Called ONLY from the
+/// DSN-armed branch (never in tests or unconfigured builds, where per-test
+/// FlutterError.onError overrides must keep working untouched). Both hooks
+/// preserve whatever handler was already installed — SentryFlutter's own
+/// integrations and Flutter's console reporter keep running, and Sentry's
+/// built-in deduplication drops the copy its default integrations may also
+/// capture, so chaining is safe.
+void _wireSentryErrorHandlers() {
+  final previousOnError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    unawaited(Sentry.captureException(details.exception, stackTrace: details.stack));
+    previousOnError?.call(details);
+  };
+  final previousPlatformOnError = PlatformDispatcher.instance.onError;
+  PlatformDispatcher.instance.onError = (error, stack) {
+    unawaited(Sentry.captureException(error, stackTrace: stack));
+    return previousPlatformOnError?.call(error, stack) ?? true;
+  };
 }
 
 /// True once `runApp` has been called — used to suppress navigation on the
@@ -90,22 +147,23 @@ Future<void> _initBackend() async {
   // works because the `leads` insert policy allows anyone.
   final auth = Supabase.instance.client.auth;
   if (auth.currentSession == null) {
-    // Retry transient failures with backoff: without a session every RLS-scoped
-    // write (tracked plans, reviews, community, profile) silently fails for the
-    // whole run, so a single cold-start network blip must not cost us the
-    // identity. If anonymous sign-ins are genuinely disabled in the dashboard
-    // this still gives up after a few tries and anonymous lead capture keeps
+    // ONE bounded attempt only: the old in-place 3-try backoff loop could hold
+    // the first frame hostage for up to ~1.6s of cold start. Without a session
+    // every RLS-scoped write (tracked plans, reviews, community, profile)
+    // silently fails for the whole run, so we still refuse to lose the
+    // identity to a single network blip — but the retry now runs off the
+    // critical path: one fire-and-forget re-arm ~2s later, comfortably after
+    // `runApp`'s first frame. If anonymous sign-ins are genuinely disabled in
+    // the dashboard both attempts fail soft and anonymous lead capture keeps
     // working (the `leads` insert policy allows anyone).
-    for (var attempt = 0; attempt < 3; attempt++) {
-      try {
-        await auth.signInAnonymously();
-        break;
-      } catch (e) {
-        debugPrint('Supabase anonymous sign-in failed (attempt ${attempt + 1}/3): $e');
-        if (attempt < 2) {
-          await Future<void>.delayed(Duration(milliseconds: 400 * (1 << attempt)));
-        }
-      }
+    try {
+      await auth.signInAnonymously().timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('Supabase anonymous sign-in failed (retrying once after first frame): $e');
+      unawaited(
+        Future<void>.delayed(const Duration(seconds: 2))
+            .then((_) => AuthService.instance.ensureAnonymousSession()),
+      );
     }
   }
 

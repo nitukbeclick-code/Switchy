@@ -102,6 +102,12 @@ class SettingsWidget extends StatelessWidget {
                       onChanged: (v) {
                         HapticFeedback.selectionClick();
                         Provider.of<AppState>(context, listen: false).setPrefRequestUpdates(v);
+                        // OFF→ON edge only (a Switch's onChanged fires only on
+                        // a flip): confirm where the request updates will land.
+                        if (v) {
+                          AppSnackBar.info(context,
+                              'מעולה — נעדכן אתכם כאן על כל התקדמות בבקשה');
+                        }
                       },
                       ffTheme: ffTheme,
                     ),

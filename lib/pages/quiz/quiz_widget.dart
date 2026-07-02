@@ -13,6 +13,7 @@ import '../../widgets/saving_pill.dart';
 import '../../widgets/skeleton.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../services/analytics_service.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
@@ -739,6 +740,10 @@ class _QuizWidgetState extends State<QuizWidget> {
     appState.setQuizBudget(_budget.round());
     appState.setQuizCat(_cat);
     appState.setQuizCompleted(true);
+    // Funnel beacon — the quiz just reached its completed state (this branch
+    // runs exactly once per finish, covering both the reveal and the
+    // empty-recs → Results exits). Fire-and-forget, scalars only, no PII.
+    AnalyticsService.track(AnalyticsEvent.quizComplete, props: {'cat': _cat});
     final needs5G = _priority.startsWith('speed') || _priority == 'data';
     final needsAbroad = _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad';
     appBackend.upsertQuiz({
@@ -1208,6 +1213,10 @@ class _ChoiceChip extends StatelessWidget {
         duration: ffTheme.motionFast,
         curve: ffTheme.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        // Guideline floor: padding+labelLarge lands at 47dp — one short of the
+        // 48dp Android tap-target minimum (androidTapTargetGuideline).
+        constraints: const BoxConstraints(minHeight: kMinTapTarget),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? ffTheme.brandAccent : ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),

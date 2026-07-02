@@ -8,6 +8,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../core/nav.dart';
 import '../../core/zoom_providers.dart';
 import '../../data.dart';
+import '../../services/analytics_service.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart'; // global `appBackend` lives here
 import '../../services/meeting_slots.dart';
@@ -347,6 +348,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           startsAt: meetingLocalStart(dateIso, _slot!).toUtc(),
           createdAt: DateTime.now(),
         ));
+    // Funnel beacon — the backend accepted the booking (the wizard flips to
+    // its success state below). Never fired on the OTP code-request/verify
+    // steps or the adopt-existing-meeting path. Fire-and-forget, scalars
+    // only, no PII.
+    AnalyticsService.track(AnalyticsEvent.meetingRequest, props: {
+      if (_provider != null) 'provider': _provider,
+      'source': widget.source,
+    });
     HapticFeedback.mediumImpact();
     if (!mounted) return;
     setState(() => _justBooked = true);

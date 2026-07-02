@@ -55,6 +55,22 @@ export default function CompareIndexPage() {
   const providerCount = getProviders().length;
   const categoryCount = getCategories().length;
 
+  // Per-service catalogue rows computed ONCE (real counts + starting prices),
+  // so the featured pick and every card below bind the same real numbers.
+  const serviceRows = services.map((s) => {
+    const plans = plansForService(s.slug);
+    return { service: s, plans, count: plans.length, min: minPriceOf(plans) };
+  });
+  // FEATURE the highest-count service — a TRUTHFUL signal ("הכי הרבה מסלולים"),
+  // NOT "פופולרי" (that would be fabricated). Ties resolve to the first in
+  // display order (cellular leads), so the pick stays deterministic. `null` when
+  // the catalogue is empty (guarded by the EmptyState branch below).
+  const featuredSlug =
+    serviceRows.reduce<(typeof serviceRows)[number] | null>(
+      (best, row) => (best == null || row.count > best.count ? row : best),
+      null,
+    )?.service.slug ?? null;
+
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "השוואה", url: "/compare" },
@@ -99,7 +115,9 @@ export default function CompareIndexPage() {
   return (
     <main
       id="main"
-      className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6"
+      // pb-20 (5rem) clears the floating chat launcher (FAB) — this hub renders
+      // NO sticky bar, so nothing else reserves that space at the page foot.
+      className="mx-auto w-full max-w-5xl flex-1 px-4 pt-10 pb-20 sm:px-6"
     >
       {/* Page-scoped entrance reveal (Emil Kowalski rules): fade + lift each
           service card in, staggered 30–80ms via inline animationDelay. Server CSS
@@ -197,18 +215,46 @@ export default function CompareIndexPage() {
           />
         ) : (
           <ul className="mt-5 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3">
-            {services.map((s, i) => {
-              const plans = plansForService(s.slug);
-              const min = minPriceOf(plans);
+            {serviceRows.map(({ service: s, plans, min }, i) => {
+              // The single guided default: the highest-count service leads. Its
+              // card spans the full 2-col row, wears the featured-ring language
+              // used elsewhere, carries the truthful "הכי הרבה מסלולים" ribbon,
+              // and owns the ONE grammar-PRIMARY action on this hub. Every other
+              // card is grammar-SECONDARY (ghost outline, no fill, no glow).
+              const isFeatured = s.slug === featuredSlug;
               return (
-                <li key={s.slug}>
+                <li
+                  key={s.slug}
+                  className={
+                    isFeatured ? "min-[360px]:col-span-2 lg:col-span-2" : undefined
+                  }
+                >
                   <Link
                     href={`/compare/${s.slug}`}
-                    className="group sw-reveal card card-interactive flex h-full min-h-24 flex-col justify-between gap-2 p-4"
+                    className={[
+                      "group sw-reveal card card-interactive relative flex h-full min-h-24 flex-col justify-between gap-2 p-4",
+                      isFeatured
+                        ? "border-accent/30 bg-accent/[0.06] ring-1 ring-accent/25"
+                        : "",
+                    ].join(" ")}
                     style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
                   >
+                    {isFeatured && (
+                      // VALUE-tinted ribbon (not a button) — a truthful signal
+                      // that this axis carries the most plans. Pinned to the
+                      // inline-start top corner; RTL-safe via logical start-4.
+                      <span className="pointer-events-none absolute -top-2.5 start-4 inline-flex items-center gap-1 rounded-full border border-value/20 bg-value/10 px-2.5 py-0.5 text-[11px] font-semibold text-value-text shadow-[var(--shadow-soft)]">
+                        <Icon name="spark" size={12} aria-hidden="true" />
+                        הכי הרבה מסלולים
+                      </span>
+                    )}
                     <span>
-                      <span className="block font-display text-base font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
+                      <span
+                        className={[
+                          "block font-display font-semibold tracking-tight text-ink transition-colors group-hover:text-accent",
+                          isFeatured ? "text-lg" : "text-base",
+                        ].join(" ")}
+                      >
                         {s.label}
                       </span>
                       <span className="mt-0.5 block text-sm text-muted">
@@ -225,17 +271,30 @@ export default function CompareIndexPage() {
                         )}
                       </span>
                     </span>
-                    {/* A real (small, green) button affordance — the whole card
-                        is the link; this is its visible action. */}
-                    <span className="inline-flex w-fit items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-contrast transition-colors group-hover:bg-accent-hover">
-                      להשוואה
-                      <Icon
-                        name="arrow"
-                        size={14}
-                        aria-hidden="true"
-                        className="transition-transform ease-[var(--ease-out)] group-hover:-translate-x-0.5"
-                      />
-                    </span>
+                    {/* The whole card is the link; this is its visible action.
+                        Featured = grammar-PRIMARY (solid accent + glow). Others =
+                        grammar-SECONDARY (ghost outline, no fill, no glow). */}
+                    {isFeatured ? (
+                      <span className="inline-flex w-fit items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform group-active:scale-[0.98]">
+                        להשוואה
+                        <Icon
+                          name="arrow"
+                          size={16}
+                          aria-hidden="true"
+                          className="transition-transform ease-[var(--ease-out)] group-hover:-translate-x-0.5"
+                        />
+                      </span>
+                    ) : (
+                      <span className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-accent-text transition-colors group-hover:border-accent/40">
+                        להשוואה
+                        <Icon
+                          name="arrow"
+                          size={14}
+                          aria-hidden="true"
+                          className="transition-transform ease-[var(--ease-out)] group-hover:-translate-x-0.5"
+                        />
+                      </span>
+                    )}
                   </Link>
                 </li>
               );

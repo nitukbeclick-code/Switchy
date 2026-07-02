@@ -27,9 +27,12 @@ describe("TrustSignals — full variant", () => {
     expect(scoped.getByText("5")).toBeInTheDocument();
     expect(scoped.getByText("קטגוריות תקשורת")).toBeInTheDocument();
 
-    // The only "claim" figure allowed: the site is free.
-    expect(scoped.getByText("₪0")).toBeInTheDocument();
-    expect(scoped.getByText("עלות השימוש באתר")).toBeInTheDocument();
+    // The only "claim" allowed: the site is free — now a labeled reassurance
+    // chip (the old giant "₪0" stat read as "zero savings" and was removed).
+    expect(
+      scoped.getByText(/השירות חינם — אין עלות שימוש/),
+    ).toBeInTheDocument();
+    expect(scoped.queryByText("₪0")).not.toBeInTheDocument();
   });
 
   it("omits the category stat when categoryCount is not provided", () => {

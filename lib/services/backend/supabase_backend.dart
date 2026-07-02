@@ -23,6 +23,17 @@ class SupabaseBackend implements Backend {
   SupabaseClient get _db => Supabase.instance.client;
   String? get _uid => _db.auth.currentUser?.id;
 
+  // ── Network timeout guard ────────────────────────────────────────────────────
+  // Nothing may hang a spinner forever: every awaited network call below runs
+  // through this wrapper, so a stalled socket surfaces as a TimeoutException
+  // after [limit] instead of hanging. The TimeoutException takes exactly the
+  // catch/propagate path each call site already has for transport failures —
+  // nothing new is swallowed here. Transparent for already-completed futures
+  // (test stubs are unaffected). Realtime channel subscriptions aren't futures
+  // and stay untouched.
+  Future<T> _t<T>(Future<T> f, {Duration limit = const Duration(seconds: 20)}) =>
+      f.timeout(limit);
+
   RealtimeChannel? _leadChannel;
   StreamController<int>? _leadStepCtrl;
 
@@ -44,7 +55,7 @@ class SupabaseBackend implements Backend {
     // functions.invoke auto-attaches the anon/session JWT. A non-2xx (rate
     // limit / outage / model error) throws here so the advisor widget falls back
     // to the on-device AdvisorEngine.
-    final res = await _db.functions.invoke('site-ai-chat', body: body);
+    final res = await _t(_db.functions.invoke('site-ai-chat', body: body));
     final data = res.data;
     if (data is Map) return data.cast<String, dynamic>();
     // A 2xx with an unexpected body is as useless as an error — make the caller
@@ -61,10 +72,10 @@ class SupabaseBackend implements Backend {
   @override
   Future<bool> deleteAccount({String? advisorSessionId}) async {
     try {
-      final res = await _db.functions.invoke('account-delete', body: {
+      final res = await _t(_db.functions.invoke('account-delete', body: {
         'confirm': 'DELETE',
         if (advisorSessionId != null) 'advisorSessionId': advisorSessionId,
-      });
+      }));
       final data = res.data;
       return data is Map && data['ok'] == true;
     } catch (_) {
@@ -83,11 +94,11 @@ class SupabaseBackend implements Backend {
   @override
   Future<List<Plan>> fetchCatalogue() async {
     try {
-      final rows = await _db.from('plans').select(
+      final rows = await _t(_db.from('plans').select(
             'id,category,provider,title,subtitle,price,price_exact,after,'
             'after_exact,is_5g,no_commit,has_abroad,price_unit,kind,specs,fees,'
             'feats,fine_lines,terms,notes,updated_at',
-          );
+          ));
       final plans = <Plan>[
         for (final r in (rows as List))
           if (Plan.fromJson((r as Map).cast<String, dynamic>()) case final p?) p,
@@ -172,10 +183,10 @@ class SupabaseBackend implements Backend {
   @override
   Future<Set<String>> fetchZoomSupportedProviders() async {
     try {
-      final rows = await _db
+      final rows = await _t(_db
           .from('provider_capabilities')
           .select('provider')
-          .eq('supports_zoom_meeting', true);
+          .eq('supports_zoom_meeting', true));
       return {
         for (final r in (rows as List))
           if ((r as Map)['provider'] case final String p when p.isNotEmpty) p,
@@ -189,11 +200,11 @@ class SupabaseBackend implements Backend {
   // ── Real-time deals (plan_price_history) ─────────────────────────────────────
   @override
   Future<List<PriceSnapshot>> fetchPriceSnapshots({int limit = 400}) async {
-    final rows = await _db
+    final rows = await _t(_db
         .from('plan_price_history')
         .select('plan_id, category, provider, price, after, captured_at')
         .order('captured_at', ascending: false)
-        .limit(limit);
+        .limit(limit));
     return (rows as List)
         .map((r) => PriceSnapshot.fromJson((r as Map).cast<String, dynamic>()))
         .toList();
@@ -219,22 +230,22 @@ class SupabaseBackend implements Backend {
   @override
   Future<void> upsertProfile({required String name, required String phone, String? email}) async {
     if (_uid == null) return;
-    await _db.from('profiles').upsert({
+    await _t(_db.from('profiles').upsert({
       'id': _uid,
       'name': name,
       'phone': phone,
       if (email != null && email.isNotEmpty) 'email': email,
-    }, onConflict: 'id');
+    }, onConflict: 'id'));
   }
 
   @override
   Future<void> trackPlanView({required String planId, required String provider, required String category}) async {
-    await _db.from('plan_views').insert({
+    await _t(_db.from('plan_views').insert({
       'plan_id': planId,
       'provider': provider,
       'category': category,
       if (_uid != null) 'user_id': _uid,
-    });
+    }));
   }
 
   // ── Bill OCR ─────────────────────────────────────────────────────────────────
@@ -246,9 +257,9 @@ class SupabaseBackend implements Backend {
       // base64 under `imageBase64`. functions.invoke auto-attaches the anon JWT.
       // The function returns 200 with a friendly `error` field on an unreadable
       // photo, but a non-2xx (rate limit / oversized / outage) throws here.
-      final res = await _db.functions.invoke('site-bill-analyzer', body: {
+      final res = await _t(_db.functions.invoke('site-bill-analyzer', body: {
         'imageBase64': imageDataUri,
-      });
+      }));
       final data = res.data;
       if (data is Map) return BillAnalysis.fromJson(data.cast<String, dynamic>());
       return null;
@@ -262,11 +273,11 @@ class SupabaseBackend implements Backend {
   @override
   Future<({String name, String phone, String? email, int totalSavings, bool renewalReminders})?> fetchProfile() async {
     if (_uid == null) return null;
-    final row = await _db
+    final row = await _t(_db
         .from('profiles')
         .select('name, phone, email, total_savings, renewal_reminders')
         .eq('id', _uid!)
-        .maybeSingle();
+        .maybeSingle());
     if (row == null) return null;
     final name = row['name'] as String?;
     final phone = row['phone'] as String?;
@@ -283,40 +294,40 @@ class SupabaseBackend implements Backend {
   @override
   Future<void> addSavings(int amount) async {
     if (_uid == null || amount <= 0) return;
-    await _db.rpc('increment_savings', params: {'uid': _uid, 'delta': amount});
+    await _t(_db.rpc('increment_savings', params: {'uid': _uid, 'delta': amount}));
   }
 
   @override
   Future<void> upsertBills(Map<String, int> bills) async {
     if (_uid == null) return;
-    await _db.from('profiles').upsert({
+    await _t(_db.from('profiles').upsert({
       'id': _uid,
       'bills': bills,
-    }, onConflict: 'id');
+    }, onConflict: 'id'));
   }
 
   @override
   Future<void> setRenewalReminder(bool enabled) async {
     if (_uid == null) return;
-    await _db.from('profiles').upsert({
+    await _t(_db.from('profiles').upsert({
       'id': _uid,
       'renewal_reminders': enabled,
-    }, onConflict: 'id');
+    }, onConflict: 'id'));
   }
 
   @override
   Future<void> upsertQuiz(Map<String, dynamic> quiz) async {
     if (_uid == null) return;
-    await _db.from('profiles').upsert({
+    await _t(_db.from('profiles').upsert({
       'id': _uid,
       'quiz': quiz,
-    }, onConflict: 'id');
+    }, onConflict: 'id'));
   }
 
   @override
   Future<Map<String, dynamic>?> fetchQuiz() async {
     if (_uid == null) return null;
-    final row = await _db.from('profiles').select('quiz').eq('id', _uid!).maybeSingle();
+    final row = await _t(_db.from('profiles').select('quiz').eq('id', _uid!).maybeSingle());
     if (row == null) return null;
     final raw = row['quiz'] as Map?;
     if (raw == null || raw.isEmpty) return null;
@@ -326,7 +337,7 @@ class SupabaseBackend implements Backend {
   @override
   Future<Map<String, int>?> fetchBills() async {
     if (_uid == null) return null;
-    final rows = await _db.from('profiles').select('bills').eq('id', _uid!).maybeSingle();
+    final rows = await _t(_db.from('profiles').select('bills').eq('id', _uid!).maybeSingle());
     if (rows == null) return null;
     final raw = rows['bills'] as Map?;
     if (raw == null || raw.isEmpty) return null;
@@ -337,22 +348,22 @@ class SupabaseBackend implements Backend {
   @override
   Future<void> submitLead(LeadInput lead) async {
     // `leads` allows anon insert; attach user_id when signed in.
-    await _db.from('leads').insert({
+    await _t(_db.from('leads').insert({
       ...lead.toRow(),
       if (_uid != null) 'user_id': _uid,
-    });
+    }));
   }
 
   @override
   Future<int> fetchLeadStep() async {
     if (_uid == null) return 0;
-    final row = await _db
+    final row = await _t(_db
         .from('leads')
         .select('status')
         .eq('user_id', _uid!)
         .order('created_at', ascending: false)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle());
     if (row == null) return 0;
     return leadStepFromStatus(row['status'] as String?);
   }
@@ -362,13 +373,13 @@ class SupabaseBackend implements Backend {
     if (_uid == null) return (step: 0, createdAt: null);
     // ONLY the client-granted columns — the leads grant is (id, status,
     // created_at, user_id); selecting anything else would fail under RLS.
-    final row = await _db
+    final row = await _t(_db
         .from('leads')
         .select('status, created_at')
         .eq('user_id', _uid!)
         .order('created_at', ascending: false)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle());
     if (row == null) return (step: 0, createdAt: null);
     return (
       step: leadStepFromStatus(row['status'] as String?),
@@ -458,7 +469,7 @@ class SupabaseBackend implements Backend {
   // functions.invoke auto-attaches the anon/session JWT and surfaces a non-2xx
   // as a thrown FunctionException — callers translate that into honest copy.
   Future<Map<String, dynamic>> _meetingBook(Map<String, dynamic> body) async {
-    final res = await _db.functions.invoke('meeting-book', body: body);
+    final res = await _t(_db.functions.invoke('meeting-book', body: body));
     final data = res.data;
     return data is Map ? data.cast<String, dynamic>() : const {};
   }
@@ -505,9 +516,9 @@ class SupabaseBackend implements Backend {
       // referral-issue mints + persists the code (channel='app') via service-role
       // and returns { code, persisted }. We use the server code when valid; any
       // failure falls through to a local (unpersisted) code so sharing never breaks.
-      final res = await _db.functions.invoke('referral-issue', body: {
+      final res = await _t(_db.functions.invoke('referral-issue', body: {
         if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
-      });
+      }));
       final data = res.data;
       final code = data is Map ? data['code'] : null;
       if (code is String && ReferralCode.isValid(code)) {
@@ -559,10 +570,10 @@ class SupabaseBackend implements Backend {
     final filtered = email == null
         ? query.eq('user_id', _uid!)
         : query.or(meetingOrFilter(_uid!, email));
-    final row = await filtered
+    final row = await _t(filtered
         .order('created_at', ascending: false)
         .limit(1)
-        .maybeSingle();
+        .maybeSingle());
     return row == null ? null : _meetingFromRow(row);
   }
 
@@ -639,10 +650,10 @@ class SupabaseBackend implements Backend {
   // ── Tracked plans ────────────────────────────────────────────────────────────
   @override
   Future<List<TrackedPlan>> fetchTrackedPlans() async {
-    final rows = await _db
+    final rows = await _t(_db
         .from('tracked_plans')
         .select()
-        .order('created_at', ascending: false);
+        .order('created_at', ascending: false));
     return (rows as List).map((r) => TrackedPlan(
           id: r['id'] as String,
           category: r['category'] as String,
@@ -662,13 +673,13 @@ class SupabaseBackend implements Backend {
     // re-watch replaces rather than stacks. (Safe whether or not a DB unique
     // constraint on (user_id, plan_id) exists.)
     if (p.planId != null) {
-      await _db
+      await _t(_db
           .from('tracked_plans')
           .delete()
           .eq('user_id', _uid!)
-          .eq('plan_id', p.planId!);
+          .eq('plan_id', p.planId!));
     }
-    await _db.from('tracked_plans').insert({
+    await _t(_db.from('tracked_plans').insert({
       'user_id': _uid,
       'category': p.category,
       'provider': p.provider,
@@ -679,44 +690,44 @@ class SupabaseBackend implements Backend {
       'plan_id': p.planId,
       // §30A: true ONLY when the caller passes a genuine opt-in.
       'watch_opt_in': watchOptIn,
-    });
+    }));
   }
 
   @override
   Future<void> removeTrackedPlan(String id) async {
-    await _db.from('tracked_plans').delete().eq('id', id);
+    await _t(_db.from('tracked_plans').delete().eq('id', id));
   }
 
   @override
   Future<void> removeTrackedPlanByPlanId(String planId) async {
-    await _db
+    await _t(_db
         .from('tracked_plans')
         .delete()
         .eq('user_id', _uid!)
-        .eq('plan_id', planId);
+        .eq('plan_id', planId));
   }
 
   @override
   Future<void> setAllWatchOptIn(bool optIn) async {
-    await _db
+    await _t(_db
         .from('tracked_plans')
-        .update({'watch_opt_in': optIn}).eq('user_id', _uid!);
+        .update({'watch_opt_in': optIn}).eq('user_id', _uid!));
   }
 
   // ── Provider reviews ─────────────────────────────────────────────────────────
   @override
   Future<void> upsertReview(ReviewInput review) async {
     // unique(user_id, provider) → onConflict upserts the user's existing review.
-    await _db.from('provider_reviews').upsert(
+    await _t(_db.from('provider_reviews').upsert(
       {'user_id': _uid, ...review.toRow()},
       onConflict: 'user_id,provider',
-    );
+    ));
   }
 
   @override
   Future<List<ReviewInput>> reviewsForProvider(String provider) async {
-    final rows =
-        await _db.from('provider_reviews').select().eq('provider', provider);
+    final rows = await _t(
+        _db.from('provider_reviews').select().eq('provider', provider));
     return (rows as List).map((r) => ReviewInput(
           provider: r['provider'] as String,
           overall: (r['overall'] as num).toInt(),
@@ -733,7 +744,7 @@ class SupabaseBackend implements Backend {
 
   @override
   Future<List<ReviewInput>> fetchAllReviews() async {
-    final rows = await _db.from('provider_reviews').select();
+    final rows = await _t(_db.from('provider_reviews').select());
     return (rows as List).map((r) => ReviewInput(
           provider: r['provider'] as String,
           overall: (r['overall'] as num).toInt(),
@@ -759,7 +770,10 @@ class SupabaseBackend implements Backend {
     final bytes = base64Decode(media.substring(commaIdx + 1));
     final ext = mediaType == 'image' ? 'jpg' : mediaType == 'video' ? 'mp4' : 'aac';
     final path = '${_uid ?? 'anon'}/${DateTime.now().microsecondsSinceEpoch}.$ext';
-    await _db.storage.from('community-media').uploadBinary(path, bytes);
+    // Media uploads get a wider ceiling — a video over mobile data can honestly
+    // take longer than the default 20s, but must still never hang forever.
+    await _t(_db.storage.from('community-media').uploadBinary(path, bytes),
+        limit: const Duration(seconds: 60));
     return _db.storage.from('community-media').getPublicUrl(path);
   }
 
@@ -799,14 +813,14 @@ class SupabaseBackend implements Backend {
     // `community_feed` is the view with like_count / reply_count.
     var query = _db.from('community_feed').select();
     if (channel != null && channel != 'הכל') query = query.eq('channel', channel);
-    final rows = await query.order('created_at', ascending: false);
+    final rows = await _t(query.order('created_at', ascending: false));
     return (rows as List).map((r) => _postFromRow(r as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<CommunityPost> createPost(PostInput post) async {
     final mediaUrl = await _uploadMediaIfNeeded(post.media, post.mediaType);
-    final row = await _db
+    final row = await _t(_db
         .from('community_posts')
         .insert({
           'user_id': _uid,
@@ -819,22 +833,22 @@ class SupabaseBackend implements Backend {
           'media_duration_ms': post.mediaDurationMs,
         })
         .select()
-        .single();
+        .single());
     return _postFromRow(row);
   }
 
   @override
   Future<void> deletePost(String id) async {
-    await _db.from('community_posts').delete().eq('id', id);
+    await _t(_db.from('community_posts').delete().eq('id', id));
   }
 
   @override
   Future<List<CommunityReply>> fetchReplies(String postId) async {
-    final rows = await _db
+    final rows = await _t(_db
         .from('community_replies')
         .select()
         .eq('post_id', postId)
-        .order('created_at');
+        .order('created_at'));
     return (rows as List).map((r) => CommunityReply(
           id: r['id'] as String,
           postId: r['post_id'] as String,
@@ -852,7 +866,7 @@ class SupabaseBackend implements Backend {
   @override
   Future<void> addReply(ReplyInput reply) async {
     final mediaUrl = await _uploadMediaIfNeeded(reply.media, reply.mediaType);
-    await _db.from('community_replies').insert({
+    await _t(_db.from('community_replies').insert({
       'user_id': _uid,
       'post_id': reply.postId,
       'author': reply.author,
@@ -861,36 +875,36 @@ class SupabaseBackend implements Backend {
       'media_type': reply.mediaType,
       'media_url': mediaUrl,
       'media_duration_ms': reply.mediaDurationMs,
-    });
+    }));
   }
 
   @override
   Future<void> setLike(String postId, bool liked) async {
     if (liked) {
-      await _db.from('post_likes').upsert({'post_id': postId, 'user_id': _uid});
+      await _t(_db.from('post_likes').upsert({'post_id': postId, 'user_id': _uid}));
     } else {
-      await _db.from('post_likes').delete().eq('post_id', postId).eq('user_id', _uid!);
+      await _t(_db.from('post_likes').delete().eq('post_id', postId).eq('user_id', _uid!));
     }
   }
 
   @override
   Future<Set<String>> likedPostIds() async {
-    final rows = await _db.from('post_likes').select('post_id').eq('user_id', _uid!);
+    final rows = await _t(_db.from('post_likes').select('post_id').eq('user_id', _uid!));
     return (rows as List).map((r) => r['post_id'] as String).toSet();
   }
 
   @override
   Future<void> setBookmark(String postId, bool bookmarked) async {
     if (bookmarked) {
-      await _db.from('post_bookmarks').upsert({'post_id': postId, 'user_id': _uid});
+      await _t(_db.from('post_bookmarks').upsert({'post_id': postId, 'user_id': _uid}));
     } else {
-      await _db.from('post_bookmarks').delete().eq('post_id', postId).eq('user_id', _uid!);
+      await _t(_db.from('post_bookmarks').delete().eq('post_id', postId).eq('user_id', _uid!));
     }
   }
 
   @override
   Future<Set<String>> bookmarkedPostIds() async {
-    final rows = await _db.from('post_bookmarks').select('post_id').eq('user_id', _uid!);
+    final rows = await _t(_db.from('post_bookmarks').select('post_id').eq('user_id', _uid!));
     return (rows as List).map((r) => r['post_id'] as String).toSet();
   }
 
@@ -903,24 +917,24 @@ class SupabaseBackend implements Backend {
     String? body,
   }) async {
     // RLS lets a user INSERT a report as themselves; reporter_user_id = uid.
-    await _db.from('community_reports').insert({
+    await _t(_db.from('community_reports').insert({
       'reporter_user_id': _uid,
       'target_type': targetType,
       'target_id': targetId,
       'reason': reason,
       if (body != null && body.isNotEmpty) 'body': body,
-    });
+    }));
   }
 
   @override
   Future<List<CommunityNotification>> fetchCommunityNotifications() async {
     if (_uid == null) return const [];
     // RLS scopes SELECT to the user's own rows.
-    final rows = await _db
+    final rows = await _t(_db
         .from('community_notifications')
         .select()
         .order('created_at', ascending: false)
-        .limit(50);
+        .limit(50));
     return (rows as List)
         .map((r) => CommunityNotification.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -930,11 +944,11 @@ class SupabaseBackend implements Backend {
   Future<void> markCommunityNotificationsRead() async {
     if (_uid == null) return;
     // RLS scopes UPDATE to the user's own rows; only touch the unread ones.
-    await _db
+    await _t(_db
         .from('community_notifications')
         .update({'read_at': DateTime.now().toUtc().toIso8601String()})
         .eq('user_id', _uid!)
-        .isFilter('read_at', null);
+        .isFilter('read_at', null));
   }
 
   // ── WhatsApp CRM (admin-only) ────────────────────────────────────────────────
@@ -946,10 +960,10 @@ class SupabaseBackend implements Backend {
   // Calls a `crm-api` action and returns its decoded JSON body, raising on a
   // non-2xx so callers surface the same kind of error as the other methods.
   Future<Map<String, dynamic>> _crm(String action, [Map<String, dynamic>? extra]) async {
-    final res = await _db.functions.invoke('crm-api', body: {
+    final res = await _t(_db.functions.invoke('crm-api', body: {
       'action': action,
       if (extra != null) ...extra,
-    });
+    }));
     final data = res.data;
     if (data is Map) return data.cast<String, dynamic>();
     return const {};
@@ -958,11 +972,11 @@ class SupabaseBackend implements Backend {
   @override
   Future<bool> fetchIsAdmin() async {
     if (_uid == null) return false;
-    final row = await _db
+    final row = await _t(_db
         .from('profiles')
         .select('is_admin')
         .eq('id', _uid!)
-        .maybeSingle();
+        .maybeSingle());
     return row?['is_admin'] as bool? ?? false;
   }
 
@@ -1061,7 +1075,7 @@ class SupabaseBackend implements Backend {
     final p = provider.trim();
     if (p.isEmpty) return null;
     try {
-      final res = await _db.functions.invoke(
+      final res = await _t(_db.functions.invoke(
         'street-price',
         method: HttpMethod.get,
         queryParameters: {
@@ -1070,7 +1084,7 @@ class SupabaseBackend implements Backend {
           // category rides along for forward-compat with a category cohort.
           'category': category,
         },
-      );
+      ));
       final data = res.data;
       if (data is Map) return data.cast<String, dynamic>();
       if (data is String && data.isNotEmpty) {
@@ -1091,11 +1105,11 @@ class SupabaseBackend implements Backend {
   // returns counts only (never PII). We never touch those tables directly.
   @override
   Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14}) async {
-    final res = await _db.functions.invoke(
+    final res = await _t(_db.functions.invoke(
       'admin-metrics',
       method: HttpMethod.get,
       queryParameters: {'days': '$windowDays'},
-    );
+    ));
     final data = res.data;
     return AdminMetrics.fromJson(
       data is Map ? data.cast<String, dynamic>() : const {},

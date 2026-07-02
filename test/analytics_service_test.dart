@@ -26,6 +26,7 @@ void main() {
     test('the full wire-name set equals the edge function ALLOWED_EVENTS', () {
       // Keep this in lockstep with supabase/functions/analytics-track/index.ts.
       const allowed = {
+        'appOpen',
         'leadStart',
         'leadSubmit',
         'quizComplete',
@@ -34,6 +35,7 @@ void main() {
         'whatsappClick',
         'savingsViewed',
         'planView',
+        'meetingRequest',
       };
       expect(AnalyticsEvent.values.map((e) => e.name).toSet(), equals(allowed));
     });

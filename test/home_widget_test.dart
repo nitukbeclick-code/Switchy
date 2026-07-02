@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
+import 'package:chosech/data.dart';
 import 'package:chosech/services/backend/local_backend.dart';
 
 /// Widget tests for the home screen (lib/pages/home/home_widget.dart).
@@ -148,5 +149,66 @@ void main() {
       // tooltip (= semantics label) so it isn't a silent icon to assistive tech.
       expect(find.byTooltip('בקשת שיחה חוזרת'), findsOneWidget);
     });
+  });
+
+  testWidgets(
+      'home renders with ZERO overflow at a 390px viewport and 1.3x text scale',
+      (tester) async {
+    // Regression guard for the live-tour bank-grade findings: the category
+    // grid used to stripe "BOTTOM OVERFLOWED BY ~13 PIXELS" (childAspectRatio
+    // 1.85 was too tight for icon+title+count+price) and the activity tiles by
+    // 1px, on a 390-wide phone. Unlike the other tests, this one does NOT
+    // swallow RenderFlex overflow — it collects every overflow error and
+    // requires none, under the exact conditions of the findings.
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final overflows = <String>[];
+    final originalOnError = FlutterError.onError;
+    FlutterError.onError = (details) {
+      final s = details.exceptionAsString();
+      if (s.contains('overflowed') || s.contains('RenderFlex')) {
+        // Keep the full diagnostics (they name the error-causing widget and its
+        // creation location) so a regression pinpoints itself in the failure.
+        overflows.add(details.toString());
+        return;
+      }
+      originalOnError?.call(details);
+    };
+    try {
+      await _bootApp(tester);
+      // Boot lands on the landing/onboarding route; anything it stripes is that
+      // screen's own finding, not home's - judge home only from here on.
+      overflows.clear();
+      _go(tester, '/home');
+      await _settle(tester);
+      // Watch a plan so the "הפעילות שלך" horizontal tiles actually render
+      // (finding 2 lived in those cards).
+      AppState().toggleWatch(allPlans.first.id);
+      await _settle(tester);
+
+      // Scroll the whole feed through the viewport so every section lays out
+      // (the category grid lives below the fold on a 390x844 phone).
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('השוואה לפי קטגוריה'), 300,
+        scrollable: scrollable,
+      );
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.text('כלים שימושיים'), 300,
+        scrollable: scrollable,
+      );
+      await tester.pump();
+    } finally {
+      FlutterError.onError = originalOnError;
+    }
+
+    expect(overflows, isEmpty,
+        reason: 'home must never stripe at 390px / 1.3x text scale:\n'
+            '${overflows.join('\n')}');
   });
 }

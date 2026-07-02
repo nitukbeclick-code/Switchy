@@ -422,9 +422,10 @@ class _Page3 extends StatelessWidget {
 
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
-/// The slide's focal mark — a tinted disc with a hairline accent ring and a
-/// soft green glow, so each illustration reads as the page's single hero point
-/// rather than a flat icon. Decorative: the headline below carries the meaning.
+/// The slide's focal mark — BANK-GRADE: a compact 68px medallion on the card
+/// surface with a thin 1px hairline ring (no big filled disc, no glow), so the
+/// slide leads with the headline instead of an oversized illustration.
+/// Decorative: the headline below carries the meaning.
 class _HeroBadge extends StatelessWidget {
   const _HeroBadge({required this.icon, required this.ffTheme});
   final IconData icon;
@@ -433,15 +434,14 @@ class _HeroBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 104,
-      height: 104,
+      width: 68,
+      height: 68,
       decoration: BoxDecoration(
-        color: ffTheme.brandAccentTint,
+        color: ffTheme.cardSurface,
         shape: BoxShape.circle,
-        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22), width: 1.5),
-        boxShadow: ffTheme.glowAccent,
+        border: Border.all(color: ffTheme.alternate),
       ),
-      child: ExcludeSemantics(child: Icon(icon, size: 52, color: ffTheme.brandAccent)),
+      child: ExcludeSemantics(child: Icon(icon, size: 30, color: ffTheme.brandAccent)),
     ).animate().settleScale(context, begin: const Offset(0.9, 0.9), duration: 500.ms, curve: ffTheme.spring);
   }
 }
@@ -460,7 +460,10 @@ class _StatChip extends StatelessWidget {
         decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
         child: Column(
           children: [
-            Text(value, style: ffTheme.headlineLarge.copyWith(fontWeight: FontWeight.w800, letterSpacing: 0, color: ffTheme.brandAccent)),
+            // BANK-GRADE: data is INK, never green — the dedicated stat-numeral
+            // token (24/w700/tabular, primaryText). Green stays reserved for
+            // CTAs / SavingPill / active accents.
+            Text(value, style: ffTheme.numericMedium),
             Text(label, style: ffTheme.labelSmall),
           ],
         ),

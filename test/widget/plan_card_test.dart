@@ -123,6 +123,21 @@ void main() {
     ));
     await tester.pump();
     expect(find.text('87% התאמה'), findsOneWidget);
+
+    // ONE chip language — ACTIVE: pale-green TINT surface + green 1px border,
+    // NOT a solid-green fill (solid green is reserved for conversion CTAs).
+    final chip = tester.widget<Container>(find
+        .ancestor(of: find.text('87% התאמה'), matching: find.byType(Container))
+        .first);
+    final deco = chip.decoration as BoxDecoration;
+    expect(deco.gradient, isNull); // no solid ACTION gradient
+    expect(deco.color, const Color(0xFFDCFCE7)); // brandAccentTint surface
+    expect(deco.border?.top.width, 1); // hairline green border
+    expect(deco.border?.top.color, const Color(0xFF16A34A)); // brandAccent
+
+    // The score text itself is green-on-tint (brandAccentText), not white.
+    final scoreText = tester.widget<Text>(find.text('87% התאמה'));
+    expect(scoreText.style?.color, const Color(0xFF15803D));
   });
 
   testWidgets('no match chip when matchPct is omitted', (tester) async {

@@ -8,6 +8,8 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../widgets/skeleton.dart';
 import '../../app_state.dart';
 import '../../data.dart';
@@ -171,6 +173,19 @@ class _QuizWidgetState extends State<QuizWidget> {
                   duration: const Duration(milliseconds: 260),
                   switchInCurve: ffTheme.easeOut,
                   switchOutCurve: ffTheme.easeOut,
+                  // TOP-ALIGN the step content. AnimatedSwitcher's default
+                  // layoutBuilder centers its children inside the Expanded, which
+                  // floated every question block to mid-screen (~40% dead space
+                  // above "שלב 1 מתוך 5"). Pin the current and outgoing children
+                  // to the top-start corner (RTL-aware) so each step starts right
+                  // under the app bar; the CTA bar stays pinned at the bottom.
+                  layoutBuilder: (currentChild, previousChildren) => Stack(
+                    alignment: AlignmentDirectional.topStart,
+                    children: <Widget>[
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
+                  ),
                   // Reduced motion: keep the crossfade, drop the slide
                   // transform between steps.
                   transitionBuilder: (child, animation) => FadeTransition(
@@ -881,18 +896,12 @@ class _QuizWidgetState extends State<QuizWidget> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Savings strip ghost.
-                    SkeletonBox(width: double.infinity, height: 56, radius: ffTheme.radiusLg),
+                    // SavingPill ghost — the reveal's single VALUE pill.
+                    SkeletonBox(width: 180, height: 26, radius: ffTheme.radiusPill),
                     const SizedBox(height: 14),
-                    // Badge row ghost — pill radius sourced from the token so the
-                    // ghosts mirror the real radiusPill badges they stand in for.
-                    Row(
-                      children: [
-                        SkeletonBox(width: 84, height: 24, radius: ffTheme.radiusPill),
-                        const SizedBox(width: 8),
-                        SkeletonBox(width: 96, height: 24, radius: ffTheme.radiusPill),
-                      ],
-                    ),
+                    // Single badge ghost — the collapsed "NN% התאמה · המלצה
+                    // ראשית" tint pill, radius sourced from the token.
+                    SkeletonBox(width: 150, height: 24, radius: ffTheme.radiusPill),
                     const SizedBox(height: 16),
                     // Reason lines ghost.
                     const SkeletonBox(width: double.infinity, height: 13),
@@ -919,13 +928,17 @@ class _QuizWidgetState extends State<QuizWidget> {
         children: [
           Row(
             children: [
+              // GREEN DISCIPLINE: the heading is INK, not green — the reveal's
+              // two green moments are the SavingPill and the CTA. The icon tile
+              // is a neutral surface (hairline chip language), not a green tint.
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: ffTheme.brandAccentTint,
+                  color: ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                  border: Border.all(color: ffTheme.alternate),
                 ),
-                child: Icon(Icons.auto_awesome_rounded, color: ffTheme.brandAccent, size: 20),
+                child: Icon(Icons.auto_awesome_rounded, color: ffTheme.primaryText, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -933,7 +946,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 child: Semantics(
                   header: true,
                   child: Text('המסלול שמתאים לפרופיל שלך',
-                      style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
+                      style: ffTheme.headlineMedium.copyWith(color: ffTheme.primaryText)),
                 ),
               ),
             ],
@@ -951,11 +964,14 @@ class _QuizWidgetState extends State<QuizWidget> {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(22),
+              // BANK-GRADE: the winner card is an ink-first surface — 1px
+              // hairline border (not a 2px green ring); the green inside it is
+              // reserved for the SavingPill.
               decoration: BoxDecoration(
                 color: ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                border: Border.all(color: ffTheme.brandAccent, width: 2),
-                boxShadow: ffTheme.shadowAccent,
+                border: Border.all(color: ffTheme.alternate),
+                boxShadow: ffTheme.shadowXs,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -981,9 +997,9 @@ class _QuizWidgetState extends State<QuizWidget> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('₪${top.plan.priceText}',
-                              style: ffTheme.headlineSmall
-                                  .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
+                          // Money = PriceText, INK by default (never green) —
+                          // green is reserved for the saving + the CTA.
+                          PriceText('₪${top.plan.priceText}'),
                           Text(priceUnit,
                               style: ffTheme.labelSmall
                                   .copyWith(color: ffTheme.secondaryText)),
@@ -993,91 +1009,25 @@ class _QuizWidgetState extends State<QuizWidget> {
                   ),
                   if (top.annualSaving > 0) ...[
                     const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: ffTheme.saving.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.savings_rounded, size: 24, color: ffTheme.savingDark),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('חיסכון שנתי מוערך',
-                                    style: ffTheme.labelSmall
-                                        .copyWith(color: ffTheme.savingText)),
-                                Text('₪${top.annualSaving} בשנה',
-                                    style: ffTheme.headlineSmall.copyWith(
-                                        color: ffTheme.savingText,
-                                        fontWeight: FontWeight.w800)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // The ONE VALUE element on this screen — the shared green
+                    // SavingPill treatment (tint bg + green text), real figure.
+                    SavingPill(text: 'חיסכון שנתי מוערך ₪${top.annualSaving} בשנה'),
                   ],
                   const SizedBox(height: 12),
-                  // Badge row — the winner moment leads with an amber VALUE
-                  // "המלצה ראשית" trophy badge, then the green ACTION match-score
-                  // and the engine's label. Wraps so RTL long labels don't clip.
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: ffTheme.saving.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                          border: Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.emoji_events_rounded, size: 13, color: ffTheme.savingDark),
-                            const SizedBox(width: 4),
-                            Text('המלצה ראשית',
-                                style: ffTheme.labelSmall
-                                    .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          gradient: ffTheme.accentGradient,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
-                            const SizedBox(width: 4),
-                            Text('${top.scorePct}% התאמה',
-                                style: ffTheme.labelSmall
-                                    .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: ffTheme.brandAccentTint,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
-                        ),
-                        child: Text(top.label,
-                            style: ffTheme.labelSmall
-                                .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                      ),
-                    ],
+                  // ONE badge, not three: the match score + primary-recommendation
+                  // label collapsed into a single ACTIVE-state tint pill (pale
+                  // green bg, green text, green 1px border — the app-wide chip
+                  // language). No solid-green pills (solid green = CTAs only).
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccentTint,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                      border: Border.all(color: ffTheme.brandAccent),
+                    ),
+                    child: Text('${top.scorePct}% התאמה · המלצה ראשית',
+                        style: ffTheme.labelSmall
+                            .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                   ),
                   if (top.reasons.isNotEmpty) ...[
                     const SizedBox(height: 14),
@@ -1086,8 +1036,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.check_circle_rounded,
-                                  size: 18, color: ffTheme.brandAccent),
+                              // Small neutral checks — not filled green circles;
+                              // the reason list reads as ink data, not accents.
+                              Icon(Icons.check_rounded,
+                                  size: 16, color: ffTheme.secondaryText),
                               const SizedBox(width: 8),
                               Expanded(
                                   child: Text(r,
@@ -1115,10 +1067,12 @@ class _QuizWidgetState extends State<QuizWidget> {
                 Share.share(
                     'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם Switchy AI');
               },
-              icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.brandAccent),
+              // Quiet ink affordance — keeps the reveal's green budget for the
+              // SavingPill and the CTA only.
+              icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.secondaryText),
               label: Text('שתף',
                   style: ffTheme.labelLarge
-                      .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                      .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
             ),
           ),
 
@@ -1152,9 +1106,11 @@ class _QuizWidgetState extends State<QuizWidget> {
                             ],
                           ),
                         ),
-                        Text('₪${alt.plan.priceText}',
+                        // Money = PriceText, ink — merged down to the row's
+                        // compact size while keeping tabular figures.
+                        PriceText('₪${alt.plan.priceText}',
                             style: ffTheme.titleMedium
-                                .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                                .copyWith(fontWeight: FontWeight.w700)),
                         const SizedBox(width: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

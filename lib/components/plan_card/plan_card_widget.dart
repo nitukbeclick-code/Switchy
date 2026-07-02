@@ -227,6 +227,11 @@ class PlanCardWidget extends StatelessWidget {
                                   Text(
                                     plan.plan,
                                     // 13/w500/secondary — the bodySmall scale exactly.
+                                    // Ellipsized: at 390px a long plan name must
+                                    // squeeze gracefully under the header row,
+                                    // never push the card taller or clip.
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: ffTheme.bodySmall,
                                   ),
                                   // Secondary affordance: open the provider profile.
@@ -315,27 +320,30 @@ class PlanCardWidget extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            // Match score is an ACTION signal → green gradient,
-                            // legible in both themes (white ink on green).
-                            gradient: ffTheme.accentGradient,
+                            // ONE chip language — ACTIVE state: pale-green TINT
+                            // surface + green text + green 1px border. Solid
+                            // green is reserved for conversion CTAs only, so the
+                            // score reads as an active signal, not a button.
+                            color: ffTheme.brandAccentTint,
                             // Full-round pill chip.
                             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                            boxShadow: ffTheme.shadowAccent,
+                            border: Border.all(color: ffTheme.brandAccent),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.adjust, size: 11, color: Colors.white),
+                              Icon(Icons.adjust,
+                                  size: 11, color: ffTheme.brandAccentText),
                               const SizedBox(width: 4),
                               Text(
                                 '$matchPct% התאמה',
                                 // Rubik chip: nearest Rubik token is titleSmall
-                                // (13/w600); 11px + w700 + white-on-green are the
-                                // genuine deltas.
+                                // (13/w600); 11px + w700 + green-on-tint are the
+                                // genuine deltas (brandAccentText is AA on tint).
                                 style: ffTheme.titleSmall.copyWith(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: Colors.white,
+                                  color: ffTheme.brandAccentText,
                                 ),
                               ),
                             ],

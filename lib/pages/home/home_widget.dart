@@ -376,68 +376,79 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  /// Collapsing brand header (the shared [AppSliverHeader]) — the greeting is the
-  /// large title that shrinks on scroll, the notification bell rides in the
-  /// trailing actions, and the search affordance lives in the expanded
-  /// [flexibleChild] as a clearly-a-button pill. Home is a root tab, so there's
-  /// nothing to pop: [showBack] is false. Tightened expandedHeight so the header
-  /// band reads compact.
+  /// Collapsing brand header (the shared [AppSliverHeader]) — the greeting is
+  /// the title that shrinks on scroll, and the search pill + notification bell
+  /// share ONE vertically-centred row in the expanded [flexibleChild] (the bell
+  /// used to float alone in the toolbar actions, unaligned with the pill). Home
+  /// is a root tab, so there's nothing to pop: [showBack] is false.
+  ///
+  /// Bank-grade band: the greeting renders at ~titleLarge (expandedTitleScale
+  /// 1.2 over the 17px bar style ≈ 20px), not display size, and the band's
+  /// vertical slack is ~40% tighter (expandedHeight 140: the 48px search row
+  /// centres in 140−64 reserve = 76px → ~14px of air each side, down from 24).
+  /// The header keeps its bottom hairline (drawn by [AppSliverHeader]).
   Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return AppSliverHeader(
       title: '${_greeting()} ${appState.firstName}',
       showBack: false,
-      expandedHeight: 160,
-      actions: [_buildNotificationBell(context, ffTheme, appState)],
-      flexibleChild: _buildHeaderSearch(context, ffTheme),
+      expandedHeight: 140,
+      expandedTitleScale: 1.2,
+      flexibleChild: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(child: _buildHeaderSearch(context, ffTheme)),
+          const SizedBox(width: 4),
+          _buildNotificationBell(context, ffTheme, appState),
+        ],
+      ),
     );
   }
 
-  /// The notification bell action: an icon-only [IconButton] (keeps its
-  /// `התראות` tooltip / semantics label) with the amber unread badge stacked on
-  /// the corner. Tapping it pushes the Notifications route.
+  /// The notification bell: an icon-only [IconButton] (keeps its `התראות`
+  /// tooltip / semantics label) with the amber unread badge stacked on the
+  /// corner. It sits in the same row as the header search pill (vertically
+  /// centred — the band's 16px side padding is shared by both), and taps push
+  /// the Notifications route.
   Widget _buildNotificationBell(BuildContext context, AppTheme ffTheme, AppState appState) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 6),
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: ffTheme.primaryText, size: 22),
-            tooltip: 'התראות',
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              context.pushNamed('Notifications');
-            },
-          ),
-          Builder(builder: (context) {
-            final count = notificationCount(appState);
-            if (count == 0) return const SizedBox.shrink();
-            return PositionedDirectional(
-              top: 6,
-              end: 6,
-              // The badge renders a number only visually; expose the count to
-              // screen readers so the bell announces "<N> new notifications".
-              child: Semantics(
-                label: '$count התראות חדשות',
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  // Amber VALUE dot — the unread badge pops against the now-white
-                  // Geist header and reads as "needs attention" in both themes.
-                  // The separating ring follows the header surface so the dot reads
-                  // as a discrete badge (was Colors.white on the old green header).
-                  decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: ffTheme.cardSurface, width: 1.5)),
-                  // FittedBox(scaleDown): at large OS text scales the numeral
-                  // shrinks to fit the fixed 16px dot instead of overflowing —
-                  // the user's text scaling stays on everywhere else.
-                  child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving)))),
-                ),
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: Icon(Icons.notifications_outlined, color: ffTheme.primaryText, size: 22),
+          tooltip: 'התראות',
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            context.pushNamed('Notifications');
+          },
+        ),
+        Builder(builder: (context) {
+          final count = notificationCount(appState);
+          if (count == 0) return const SizedBox.shrink();
+          return PositionedDirectional(
+            top: 6,
+            end: 6,
+            // The badge renders a number only visually; expose the count to
+            // screen readers so the bell announces "<N> new notifications".
+            child: Semantics(
+              label: '$count התראות חדשות',
+              child: Container(
+                width: 16,
+                height: 16,
+                // Amber VALUE dot — the unread badge pops against the now-white
+                // Geist header and reads as "needs attention" in both themes.
+                // The separating ring follows the header surface so the dot reads
+                // as a discrete badge (was Colors.white on the old green header).
+                decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: ffTheme.cardSurface, width: 1.5)),
+                // FittedBox(scaleDown): at large OS text scales the numeral
+                // shrinks to fit the fixed 16px dot instead of overflowing —
+                // the user's text scaling stays on everywhere else.
+                child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving)))),
               ),
-            );
-          }),
-        ],
-      ),
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -519,7 +530,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: ffTheme.brandGradient,
-          borderRadius: BorderRadius.circular(ffTheme.radiusXl),
+          // radiusCard (12) — the large-container CONTENT corner. The hero is a
+          // card in the feed, never a sheet, so it must not wear radiusSheet.
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           boxShadow: ffTheme.shadowLifted,
         ),
         child: Column(
@@ -622,7 +635,12 @@ class _HomeWidgetState extends State<HomeWidget> {
               itemBuilder: (_, i) {
                 final rec = cards[i];
                 return SizedBox(
-                  width: 268,
+                  // Width tracks the OS text scale too (gently, capped at 1.3x):
+                  // the mini card's trailing price/CTA column is intrinsic-width,
+                  // so at large type a fixed 268px card starves the middle column
+                  // until the SavingPill stripes. Height-only scaling isn't
+                  // enough - large type needs horizontal room as well.
+                  width: 268 * textScale.clamp(1.0, 1.3),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -826,7 +844,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Container(
                         width: 148,
-                        padding: const EdgeInsets.all(12),
+                        // Vertical padding 10 (not 12): the content stack — 24px
+                        // logo row + 5 + ~19px price + 3 + ~15px status line ≈
+                        // 66px — plus 20px padding ≈ 86px, comfortably inside
+                        // the 90px band (the symmetric-12 version measured ~91px
+                        // and striped "BOTTOM OVERFLOWED BY 1.0 PIXELS").
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         // A better-deal card wears a thin amber VALUE ring; the
                         // rest get the standard card hairline.
                         decoration: better != null
@@ -866,7 +889,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   const SizedBox(width: 4),
                                   Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 10, fontWeight: FontWeight.w700)),
                                 ] else
-                                  Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  // Flexible: a long plan name in the fixed-width
+                                  // tile ellipsizes instead of striping the row.
+                                  Flexible(child: Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis)),
                               ],
                             ),
                           ],
@@ -939,7 +964,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             .clamp(1.0, 1.6);
 
     // Tightened band: no extra top padding so the title + grid read as one
-    // group; tighter inter-cell spacing and a flatter aspect ratio.
+    // group; tight inter-cell spacing, and cells just tall enough for their
+    // four content lines (see the childAspectRatio note below).
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
@@ -955,7 +981,15 @@ class _HomeWidgetState extends State<HomeWidget> {
               crossAxisCount: 2,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 1.85 / textScale,
+              // 1.55 (not the old 1.85, which striped "BOTTOM OVERFLOWED BY
+              // ~13px" on a 390px viewport): a 175px-wide cell gets ≈113px of
+              // height, and the content stack — 24px vertical padding + 20px
+              // icon row + 4 + ~20px title line + 2 + 2×~16px label lines ≈
+              // 103px — fits with air to spare. The /textScale division keeps
+              // making cells TALLER as OS type grows (at 1.3× the cell is
+              // ≈147px vs ≈123px of scaled content), and the two bottom lines
+              // are additionally Flexible so nothing can ever stripe.
+              childAspectRatio: 1.55 / textScale,
             ),
             itemCount: categories.length,
             itemBuilder: (context, i) {
@@ -988,7 +1022,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  // Slimmer vertical padding (12 vs 14) buys the text stack 4px
+                  // of breathing room inside the fixed-ratio cell.
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     // Active card sits on a subtle green-tinted ground; the rest
                     // on the plain card surface — both theme-aware.
@@ -1030,8 +1066,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                       const SizedBox(height: 4),
                       Text(cat.name, style: ffTheme.labelLarge.copyWith(color: ffTheme.primaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      Text(savingsText, style: ffTheme.labelSmall.copyWith(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      // Flexible: in the fixed-ratio cell the two secondary
+                      // lines yield vertical space instead of striping — the
+                      // hard overflow guard behind the 1.55 ratio above.
+                      Flexible(child: Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      Flexible(child: Text(savingsText, style: ffTheme.labelSmall.copyWith(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                 ),

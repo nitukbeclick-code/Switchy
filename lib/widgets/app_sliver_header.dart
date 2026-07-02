@@ -88,6 +88,12 @@ class AppSliverHeader extends StatelessWidget {
   /// ([AppTheme.primary]) when false.
   final bool gradient;
 
+  /// How much the collapsed 17px bar title grows in the expanded state.
+  /// Defaults to the Material-ish 1.6 (≈27px — a display-size heading).
+  /// Bank-grade greeting bands (home) pass a calmer ~1.2 (≈20px, titleLarge
+  /// territory) so the greeting reads as a title, not a hero numeral.
+  final double expandedTitleScale;
+
   const AppSliverHeader({
     super.key,
     required this.title,
@@ -97,6 +103,7 @@ class AppSliverHeader extends StatelessWidget {
     this.showBack = true,
     this.flexibleChild,
     this.gradient = true,
+    this.expandedTitleScale = 1.6,
   });
 
   @override
@@ -133,7 +140,7 @@ class AppSliverHeader extends StatelessWidget {
           bottom: 14,
           end: 16,
         ),
-        expandedTitleScale: 1.6,
+        expandedTitleScale: expandedTitleScale,
         collapseMode:
             reduceMotion ? CollapseMode.none : CollapseMode.parallax,
         title: Text(

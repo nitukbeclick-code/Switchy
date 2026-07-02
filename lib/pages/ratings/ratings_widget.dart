@@ -432,8 +432,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                   // AA-safe green for small link text (the
                                   // fill hue only reaches ~3:1 at this size).
                                   foregroundColor: t.brandAccentText,
-                                  visualDensity: VisualDensity.compact,
+                                  // No compact density: it shaved the button to
+                                  // 40dp despite minimumSize — under the 48dp
+                                  // tap-target guideline.
                                   minimumSize: const Size(kMinTapTarget, kMinTapTarget),
+                                  tapTargetSize: MaterialTapTargetSize.padded,
                                   textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w800),
                                 ),
                                 child: const Text('דרגו ראשונים'),

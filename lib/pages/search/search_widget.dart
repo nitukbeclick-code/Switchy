@@ -1088,6 +1088,11 @@ class _Suggestions extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 12, vertical: 8),
+                            // 48dp tap-target floor (androidTapTargetGuideline)
+                            // — same fix as _PillChip; the pill drew at 38dp.
+                            constraints: const BoxConstraints(
+                                minHeight: kMinTapTarget),
+                            alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: ffTheme.brandAccentTint,
                               borderRadius:
@@ -1199,6 +1204,10 @@ class _PillChip extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          // 48dp tap-target floor (androidTapTargetGuideline) — the pill drew
+          // at 38dp; the visual stays a pill, the hit area grows.
+          constraints: const BoxConstraints(minHeight: kMinTapTarget),
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: ffTheme.accent2,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),

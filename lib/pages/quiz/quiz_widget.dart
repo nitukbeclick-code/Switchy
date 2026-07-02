@@ -1208,6 +1208,10 @@ class _ChoiceChip extends StatelessWidget {
         duration: ffTheme.motionFast,
         curve: ffTheme.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        // Guideline floor: padding+labelLarge lands at 47dp — one short of the
+        // 48dp Android tap-target minimum (androidTapTargetGuideline).
+        constraints: const BoxConstraints(minHeight: kMinTapTarget),
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? ffTheme.brandAccent : ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),

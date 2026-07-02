@@ -159,6 +159,83 @@ const PERSONA_HEADER =
 
 const MAX_STEPS = 4; // tool-loop iterations before we force a text wrap-up
 
+// ── App-handoff / open-lead awareness ─────────────────────────────────────────
+// The Switchy app deep-links a user with an OPEN lead to this WhatsApp number
+// with a prefilled status inquiry ("היי, אני {name}. פנייה לגבי {provider} — {plan}
+// (שלב {N} מתוך 4). אשמח לעדכון."). The caller (the webhook) looks the lead up in
+// public.leads by phone and threads it here so the agent ACKNOWLEDGES the real
+// stage instead of restarting a sales pitch. TRUTH-ONLY: the stage text derives
+// exclusively from leads.status (the same mapping the app's tracker uses); when
+// there is no lead, no section is added and the agent must never claim one exists.
+export type ActiveLead = {
+  status: string; // raw public.leads.status ('new'|'contacted'|'won'|'lost'|…)
+  created_at?: string; // ISO timestamp the lead was opened
+  notes?: string; // short, pre-clipped context snippet (never the full notes)
+};
+
+// leads.status → the app-tracker stage wording (the EXACT language the customer
+// sees in the app: 'new'→stage 1, 'contacted'→stage 2, 'won'→stage 4 (done),
+// 'lost'→closed). Returns null for any unknown/empty status — the caller then
+// surfaces the RAW status honestly instead of inventing a stage. Pure + total.
+export function leadStageText(status: unknown): string | null {
+  switch (String(status ?? "").trim().toLowerCase()) {
+    case "new":
+      return "הפרטים נשלחו בהצלחה (שלב 1 מתוך 4)";
+    case "contacted":
+      return "נציג אישר את הבקשה (שלב 2 מתוך 4)";
+    case "won":
+      return "המעבר הושלם (שלב 4 מתוך 4)";
+    case "lost":
+      return "הפנייה נסגרה";
+    default:
+      return null;
+  }
+}
+
+// True when the inbound text reads like a STATUS INQUIRY about an existing
+// request — either the app's prefilled handoff message (contains "שלב" + "מתוך 4",
+// or "אשמח לעדכון", or "פנייה לגבי") or a plain-language "what's happening with my
+// request" ask. Deliberately conservative: a price/comparison question is NOT a
+// status inquiry. Pure + total (empty/garbage → false) so it's unit-testable.
+export function isLeadStatusInquiry(text: string): boolean {
+  const t = String(text ?? "");
+  if (!t.trim()) return false;
+  // The app's prefilled deep-link message shapes (exact fragments it emits).
+  if (t.includes("שלב") && t.includes("מתוך 4")) return true;
+  if (t.includes("אשמח לעדכון")) return true;
+  if (t.includes("פנייה לגבי")) return true;
+  // Plain-language status asks about an existing request/lead.
+  return /סטטוס|מה (?:מצב|קורה עם|עם) הפנייה|מה (?:מצב|קורה עם|עם) הבקשה|עדכון על הפנייה|עדכון על הבקשה|איפה (?:הפנייה|הבקשה) שלי/
+    .test(t);
+}
+
+// Build the ACTIVE-LEAD system-prompt section. Empty string when there is no
+// lead (or no status) — the prompt is then byte-identical to before, so every
+// existing caller is unaffected. TRUTH-ONLY: the stage line comes ONLY from
+// leadStageText(status); an unknown status is surfaced raw, never dressed up as
+// progress. When the CURRENT message already matches the handoff pattern we add
+// one explicit line so the model opens with the real stage. Pure + total.
+export function buildActiveLeadSection(lead: ActiveLead | null | undefined, message: string): string {
+  if (!lead) return "";
+  const status = String(lead.status ?? "").trim();
+  if (!status) return "";
+  const stage = leadStageText(status);
+  const lines: string[] = [
+    `- שלב אמיתי: ${stage ?? `סטטוס במערכת: "${status}" (אין לו ניסוח שלב מוגדר — ציין/י אותו כפי שהוא, אל תמציא/י התקדמות)`}`,
+  ];
+  const opened = String(lead.created_at ?? "").slice(0, 10);
+  if (opened) lines.push(`- נפתחה בתאריך: ${opened}`);
+  const notes = String(lead.notes ?? "").trim().replace(/\s+/g, " ").slice(0, 160);
+  if (notes) lines.push(`- הקשר מהפנייה: ${notes}`);
+  let section = "\n\nללקוח/ה יש פנייה פעילה במערכת (נתוני אמת מה-DB — אסור להמציא מעבר להם):\n" +
+    lines.join("\n") +
+    '\nכלל מחייב: אם הלקוח/ה שואל/ת על הפנייה/הבקשה/הסטטוס שלו/ה (או שההודעה מגיעה מהאפליקציה — מכילה "שלב X מתוך 4" / "אשמח לעדכון" / "פנייה לגבי") — פתח/י תחילה באישור השלב האמיתי לפי הסטטוס למעלה, בשפה של האפליקציה, בלי להמציא התקדמות; הצע/י עזרה או חיבור לצוות האנושי (escalate_to_human); ואל תתחיל/י מחדש שיחת מכירה/השוואה אלא אם הלקוח/ה מבקש/ת במפורש משהו חדש. אם הלקוח/ה שואל/ת שאלה חדשה אחרת — ענה/י כרגיל (ההקשר רק זמין לך).';
+  if (isLeadStatusInquiry(message)) {
+    section += "\nההודעה הנוכחית נראית כשאלת סטטוס מהאפליקציה — פתח/י באישור השלב האמיתי שלמעלה.";
+  }
+  return section;
+}
+
 // ── Tier-aware output-token budget ────────────────────────────────────────────
 // The per-turn output cap is keyed on the RESOLVED tier (see selectTier), not a
 // single const. A "smart" turn — an objection-handling / closing turn that may
@@ -234,6 +311,13 @@ export type RunAgentInput = {
   // directly + consistently (fewer tool round-trips = faster). It is approved copy,
   // so it adds NO fabrication risk — the "don't invent" rules still apply.
   knowledgeContext?: string;
+  // Optional OPEN LEAD the caller looked up in public.leads for this user (the
+  // app-handoff awareness). OPTIONAL + additive: omitted by every existing caller
+  // and then the prompt is identical to before. When present, the persona gets a
+  // TRUTH-ONLY section (status→stage via leadStageText, created_at, a notes
+  // snippet) + the rule to acknowledge the real stage on a status inquiry instead
+  // of restarting a sales pitch. Never fabricated: no lead ⇒ no section.
+  activeLead?: ActiveLead;
 };
 
 export type RunAgentResult = {
@@ -293,6 +377,8 @@ function buildSystemPrompt(
   billHint?: RunAgentInput["billHint"],
   memory?: AgentMemory,
   knowledgeContext?: string,
+  activeLead?: ActiveLead,
+  userMessage?: string,
 ): string {
   const cited = buildCitedCatalogueContext(plans as CataloguePlan[]);
   const styleLine = CHANNEL_STYLE[channel];
@@ -320,6 +406,11 @@ function buildSystemPrompt(
   // us; the model still grounds every fact in the catalogue + tool results.
   const memLine = buildMemoryLine(memory);
   if (memLine) prompt += memLine;
+  // App-handoff / open-lead awareness: when the caller found an OPEN lead for
+  // this user, fold in the TRUTH-ONLY status section + the acknowledge-first
+  // rule (see buildActiveLeadSection). No lead ⇒ "" ⇒ prompt unchanged.
+  const leadSection = buildActiveLeadSection(activeLead, userMessage ?? "");
+  if (leadSection) prompt += leadSection;
   // A turn-budget-aware CLOSING nudge: when we're mid/late in the conversation OR
   // a bill/recommendation is in play, append one honest line telling the model to
   // make a single clear ask for the close. §7b-respecting, no fabricated savings,
@@ -392,7 +483,16 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   // Reply language: explicit override wins; otherwise auto-detect from the
   // message (Hebrew default). Backward-compatible — existing callers pass none.
   const lang: AgentLang = isSupportedLang(input.lang) ? input.lang : detectLang(message);
-  const system = buildSystemPrompt(channel, plans, lang, input.billHint, input.memory, input.knowledgeContext);
+  const system = buildSystemPrompt(
+    channel,
+    plans,
+    lang,
+    input.billHint,
+    input.memory,
+    input.knowledgeContext,
+    input.activeLead,
+    message,
+  );
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
   // Pass the resolved language to the tools so their surfaced notes (retention
   // script, referral line) are localized to the same language as the reply.

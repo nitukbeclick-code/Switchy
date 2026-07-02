@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -152,12 +151,12 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                       ],
                     ),
                   ),
+                  // "We're open" dot — flat green, no decorative glow.
                   Container(
                     width: 8, height: 8,
                     decoration: BoxDecoration(
                       color: ffTheme.brandAccent,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
                     ),
                   ),
                 ],
@@ -220,13 +219,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 if (!mounted) return;
                 setState(() => _submitted = true);
               },
-              
-                width: double.infinity,
-                height: 56,
-                color: AppColors.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(16),
-              
+              width: double.infinity,
+              height: 56,
+              color: AppColors.primary,
+              // No pinned label colour — AppButton is contrast-aware in both
+              // themes. Hero-CTA corner reads from the sheet radius token.
+              textStyle: ffTheme.titleSmall,
+              borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
             ).animate().fadeIn(delay: 220.ms),
 
             const SizedBox(height: 12),
@@ -237,7 +236,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.lock_outline_rounded, size: 13, color: ffTheme.secondaryText),
+                      ExcludeSemantics(
+                        child: Icon(Icons.lock_outline_rounded, size: 13, color: ffTheme.secondaryText),
+                      ),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text('הפרטים שלכם מאובטחים ולא מועברים לאף אחד מלבדנו',
@@ -250,7 +251,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.do_not_disturb_on_outlined, size: 13, color: ffTheme.secondaryText),
+                      ExcludeSemantics(
+                        child: Icon(Icons.do_not_disturb_on_outlined, size: 13, color: ffTheme.secondaryText),
+                      ),
                       const SizedBox(width: 4),
                       Text('שיחה אחת בלבד — ללא דיוור או ספאם',
                           style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
@@ -266,24 +269,33 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             Center(
               child: Material(
                 color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => context.pushNamed('Meeting', queryParameters: {'source': 'callback'}),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.videocam_rounded, size: 16, color: ffTheme.brandAccent),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            'מעדיפים פגישת וידאו? קבעו שיחת Zoom עם נציג',
-                            style: ffTheme.labelMedium.copyWith(
-                                color: ffTheme.brandAccentText, fontWeight: FontWeight.w700),
-                          ),
+                child: Semantics(
+                  button: true,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                    onTap: () => context.pushNamed('Meeting', queryParameters: {'source': 'callback'}),
+                    // ≥48px tap target for the quiet cross-link.
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ExcludeSemantics(
+                              child: Icon(Icons.videocam_rounded, size: 16, color: ffTheme.brandAccent),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'מעדיפים פגישת וידאו? קבעו שיחת Zoom עם נציג',
+                                style: ffTheme.labelMedium.copyWith(
+                                    color: ffTheme.brandAccentText, fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -306,12 +318,11 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        // Fixed ink hero (premium dark card) — uses the const ink tokens so it
-        // stays dark-on-dark in BOTH themes (the theme-aware `ffTheme.primary`
-        // would flip to off-white on dark and break the white-on-ink contrast).
-        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
+        // Fixed ink hero (premium dark card) — the shared restrained hero ink
+        // wash token (dark in BOTH themes, so the white-on-ink contrast holds).
+        // Flat: resting content carries no lift, structure comes from the fill.
+        gradient: ffTheme.brandGradient,
         borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,11 +342,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Scale tokens (white recolour is safe here — the hero is a
+                    // PINNED ink surface in both themes, see decoration above).
                     Text('נציג אנושי יחזור אליכם',
-                        style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        style: ffTheme.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
                     Text('משאירים פרטים, ומומחה מטעמנו מתקשר בזמן שנוח לכם',
-                        style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
+                        style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.7))),
                   ],
                 ),
               ),
@@ -355,11 +368,11 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                     ),
                     child: Column(
                       children: [
-                        Icon(icon, size: 18, color: AppColors.secondary),
+                        ExcludeSemantics(child: Icon(icon, size: 18, color: AppColors.secondary)),
                         const SizedBox(height: 4),
                         Text(label,
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                            style: ffTheme.labelSmall.copyWith(color: Colors.white)),
                       ],
                     ),
                   ),
@@ -389,17 +402,22 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             setState(() => _topic = t);
           },
           haptic: false,
+          // ONE chip language — neutral: surface + hairline + ink; ACTIVE: the
+          // pale-green tint + green text + green 1px border (no solid-green
+          // chips — solid green is the primary CTA's alone).
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: ffTheme.easeOut,
+            constraints: const BoxConstraints(minHeight: 48),
+            alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+              color: active ? ffTheme.brandAccentTint : ffTheme.cardSurface,
+              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+              border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.lineColor),
             ),
             child: Text(t, style: ffTheme.labelMedium.copyWith(
-              color: active ? Colors.white : ffTheme.primaryText,
+              color: active ? ffTheme.brandAccentText : ffTheme.primaryText,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             )),
           ),
@@ -416,17 +434,26 @@ class _CallbackWidgetState extends State<CallbackWidget> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           chip(_topic),
-          Pressable(
-            onTap: () => setState(() => _showAllTopics = true),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.edit_outlined, size: 14, color: ffTheme.brandAccent),
-                  const SizedBox(width: 4),
-                  Text('שנו נושא', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                ],
+          Semantics(
+            button: true,
+            child: Pressable(
+              onTap: () => setState(() => _showAllTopics = true),
+              // ≥48px comfortable tap target for the small text affordance.
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(
+                        child: Icon(Icons.edit_outlined, size: 14, color: ffTheme.brandAccent),
+                      ),
+                      const SizedBox(width: 4),
+                      Text('שנו נושא', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -463,28 +490,32 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 setState(() => _timing = t);
               },
               haptic: false,
+              // Same ONE chip language as the topic chips above: ACTIVE = tint
+              // bg + green text/icon + green 1px border; neutral = surface +
+              // hairline + ink. Solid green stays reserved for the CTA.
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: ffTheme.easeOut,
+                constraints: const BoxConstraints(minHeight: 48),
                 margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                  color: active ? ffTheme.brandAccentTint : ffTheme.cardSurface,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                  border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.lineColor),
                 ),
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    ExcludeSemantics(child: Icon(icons[i], size: 20, color: active ? Colors.white : ffTheme.secondaryText)),
+                    ExcludeSemantics(child: Icon(icons[i], size: 20, color: active ? ffTheme.brandAccentText : ffTheme.secondaryText)),
                     const SizedBox(height: 5),
                     Text(t,
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: ffTheme.labelSmall.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
+                        style: ffTheme.labelMedium.copyWith(
+                          color: active ? ffTheme.brandAccentText : ffTheme.primaryText,
                           fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                          fontSize: 12,
                         )),
                   ],
                 ),
@@ -508,14 +539,19 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               Stack(
                 alignment: Alignment.center,
                 children: [
+                  // Halo ring from the NEUTRAL tint token (tinted surfaces only
+                  // ever read accent1 / brandAccentTint) behind the green
+                  // success medallion.
                   Container(
                     width: 120, height: 120,
-                    decoration: BoxDecoration(color: ffTheme.brandAccent.withValues(alpha: 0.10), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
                   ).animate().scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 400.ms, curve: Curves.easeOut),
                   Container(
                     width: 92, height: 92,
                     decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
-                    child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.brandAccent, size: 46),
+                    child: ExcludeSemantics(
+                      child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.brandAccent, size: 46),
+                    ),
                   ).animate().scale(duration: 450.ms, curve: ffTheme.spring),
                   PositionedDirectional(
                     top: 4, end: 4,
@@ -537,13 +573,15 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 decoration: BoxDecoration(
                   color: ffTheme.brandAccentTint,
                   borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                  // Flat resting surface — 1px border only, no shadow.
                   border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.18)),
-                  boxShadow: ffTheme.shadowXs,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.access_time_rounded, size: 16, color: ffTheme.brandAccent),
+                    ExcludeSemantics(
+                      child: Icon(Icons.access_time_rounded, size: 16, color: ffTheme.brandAccent),
+                    ),
                     const SizedBox(width: 8),
                     Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                   ],
@@ -561,8 +599,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   width: 240,
                   height: 52,
                   color: AppColors.primary,
-                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(14),
+                  // Contrast-aware label + token corner (no pinned white).
+                  textStyle: ffTheme.titleSmall,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ).animate().fadeIn(delay: 500.ms)
               else
                 AppButton(
@@ -571,8 +610,8 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   width: 260,
                   height: 52,
                   color: AppColors.primary,
-                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(14),
+                  textStyle: ffTheme.titleSmall,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 12),
               TextButton(
@@ -593,9 +632,11 @@ class _CallbackWidgetState extends State<CallbackWidget> {
       filled: true,
       fillColor: ffTheme.cardSurface,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+      // Token corners + a visible 1px input border in every state (the lead
+      // form's input language, so the two funnel forms match).
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
     );
   }
 }

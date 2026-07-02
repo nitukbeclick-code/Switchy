@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
+import '../../widgets/skeleton.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -116,12 +118,14 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             AppButton(
               text: 'בדוק זמינות',
               onPressed: () async => _check(),
-              icon: const Icon(Icons.search_rounded, size: 20, color: Colors.white),
+              // No pinned white — the button's contrast-aware foreground
+              // colours both the label and the icon in both themes.
+              icon: const Icon(Icons.search_rounded, size: 20),
               width: double.infinity,
               height: 52,
               color: AppColors.primary,
-              textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-              borderRadius: BorderRadius.circular(14),
+              textStyle: ffTheme.titleSmall,
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
             ),
 
             // Loading state
@@ -151,11 +155,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        // Fixed ink hero (premium dark) — const ink tokens stay dark in both
-        // themes so the white content keeps its contrast.
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: ffTheme.shadowLifted,
+        // Fixed ink hero — the shared restrained hero ink-wash token stays
+        // dark in BOTH themes so the white content keeps its contrast. Flat:
+        // resting content carries no lift.
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
       ),
       child: Row(
         children: [
@@ -163,20 +167,26 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('בדוק זמינות בכתובת שלך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                // Scale tokens (white recolour is safe on the pinned-ink hero).
+                Semantics(
+                  header: true,
+                  child: Text('בדוק זמינות בכתובת שלך',
+                      style: ffTheme.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                ),
                 const SizedBox(height: 4),
-                Text('גלה אילו ספקי אינטרנט פעילים באזורך', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
+                Text('גלה אילו ספקי אינטרנט פעילים באזורך',
+                    style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.7))),
                 const SizedBox(height: 14),
                 // Honest helper line — no pre-asserted price/speed "facts" about
                 // the area before an address is even entered.
                 Row(
                   children: [
-                    const ExcludeSemantics(child: Icon(Icons.location_on_outlined, size: 14, color: Colors.white70)),
+                    ExcludeSemantics(child: Icon(Icons.location_on_outlined, size: 14, color: Colors.white.withValues(alpha: 0.7))),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'הזינו עיר וכתובת לבדיקה',
-                        style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600),
+                        style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.7)),
                       ),
                     ),
                   ],
@@ -222,18 +232,22 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 hintText: 'תל אביב, חיפה, ירושלים...',
                 filled: true,
                 fillColor: ffTheme.cardSurface,
-                prefixIcon: const Icon(Icons.location_city_rounded),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+                prefixIcon: Icon(Icons.location_city_rounded, color: ffTheme.secondaryText, size: 20),
+                // Token corner + a visible 1px input border in every state —
+                // the same input language as the lead/callback forms.
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
               ),
             );
           },
           optionsViewBuilder: (ctx, onSelected, options) => Align(
-            alignment: Alignment.topLeft,
+            // RTL-aware: logical start, never a physical left.
+            alignment: AlignmentDirectional.topStart,
             child: Material(
+              // A floating overlay is one of the few LIFTED surfaces.
               elevation: 4,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppTheme.of(ctx).radiusCard),
               child: SizedBox(
                 width: MediaQuery.of(ctx).size.width - 40,
                 child: ListView.builder(
@@ -266,10 +280,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             hintText: 'רחוב דיזנגוף 99',
             filled: true,
             fillColor: ffTheme.cardSurface,
-            prefixIcon: const Icon(Icons.home_rounded),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+            prefixIcon: Icon(Icons.home_rounded, color: ffTheme.secondaryText, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
           ),
         ),
       ],
@@ -302,20 +316,22 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   if (_checked) _restaggerReveal();
                 },
                 haptic: false,
+                // ONE chip language — neutral: surface + hairline + ink;
+                // ACTIVE: tint bg + green text + green 1px border. Flat (no
+                // glow — solid green + shadows stay with the primary CTA).
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   curve: ffTheme.easeOut,
+                  constraints: const BoxConstraints(minHeight: 48),
+                  alignment: Alignment.center,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
-                    boxShadow: selected
-                        ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.24), blurRadius: 9, offset: const Offset(0, 3))]
-                        : null,
+                    color: selected ? ffTheme.brandAccentTint : ffTheme.cardSurface,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                    border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.lineColor),
                   ),
                   child: Text(f, style: ffTheme.labelMedium.copyWith(
-                    color: selected ? Colors.white : ffTheme.primaryText,
+                    color: selected ? ffTheme.brandAccentText : ffTheme.primaryText,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   )),
                 ),
@@ -328,30 +344,24 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
   }
 
   Widget _buildLoadingState(AppTheme ffTheme) {
+    // SKELETON, not a spinner: three ghost provider rows preview the exact
+    // shape of the list that is about to land (shared Skeleton* primitives,
+    // shimmer is reduced-motion-aware), with an honest one-line caption.
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 28),
+      padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 64, height: 64,
-                decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
-              ),
-              SizedBox(
-                width: 64, height: 64,
-                child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
-              ).animate(onPlay: (c) => c.repeat()).rotate(duration: 800.ms),
-              ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 24, color: ffTheme.brandAccent)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // The rotating ring above is the genuine loader; the label just fades
-          // in once. (Emil: no idle/infinite loops on content — the old
-          // repeat(reverse) pulse on this text was an idle loop with no purpose.)
           Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
               .animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut),
+          const SizedBox(height: 8),
+          for (var i = 0; i < 3; i++)
+            Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
+              child: const SkeletonListTile(hasTrailing: true),
+            ),
         ],
       ),
     );
@@ -363,15 +373,18 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            'זמינות ב${_cityCtrl.text}',
-            style: ffTheme.titleMedium,
-            textDirection: TextDirection.rtl,
+          child: Semantics(
+            header: true,
+            child: Text(
+              'זמינות ב${_cityCtrl.text}',
+              style: ffTheme.titleMedium,
+              textDirection: TextDirection.rtl,
+            ),
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -414,29 +427,32 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+        // Flat resting card: 1px hairline; the best-value card earns a green
+        // ACTIVE border. No resting shadow.
         border: isBest
-            ? Border.all(color: ffTheme.saving, width: 2)
-            : Border.all(color: isAvailable ? ffTheme.alternate : ffTheme.alternate.withValues(alpha: 0.5)),
-        boxShadow: ffTheme.shadowSoft,
+            ? Border.all(color: ffTheme.brandAccent, width: 1.5)
+            : Border.all(color: isAvailable ? ffTheme.lineColor : ffTheme.lineColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
           if (isBest)
+            // VALUE banding uses the tint treatment (tint bg + green text) —
+            // solid green fills stay reserved for the primary CTA.
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 5),
               decoration: BoxDecoration(
-                color: ffTheme.saving,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusLg)),
               ),
               child: Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, size: 14, color: Colors.white),
+                    ExcludeSemantics(child: Icon(Icons.star_rounded, size: 14, color: ffTheme.savingText)),
                     const SizedBox(width: 4),
-                    Text('מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                    Text('מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),
@@ -454,7 +470,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         LogoWidget(provider: isp.name, size: 42),
                         if (!isAvailable)
                           Positioned.fill(child: Container(
-                            decoration: BoxDecoration(color: ffTheme.cardSurface.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: ffTheme.cardSurface.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
                           )),
                       ],
                     ),
@@ -474,23 +490,28 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
-                            child: Text(isp.speed, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                            child: Text(isp.speed, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(height: 4),
-                          Text('מ-₪${isp.price}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                          // Price = ink; tabular figures come from the shared
+                          // title token (the "מ-" prefix keeps this a mixed
+                          // Hebrew string, so it stays a plain RTL Text).
+                          Text('מ-₪${isp.price}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText)),
                         ],
                       )
                     else
+                      // "בקרוב"/unavailable are neutral statuses, not warnings —
+                      // neutral tint + muted ink (warning stays a real warning).
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isAvailable ? ffTheme.accent2 : ffTheme.alternate.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                         ),
                         child: Text(
                           isp.status,
-                          style: ffTheme.labelSmall.copyWith(color: isAvailable ? ffTheme.warning : ffTheme.secondaryText, fontWeight: FontWeight.w700),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700),
                         ),
                       ),
                   ],
@@ -498,19 +519,32 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 if (isAvailable) ...[
                   const SizedBox(height: 10),
                   _SpeedBar(speed: isp.speed, ffTheme: ffTheme),
-                  const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () {
-                      Provider.of<AppState>(context, listen: false).setCategory('internet');
-                      context.pushNamed('Results');
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                        const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.brandAccent),
-                      ],
+                  const SizedBox(height: 4),
+                  // A real labelled button with press feedback and a ≥48px tap
+                  // target — not a bare GestureDetector row.
+                  Semantics(
+                    button: true,
+                    label: 'ראה מסלולי ${isp.name}',
+                    child: Pressable(
+                      onTap: () {
+                        Provider.of<AppState>(context, listen: false).setCategory('internet');
+                        context.pushNamed('Results');
+                      },
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            ExcludeSemantics(
+                              child: Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                            ),
+                            const SizedBox(width: 4),
+                            ExcludeSemantics(
+                              child: Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.brandAccent),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -531,9 +565,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: ffTheme.shadowCard,
+        // Pinned-ink summary band — the shared hero ink-wash token, flat.
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
       ),
       child: Column(
         children: [
@@ -543,7 +577,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${available.length} ספקים זמינים ב${_cityCtrl.text}', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                    Text('${available.length} ספקים זמינים ב${_cityCtrl.text}',
+                        style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
                     Row(
                       children: [
@@ -559,22 +594,20 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             ],
           ),
           const SizedBox(height: 14),
-          SizedBox(
+          // Shared AppButton (secondary emphasis: a pinned-light neutral that
+          // stays legible on the ink band in both themes; the contrast-aware
+          // rule picks the ink label). ≥48px tap height.
+          AppButton(
+            text: 'השווה מסלולי אינטרנט',
+            onPressed: () async {
+              Provider.of<AppState>(context, listen: false).setCategory('internet');
+              context.pushNamed('Results');
+            },
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Provider.of<AppState>(context, listen: false).setCategory('internet');
-                context.pushNamed('Results');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondary,
-                foregroundColor: AppColors.primaryDark,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w800)),
-            ),
+            height: 48,
+            color: AppColors.accent2,
+            textStyle: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w800),
+            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           ),
         ],
       ),
@@ -601,15 +634,19 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     final priceUnit = priceUnitLabel(plan);
     final topReasons = match.reasons.take(2).toList();
 
-    return GestureDetector(
-      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-      child: Container(
+    // A real labelled, press-feedback card — not a bare GestureDetector.
+    return Semantics(
+      button: true,
+      child: Pressable(
+        onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+        child: Container(
         margin: const EdgeInsets.only(top: 8, bottom: 8),
         decoration: BoxDecoration(
           color: ffTheme.cardSurface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+          // ACTIVE-highlight border only — flat, no green glow (one elevation
+          // story: resting content never floats).
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.30), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.10), blurRadius: 14, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,18 +657,24 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
               decoration: BoxDecoration(
                 color: ffTheme.brandAccentTint,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusLg)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded, size: 15, color: ffTheme.brandAccent),
+                  ExcludeSemantics(child: Icon(Icons.auto_awesome_rounded, size: 15, color: ffTheme.brandAccent)),
                   const SizedBox(width: 5),
-                  Text('המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Text('המסלול המומלץ עבורך', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
                   const Spacer(),
+                  // Match-score pill: surface + green text + green 1px border —
+                  // no solid-green chips (solid green = the CTA's fill alone).
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(20)),
-                    child: Text('${match.scorePct}% התאמה', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
+                    decoration: BoxDecoration(
+                      color: ffTheme.secondaryBackground,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                      border: Border.all(color: ffTheme.brandAccent),
+                    ),
+                    child: Text('${match.scorePct}% התאמה', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
                   ),
                 ],
               ),
@@ -656,17 +699,20 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                             runSpacing: 4,
                             children: topReasons.map((r) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(6)),
-                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 11)),
+                              decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText)),
                             )).toList(),
                           ),
                         ],
-                        // Single best-match card → the saving may stay (it's the
-                        // earned figure), but de-pushed to a calm neutral caption
-                        // rather than a loud green VALUE line. Real value kept.
+                        // The ONE savings treatment — the shared VALUE pill
+                        // (calm tint, not a loud fill). Same real figure and
+                        // the same honest "מוערך" wording.
                         if (match.annualSaving > 0) ...[
-                          const SizedBox(height: 4),
-                          Text('חיסכון מוערך: ₪${match.annualSaving} בשנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 6),
+                          SavingPill(
+                            text: 'חיסכון מוערך: ₪${match.annualSaving} בשנה',
+                            shortText: '₪${match.annualSaving} בשנה',
+                          ),
                         ],
                       ],
                     ),
@@ -675,10 +721,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₪${plan.priceText}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
-                      Text(priceUnit, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
+                      // Money token — bidi-stable, tabular, INK (price ≠ green).
+                      PriceText('₪${plan.priceText}', style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                      Text(priceUnit, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                       const SizedBox(height: 6),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.brandAccent),
+                      ExcludeSemantics(child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.brandAccent)),
                     ],
                   ),
                 ],
@@ -686,7 +733,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             ),
           ],
         ),
-      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
+        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
+      ),
     );
   }
 
@@ -727,9 +775,9 @@ class _TechBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: ffTheme.accent1,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
       ),
-      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
     );
   }
 }
@@ -743,8 +791,10 @@ class _SummaryPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-      child: Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 11)),
+      // Translucent white overlay — the sanctioned surface ON the pinned-ink
+      // band; corner reads the token.
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+      child: Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white)),
     );
   }
 }
@@ -766,24 +816,26 @@ class _SpeedBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = _speedFraction();
-    final color = fraction >= 0.75 ? ffTheme.brandAccent : (fraction >= 0.45 ? ffTheme.primary : ffTheme.warning);
+    // Data reads as INK — green is reserved for CTA/savings/active/success,
+    // and warning is a real warning, not a "slower speed" emphasis. The bar
+    // length already encodes the value.
     return Row(
       children: [
         Text('מהירות:', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
         const SizedBox(width: 8),
         Expanded(
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(ffTheme.radiusXs),
             child: LinearProgressIndicator(
               value: fraction,
-              backgroundColor: ffTheme.alternate,
-              valueColor: AlwaysStoppedAnimation(color),
+              backgroundColor: ffTheme.lineColor,
+              valueColor: AlwaysStoppedAnimation(ffTheme.primary),
               minHeight: 6,
             ),
           ),
         ),
         const SizedBox(width: 8),
-        Text(speed, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w700)),
+        Text(speed, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
       ],
     );
   }

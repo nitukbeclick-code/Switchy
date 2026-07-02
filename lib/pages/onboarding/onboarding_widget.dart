@@ -324,7 +324,10 @@ class _BillQuestionPage extends StatelessWidget {
                       child: Text(
                         v == 150 ? '₪150+' : '₪$v',
                         style: ffTheme.titleSmall.copyWith(
-                          color: isActive ? Colors.white : ffTheme.secondaryText,
+                          // onSaving = the ink ON a solid green fill (white on
+                          // light's green-600, near-black on dark's green-400) —
+                          // white here failed AA on the lifted dark green.
+                          color: isActive ? ffTheme.onSaving : ffTheme.secondaryText,
                           fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                         ),
                       ),
@@ -344,6 +347,10 @@ class _BillQuestionPage extends StatelessWidget {
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     decoration: BoxDecoration(
+                      // Explicit theme fill (not transparent) so the ghost chip
+                      // reads correctly on BOTH themes — it rendered light in
+                      // dark mode without it.
+                      color: ffTheme.background,
                       borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                       border: Border.all(color: ffTheme.alternate),
                     ),

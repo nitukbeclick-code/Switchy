@@ -18,7 +18,9 @@ import '../../services/backend/local_backend.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/street_price.dart';
 import '../../widgets/legal_disclosure.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 
 /// Reduced-motion-aware settle for the secondary card stack: `.settleY()` is
 /// a drop-in for `.slideY(begin: …)` that KEEPS the fade already applied on
@@ -88,9 +90,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     if (plan == null) {
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: ffTheme.primary,
+          // Standard light app bar + ink back arrow (the old ffTheme.primary
+          // fill flipped to off-white in dark mode and hid the white icon).
+          backgroundColor: ffTheme.cardSurface,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+            icon: Icon(Icons.arrow_back_ios_rounded,
+                color: ffTheme.primaryText),
             tooltip: 'חזרה',
             onPressed: () => context.pop(),
           ),
@@ -103,9 +108,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               const SizedBox(height: 16),
               Text('מסלול לא נמצא', style: ffTheme.titleMedium),
               const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => context.pop(),
-                child: Text('חזרה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
+              AppButton.ghost(
+                text: 'חזרה',
+                onPressed: () async => context.pop(),
               ),
             ],
           ),
@@ -166,7 +171,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   IconButton(
                     icon: Icon(
                       inCompare ? Icons.compare_arrows_rounded : Icons.add,
-                      color: inCompare ? ffTheme.secondary : Colors.white,
+                      // Active state = the green accent (the old ffTheme.secondary
+                      // resolved to a dark slate in dark mode — invisible on the
+                      // theme-locked ink hero).
+                      color: inCompare ? ffTheme.brandAccent : Colors.white,
                     ),
                     tooltip: inCompare ? 'הסר מהשוואה' : 'הוסף להשוואה',
                     onPressed: () {
@@ -197,15 +205,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
+                                // Locked-white chip so provider brand colours
+                                // read on the ink hero; GEIST-flat (the bespoke
+                                // black drop shadow broke the one elevation
+                                // story).
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.12),
-                                    blurRadius: 14,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
                               ),
                               child: LogoWidget(provider: plan.provider, size: 64),
                             ),
@@ -281,16 +286,11 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                   child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text(
-                                      '₪${plan.priceText}',
-                                      // The plan's headline price is the page's
-                                      // single focal number — re-sourced to the
-                                      // shared [priceDisplay] numeral token (30 /
-                                      // w800 / tabular), the single source for the
-                                      // ₪ price figure across the app.
-                                      style: ffTheme.priceDisplay.copyWith(
-                                          color: ffTheme.primary),
-                                    ),
+                                    // The plan's headline price is the page's
+                                    // single focal number — rendered through
+                                    // PriceText (bidi-safe LTR isolate) on the
+                                    // shared [priceDisplay] numeral token.
+                                    PriceText('₪${plan.priceText}'),
                                     const SizedBox(width: 4),
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 6),
@@ -323,23 +323,13 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             ),
                             const Spacer(),
                             if (saveYear > 0)
-                              // Savings wear the VALUE accent (amber) — same
-                              // treatment as the plan cards and the site.
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: ffTheme.saving,
-                                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                                ),
-                                child: Text(
-                                  'חוסך ₪$saveYear בשנה',
-                                  style: ffTheme.labelMedium.copyWith(
-                                    color: ffTheme.onSaving,
-                                    fontWeight: FontWeight.w700,
-                                    fontFeatures: const [FontFeature.tabularFigures()],
-                                  ),
-                                ),
+                              // Savings figures render through the ONE canonical
+                              // SavingPill treatment (green TINT + glyph +
+                              // tabular figures) — solid green fills stay
+                              // reserved for CTAs.
+                              SavingPill(
+                                text: 'חוסך ₪$saveYear בשנה',
+                                shortText: 'חוסך ₪$saveYear',
                               ),
                           ],
                         ),
@@ -499,14 +489,20 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       Semantics(
                         button: true,
                         label: appState.hasReviewedProvider(plan.provider) ? 'עדכן דירוג עבור ${plan.provider}' : 'דרג את ${plan.provider}',
-                        child: GestureDetector(
+                        child: Pressable(
                           onTap: () => context.pushNamed('Ratings'),
                           child: Container(
+                            // Comfortable tap target (≥48dp) + tokenized 1px
+                            // hairline (was a raw ink-alpha border on a bare
+                            // GestureDetector).
+                            constraints:
+                                const BoxConstraints(minHeight: kMinTapTarget),
+                            alignment: Alignment.center,
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
                               color: ffTheme.accent1,
                               borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                              border: Border.all(color: ffTheme.lineColor),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -638,7 +634,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               }),
                               child: Row(
                                 children: [
-                                  Icon(Icons.videocam_rounded, color: ffTheme.brandAccent, size: 22),
+                                  // Inline leading icon in ink — green stays for
+                                  // actions/savings, not decorative glyphs.
+                                  Icon(Icons.videocam_rounded, color: ffTheme.primary, size: 22),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
@@ -704,7 +702,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       HapticFeedback.selectionClick();
                                       appState.toggleWatch(plan.id);
                                     },
-                                    activeThumbColor: ffTheme.primary,
+                                    // ON = an active state → the green accent.
+                                    activeThumbColor: ffTheme.brandAccent,
                                   ),
                                 ],
                               ),
@@ -759,7 +758,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     style: ffTheme.titleLarge)),
                             const SizedBox(height: 12),
                             SizedBox(
-                              height: 110,
+                              // A hair taller so the SavingPill row breathes.
+                              height: 118,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: topSimilar.length,
@@ -775,7 +775,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     button: true,
                                     label:
                                         '${p.provider}, ₪${p.priceText} ל${priceUnitShort(p)}${pSave > 0 ? ', חוסך ₪$pSave בשנה' : ''}. הצג מסלול',
-                                    child: GestureDetector(
+                                    child: Pressable(
                                     onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.id}),
                                     child: Container(
                                       width: 160,
@@ -792,10 +792,17 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                             ],
                                           ),
                                           const SizedBox(height: 6),
-                                          Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                          // Money via PriceText (bidi-safe, tabular), ink.
+                                          PriceText('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700))
+                                            // Savings = the canonical SavingPill
+                                            // treatment (with a compact fallback;
+                                            // the Semantics label above carries
+                                            // the full sentence).
+                                            SavingPill(
+                                                text: 'חוסך ₪$pSave/שנה',
+                                                shortText: 'חוסך ₪$pSave')
                                           else
                                             Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                                         ],
@@ -830,9 +837,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   color: ffTheme.cardSurface,
                   borderRadius: BorderRadius.vertical(
                       top: Radius.circular(ffTheme.radiusXl)),
+                  // Tokenized 1px hairline (was a raw ink-alpha wash).
                   border: Border(
-                      top: BorderSide(
-                          color: ffTheme.primary.withValues(alpha: 0.06), width: 1)),
+                      top: BorderSide(color: ffTheme.lineColor, width: 1)),
                   boxShadow: ffTheme.shadowLifted,
                 ),
                 child: Row(
@@ -847,15 +854,13 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         text: 'קבלו ליווי אישי ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
-
-                          height: 56,
-                          // Const brand ink → AppButton lifts this into the green
-                          // ACTION gradient + glow in BOTH themes (white-on-green).
-                          color: AppColors.primary,
-                          textStyle:
-                              ffTheme.titleSmall.copyWith(color: Colors.white),
-                          borderRadius: BorderRadius.circular(16),
-
+                        height: 56,
+                        // Const brand ink → AppButton lifts this into the green
+                        // ACTION gradient in BOTH themes; the label colour is
+                        // picked contrast-aware by AppButton (no pinned white),
+                        // and the corner falls back to the shared button token.
+                        color: AppColors.primary,
+                        textStyle: ffTheme.titleSmall,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -864,30 +869,34 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     Semantics(
                       button: true,
                       label: inCompare ? 'הסר מהשוואה' : 'הוסף להשוואה',
-                      child: GestureDetector(
+                      child: Pressable(
                       onTap: () {
                         HapticFeedback.selectionClick();
                         appState.toggleCompare(plan.id);
                       },
+                      // Active = the ONE green active language (tint + green
+                      // border + green ink) — replaces the solid-ink fill with
+                      // its per-theme pinned-white icon gymnastics.
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
                           color: inCompare
-                              ? ffTheme.primary
+                              ? ffTheme.brandAccentTint
                               : ffTheme.secondaryBackground,
                           border: Border.all(
                               color: inCompare
-                                  ? ffTheme.primary
+                                  ? ffTheme.brandAccent
                                   : ffTheme.alternate,
                               width: 1.5),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius:
+                              BorderRadius.circular(ffTheme.radiusMd),
                         ),
                         child: Icon(
                           inCompare ? Icons.check_rounded : Icons.add_rounded,
                           color: inCompare
-                              ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                              ? ffTheme.brandAccentText
                               : ffTheme.primary,
                           size: 24,
                         ),
@@ -1089,6 +1098,9 @@ class _FitPanel extends StatelessWidget {
           ],
 
           // "השוואה" CTA — toggles this plan in/out of the compare tray.
+          // Active = the ONE green active language (tint + green border + green
+          // ink); resting = a quiet neutral tile — replaces the solid-ink fill
+          // with its per-theme pinned-white gymnastics and raw ink-alpha washes.
           const SizedBox(height: 16),
           Semantics(
             button: true,
@@ -1101,17 +1113,15 @@ class _FitPanel extends StatelessWidget {
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: double.infinity,
+                  constraints:
+                      const BoxConstraints(minHeight: kMinTapTarget),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
-                    color: inCompare
-                        ? t.primary
-                        : t.primary.withValues(alpha: 0.08),
+                    color: inCompare ? t.brandAccentTint : t.accent1,
                     borderRadius: BorderRadius.circular(t.radiusSm),
                     border: Border.all(
-                      color: inCompare
-                          ? t.primary
-                          : t.primary.withValues(alpha: 0.28),
+                      color: inCompare ? t.brandAccent : t.alternate,
                     ),
                   ),
                   child: Row(
@@ -1122,17 +1132,13 @@ class _FitPanel extends StatelessWidget {
                             ? Icons.check_rounded
                             : Icons.compare_arrows_rounded,
                         size: 18,
-                        color: inCompare
-                            ? (t.dark ? t.background : Colors.white)
-                            : t.primary,
+                        color: inCompare ? t.brandAccentText : t.primary,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         inCompare ? 'נוסף להשוואה' : 'הוסף להשוואה',
                         style: t.titleSmall.copyWith(
-                          color: inCompare
-                              ? (t.dark ? t.background : Colors.white)
-                              : t.primary,
+                          color: inCompare ? t.brandAccentText : t.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1165,7 +1171,6 @@ class _EstimateTag extends StatelessWidget {
         'הערכה',
         style: t.labelSmall.copyWith(
           color: t.warning,
-          fontSize: 10,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -1372,10 +1377,11 @@ class _ValueAnchor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Bold ₪ saving anchor (VALUE = amber) vs the user's real bill.
-          // De-push: framed as an honest noun statement ("חיסכון שנתי") rather
-          // than the imperative promise "תחסכו" — a calm comparison figure, not
-          // a hard sell. The number itself stays the REAL engine figure.
+          // Bold ₪ saving anchor vs the user's real bill, in the ONE canonical
+          // SavingPill treatment (green tint + glyph + tabular figures) at the
+          // guardian-hero numeral size. De-push: framed as an honest noun
+          // statement ("חיסכון שנתי") rather than the imperative promise
+          // "תחסכו". The number itself stays the REAL engine figure.
           if (hasSaving) ...[
             Text(
               'חיסכון שנתי',
@@ -1384,27 +1390,15 @@ class _ValueAnchor extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 2),
-            Text.rich(
-              TextSpan(
-                // AA-safe amber ink for the savings figure on the light card —
-                // the fill hue (#F59E0B) fails 4.5:1 as text, savingText (amber
-                // 800) clears it while keeping the warm VALUE read.
-                style: t.displaySmall.copyWith(
+            const SizedBox(height: 6),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SavingPill(
+                text: '₪$saveYear/שנה',
+                textStyle: t.numericMedium.copyWith(
                   color: t.savingText,
-                  fontWeight: FontWeight.w800,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
-                children: [
-                  TextSpan(text: '₪$saveYear'),
-                  TextSpan(
-                    text: '/שנה',
-                    style: t.titleMedium.copyWith(
-                      color: t.savingText,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
               ),
             ),
             const SizedBox(height: 4),
@@ -1562,19 +1556,19 @@ class _PromoSide extends StatelessWidget {
       children: [
         Text(
           caption,
-          style: t.labelSmall.copyWith(color: t.secondaryText, fontSize: 11),
+          style: t.labelSmall.copyWith(color: t.secondaryText),
         ),
         const SizedBox(height: 2),
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
+            // Money via PriceText (bidi-safe LTR isolate + tabular figures).
+            PriceText(
               value,
               style: t.titleMedium.copyWith(
                 color: valueColor,
                 fontWeight: FontWeight.w800,
-                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
             const SizedBox(width: 2),
@@ -1878,10 +1872,18 @@ class _PriceRow extends StatelessWidget {
             Text(label,
                 style: ffTheme.bodyMedium
                     .copyWith(color: ffTheme.secondaryText)),
-            Text(value,
-                style: ffTheme.bodyMedium.copyWith(
-                    color: valueColor ?? ffTheme.primaryText,
-                    fontWeight: FontWeight.w600)),
+            // ₪-values go through PriceText (bidi-safe + tabular); plain
+            // labels (e.g. commitment) stay ordinary ink text.
+            if (value.startsWith('₪'))
+              PriceText(value,
+                  style: ffTheme.bodyMedium.copyWith(
+                      color: valueColor ?? ffTheme.primaryText,
+                      fontWeight: FontWeight.w600))
+            else
+              Text(value,
+                  style: ffTheme.bodyMedium.copyWith(
+                      color: valueColor ?? ffTheme.primaryText,
+                      fontWeight: FontWeight.w600)),
           ],
         ),
         if (!isLast) ...[
@@ -1905,13 +1907,12 @@ class _SavingsPeriod extends StatelessWidget {
     final amount = (saveYear * months / 12).round();
     return Column(
       children: [
-        Text(
+        // Timeline figures are DATA → ink via PriceText (tabular keeps the
+        // three columns aligned); the page's green savings moment is the
+        // SavingPill in the price hero.
+        PriceText(
           '₪$amount',
-          style: ffTheme.titleMedium.copyWith(
-            color: ffTheme.savingDark,
-            fontWeight: FontWeight.w800,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
+          style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text('$months חודשים', style: ffTheme.labelSmall),
@@ -1957,10 +1958,11 @@ class _SpecGrid extends StatelessWidget {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
+                  // Resting spec tile: flat + 1px hairline token (no shadow —
+                  // one elevation story).
                   color: ffTheme.background,
                   borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                  border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
-                  boxShadow: ffTheme.shadowXs,
+                  border: Border.all(color: ffTheme.lineColor),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1979,10 +1981,8 @@ class _SpecGrid extends StatelessWidget {
                         ),
                         Text(
                           e.key,
-                          style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.secondaryText,
-                            fontSize: 11,
-                          ),
+                          style: ffTheme.labelSmall
+                              .copyWith(color: ffTheme.secondaryText),
                         ),
                       ],
                     ),
@@ -2122,7 +2122,8 @@ class _ExtraInfoSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                // Tokenized 1px hairline (was a raw ink-alpha border).
+                border: Border.all(color: ffTheme.lineColor),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2169,8 +2170,7 @@ class _ExtraInfoSection extends StatelessWidget {
                   Semantics(
                     link: true,
                     label: 'פתיחת מקור המחיר בדפדפן',
-                    child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                     onTap: () async {
                       try {
                         final uri = Uri.parse(plan.sourceUrl!);

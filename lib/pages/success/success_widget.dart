@@ -3,10 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/referral_code.dart';
@@ -161,16 +162,26 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     ),
                   ).animate().scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
 
-                  // Main circle
+                  // Main circle — flat green success medallion (no decorative
+                  // glow), with a contrast-aware check ink: the dark theme
+                  // lifts brandAccent to green-400, where a white glyph fails
+                  // contrast — same luminance rule AppButton uses.
                   Container(
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
                       color: ffTheme.brandAccent,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 28, spreadRadius: 2)],
                     ),
-                    child: const Icon(Icons.check_rounded, size: 56, color: Colors.white),
+                    child: ExcludeSemantics(
+                      child: Icon(
+                        Icons.check_rounded,
+                        size: 56,
+                        color: ffTheme.brandAccent.computeLuminance() > 0.45
+                            ? AppColors.primaryText
+                            : Colors.white,
+                      ),
+                    ),
                   ).animate()
                     // A single confident spring-in — restrained, premium; no
                     // jittery post-shake.
@@ -181,28 +192,34 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                       curve: Curves.easeOutBack,
                     ),
 
-                  // Sparkle top-left
-                  Positioned(
+                  // Decorative sparkles — RTL-aware (start/end, never
+                  // left/right) and excluded from semantics.
+                  PositionedDirectional(
                     top: 4,
-                    right: 4,
-                    child: const Icon(Icons.auto_awesome, size: 18, color: Colors.white)
-                        .animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                    end: 4,
+                    child: ExcludeSemantics(
+                      child: const Icon(Icons.auto_awesome, size: 18, color: Colors.white)
+                          .animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                    ),
                   ),
-                  // Sparkle bottom-right
-                  Positioned(
+                  PositionedDirectional(
                     bottom: 4,
-                    left: 4,
-                    child: const Icon(Icons.celebration_outlined, size: 18, color: Colors.white)
-                        .animate(delay: 600.ms).fadeIn().slideY(begin: 0.5),
+                    start: 4,
+                    child: ExcludeSemantics(
+                      child: const Icon(Icons.celebration_outlined, size: 18, color: Colors.white)
+                          .animate(delay: 600.ms).fadeIn().slideY(begin: 0.5),
+                    ),
                   ),
                 ],
               ),
 
               const SizedBox(height: 28),
 
+              // Scale token (white recolour is safe — the scaffold is a PINNED
+              // ink surface in both themes, see backgroundColor above).
               Text(
                 'קיבלנו, ${appState.firstName}!',
-                style: GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white),
+                style: ffTheme.displayLarge.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
 
@@ -225,8 +242,10 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
+                      // Translucent white overlay is the sanctioned surface ON
+                      // the pinned-ink hero; corner reads the card token.
                       color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                       border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Row(
@@ -236,7 +255,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(plan.provider,
-                                  style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                                  style: ffTheme.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                               const SizedBox(height: 2),
                               Text(plan.plan,
                                   style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.7)),
@@ -248,11 +267,16 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('₪${plan.priceText}/${priceUnitShort(plan)}',
-                                style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-                            if (save > 0)
-                              Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
+                            // Money token — bidi-stable LTR isolate + tabular
+                            // figures; stays a single Text node for finders.
+                            PriceText('₪${plan.priceText}/${priceUnitShort(plan)}',
+                                style: ffTheme.headlineSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                            if (save > 0) ...[
+                              const SizedBox(height: 4),
+                              // The shared VALUE-pill treatment for the real
+                              // savings figure (copy unchanged).
+                              SavingPill(text: 'חוסך ₪$save/שנה'),
+                            ],
                           ],
                         ),
                       ],
@@ -268,14 +292,19 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('מה קורה עכשיו?',
-                        style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.8))),
+                    Semantics(
+                      header: true,
+                      child: Text('מה קורה עכשיו?',
+                          style: ffTheme.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white.withValues(alpha: 0.8))),
+                    ),
                     const SizedBox(height: 14),
                     _CheckItem(
                       checked: _checked[0],
@@ -317,13 +346,16 @@ class _SuccessWidgetState extends State<SuccessWidget> {
               AppButton(
                 text: 'מעקב אחר התהליך',
                 onPressed: () async => context.goNamed('Tracker'),
-                
-                  width: double.infinity,
-                  height: 56,
-                  color: AppColors.secondary,
-                  textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
-                  borderRadius: BorderRadius.circular(16),
-                
+                width: double.infinity,
+                height: 56,
+                // DARK-PARITY FIX: AppColors.secondary value-equals accent1, so
+                // AppButton remapped it to the theme accent1 — a dark fill that
+                // vanished on this pinned-ink hero in dark mode. accent2 is a
+                // pinned LIGHT neutral in both themes; AppButton's luminance
+                // rule then picks the ink label (no pinned colour).
+                color: AppColors.accent2,
+                textStyle: ffTheme.titleLarge,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSheet),
               ).animate().fadeIn(delay: 800.ms),
 
               const SizedBox(height: 12),
@@ -402,7 +434,9 @@ class _CheckItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Text(text, style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+          // Body token, white on the pinned-ink hero. Wrapped Expanded so long
+          // Hebrew steps wrap instead of overflowing at large OS text scales.
+          Expanded(child: Text(text, style: ffTheme.bodyMedium.copyWith(color: Colors.white))),
         ],
       ),
     );
@@ -419,7 +453,8 @@ class _TrustBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 22, color: Colors.white),
+        // Decorative badge glyph — excluded so screen readers hear the copy.
+        ExcludeSemantics(child: Icon(icon, size: 22, color: Colors.white)),
         const SizedBox(height: 4),
         Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white.withValues(alpha: 0.7))),
       ],

@@ -135,7 +135,21 @@ class MeetingStatusCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(t.radiusMd),
                   border: Border.all(color: t.lineColor),
                 ),
-                child: Icon(Icons.videocam_rounded, size: 22, color: t.secondaryText),
+                // The official Zoom mark, shown as-is like the carrier logos
+                // (same asset as the booking hero in meeting_widget.dart).
+                child: Center(
+                  child: ExcludeSemantics(
+                    child: Image.asset(
+                      'assets/images/zoom.png',
+                      width: 26,
+                      height: 26,
+                      filterQuality: FilterQuality.medium,
+                      cacheWidth: 96,
+                      errorBuilder: (_, __, ___) =>
+                          Icon(Icons.videocam_rounded, size: 22, color: t.secondaryText),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

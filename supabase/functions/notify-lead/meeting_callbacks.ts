@@ -48,10 +48,22 @@ async function freezeCard(cfg: Cfg, msg: TgMessage | undefined, meetingId: strin
 
 // Email the customer their confirmed meeting (join link included). Fail-soft:
 // the meeting is already confirmed in the DB; a failed email is reported to
-// the team so they can deliver the link by hand.
+// the team so they can deliver the link by hand. A SUCCESSFUL send stamps
+// confirmation_emailed_at (guarded, best-effort) so the hourly booker-email
+// safety net (renewal-reminders mode:"follow-up") doesn't re-send the same
+// confirmation; pre-migration the PATCH names an unknown column → 400 →
+// patchCount 0 → harmless (the cron is equally a no-op until the columns
+// exist — supabase/meetings-user-emails-2026-07.sql). A FAILED send leaves
+// the stamp null on purpose: that's exactly what the cron retries.
 async function emailCustomer(cfg: Cfg, meeting: MeetingRow): Promise<boolean> {
   if (!meeting.email) return false;
   const r = await sendCustomerEmail(cfg, String(meeting.email), CUSTOMER_SUBJECT, buildMeetingCustomerEmailHtml(meeting));
+  if (r.ok && meeting.id) {
+    await patchCount(
+      `/rest/v1/meetings?id=eq.${meeting.id}&confirmation_emailed_at=is.null`,
+      { confirmation_emailed_at: new Date().toISOString() },
+    );
+  }
   return r.ok;
 }
 

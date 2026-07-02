@@ -17,6 +17,7 @@ import '../../services/backend/local_backend.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/whatsapp_button.dart';
 import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class LeadWidget extends StatefulWidget {
@@ -354,7 +355,9 @@ class _LeadWidgetState extends State<LeadWidget> {
           width: double.infinity,
           height: 56,
           color: AppColors.primary,
-          textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+          // No pinned label colour — AppButton picks the contrast-aware ink
+          // for the gradient fill in both themes (rule: never pin white).
+          textStyle: ffTheme.titleMedium,
           // No token equals the bespoke 18 corner (radiusCard 12 / radiusSheet 20
           // straddle it); radiusSheet is the nearest token, kept to preserve the
           // generous hero-CTA corner without forcing a 6px-tighter card radius.
@@ -420,19 +423,15 @@ class _LeadWidgetState extends State<LeadWidget> {
                 : 'היי, ניסיתי להשאיר פרטים ב-Switchy AI אבל זה נכשל — אפשר לעזור?',
           ),
           const SizedBox(height: 8),
-          SizedBox(
+          // Shared secondary AppButton (white/outline variant) instead of a
+          // bespoke OutlinedButton — one button language, ≥48px tap target,
+          // contrast-aware ink label in both themes.
+          AppButton.secondary(
+            text: 'בקשו שנחזור אליכם',
+            onPressed: () async => context.pushNamed('Callback'),
+            icon: const Icon(Icons.headset_mic_outlined, size: 18),
             width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.pushNamed('Callback'),
-              icon: const Icon(Icons.headset_mic_outlined, size: 18),
-              label: const Text('בקשו שנחזור אליכם'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: ffTheme.brandAccent,
-                side: BorderSide(color: ffTheme.brandAccent),
-                minimumSize: const Size(double.infinity, 46),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
-              ),
-            ),
+            borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           ),
         ],
       ),
@@ -447,19 +446,19 @@ class _LeadWidgetState extends State<LeadWidget> {
       decoration: BoxDecoration(
         color: ffTheme.brandAccentTint,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        // Resting tinted surface: flat + 1px green border, no shadow (one
+        // elevation story — only sheets/FABs/sticky bars lift).
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
-        boxShadow: ffTheme.shadowXs,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // "We're open" dot — green = available.
+          // "We're open" dot — green = available. Flat, no decorative glow.
           Container(
             width: 8, height: 8,
             decoration: BoxDecoration(
               color: ffTheme.brandAccent,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
             ),
           ),
           const SizedBox(width: 10),
@@ -522,11 +521,8 @@ class _LeadWidgetState extends State<LeadWidget> {
   // "what happens next" timeline, and the trust badges.
   Widget _buildExtrasSection(AppTheme ffTheme) {
     return Container(
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      // Shared card language: surface + 1px hairline, flat (cardDecoration).
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,7 +570,7 @@ class _LeadWidgetState extends State<LeadWidget> {
           // Body — only mounted when expanded so the collapsed default keeps the
           // CTA the first thing after consent.
           if (_extrasExpanded) ...[
-            Divider(height: 1, color: ffTheme.alternate),
+            Divider(height: 1, color: ffTheme.lineColor),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -685,11 +681,8 @@ class _LeadWidgetState extends State<LeadWidget> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      // Shared card language: surface + 1px hairline, flat (cardDecoration).
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -745,24 +738,12 @@ class _LeadWidgetState extends State<LeadWidget> {
                 ),
               ),
               if (saveYear > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                    border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
-                  ),
-                  child: Column(
-                    children: [
-                      // De-push: a calm noun ("savings"), not the second-person
-                      // "חוסך" command — the figure is a real computed value.
-                      Text('חיסכון', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText)),
-                      // Savings money token — [PriceText] pins ₪ before the
-                      // digits (stable LTR bidi) so the real figure never
-                      // re-orders; titleSmall/green/w800 override preserved.
-                      PriceText('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
-                    ],
-                  ),
+                // The ONE recognizable savings treatment — the shared VALUE
+                // pill (tint bg + green text + glyph, tabular figures). The
+                // figure is the same real computed value as before.
+                SavingPill(
+                  text: 'חיסכון ₪$saveYear בשנה',
+                  shortText: '₪$saveYear בשנה',
                 ),
             ],
           ),
@@ -772,14 +753,18 @@ class _LeadWidgetState extends State<LeadWidget> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: ffTheme.saving.withValues(alpha: 0.10),
+                // Tinted surfaces come only from the tint tokens — the shared
+                // pale-green VALUE tint, not an ad-hoc alpha of the fill green.
+                color: ffTheme.brandAccentTint,
                 borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.savingDark),
+                  ExcludeSemantics(
+                    child: Icon(Icons.savings_rounded, size: 15, color: ffTheme.savingText),
+                  ),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
@@ -839,21 +824,27 @@ class _LeadWidgetState extends State<LeadWidget> {
         padding: const WidgetStatePropertyAll(
           EdgeInsetsDirectional.symmetric(horizontal: 8, vertical: 8),
         ),
-        side: WidgetStatePropertyAll(BorderSide(color: ffTheme.alternate)),
+        // ONE chip language — neutral: surface + 1px hairline + ink; ACTIVE:
+        // the pale-green tint + green text + green 1px border (solid green
+        // stays reserved for the primary CTA).
+        side: WidgetStateProperty.resolveWith((states) => BorderSide(
+            color: states.contains(WidgetState.selected)
+                ? ffTheme.brandAccent
+                : ffTheme.lineColor)),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
         ),
         backgroundColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? ffTheme.brandAccent
+                ? ffTheme.brandAccentTint
                 : ffTheme.cardSurface),
         foregroundColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? Colors.white
+                ? ffTheme.brandAccentText
                 : ffTheme.primaryText),
         iconColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
-                ? Colors.white
+                ? ffTheme.brandAccentText
                 : ffTheme.secondaryText),
       ),
       ),
@@ -923,13 +914,15 @@ class _TimelineStep extends StatelessWidget {
       children: [
         Column(
           children: [
+            // Neutral medallion (accent1 + ink numeral) — green stays reserved
+            // for CTAs/savings/active states, not step decorations.
             Container(
               width: 28, height: 28,
-              decoration: BoxDecoration(gradient: ffTheme.accentGradient, shape: BoxShape.circle),
-              child: Center(child: Text('$step', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800))),
+              decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+              child: Center(child: Text('$step', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w800))),
             ),
             if (!isLast)
-              Container(width: 2, height: 28, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(vertical: 3)),
+              Container(width: 2, height: 28, color: ffTheme.lineColor, margin: const EdgeInsets.symmetric(vertical: 3)),
           ],
         ),
         const SizedBox(width: 12),
@@ -939,7 +932,7 @@ class _TimelineStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: ffTheme.titleSmall.copyWith(fontSize: 13)),
+                Text(title, style: ffTheme.titleSmall),
                 Text(sub, style: ffTheme.labelSmall),
               ],
             ),
@@ -960,7 +953,9 @@ class _TrustBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: ffTheme.brandAccent, size: 22),
+        // Decorative badge glyph — neutral ink, not green (green discipline:
+        // green = CTA/savings/active/success only), excluded from semantics.
+        ExcludeSemantics(child: Icon(icon, color: ffTheme.secondaryText, size: 22)),
         const SizedBox(height: 4),
         Text(
           label,

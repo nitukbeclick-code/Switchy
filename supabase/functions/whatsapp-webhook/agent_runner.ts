@@ -25,7 +25,7 @@
 
 import type { AiKeys, ChatTurn } from "../_shared/ai.ts";
 import type { ScorablePlan } from "../_shared/scoring.ts";
-import { runAgent as defaultRunAgent, type RunAgentResult } from "../_shared/agent.ts";
+import { type ActiveLead, runAgent as defaultRunAgent, type RunAgentResult } from "../_shared/agent.ts";
 import type { ToolContext } from "../_shared/tools.ts";
 import {
   appendTurn,
@@ -91,6 +91,11 @@ export type RunWhatsappAgentInput = {
   // the model can answer common questions directly + consistently. OPTIONAL +
   // back-compatible: omitted ⇒ runAgent's prompt is identical to before.
   knowledgeContext?: string;
+  // Optional OPEN LEAD the webhook looked up in public.leads for this phone (the
+  // app-handoff awareness — see index.ts lookupOpenLead). OPTIONAL + additive:
+  // omitted ⇒ runAgent's prompt is identical to before. TRUTH-ONLY: comes straight
+  // from the DB row; a failed/empty lookup passes nothing (never fabricated).
+  activeLead?: ActiveLead;
   // Injectable for tests; default to the real shared implementations.
   runAgentFn?: typeof defaultRunAgent;
   loadSessionFn?: typeof defaultLoadSession;
@@ -137,6 +142,7 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
       templateFallback: input.templateFallback,
       billHint: input.billHint,
       knowledgeContext: input.knowledgeContext,
+      activeLead: input.activeLead,
     });
   } catch (_e) {
     // The shared runAgent shouldn't throw, but if it ever does we MUST still let

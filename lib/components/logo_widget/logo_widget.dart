@@ -66,8 +66,8 @@ class LogoWidget extends StatelessWidget {
     'סלקום': 'cellcom.png', 'פרטנר': 'partner.png', 'פלאפון': 'pelephone.png', 'גולן': 'golan.png',
     'הוט מובייל': 'hot-mobile.png', 'HOT': 'hot.png', 'הוט': 'hot.png', 'Xphone': 'xphone.png',
     'רמי לוי': 'rami-levy.webp', 'WeCom': 'wecom.png', '019': '019mobile.png', 'וואלה': 'walla-mobile.webp',
-    'בזק': 'bezeq.png', 'גילת': 'gilat.png', 'CCC': 'ccc.png', 'STING': 'sting-tv.png', 'yes': 'yes.png',
-    'NextTV': 'nexttv.png', 'NEXT TV': 'nexttv.png', 'Airalo': 'airalo.png',
+    'בזק': 'bezeq.webp', 'גילת': 'gilat.png', 'CCC': 'ccc.png', 'STING': 'sting-tv.png', 'yes': 'yes.png',
+    'NextTV': 'nexttv.png', 'NEXT TV': 'nexttv.png', 'Airalo': 'airalo.png', 'FreeTV': 'freetv.png',
   };
 
   // Resolving the brand color-key, logo file and initials each does a linear
@@ -87,6 +87,11 @@ class LogoWidget extends StatelessWidget {
   }
 
   static V? _lookup<V>(Map<String, V> map, String provider) {
+    // An exact key always wins before the substring scan: the bare string
+    // 'הוט' must resolve to the HOT entry even though 'הוט מובייל' is declared
+    // earlier (for specificity) and reverse-contains it via key.contains().
+    final exact = map[provider];
+    if (exact != null) return exact;
     for (final entry in map.entries) {
       if (provider.contains(entry.key) || entry.key.contains(provider)) {
         return entry.value;
@@ -142,12 +147,11 @@ class LogoWidget extends StatelessWidget {
             'assets/providers/$file',
             fit: BoxFit.contain,
             filterQuality: FilterQuality.medium,
-            // Source PNGs are 10–60× oversized (e.g. yes.png is 3840×1536 →
-            // ~24 MB decoded). The largest on-screen logo is size:64, drawn
-            // inside ~74% of the tile, so the image box never exceeds ~47 dp
-            // (~141 px @3× DPR). Decode at a 256 px cap (≈2× the largest use,
-            // headroom for high-DPR) instead of full resolution: same crisp
-            // result, a fraction of the memory, across all 22 screens.
+            // Source images are ≤1000 px but the largest on-screen logo is
+            // size:64, drawn inside ~74% of the tile, so the image box never
+            // exceeds ~47 dp (~141 px @3× DPR). Decode at a 256 px cap (≈2×
+            // the largest use, headroom for high-DPR) instead of full
+            // resolution: same crisp result, a fraction of the memory.
             cacheWidth: 256,
             errorBuilder: (_, __, ___) => _initialsBadge(color, label),
           ),

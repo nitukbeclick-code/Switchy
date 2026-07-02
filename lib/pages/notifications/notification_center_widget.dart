@@ -10,6 +10,7 @@ import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/skeleton.dart';
 
 class NotificationCenterWidget extends StatefulWidget {
   const NotificationCenterWidget({super.key});
@@ -199,7 +200,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: ffTheme.alternate),
+          child: Container(height: 1, color: ffTheme.lineColor),
         ),
         actions: [
           if (notifs.isNotEmpty)
@@ -214,14 +215,24 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       ),
       body: notifs.isEmpty
           // Still waiting on the community fetch and nothing computed yet —
-          // a spinner avoids flashing the "all caught up" state then replacing
-          // it the instant a stored reply/mention arrives.
+          // ghost notification cards (the shared skeleton primitives) hold the
+          // list's shape instead of a bare spinner, and avoid flashing the
+          // "all caught up" state then replacing it the instant a stored
+          // reply/mention arrives.
           ? _loadingCommunity
-              ? Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
-                  ),
+              ? ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  children: [
+                    for (var i = 0; i < 3; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Container(
+                          decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: const SkeletonListTile(hasTrailing: false),
+                        ),
+                      ),
+                  ],
                 )
               // Wrap the empty state in a pull-to-refresh too, so an idle inbox
               // can still be pulled to re-check for fresh community items. The

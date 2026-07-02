@@ -154,5 +154,8 @@ describe("providerLogoFile", () => {
     expect(providerLogoFile(providerSlug("גולן טלקום"))).toBe("golan.webp");
     expect(providerLogoFile(providerSlug("הוט מובייל"))).toBe("hot-mobile.webp");
     expect(providerLogoFile(providerSlug("019 מובייל"))).toBe("019mobile.webp");
+    // Regression: "Airalo eSIM" slugs to "airalo-esim" (no SLUG_OVERRIDES
+    // entry) — the alias key must still reach the bundled brand asset.
+    expect(providerLogoFile(providerSlug("Airalo eSIM"))).toBe("airalo.webp");
   });
 });

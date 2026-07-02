@@ -271,7 +271,18 @@ async function reloadMeeting(id: string): Promise<ConsoleMeeting | null> {
 async function notifyCustomer(cfg: Cfg, m: MeetingRow): Promise<void> {
   if (!m.email) return;
   try {
-    await sendCustomerEmail(cfg, m.email, "אישור פגישת וידאו — Switchy AI", buildMeetingCustomerEmailHtml(m));
+    const r = await sendCustomerEmail(cfg, m.email, "אישור פגישת וידאו — Switchy AI", buildMeetingCustomerEmailHtml(m));
+    // Successful send → stamp confirmation_emailed_at (guarded, best-effort) so
+    // the hourly booker-email safety net doesn't re-send this confirmation.
+    // Pre-migration the unknown column 400s → patchCount 0 → harmless (see
+    // supabase/meetings-user-emails-2026-07.sql). A failed send leaves the
+    // stamp null on purpose — that's what the cron retries.
+    if (r.ok && m.id) {
+      await patchCount(
+        `/rest/v1/meetings?id=eq.${m.id}&confirmation_emailed_at=is.null`,
+        { confirmation_emailed_at: new Date().toISOString() },
+      );
+    }
   } catch (_) { /* best-effort */ }
 }
 

@@ -162,9 +162,20 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
               Padding(
                 padding: const EdgeInsets.fromLTRB(22, 24, 22, 32),
                 child: _busy && _mode == _Mode.choose
+                    // Labelled progress, not an anonymous spinner — the user
+                    // is mid-OAuth round-trip and should know what's happening.
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator(color: t.brandAccent)),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(color: t.brandAccent),
+                              const SizedBox(height: 14),
+                              Text('משלימים את ההתחברות…', style: t.bodyMedium.copyWith(color: t.secondaryText)),
+                            ],
+                          ),
+                        ),
                       )
                     : switch (_mode) {
                         _Mode.choose => _chooseBody(t),
@@ -190,7 +201,8 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
     };
     final sub = switch (_mode) {
       _Mode.login => 'התחברו כדי להשוות מסלולים מתאימים',
-      _Mode.signup => 'נרשמים פעם אחת — חוסכים תמיד',
+      // Honest, non-promissory copy (the savings de-push holds).
+      _Mode.signup => 'נרשמים פעם אחת — והכל נשמר במקום אחד',
       _Mode.choose => 'התחברו כדי לשמור מסלולים, לעקוב ולדרג',
       _Mode.emailCode => _codeSent ? 'הזינו את הקוד שנשלח למייל' : 'נשלח לכם קוד חד-פעמי למייל',
     };
@@ -382,9 +394,10 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
     );
     return Row(
       children: [
+        // Full 48dp minimum touch target for the checkbox.
         SizedBox(
-          width: 40,
-          height: 40,
+          width: kMinTapTarget,
+          height: kMinTapTarget,
           child: Checkbox(
             value: value,
             onChanged: onChanged,
@@ -407,6 +420,12 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
   }
 
   Widget _chooseBody(AppTheme t) {
+    // Contrast-aware ink over the green ACTION fill — the same luminance rule
+    // AppButton applies: in dark mode the accent lifts to green-400, where a
+    // pinned white label goes illegible, so light fills carry dark ink.
+    final onAccent = t.accentGradient.colors.first.computeLuminance() > 0.45
+        ? AppColors.primaryText
+        : Colors.white;
     return Column(
       children: [
         if (_faceIdAvailable) ...[
@@ -416,7 +435,7 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
             gradient: t.accentGradient,
             shadow: t.shadowAccent,
             bg: t.brandAccent,
-            fg: Colors.white,
+            fg: onAccent,
             onTap: _busy ? null : _faceIdLogin,
           ),
           const SizedBox(height: 12),
@@ -455,12 +474,22 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
           Expanded(child: Divider(color: t.alternate)),
         ]),
         const SizedBox(height: 18),
-        AppButton(
-          text: 'הרשמה עם מייל',
-          color: AppColors.primary,
-          onPressed: () async => setState(() => _mode = _Mode.signup),
-          width: double.infinity,
-        ),
+        // ONE green primary per screen: when the Face ID quick-login is showing
+        // it takes the accent, so the email path steps down to the secondary
+        // (surface + hairline) variant; otherwise email signup is the primary.
+        if (_faceIdAvailable)
+          AppButton.secondary(
+            text: 'הרשמה עם מייל',
+            onPressed: () async => setState(() => _mode = _Mode.signup),
+            width: double.infinity,
+          )
+        else
+          AppButton(
+            text: 'הרשמה עם מייל',
+            color: AppColors.primary,
+            onPressed: () async => setState(() => _mode = _Mode.signup),
+            width: double.infinity,
+          ),
         const SizedBox(height: 10),
         // Passwordless: mail a one-time code instead of choosing a password.
         TextButton.icon(
@@ -628,10 +657,9 @@ class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
               ],
               onChanged: (_) => setState(() {}),
               onFieldSubmitted: (_) => _verifyCode(),
-              style: t.titleMedium.copyWith(
-                letterSpacing: 6,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
+              // The dedicated numeric token (tabular figures built in) — the
+              // 6-digit code is a numeral, not a title.
+              style: t.numericMedium.copyWith(letterSpacing: 6),
               decoration: InputDecoration(
                 hintText: '------',
                 counterText: '',

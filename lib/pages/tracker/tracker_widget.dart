@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/price_text.dart';
 import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
@@ -99,22 +100,23 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
                 const SizedBox(height: 32),
                 AppButton(
-                  text: 'מצא מסלול חדש →',
+                  // RTL forward arrow points left (start→end reading direction).
+                  text: 'מצא מסלול חדש ←',
                   onPressed: () async => context.goNamed('Results'),
-
-                    width: double.infinity,
-                    height: 52,
-                    color: AppColors.primary,
-                    textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                    borderRadius: BorderRadius.circular(14),
-
+                  width: double.infinity,
+                  height: 52,
+                  color: AppColors.primary,
+                  // AppButton picks the contrast-aware label ink — never pin white.
+                  textStyle: ffTheme.titleSmall,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ),
                 const SizedBox(height: 12),
                 TextButton.icon(
                   onPressed: () => context.pushNamed('Chat'),
                   icon: const Icon(Icons.chat_rounded, size: 18),
                   label: const Text('יש שאלה? דברו איתנו'),
-                  style: TextButton.styleFrom(foregroundColor: ffTheme.primary),
+                  // AA-safe green link ink (brand link colour, not raw green fill).
+                  style: TextButton.styleFrom(foregroundColor: ffTheme.brandAccentText),
                 ),
               ],
             ),
@@ -133,38 +135,14 @@ class _TrackerWidgetState extends State<TrackerWidget> {
           elevation: 0,
           foregroundColor: ffTheme.primaryText,
         ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: ffTheme.glassDecoration(radius: 48),
-                  child: Icon(Icons.track_changes_rounded, size: 52, color: ffTheme.primary),
-                ).animate().scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1), duration: 450.ms, curve: Curves.easeOut),
-                const SizedBox(height: 24),
-                Text('עוד לא התחלתם', style: ffTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text('בחרו מסלול ושלחו פרטים כדי לעקוב אחר תהליך המעבר',
-                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
-                const SizedBox(height: 32),
-                AppButton(
-                  text: 'מצא מסלול →',
-                  onPressed: () async => context.goNamed('Results'),
-
-                    width: double.infinity,
-                    height: 52,
-                    color: AppColors.primary,
-                    textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                    borderRadius: BorderRadius.circular(14),
-                  
-                ),
-              ],
-            ),
-          ),
+        // The shared EmptyState — one honest headline, one next action (the same
+        // widget every other list/empty surface uses, instead of a bespoke clone).
+        body: EmptyState(
+          icon: Icons.track_changes_rounded,
+          headline: 'עוד לא התחלתם',
+          subtitle: 'בחרו מסלול ושלחו פרטים כדי לעקוב אחר תהליך המעבר',
+          ctaLabel: 'מצא מסלול ←',
+          onCtaTap: () async => context.goNamed('Results'),
         ),
       );
     }
@@ -194,12 +172,17 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
                 const SizedBox(height: 24),
                 Text('ברוכים הבאים\nלחבילה החדשה!',
-                    style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+                    // Display token on the theme-locked ink hero — white ink is the
+                    // valid on-ink pair here in BOTH modes (the surface never flips).
+                    style: ffTheme.displayMedium.copyWith(fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
                     textAlign: TextAlign.center).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
                 const SizedBox(height: 12),
                 if (plan != null) ...[
+                  // White on the locked-ink hero (ffTheme.secondary collapsed to a
+                  // slate that vanished on the dark hero). Mixed Hebrew+money line
+                  // stays a plain Text (a full LTR isolate would flip the sentence).
                   Text('${plan.provider} — ₪${plan.priceText}/${priceUnitShort(plan)}',
-                      style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700))
+                      style: ffTheme.bodyLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700))
                       .animate().fadeIn(delay: 450.ms),
                   const SizedBox(height: 10),
                   RichText(
@@ -209,9 +192,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       children: [
                         const TextSpan(text: 'המעבר הושלם בהצלחה. חיסכון שנתי של '),
                         TextSpan(
+                          // saving (green 600 / lifted 400) clears contrast on the
+                          // ink hero; savingText (green 700) fell under AA on black.
                           text: '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
                           style: ffTheme.bodyMedium.copyWith(
-                              color: ffTheme.savingText, fontWeight: FontWeight.w800),
+                              color: ffTheme.saving, fontWeight: FontWeight.w800),
                         ),
                         const TextSpan(text: ' כבר מתחיל!'),
                       ],
@@ -227,13 +212,13 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 AppButton(
                   text: 'חזרה לדף הבית',
                   onPressed: () async => context.goNamed('Home'),
-
-                    width: double.infinity,
-                    height: 52,
-                    color: ffTheme.secondary,
-                    textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
-                    borderRadius: BorderRadius.circular(14),
-
+                  width: double.infinity,
+                  height: 52,
+                  color: ffTheme.secondary,
+                  // titleLarge = the 15/w700 Rubik token; AppButton resolves the
+                  // contrast-aware label ink for the light fill itself.
+                  textStyle: ffTheme.titleLarge,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 ).animate().fadeIn(delay: 700.ms),
                 const SizedBox(height: 12),
                 // The plan was just added to the renewal radar — point the user
@@ -243,10 +228,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   icon: const Icon(Icons.notifications_active_outlined,
                       size: 18, color: Colors.white),
                   label: Text('עקוב אחרי החידוש שלי',
-                      style: GoogleFonts.assistant(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white)),
+                      // labelLarge token; white is the on-ink pair on the locked hero.
+                      style: ffTheme.labelLarge.copyWith(
+                          fontWeight: FontWeight.w700, color: Colors.white)),
                 ).animate().fadeIn(delay: 800.ms),
               ],
             ),
@@ -268,25 +252,31 @@ class _TrackerWidgetState extends State<TrackerWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Reassurance banner
+            // Reassurance banner — the neutral accent1 tint surface + hairline
+            // (the one sanctioned neutral tint), tokens only.
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 border: Border.all(color: ffTheme.lineColor),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.handshake_outlined, size: 24, color: ffTheme.primaryText),
+                  // Decorative lead-in icon — the copy carries the meaning.
+                  ExcludeSemantics(
+                    child: Icon(Icons.handshake_outlined, size: 24, color: ffTheme.primaryText),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('אנחנו מלווים — לא מנתקים', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primaryText)),
-                        Text('נציג אישי ילווה אתכם לכל אורך הדרך', style: GoogleFonts.assistant(fontSize: 12, color: ffTheme.primaryText.withValues(alpha: 0.75))),
+                        Text('אנחנו מלווים — לא מנתקים',
+                            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700)),
+                        Text('נציג אישי ילווה אתכם לכל אורך הדרך',
+                            style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
                       ],
                     ),
                   ),
@@ -312,10 +302,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // The expected saving is the VALUE figure → amber.
-                        Text(
+                        // The expected saving — VALUE-green hero numeral on the
+                        // numeric token (tabular), bidi-safe via PriceText.
+                        PriceText(
                           '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
-                          style: ffTheme.displaySmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800),
+                          style: ffTheme.numericLarge.copyWith(color: ffTheme.savingText),
                         ),
                         const SizedBox(width: 6),
                         Padding(
@@ -326,7 +317,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     ),
                     const SizedBox(height: 10),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                       child: LinearProgressIndicator(
                         value: step / 4,
                         backgroundColor: ffTheme.alternate,
@@ -357,20 +348,24 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             // the user reads "you're covered" and then the steps (copy unchanged).
             Container(
               padding: const EdgeInsets.all(16),
+              // Neutral accent1 tint + hairline — the guarantee is reassurance,
+              // not a warning, so the amber border (emphasis-misuse) is gone.
               decoration: BoxDecoration(
-                color: ffTheme.accent2,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                border: Border.all(color: ffTheme.lineColor),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.shield_outlined, size: 24, color: ffTheme.primaryText),
+                  ExcludeSemantics(
+                    child: Icon(Icons.shield_outlined, size: 24, color: ffTheme.primaryText),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('ערבות שקט', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primaryText)),
+                        Text('ערבות שקט', style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                         Text('מבטיחים שלא תחויבו פעמיים במהלך המעבר', style: ffTheme.bodySmall),
                       ],
                     ),
@@ -397,7 +392,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     ),
                   ),
                 ),
-                Text('שלבי המעבר', style: ffTheme.titleLarge),
+                Semantics(
+                  header: true,
+                  child: Text('שלבי המעבר', style: ffTheme.titleLarge),
+                ),
                 const Spacer(),
                 Text('שלב ${step.clamp(1, 4)} מתוך 4',
                     style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
@@ -445,10 +443,16 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: s.done ? AppColors.primary : ffTheme.alternate,
+                              // Theme-aware ink (the const near-black vanished on the
+                              // dark canvas); the icon flips to the contrast pair.
+                              color: s.done ? ffTheme.primary : ffTheme.alternate,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(s.icon, size: 20, color: s.done ? Colors.white : ffTheme.secondaryText),
+                            child: Icon(s.icon,
+                                size: 20,
+                                color: s.done
+                                    ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                                    : ffTheme.secondaryText),
                           ),
                       if (!isLast)
                         Container(
@@ -475,10 +479,20 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
+                                // ACTIVE chip in the one chip language: green tint
+                                // + green 1px border + AA green ink (was a
+                                // black-filled chip with pinned white).
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6)),
-                                  child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                                  decoration: BoxDecoration(
+                                    color: ffTheme.brandAccentTint,
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                                    border: Border.all(color: ffTheme.brandAccent),
+                                  ),
+                                  child: Text('בתהליך',
+                                      style: ffTheme.labelSmall.copyWith(
+                                          color: ffTheme.brandAccentText,
+                                          fontWeight: FontWeight.w700)),
                                 ),
                               ],
                             ),
@@ -514,41 +528,54 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             const SizedBox(height: 24),
 
             // Support-team card — opens the chat with the real support channel.
-            Pressable(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                context.pushNamed('Chat');
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                // Premium card surface — soft hairline + shadow.
-                decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
-                child: Row(
-                  children: [
-                    // The real support channel — no invented persona, no
-                    // presence dot and no response-time promise (truth-only).
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                      child: Icon(Icons.support_agent_rounded, size: 26, color: ffTheme.primary),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('צוות הליווי', style: ffTheme.titleSmall),
-                          Text('לכל שאלה לאורך המעבר', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
-                        ],
+            // One labelled Semantics button (children excluded) so screen readers
+            // hear the tappable card once.
+            Semantics(
+              button: true,
+              label: 'צוות הליווי — לכל שאלה לאורך המעבר',
+              excludeSemantics: true,
+              child: Pressable(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  context.pushNamed('Chat');
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  // Premium card surface — soft hairline + shadow.
+                  decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
+                  child: Row(
+                    children: [
+                      // The real support channel — no invented persona, no
+                      // presence dot and no response-time promise (truth-only).
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                        child: Icon(Icons.support_agent_rounded, size: 26, color: ffTheme.primary),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('צוות הליווי', style: ffTheme.titleSmall),
+                            Text('לכל שאלה לאורך המעבר', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                          ],
+                        ),
+                      ),
+                      // Theme-aware ink affordance tile (the const black chip
+                      // disappeared on dark; icon flips to the contrast pair).
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                            color: ffTheme.primary,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
+                        child: Icon(Icons.chat_rounded,
+                            color: ffTheme.dark ? ffTheme.background : Colors.white,
+                            size: 18),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ).animate().fadeIn(delay: 300.ms),
@@ -561,13 +588,12 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 HapticFeedback.lightImpact();
                 context.pushNamed('Chat');
               },
-
-                width: double.infinity,
-                height: 52,
-                color: AppColors.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(14),
-              
+              width: double.infinity,
+              height: 52,
+              color: AppColors.primary,
+              // No pinned white — AppButton resolves the on-gradient label ink.
+              textStyle: ffTheme.titleSmall,
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
             ).animate().fadeIn(delay: 400.ms),
 
             const SizedBox(height: 8),
@@ -601,7 +627,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             const SizedBox(height: 12),
 
-            // Porting CTA when step >= 1
+            // Porting CTA when step >= 1 — quiet ink outline on the radius token.
             if (step >= 1)
               OutlinedButton.icon(
                 onPressed: () => context.pushNamed('Porting'),
@@ -611,7 +637,8 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   foregroundColor: ffTheme.primary,
                   side: BorderSide(color: ffTheme.primary),
                   minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
                 ),
               ).animate().fadeIn(delay: 450.ms),
 
@@ -648,47 +675,40 @@ class _StepConfirmButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = step < _labels.length ? _labels[step] : _labels.last;
-    return Pressable(
-      onTap: () {
-        showDialog(
+    // Quiet in-card action = the ghost AppButton (tint fill, contrast-aware
+    // label, ≥48dp, built-in press feedback) — replaces the bespoke
+    // Pressable+Container button.
+    return AppButton.ghost(
+      text: label,
+      icon: Icon(Icons.check_circle_outline_rounded, size: 17, color: ffTheme.primaryText),
+      textStyle: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w700),
+      width: double.infinity,
+      onPressed: () async {
+        await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            // Corner comes from the shared dialogTheme (radiusXl) — no bespoke 20.
             title: const Text('עדכון סטטוס', textAlign: TextAlign.center),
             content: Text('לעדכן: "$label"?', textAlign: TextAlign.center),
             actionsAlignment: MainAxisAlignment.center,
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
-              ElevatedButton(
-                onPressed: () {
+              // The confirm is the dialog's single primary — the shared green CTA.
+              AppButton(
+                text: 'אישור',
+                height: 48,
+                color: AppColors.primary,
+                textStyle: ffTheme.titleSmall,
+                onPressed: () async {
                   HapticFeedback.lightImpact();
                   Navigator.pop(ctx);
                   onConfirm();
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                child: const Text('אישור'),
               ),
             ],
           ),
         );
       },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        decoration: BoxDecoration(
-          color: ffTheme.accent1,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle_outline_rounded, size: 17, color: ffTheme.primary),
-            const SizedBox(width: 8),
-            Text(label, style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-          ],
-        ),
-      ),
     ).animate().fadeIn(delay: 440.ms);
   }
 }
@@ -770,7 +790,9 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
       // border as a "ready" tell, otherwise the soft hairline.
       decoration: ffTheme.cardDecoration(
         radius: ffTheme.radiusMd,
-        borderColor: allDone ? ffTheme.primary.withValues(alpha: 0.4) : null,
+        // "Ready" = a success tell → the brand green border (green is sanctioned
+        // for success confirmation), not a washed ink line.
+        borderColor: allDone ? ffTheme.brandAccent.withValues(alpha: 0.45) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -780,7 +802,7 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
             button: true,
             label: _expanded ? 'צמצום רשימת המשימות' : 'הרחבת רשימת המשימות',
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
               onTap: () {
                 HapticFeedback.lightImpact();
                 setState(() => _expanded = !_expanded);
@@ -792,7 +814,8 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
                     Icon(
                       allDone ? Icons.checklist_rtl_rounded : Icons.fact_check_outlined,
                       size: 22,
-                      color: ffTheme.primary,
+                      // Green only once everything is done (success confirmation).
+                      color: allDone ? ffTheme.brandAccent : ffTheme.primary,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -803,7 +826,8 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
                           Text(
                             allDone ? 'הכל מוכן למעבר ✓' : 'הושלמו $doneCount מתוך ${_tasks.length}',
                             style: ffTheme.labelSmall.copyWith(
-                              color: allDone ? ffTheme.primary : ffTheme.secondaryText,
+                              // AA-safe green for the success line; muted otherwise.
+                              color: allDone ? ffTheme.brandAccentText : ffTheme.secondaryText,
                               fontWeight: allDone ? FontWeight.w700 : FontWeight.w500,
                             ),
                           ),
@@ -829,7 +853,7 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
                 children: [
                   for (final t in _tasks)
                     InkWell(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                       onTap: () => _toggleChecklistItem(t.key),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -838,8 +862,11 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
                             Checkbox(
                               value: _isChecklistDone(t.key),
                               onChanged: (_) => _toggleChecklistItem(t.key),
-                              activeColor: ffTheme.primary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              // Checked = active state → brand green; the check glyph
+                              // uses the on-green ink so it survives the lifted dark fill.
+                              activeColor: ffTheme.brandAccent,
+                              checkColor: ffTheme.onSaving,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
                               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               visualDensity: VisualDensity.compact,
                             ),

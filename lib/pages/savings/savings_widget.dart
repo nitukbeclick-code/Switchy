@@ -13,6 +13,7 @@ import '../../services/analytics_service.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/saving_pill.dart';
+import '../../widgets/price_text.dart';
 
 /// Card entrance for the dashboard stack: the fade always plays, but the
 /// upward settle (a transform) is dropped when the OS asks for reduced motion
@@ -269,14 +270,16 @@ class _HeroFigure extends StatelessWidget {
                       size: 22, color: ffTheme.savingText),
                   const SizedBox(width: 6),
                 ],
-                Text(
+                PriceText(
                   hasBill ? '₪$value' : '₪—',
                   // The hero count-up IS a stat headline numeral → sourced from the
                   // numeric scale (Rubik / w800 / tabular figures), the same token
                   // the wallet hero uses, so every savings hero reads identically.
                   // The genuine deltas (the prior 22px size + the VALUE-green
                   // colour, with a muted dark dash for the placeholder) ride via
-                  // copyWith. TRUTH-ONLY: the real $value figure is unchanged.
+                  // copyWith. Rendered through PriceText so the ₪+digits run is
+                  // bidi-pinned (LTR isolate) inside the RTL page. TRUTH-ONLY:
+                  // the real $value figure is unchanged.
                   style: ffTheme.numericLarge.copyWith(
                       fontSize: 22,
                       color: hasBill ? ffTheme.savingText : ffTheme.secondaryText),
@@ -330,16 +333,19 @@ class _PersonalizeCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 22),
+                // Contrast-aware ink ON the solid-green ACTION fill: white on the
+                // light green-600, near-black on the lifted dark green-400 —
+                // pinned Colors.white went ~1.7:1 in dark mode.
+                Icon(Icons.receipt_long_rounded, color: ffTheme.onSaving, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'עדכנו את החשבונות שלכם לחישוב מדויק',
                     style: ffTheme.titleSmall.copyWith(
-                        color: Colors.white, fontWeight: FontWeight.w700),
+                        color: ffTheme.onSaving, fontWeight: FontWeight.w700),
                   ),
                 ),
-                const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 14),
+                Icon(Icons.arrow_back_ios_rounded, color: ffTheme.onSaving, size: 14),
               ],
             ),
           ),
@@ -435,14 +441,14 @@ class _RealizedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // "Already saved" is a realised win — render it in the green ACTION tint so
-    // it reads as money in the bank, distinct from the amber "potential" figures.
-    // The figure itself uses the AA-safe green text token (the fill hue is too
-    // light as small text); the surface/icon use the brand green.
+    // "Already saved" is a realised win — a SUCCESS confirmation, so it earns
+    // the designed VALUE tint token ([brandAccentTint], not a hand-mixed alpha
+    // wash) with a green hairline. The figure itself uses the AA-safe green
+    // text token (the fill hue is too light as small text).
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.brandAccent.withValues(alpha: 0.08),
+        color: ffTheme.brandAccentTint,
         borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
       ),
@@ -452,7 +458,9 @@ class _RealizedCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: ffTheme.brandAccent.withValues(alpha: 0.14),
+              // Card-surface medallion so the tile stays visible ON the tint
+              // (tint-on-tint would vanish) — resolves in dark too.
+              color: ffTheme.secondaryBackground,
               borderRadius: BorderRadius.circular(ffTheme.radiusCard),
             ),
             child: Icon(Icons.savings_rounded, color: ffTheme.brandAccent, size: 22),
@@ -508,8 +516,9 @@ class _TopOpportunityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final savingText =
         personalized ? 'חיסכון של ₪$saving בשנה' : 'חיסכון מוערך של ~₪$saving בשנה';
-    // The headline opportunity is a VALUE moment — wash it in the amber savings
-    // tint with a matching hairline so the figure reads as money, not chrome.
+    // The headline opportunity is a VALUE moment — a calm card surface with a
+    // green hairline, so the SavingPill inside carries the green (a full green
+    // wash under the pill made the pill's own tint disappear, tint-on-tint).
     return Semantics(
       button: true,
       label: 'ההזדמנות הכי גדולה: $categoryName, $savingText. הצג מסלול',
@@ -521,10 +530,9 @@ class _TopOpportunityCard extends StatelessWidget {
           splashColor: ffTheme.saving.withValues(alpha: 0.12),
           child: Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ffTheme.saving.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-              border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
+            decoration: ffTheme.cardDecoration(
+              radius: ffTheme.radiusCard,
+              borderColor: ffTheme.brandAccent.withValues(alpha: 0.4),
             ),
             child: Row(
               children: [
@@ -532,7 +540,8 @@ class _TopOpportunityCard extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.18),
+                    // The designed VALUE tint token — not a hand-mixed alpha.
+                    color: ffTheme.brandAccentTint,
                     borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   ),
                   child: Icon(Icons.rocket_launch_rounded, size: 24, color: ffTheme.savingDark),
@@ -585,18 +594,23 @@ class _PotentialDonutCard extends StatelessWidget {
   final bool personalized;
   final AppTheme ffTheme;
 
-  // A formal monochrome ramp (ink → grey → light) so multi-category slices stay
-  // legible in greyscale without any colour. Assigned by index; wraps cleanly if
-  // there are ever more slices than ramp steps.
-  static const List<Color> _ramp = [
-    Color(0xFF111827), // ink black
-    Color(0xFF374151), // slate
-    Color(0xFF6B7280), // grey
-    Color(0xFF9CA3AF), // light grey
-    Color(0xFFCBD2D9), // pale grey
-  ];
+  // A formal monochrome ramp (full ink → fading steps) so multi-category slices
+  // stay legible in greyscale without any colour. Derived from the THEME ink
+  // token (no hex literals in feature code) so the ramp also resolves in dark
+  // mode — the old const near-black steps vanished against the dark card.
+  // Assigned by index; wraps cleanly if there are ever more slices than steps.
+  List<Color> _ramp(AppTheme t) => [
+        t.primary,
+        t.primary.withValues(alpha: 0.76),
+        t.primary.withValues(alpha: 0.56),
+        t.primary.withValues(alpha: 0.38),
+        t.primary.withValues(alpha: 0.22),
+      ];
 
-  Color _sliceColor(int i, CategorySaving cs) => _ramp[i % _ramp.length];
+  Color _sliceColor(AppTheme t, int i) {
+    final ramp = _ramp(t);
+    return ramp[i % ramp.length];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -641,7 +655,7 @@ class _PotentialDonutCard extends StatelessWidget {
                       final cs = opportunities[i];
                       sections.add(PieChartSectionData(
                         value: cs.annualSaving.toDouble(),
-                        color: _sliceColor(i, cs),
+                        color: _sliceColor(ffTheme, i),
                         // Radius eases up as the sweep completes for a subtle grow.
                         radius: 20 + 6 * t,
                         showTitle: false,
@@ -664,13 +678,13 @@ class _PotentialDonutCard extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(personalized ? '₪$total' : '~₪$total',
+                              PriceText(personalized ? '₪$total' : '~₪$total',
                                   // Sourced from the numeric scale (Rubik +
                                   // tabular figures); the donut-hole total sits
                                   // below the numericMedium size, so the genuine
                                   // delta (18px / w800 / VALUE-green) rides via
-                                  // copyWith. Tabular keeps the total aligned
-                                  // with the savings-category style.
+                                  // copyWith. PriceText pins the ₪+digits run
+                                  // LTR inside the RTL page (bidi-safe money).
                                   style: ffTheme.numericMedium.copyWith(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
@@ -704,7 +718,7 @@ class _PotentialDonutCard extends StatelessWidget {
                         padding: EdgeInsets.only(
                             bottom: i == opportunities.length - 1 ? 0 : 8),
                         child: _LegendRow(
-                          color: _sliceColor(i, opportunities[i]),
+                          color: _sliceColor(ffTheme, i),
                           name: categoryById(opportunities[i].categoryId)?.name ??
                               opportunities[i].categoryId,
                           amount: opportunities[i].annualSaving,
@@ -822,7 +836,9 @@ class _ProgressCard extends StatelessWidget {
                     getTooltipColor: (_) => ffTheme.primaryDark,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
                       '₪${rod.toY.round()}',
-                      ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                      // The tooltip surface is [primaryDark] (true black in both
+                      // themes), so the label reads in the white token.
+                      ffTheme.labelMedium.copyWith(color: ffTheme.white, fontWeight: FontWeight.w800),
                     ),
                   ),
                 ),
@@ -925,10 +941,11 @@ class _ValueTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(text,
+        PriceText(text,
             // Stat numeral sourced from the numeric scale (Rubik + tabular);
             // it sits below numericMedium's size, so the 17px / w800 / per-tag
-            // colour delta rides via copyWith.
+            // colour delta rides via copyWith. PriceText keeps the ₪+digits
+            // run bidi-stable inside the RTL page.
             style: ffTheme.numericMedium.copyWith(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
@@ -956,6 +973,9 @@ class _EstimateChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: ffTheme.accent2,
         borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+        // Neutral-chip language: surface tint + 1px hairline (a bare fill read
+        // as a smudge rather than a chip).
+        border: Border.all(color: ffTheme.lineColor),
       ),
       child: Text('הערכה',
           style: ffTheme.labelSmall.copyWith(
@@ -990,7 +1010,8 @@ class _CategoryRow extends StatelessWidget {
         ? 'אפשר לחסוך ${personalized ? '' : 'כ'}₪${saving.annualSaving} בשנה'
         : has
             ? 'מחיר תחרותי'
-            : 'הזן חשבון';
+            // Plural imperative — matches the app's voice ("עדכנו", "גלו").
+            : 'הזינו חשבון';
     return Semantics(
       button: true,
       label: '$name. $hint',
@@ -1052,7 +1073,7 @@ class _CategoryRow extends StatelessWidget {
                 else
                   Row(
                     children: [
-                      Text('הזן חשבון',
+                      Text('הזינו חשבון',
                           style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                       Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
                     ],

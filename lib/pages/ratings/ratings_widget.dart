@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/app_sheet.dart';
@@ -257,7 +256,10 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
           _scrollToComposer();
         },
         backgroundColor: t.brandAccent,
-        foregroundColor: Colors.white,
+        // Contrast-aware ink ON the solid-green fill: white on the light
+        // green-600, near-black on the lifted dark green-400 (pinned white
+        // fell to ~1.7:1 in dark mode).
+        foregroundColor: t.onSaving,
         icon: const Icon(Icons.rate_review_rounded),
         label: const Text('כתבו ביקורת'),
       ),
@@ -275,7 +277,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             // contrast in BOTH themes — the theme-aware getter would flip to
             // off-white on dark and strand the white-on-ink TabBar.
             backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+            foregroundColor: t.white,
             pinned: true,
             floating: true,
             snap: true,
@@ -286,11 +288,14 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               indicatorColor: t.brandAccent,
               indicatorWeight: 3,
               indicatorSize: TabBarIndicatorSize.label,
-              labelColor: Colors.white,
-              unselectedLabelColor: Colors.white60,
+              // The header is CONST ink in both themes (see backgroundColor
+              // above), so white-token ink is the correct foreground here.
+              labelColor: t.white,
+              unselectedLabelColor: t.white.withValues(alpha: 0.6),
               isScrollable: true,
-              labelStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700),
-              unselectedLabelStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w500),
+              // Title-scale token (Rubik 13); weight deltas via copyWith.
+              labelStyle: t.titleSmall.copyWith(fontWeight: FontWeight.w700, color: t.white),
+              unselectedLabelStyle: t.titleSmall.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
 
@@ -318,11 +323,17 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Icon(Icons.leaderboard_rounded, color: t.brandAccent, size: 24),
+                        ExcludeSemantics(
+                            child: Icon(Icons.leaderboard_rounded, color: t.brandAccent, size: 24)),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text('לוח מנצחים',
-                              style: t.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
+                          // Section heading — announced so screen-reader users
+                          // can jump between the page's sections.
+                          child: Semantics(
+                            header: true,
+                            child: Text('לוח מנצחים',
+                                style: t.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
+                          ),
                         ),
                       ],
                     ),
@@ -418,8 +429,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               TextButton(
                                 onPressed: () => _editReview(provider),
                                 style: TextButton.styleFrom(
-                                  foregroundColor: t.brandAccent,
+                                  // AA-safe green for small link text (the
+                                  // fill hue only reaches ~3:1 at this size).
+                                  foregroundColor: t.brandAccentText,
                                   visualDensity: VisualDensity.compact,
+                                  minimumSize: const Size(kMinTapTarget, kMinTapTarget),
                                   textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w800),
                                 ),
                                 child: const Text('דרגו ראשונים'),
@@ -477,7 +491,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: t.brandAccent.withValues(alpha: 0.12),
+                              // The designed VALUE/active tint token — not a
+                              // hand-mixed alpha wash (dark-parity built in).
+                              color: t.brandAccentTint,
                               borderRadius: BorderRadius.circular(t.radiusSm),
                             ),
                             child: Icon(Icons.rate_review_rounded, color: t.brandAccent, size: 18),
@@ -618,36 +634,24 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       Builder(builder: (context) {
                         final canSubmit = _selectedProvider != null && _subRatings.values.any((v) => v > 0);
                         final editing = _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!);
-                        return AnimatedContainer(
-                          duration: t.motionFast,
-                          curve: t.easeOut,
-                          decoration: BoxDecoration(
-                            gradient: canSubmit ? t.accentGradient : null,
-                            color: canSubmit ? null : t.alternate.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(t.radiusMd),
-                            boxShadow: canSubmit ? t.shadowAccent : null,
-                          ),
-                          child: ElevatedButton.icon(
-                            onPressed: canSubmit
-                                ? () {
-                                    HapticFeedback.mediumImpact();
-                                    _submitReview(appState);
-                                  }
-                                : null,
-                            icon: const Icon(Icons.send_rounded, size: 18),
-                            label: Text(editing ? 'עדכון ביקורת' : 'שליחת ביקורת'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.transparent,
-                              disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
-                              shadowColor: Colors.transparent,
-                              elevation: 0,
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
-                              textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
-                            ),
-                          ),
+                        // The shared primary-CTA button (green ACTION fill,
+                        // contrast-aware label ink, dimmed while locked)
+                        // replaces the hand-rolled gradient ElevatedButton —
+                        // whose pinned white label went ~1.7:1 on the lifted
+                        // dark-mode green.
+                        return AppButton(
+                          text: editing ? 'עדכון ביקורת' : 'שליחת ביקורת',
+                          icon: Icon(Icons.send_rounded, size: 18, color: t.onSaving),
+                          color: AppColors.primary,
+                          enabled: canSubmit,
+                          width: double.infinity,
+                          height: 50,
+                          textStyle: t.titleLarge,
+                          borderRadius: BorderRadius.circular(t.radiusMd),
+                          onPressed: () async {
+                            HapticFeedback.mediumImpact();
+                            _submitReview(appState);
+                          },
                         );
                       }),
                     ],
@@ -669,14 +673,20 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.person_rounded, color: t.primary, size: 20),
+                            ExcludeSemantics(
+                                child: Icon(Icons.person_rounded, color: t.primary, size: 20)),
                             const SizedBox(width: 8),
-                            Text('הדירוגים שלי', style: t.titleLarge),
+                            Semantics(
+                                header: true,
+                                child: Text('הדירוגים שלי', style: t.titleLarge)),
                             const Spacer(),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                  color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
+                                  color: t.accent1,
+                                  borderRadius: BorderRadius.circular(t.radiusPill),
+                                  // Neutral-chip hairline.
+                                  border: Border.all(color: t.lineColor)),
                               child: Text('${appState.userReviews.length}',
                                   style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
                             ),
@@ -718,14 +728,20 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.people_alt_rounded, color: t.primary, size: 20),
+                            ExcludeSemantics(
+                                child: Icon(Icons.people_alt_rounded, color: t.primary, size: 20)),
                             const SizedBox(width: 8),
-                            Text('ביקורות מהקהילה', style: t.titleLarge),
+                            Semantics(
+                                header: true,
+                                child: Text('ביקורות מהקהילה', style: t.titleLarge)),
                             const Spacer(),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                  color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
+                                  color: t.accent1,
+                                  borderRadius: BorderRadius.circular(t.radiusPill),
+                                  // Neutral-chip hairline.
+                                  border: Border.all(color: t.lineColor)),
                               child: Text('${_remoteReviews.values.fold(0, (s, l) => s + l.length)}',
                                   style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
                             ),
@@ -800,19 +816,24 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
+          // Flat ink hero — resting content carries no float under the
+          // one-elevation story.
           gradient: t.brandGradient,
           borderRadius: BorderRadius.circular(t.radiusCard),
-          boxShadow: t.shadowLifted,
         ),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.emoji_events_rounded, color: AppColors.secondary, size: 18),
+                const ExcludeSemantics(
+                    child: Icon(Icons.emoji_events_rounded, color: AppColors.secondary, size: 18)),
                 const SizedBox(width: 6),
-                Text('המדורגים הגבוה ביותר',
-                    style: t.titleSmall.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w700)),
+                Semantics(
+                  header: true,
+                  child: Text('שלושת המובילים',
+                      style: t.titleSmall.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w700)),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -930,13 +951,20 @@ class _SortControl extends StatelessWidget {
           minimumSize: const WidgetStatePropertyAll(Size(0, kMinTapTarget)),
           tapTargetSize: MaterialTapTargetSize.padded,
           textStyle: WidgetStatePropertyAll(t.labelSmall.copyWith(fontWeight: FontWeight.w700)),
+          // ONE chip language: ACTIVE = green tint bg + AA green ink + green
+          // hairline; resting = surface + hairline + muted ink. (The old
+          // black-filled selected segment broke the no-solid-ink-chips rule.)
           backgroundColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected) ? AppColors.primary : t.cardSurface,
+            (states) => states.contains(WidgetState.selected) ? t.brandAccentTint : t.cardSurface,
           ),
           foregroundColor: WidgetStateProperty.resolveWith(
-            (states) => states.contains(WidgetState.selected) ? Colors.white : t.secondaryText,
+            (states) => states.contains(WidgetState.selected) ? t.brandAccentText : t.secondaryText,
           ),
-          side: WidgetStatePropertyAll(BorderSide(color: t.alternate)),
+          side: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? BorderSide(color: t.brandAccent)
+                : BorderSide(color: t.alternate),
+          ),
         ),
       ),
     );
@@ -965,10 +993,11 @@ class _LeaderboardSkeleton extends StatelessWidget {
               borderRadius: BorderRadius.circular(t.radiusMd),
               border: Border.all(color: t.alternate.withValues(alpha: 0.4)),
             ),
-            child: Shimmer.fromColors(
-              baseColor: const Color(0xFFE9EDF0),
-              highlightColor: const Color(0xFFF7F9FA),
-              child: const Row(
+            // The shared theme-aware shimmer (RTL sweep, dark-parity tones,
+            // reduced-motion safe) — replaces the raw light-only hex shimmer
+            // that glared on the dark card.
+            child: const SkeletonShimmer(
+              child: Row(
                 children: [
                   SkeletonBox(width: 30, height: 30, radius: 15),
                   SizedBox(width: 10),
@@ -1061,8 +1090,11 @@ class _LeaderboardCard extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
+                      // Title-scale token (Rubik 13); w800 + tabular via copyWith.
                       child: Text('${rank + 1}',
-                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: t.primaryText)),
+                          style: t.titleSmall.copyWith(
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1214,7 +1246,16 @@ class _PodiumItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final medalColor = rank == 1 ? t.secondary : rank == 2 ? const Color(0xFFE5E0D5) : const Color(0xFFFFE0CC);
+    // The podium rides on the PERMANENTLY-dark ink hero (brandGradient is ink
+    // in BOTH themes), so its steps + step-ink resolve through the LIGHT token
+    // set — the theme-aware getters flipped to dark slate fills with black
+    // text in dark mode (invisible). Monochrome neutral ramp, no hex medals.
+    const lt = AppTheme.light;
+    final medalColor = rank == 1
+        ? lt.secondary
+        : rank == 2
+            ? lt.lineColor
+            : lt.alternate;
     final rankLabel = rank == 1 ? 'מקום ראשון' : rank == 2 ? 'מקום שני' : 'מקום שלישי';
     return Semantics(
       button: true,
@@ -1227,31 +1268,45 @@ class _PodiumItem extends StatelessWidget {
             ExcludeSemantics(
               child: Icon(Icons.emoji_events_rounded,
                   size: 22,
-                  color: rank == 1 ? t.saving : rank == 2 ? Colors.white70 : Colors.white54),
+                  color: rank == 1
+                      ? t.saving
+                      : t.white.withValues(alpha: rank == 2 ? 0.7 : 0.54)),
             ),
             const SizedBox(height: 4),
             ExcludeSemantics(
               child: Container(
                 padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                // Light card-token disc behind the provider logo (logos are
+                // drawn for light surfaces) — on the always-dark hero.
+                decoration: BoxDecoration(
+                    color: lt.secondaryBackground, shape: BoxShape.circle),
                 child: LogoWidget(provider: provider, size: 34),
               ),
             ),
             const SizedBox(height: 4),
             Text(avg.toStringAsFixed(1),
-                style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                // Numeral on the ink hero: title-scale token + tabular figures;
+                // white-token ink (the hero stays ink in both themes).
+                style: t.titleSmall.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: t.white,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
             const SizedBox(height: 4),
             Container(
               width: 80,
               height: height,
               decoration: BoxDecoration(
                 color: medalColor,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusSm)),
               ),
               child: Center(
                 child: Text(
                   provider.length > 6 ? provider.substring(0, 6) : provider,
-                  style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: t.primaryDark),
+                  // Light-ink on the light step so it stays readable in BOTH
+                  // themes (the theme getter went black-on-slate in dark).
+                  style: lt.titleSmall.copyWith(
+                      fontSize: 10, fontWeight: FontWeight.w700, color: lt.primaryDark),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -1311,7 +1366,9 @@ class _VerifiedBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsetsDirectional.only(start: 6, end: 8, top: 3, bottom: 3),
         decoration: BoxDecoration(
-          color: t.brandAccent.withValues(alpha: 0.10),
+          // The designed green tint token + green hairline — the ACTIVE/VALUE
+          // chip language (was a hand-mixed alpha wash).
+          color: t.brandAccentTint,
           borderRadius: BorderRadius.circular(t.radiusPill),
           border: Border.all(color: t.brandAccent.withValues(alpha: 0.30)),
         ),
@@ -1322,7 +1379,8 @@ class _VerifiedBadge extends StatelessWidget {
             const SizedBox(width: 4),
             Text('לקוח מאומת',
                 style: t.labelSmall.copyWith(
-                  color: t.brandAccent,
+                  // AA-safe green for tiny text (the fill hue is ~3:1 here).
+                  color: t.brandAccentText,
                   fontWeight: FontWeight.w800,
                   fontSize: 10.5,
                 )),

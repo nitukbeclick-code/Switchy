@@ -11,8 +11,11 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../widgets/whatsapp_button.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/provider_ratings.dart';
@@ -353,8 +356,10 @@ class _HeroHeader extends StatelessWidget {
                               ? Icons.star_half_rounded
                               : Icons.star_outline_rounded,
                       size: 18,
-                      // Amber stars on the now-white header → dark amber (AA).
-                      color: ffTheme.savingText,
+                      // Rating is DATA → monochrome ink stars (green stays
+                      // reserved for actions/savings; the star shapes already
+                      // carry the filled/empty read).
+                      color: ffTheme.primaryText,
                     );
                   }),
                   const SizedBox(width: 6),
@@ -469,17 +474,19 @@ class _BestMatchCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    // Match score is an ACTION signal → green, legible in both
-                    // themes (white ink on green).
-                    gradient: ffTheme.accentGradient,
+                    // Match score is an ACTIVE state → the ONE chip language:
+                    // green TINT + green ink + green 1px border (solid green
+                    // fills are reserved for CTAs; the old white-on-gradient
+                    // also failed AA on the lifted dark green).
+                    color: ffTheme.brandAccentTint,
                     borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                    border: Border.all(color: ffTheme.brandAccent),
                   ),
                   child: Text(
                     '${match.scorePct}% · ${match.label}',
                     style: ffTheme.labelSmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 11),
+                        color: ffTheme.brandAccentText,
+                        fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -500,14 +507,12 @@ class _BestMatchCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
+                    // Focal price of the recommendation — money goes through
+                    // PriceText (bidi-safe LTR isolate + tabular figures), ink.
+                    PriceText(
                       '₪${plan.priceText}',
-                      // Focal price of the recommendation — tabular figures keep
-                      // it crisp and aligned with the app's ₪ figure treatment.
-                      style: ffTheme.titleLarge.copyWith(
-                          color: ffTheme.primary,
-                          fontWeight: FontWeight.w800,
-                          fontFeatures: const [FontFeature.tabularFigures()]),
+                      style: ffTheme.titleLarge
+                          .copyWith(fontWeight: FontWeight.w800),
                     ),
                     Text(
                       unit,
@@ -523,7 +528,8 @@ class _BestMatchCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: ffTheme.primary.withValues(alpha: 0.06),
+                  // Neutral tint token (was a raw ink-alpha wash).
+                  color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: Row(
@@ -635,8 +641,9 @@ class _ProviderActions extends StatelessWidget {
           child: _ActionButton(
             icon: Icons.chat_rounded,
             label: 'וואטסאפ',
-            // WhatsApp green is the brand-accent ACTION colour here.
-            primary: true,
+            // Quiet tile like its siblings — the full-width WhatsAppButton just
+            // below is this screen's ONE green CTA; a second green fill here
+            // competed with it.
             ffTheme: ffTheme,
             onTap: () {
               // Haptic fires centrally in _ActionButton's InkWell.
@@ -656,18 +663,19 @@ class _ActionButton extends StatelessWidget {
     required this.label,
     required this.ffTheme,
     required this.onTap,
-    this.primary = false,
   });
 
   final IconData icon;
   final String label;
   final AppTheme ffTheme;
   final VoidCallback onTap;
-  final bool primary;
 
   @override
   Widget build(BuildContext context) {
-    final fg = primary ? Colors.white : ffTheme.primaryText;
+    // All three quick-action tiles share the quiet secondary treatment (white
+    // surface + hairline + ink) — the screen's ONE green CTA is the full-width
+    // WhatsAppButton below the row.
+    final fg = ffTheme.primaryText;
     return Semantics(
       button: true,
       label: label,
@@ -686,12 +694,9 @@ class _ActionButton extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: kMinTapTarget),
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
             decoration: BoxDecoration(
-              gradient: primary ? ffTheme.accentGradient : null,
-              color: primary ? null : ffTheme.cardSurface,
+              color: ffTheme.cardSurface,
               borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-              border: Border.all(
-                  color: primary ? Colors.transparent : ffTheme.alternate),
-              boxShadow: primary ? ffTheme.shadowAccent : null,
+              border: Border.all(color: ffTheme.alternate),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -789,27 +794,19 @@ class _RatingPanel extends StatelessWidget {
             );
           }),
           const SizedBox(height: 6),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onRate,
-              icon: Icon(
-                rating.ratedByUser
-                    ? Icons.edit_rounded
-                    : Icons.star_rounded,
-                size: 18,
-              ),
-              label: Text(rating.ratedByUser
-                  ? 'עדכנו את הדירוג'
-                  : 'דרגו את ${rating.provider}'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: ffTheme.primary,
-                side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
+          // Shared secondary button (white fill + hairline + ink) — replaces
+          // the bespoke OutlinedButton with its ink-alpha border.
+          AppButton.secondary(
+            text: rating.ratedByUser
+                ? 'עדכנו את הדירוג'
+                : 'דרגו את ${rating.provider}',
+            icon: Icon(
+              rating.ratedByUser ? Icons.edit_rounded : Icons.star_rounded,
+              size: 18,
             ),
+            width: double.infinity,
+            height: 48,
+            onPressed: () async => onRate(),
           ),
         ],
       ),
@@ -896,17 +893,15 @@ class _PlanCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
+                      // Neutral data chip: tint surface + 1px hairline + ink.
                       color: ffTheme.accent1,
                       borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                      border: Border.all(
-                          color: ffTheme.primary.withValues(alpha: 0.2)),
+                      border: Border.all(color: ffTheme.lineColor),
                     ),
                     child: Text(
                       '${match!.scorePct}% התאמה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11),
+                          color: ffTheme.primary, fontWeight: FontWeight.w700),
                     ),
                   ),
               ],
@@ -914,10 +909,12 @@ class _PlanCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                Text(
+                // Money goes through PriceText (bidi-safe LTR isolate +
+                // tabular figures), ink.
+                PriceText(
                   '₪${plan.priceText} $unit',
-                  style: ffTheme.titleSmall.copyWith(
-                      color: ffTheme.primary, fontWeight: FontWeight.w700),
+                  style: ffTheme.titleSmall
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
                 if (plan.hasPromo) ...[
                   const SizedBox(width: 8),
@@ -953,7 +950,7 @@ class _PlanCard extends StatelessWidget {
                     child: Text(
                       '${e.key}: ${e.value}',
                       style: ffTheme.labelSmall
-                          .copyWith(color: ffTheme.primaryText, fontSize: 11),
+                          .copyWith(color: ffTheme.primaryText),
                     ),
                   );
                 }).toList(),
@@ -970,8 +967,8 @@ class _PlanCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       feeEntries.map((e) => '${e.key} ${e.value}').join(' · '),
-                      style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.secondaryText, fontSize: 11),
+                      style: ffTheme.labelSmall
+                          .copyWith(color: ffTheme.secondaryText),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -990,8 +987,8 @@ class _PlanCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       benefit,
-                      style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primaryText, fontSize: 11),
+                      style: ffTheme.labelSmall
+                          .copyWith(color: ffTheme.primaryText),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1033,7 +1030,8 @@ class _CommunityCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: ffTheme.primary.withValues(alpha: 0.1),
+              // Neutral avatar medallion (tint token, was a raw ink-alpha).
+              color: ffTheme.accent1,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -1132,14 +1130,15 @@ class _StreetPricePanelState extends State<_StreetPricePanel> {
               Icon(Icons.storefront_rounded, color: ffTheme.primary, size: 18),
               const SizedBox(width: 6),
               Expanded(child: Text('מחיר הרחוב', style: ffTheme.titleSmall)),
-              // VALUE chip — amber — only when at least one category beats catalogue.
+              // VALUE chip — the green tint token — only when at least one
+              // category genuinely beats the catalogue.
               if (aggregates.any((a) => a.beatsCatalogue))
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                    color: ffTheme.brandAccentTint,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   ),
                   child: Text(
                     'נמוך מהמחירון',
@@ -1192,26 +1191,20 @@ class _StreetPricePanelState extends State<_StreetPricePanel> {
             }),
 
           const SizedBox(height: 14),
-          SizedBox(
+          // Shared secondary button (white fill + hairline + ink) — replaces
+          // the bespoke OutlinedButton with its ink-alpha border.
+          AppButton.secondary(
+            text: 'דווח/י את המחיר שלך',
+            icon: const Icon(Icons.add_chart_rounded, size: 18),
             width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openReportSheet,
-              icon: const Icon(Icons.add_chart_rounded, size: 18),
-              label: const Text('דווח/י את המחיר שלך'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: ffTheme.primary,
-                side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(ffTheme.radiusCard)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
+            height: 48,
+            onPressed: () async => _openReportSheet(),
           ),
           const SizedBox(height: 8),
           Text(
             'הדיווחים אנונימיים ומשמשים רק לחישוב ממוצע. מוצג רק כשיש מספיק דיווחים אמיתיים.',
-            style: ffTheme.labelSmall.copyWith(
-                color: ffTheme.secondaryText, fontSize: 11, height: 1.4),
+            style: ffTheme.labelSmall
+                .copyWith(color: ffTheme.secondaryText, height: 1.4),
           ),
         ],
       ),
@@ -1258,14 +1251,15 @@ class _StreetPriceRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
+                  // Money goes through PriceText (bidi-safe + tabular), ink.
+                  PriceText(
                     '₪${agg.typicalText}',
-                    style: ffTheme.titleMedium.copyWith(
-                        color: ffTheme.primary, fontWeight: FontWeight.w800),
+                    style: ffTheme.titleMedium
+                        .copyWith(fontWeight: FontWeight.w800),
                   ),
                   Text('בממוצע לחודש',
                       style: ffTheme.labelSmall
-                          .copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                          .copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ],
@@ -1285,33 +1279,17 @@ class _StreetPriceRow extends StatelessWidget {
               if (agg.hasSpread)
                 _MiniChip(
                   icon: Icons.straighten_rounded,
-                  label: '₪${agg.lowText}–₪${agg.highText}',
+                  // FSI/PDI isolate keeps the ₪-range digits in a stable order
+                  // inside the RTL row (money bidi-safety).
+                  label: '\u{2068}₪${agg.lowText}–₪${agg.highText}\u{2069}',
                   ffTheme: ffTheme,
                 ),
-              // VALUE: street beats catalogue → amber, the honest "pay less" win.
+              // VALUE: street beats catalogue → the ONE canonical SavingPill
+              // treatment (green tint + glyph + tabular figures).
               if (saving != null)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.trending_down_rounded,
-                          size: 13, color: ffTheme.savingText),
-                      const SizedBox(width: 4),
-                      Text(
-                        '₪$saving מתחת למחירון (₪${agg.catalogueLowestText})',
-                        style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.savingText,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11),
-                      ),
-                    ],
-                  ),
+                SavingPill(
+                  icon: Icons.trending_down_rounded,
+                  text: '₪$saving מתחת למחירון (₪${agg.catalogueLowestText})',
                 ),
             ],
           ),
@@ -1344,8 +1322,7 @@ class _MiniChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: ffTheme.labelSmall
-                .copyWith(color: ffTheme.secondaryText, fontSize: 11),
+            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
           ),
         ],
       ),
@@ -1393,7 +1370,6 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
   }
 
   void _submit() {
-    final ffTheme = widget.ffTheme;
     final catId = _catId;
     final price = double.tryParse(_priceCtrl.text.trim().replaceAll(',', '.'));
     if (catId == null) {
@@ -1432,13 +1408,9 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
     final msg = needed > 0
         ? 'תודה! נדרשים עוד $needed דיווחים ב$catName כדי להציג מחיר רחוב.'
         : 'תודה! הדיווח נכלל במחיר הרחוב של $catName.';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        backgroundColor: ffTheme.primary,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    // Shared snackbar (the bespoke ffTheme.primary background rendered an
+    // off-white bar with white text in dark mode).
+    AppSnackBar.success(context, msg);
     Navigator.pop(context, true);
   }
 
@@ -1466,15 +1438,17 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
             const SizedBox(height: 16),
             Row(
               children: [
+                // Neutral icon medallion (accent1 + ink) — the shared icon-tile
+                // pattern; green stays reserved for actions/savings.
                 Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: ffTheme.brandAccent.withValues(alpha: 0.16),
+                    color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   ),
                   child: Icon(Icons.storefront_rounded,
-                      size: 22, color: ffTheme.brandAccent),
+                      size: 22, color: ffTheme.primary),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1511,6 +1485,9 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
                 children: _catIds.map((id) {
                   final selected = id == _catId;
                   final name = categoryById(id)?.name ?? id;
+                  // ONE chip language — ACTIVE = green TINT + green text +
+                  // green 1px border (was a black-filled chip with pinned
+                  // white, which the chip contract forbids).
                   return ChoiceChip(
                     label: Text(name),
                     selected: selected,
@@ -1520,14 +1497,16 @@ class _ReportPriceSheetState extends State<_ReportPriceSheet> {
                     }),
                     showCheckmark: false,
                     labelStyle: ffTheme.labelMedium.copyWith(
-                      color: selected ? Colors.white : ffTheme.primaryText,
+                      color: selected
+                          ? ffTheme.brandAccentText
+                          : ffTheme.primaryText,
                       fontWeight: FontWeight.w700,
                     ),
                     backgroundColor: ffTheme.background,
-                    selectedColor: AppColors.primary,
+                    selectedColor: ffTheme.brandAccentTint,
                     side: BorderSide(
                         color: selected
-                            ? Colors.transparent
+                            ? ffTheme.brandAccent
                             : ffTheme.alternate),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(ffTheme.radiusLg)),

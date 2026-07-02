@@ -158,21 +158,18 @@ class _ChatWidgetState extends State<ChatWidget> {
   Widget _buildTeamHeader(AppTheme ffTheme) {
     return Container(
       padding: EdgeInsets.all(ffTheme.space16),
-      decoration: BoxDecoration(
-        color: ffTheme.secondaryBackground,
-        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      // The shared card helper: surface + 1px hairline (lineColor), flat.
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: Row(
         children: [
           ExcludeSemantics(
+            // Neutral accent1 medallion — the shared icon-tile pattern.
             child: Container(
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: ffTheme.background,
+                color: ffTheme.accent1,
                 shape: BoxShape.circle,
-                border: Border.all(color: ffTheme.alternate),
               ),
               child: Icon(Icons.support_agent_rounded, size: 26, color: ffTheme.primaryText),
             ),
@@ -205,11 +202,8 @@ class _ChatWidgetState extends State<ChatWidget> {
     final step = appState.trackerStep;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: ffTheme.space16, vertical: ffTheme.space12),
-      decoration: BoxDecoration(
-        color: ffTheme.secondaryBackground,
-        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      // The shared card helper: surface + 1px hairline (lineColor), flat.
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: Row(
         children: [
           LogoWidget(provider: plan.provider, size: 36),
@@ -230,12 +224,13 @@ class _ChatWidgetState extends State<ChatWidget> {
           ),
           if (step >= 1 && step <= 4) ...[
             SizedBox(width: ffTheme.space8),
+            // Neutral chip in the one chip language: surface + hairline + ink.
             Container(
               padding: EdgeInsets.symmetric(horizontal: ffTheme.space12, vertical: ffTheme.space4),
               decoration: BoxDecoration(
                 color: ffTheme.background,
                 borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                border: Border.all(color: ffTheme.alternate),
+                border: Border.all(color: ffTheme.lineColor),
               ),
               child: Text('שלב $step מתוך 4',
                   style: ffTheme.labelSmall
@@ -267,11 +262,8 @@ class _ChatWidgetState extends State<ChatWidget> {
         child: Container(
           constraints: const BoxConstraints(minHeight: 56),
           padding: EdgeInsets.symmetric(horizontal: ffTheme.space16, vertical: ffTheme.space12),
-          decoration: BoxDecoration(
-            color: ffTheme.secondaryBackground,
-            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-            border: Border.all(color: ffTheme.alternate),
-          ),
+          // The shared card helper: surface + 1px hairline (lineColor), flat.
+          decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
           child: Row(
             children: [
               Icon(icon, size: 22, color: ffTheme.primaryText),

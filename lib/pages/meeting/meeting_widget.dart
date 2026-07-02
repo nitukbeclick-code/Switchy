@@ -432,19 +432,15 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 style: t.bodySmall.copyWith(color: t.secondaryText),
               ),
               const SizedBox(height: 14),
-              SizedBox(
+              // Secondary action = the shared white/outline AppButton variant
+              // (the green outline competed with the primary-CTA green).
+              AppButton.secondary(
+                text: 'בקשו שיחה חוזרת במקום',
+                icon: Icon(Icons.headset_mic_outlined, size: 18, color: t.primaryText),
+                onPressed: () async => context.pushNamed('Callback'),
                 width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.pushNamed('Callback'),
-                  icon: const Icon(Icons.headset_mic_outlined, size: 18),
-                  label: const Text('בקשו שיחה חוזרת במקום'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: t.brandAccent,
-                    side: BorderSide(color: t.brandAccent),
-                    minimumSize: const Size(double.infinity, 46),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusCard)),
-                  ),
-                ),
+                height: 48,
+                textStyle: t.labelLarge.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),
@@ -460,8 +456,9 @@ class _MeetingWidgetState extends State<MeetingWidget> {
         Center(
           child: TextButton(
             onPressed: () => context.goNamed('Home'),
+            // AA-safe green link ink (green 700 on light; lifted 400 on dark).
             child: Text('חזרה לדף הבית',
-                style: t.labelMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+                style: t.labelMedium.copyWith(color: t.brandAccentText, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -501,8 +498,9 @@ class _MeetingWidgetState extends State<MeetingWidget> {
         Center(
           child: TextButton(
             onPressed: () => context.goNamed('Home'),
+            // AA-safe green link ink.
             child: Text('חזרה לדף הבית',
-                style: t.labelMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+                style: t.labelMedium.copyWith(color: t.brandAccentText, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -649,7 +647,8 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             width: double.infinity,
             height: 56,
             color: AppColors.primary,
-            textStyle: t.titleMedium.copyWith(color: Colors.white),
+            // No pinned white — AppButton resolves the on-gradient label ink.
+            textStyle: t.titleMedium,
             // No token equals the bespoke 18 corner (radiusCard 12 / radiusSheet
             // 20 straddle it); radiusSheet is the nearest, preserving the generous
             // hero-CTA corner without forcing the tighter card radius.
@@ -670,10 +669,11 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
+      // Resting hero band — flat under the one-elevation-story rule (only
+      // sheets/FABs/sticky bars lift); structure comes from the ink wash itself.
       decoration: BoxDecoration(
         gradient: t.brandGradient,
         borderRadius: BorderRadius.circular(t.radiusCard),
-        boxShadow: t.shadowLifted,
       ),
       child: Row(
         children: [
@@ -749,13 +749,16 @@ class _MeetingWidgetState extends State<MeetingWidget> {
               constraints: const BoxConstraints(minHeight: kMinTapTarget),
               child: Center(
                 widthFactor: 1,
+                // ONE chip language — ACTIVE: green tint + green 1px border +
+                // AA green ink (solid green is reserved for CTAs); neutral:
+                // surface + hairline + ink.
                 child: AnimatedContainer(
                   duration: t.motionTooltip,
                   curve: t.easeOut,
                   decoration: BoxDecoration(
-                    color: active ? t.brandAccent : t.cardSurface,
+                    color: active ? t.brandAccentTint : t.cardSurface,
                     borderRadius: BorderRadius.circular(t.radiusPill),
-                    border: Border.all(color: active ? t.brandAccent : t.alternate),
+                    border: Border.all(color: active ? t.brandAccent : t.lineColor),
                   ),
                   padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
                   child: Row(
@@ -765,7 +768,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                       const SizedBox(width: 7),
                       Text(p,
                           style: t.labelMedium.copyWith(
-                            color: active ? Colors.white : t.primaryText,
+                            color: active ? t.brandAccentText : t.primaryText,
                             fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                           )),
                     ],
@@ -810,13 +813,15 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 });
               },
               haptic: false,
+              // ACTIVE chip = green tint + green border + AA green ink; the
+              // solid-green fill (CTA-only) is gone.
               child: AnimatedContainer(
                 duration: t.motionTooltip,
                 curve: t.easeOut,
                 decoration: BoxDecoration(
-                  color: active ? t.brandAccent : t.cardSurface,
+                  color: active ? t.brandAccentTint : t.cardSurface,
                   borderRadius: BorderRadius.circular(t.radiusMd),
-                  border: Border.all(color: active ? t.brandAccent : t.alternate),
+                  border: Border.all(color: active ? t.brandAccent : t.lineColor),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 child: Column(
@@ -824,13 +829,13 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                   children: [
                     Text('יום ${label.split(' ')[1]}',
                         style: t.labelMedium.copyWith(
-                          color: active ? Colors.white : t.primaryText,
+                          color: active ? t.brandAccentText : t.primaryText,
                           fontWeight: FontWeight.w700,
                         )),
                     const SizedBox(height: 2),
                     Text('${d.day}.${d.month}',
                         style: t.labelSmall.copyWith(
-                          color: active ? Colors.white.withValues(alpha: 0.85) : t.secondaryText,
+                          color: active ? t.brandAccentText : t.secondaryText,
                           fontFeatures: const [FontFeature.tabularFigures()],
                         )),
                   ],
@@ -876,18 +881,19 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                   minWidth: kMinTapTarget, minHeight: kMinTapTarget),
               child: Center(
                 widthFactor: 1,
+                // ACTIVE chip = green tint + green border + AA green ink.
                 child: AnimatedContainer(
                   duration: t.motionTooltip,
                   curve: t.easeOut,
                   decoration: BoxDecoration(
-                    color: active ? t.brandAccent : t.cardSurface,
+                    color: active ? t.brandAccentTint : t.cardSurface,
                     borderRadius: BorderRadius.circular(t.radiusSm),
-                    border: Border.all(color: active ? t.brandAccent : t.alternate),
+                    border: Border.all(color: active ? t.brandAccent : t.lineColor),
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                   child: Text(s,
                       style: t.labelMedium.copyWith(
-                        color: active ? Colors.white : t.primaryText,
+                        color: active ? t.brandAccentText : t.primaryText,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       )),
@@ -926,19 +932,14 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             style: t.bodySmall.copyWith(color: t.secondaryText),
           ),
           const SizedBox(height: 12),
-          SizedBox(
+          // Secondary action = the shared white/outline AppButton variant.
+          AppButton.secondary(
+            text: 'בקשו שיחה חוזרת במקום',
+            icon: Icon(Icons.headset_mic_outlined, size: 18, color: t.primaryText),
+            onPressed: () async => context.pushNamed('Callback'),
             width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.pushNamed('Callback'),
-              icon: const Icon(Icons.headset_mic_outlined, size: 18),
-              label: const Text('בקשו שיחה חוזרת במקום'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: t.brandAccent,
-                side: BorderSide(color: t.brandAccent),
-                minimumSize: const Size(double.infinity, 46),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusCard)),
-              ),
-            ),
+            height: 48,
+            textStyle: t.labelLarge.copyWith(fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -968,24 +969,27 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   /// reachable, verified address.
   Widget _buildEmailVerification(AppTheme t) {
     if (_emailVerified) {
+      // Success confirmation — the sanctioned green treatment: pale tint +
+      // green 1px border + AA green ink (t.success resolved to a grey ink on
+      // light, so the "verified" state didn't read as success at all).
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: t.success.withValues(alpha: 0.10),
+          color: t.brandAccentTint,
           borderRadius: BorderRadius.circular(t.radiusMd),
-          border: Border.all(color: t.success.withValues(alpha: 0.45)),
+          border: Border.all(color: t.brandAccent),
         ),
         child: Semantics(
           liveRegion: true,
           label: 'האימייל אומת',
           child: Row(
             children: [
-              Icon(Icons.verified_rounded, size: 20, color: t.success),
+              Icon(Icons.verified_rounded, size: 20, color: t.brandAccent),
               const SizedBox(width: 10),
               Expanded(
                 child: Text('האימייל אומת — אפשר לקבוע את הפגישה',
-                    style: t.bodySmall.copyWith(color: t.success, fontWeight: FontWeight.w700)),
+                    style: t.bodySmall.copyWith(color: t.brandAccentText, fontWeight: FontWeight.w700)),
               ),
               TextButton(
                 onPressed: () {
@@ -999,7 +1003,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                   });
                 },
                 child: Text('שינוי',
-                    style: t.labelSmall.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+                    style: t.labelSmall.copyWith(color: t.brandAccentText, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -1008,13 +1012,15 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     }
 
     if (!_codeSent) {
+      // Secondary variant keeps the calm ink label (AppButton owns the label
+      // contrast; the pinned green icon/text competed with the primary CTA).
       return AppButton.secondary(
         text: 'שלח קוד אימות',
-        icon: Icon(Icons.mark_email_read_outlined, size: 18, color: t.brandAccent),
+        icon: Icon(Icons.mark_email_read_outlined, size: 18, color: t.primaryText),
         onPressed: () async => _sendCode(),
         width: double.infinity,
         height: 48,
-        textStyle: t.labelLarge.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700),
+        textStyle: t.labelLarge.copyWith(fontWeight: FontWeight.w700),
       );
     }
 
@@ -1062,7 +1068,8 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 height: 52,
                 padding: const EdgeInsets.symmetric(horizontal: 18),
                 color: AppColors.primary,
-                textStyle: t.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                // No pinned white — AppButton resolves the on-gradient label ink.
+                textStyle: t.labelLarge.copyWith(fontWeight: FontWeight.w700),
                 borderRadius: BorderRadius.circular(t.radiusCard),
               ),
             ],
@@ -1074,8 +1081,9 @@ class _MeetingWidgetState extends State<MeetingWidget> {
               // Disabled while either request is in flight so a resend can't
               // race an in-progress verify.
               onPressed: (_sendingCode || _verifyingCode) ? null : () async => _sendCode(),
+              // AA-safe green link ink for the small resend link.
               child: Text(_sendingCode ? 'שולח קוד…' : 'לא קיבלתם? שליחה חוזרת',
-                  style: t.labelSmall.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+                  style: t.labelSmall.copyWith(color: t.brandAccentText, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -1096,15 +1104,24 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(color: t.brandAccent, shape: BoxShape.circle),
-          child: Center(
-            // Rubik step numeral → nearest Rubik scale token is titleSmall (13);
-            // copyWith carries the genuine deltas (12px, w800, white-on-accent).
-            child: Text('$step',
-                style: t.titleSmall.copyWith(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+        // Neutral accent1 medallion (the shared icon-tile pattern) — the solid
+        // green step dot spent CTA-green on passive structure. Decorative:
+        // the header text itself carries the step meaning.
+        ExcludeSemantics(
+          child: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: t.accent1,
+              shape: BoxShape.circle,
+              border: Border.all(color: t.lineColor),
+            ),
+            child: Center(
+              // Rubik step numeral → nearest Rubik scale token is titleSmall (13);
+              // copyWith carries the genuine deltas (12px, w800, ink-on-tint).
+              child: Text('$step',
+                  style: t.titleSmall.copyWith(fontSize: 12, fontWeight: FontWeight.w800)),
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -1127,13 +1144,15 @@ class _DemoBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // A caution banner → the WARNING token family end-to-end (the green VALUE
+    // tint under a warning message mixed two semantic languages).
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: t.saving.withValues(alpha: 0.12),
+        color: t.warning.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(t.radiusMd),
-        border: Border.all(color: t.saving.withValues(alpha: 0.4)),
+        border: Border.all(color: t.warning.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
@@ -1160,15 +1179,17 @@ class _SuccessHeader extends StatelessWidget {
     // Reduced motion: the celebratory scale-pop degrades to a plain fade.
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Success confirmation — solid green is sanctioned here; FLAT (the green
+    // glow contradicted the no-glow standard) and the check uses the on-green
+    // ink so it survives the lifted dark-mode fill.
     final badge = Container(
       width: 64,
       height: 64,
       decoration: BoxDecoration(
         color: t.brandAccent,
         shape: BoxShape.circle,
-        boxShadow: [BoxShadow(color: t.brandAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 1)],
       ),
-      child: const Icon(Icons.check_rounded, size: 34, color: Colors.white),
+      child: Icon(Icons.check_rounded, size: 34, color: t.onSaving),
     );
     return Column(
       children: [
@@ -1222,7 +1243,8 @@ class _NextSteps extends StatelessWidget {
                       shape: BoxShape.circle,
                     ),
                     child: done
-                        ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
+                        // On-green ink (white fell to ~1.7:1 on the lifted dark green).
+                        ? Icon(Icons.check_rounded, size: 13, color: t.onSaving)
                         : null,
                   ),
                   const SizedBox(width: 10),

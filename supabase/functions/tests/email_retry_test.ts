@@ -20,6 +20,14 @@
 import { assert, assertEquals } from "@std/assert";
 import { sendCustomerEmail } from "../_shared/email.ts";
 
+// Order-independence guard: these unit tests count EXACT fetch calls of the
+// retry mechanics. If an earlier test file leaked SUPABASE_URL/KEY into the
+// process, the observability error-capture would fire an EXTRA PostgREST
+// fetch into our stub and break the counts — force it dark here.
+Deno.env.delete("SUPABASE_URL");
+Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+
+
 const realFetch = globalThis.fetch;
 
 type Capture = { url: string; body: Record<string, unknown> };

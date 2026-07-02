@@ -139,7 +139,8 @@ export default async function BookPage() {
       {/* ── Heading — single focal point: the H1, lifted by an ACTION eyebrow ── */}
       <header className="mt-5">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
-          <Icon name="spark" size={14} aria-hidden />
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size static brand asset from /public (same rationale as ProviderLogo); the official Zoom mark shown as-is, never recolored. */}
+          <img src="/assets/logos/zoom.png" alt="" width={14} height={14} aria-hidden />
           שיחת ייעוץ חינמית בזום
         </span>
         <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[2.65rem]">

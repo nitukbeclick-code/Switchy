@@ -41,6 +41,7 @@ import {
   normalizeProvider,
   type Plan as CataloguePlan,
 } from "./catalogue.ts";
+import { fetchRows } from "./db.ts";
 import { buildAiLeadRow } from "./leads.ts";
 import { makeReferralCode } from "./referrals.ts";
 import { buildSwitchKit, type SwitchProfile } from "./switch.ts";
@@ -78,6 +79,19 @@ export type ToolContext = {
   // write failure. Tests inject a fake. When absent, generate_referral_code still
   // returns a real locally-minted code (not persisted) so the tool never hard-fails.
   issueReferral?: (input: { channel: string; contact?: string | null; conversationId?: string | null; name?: string | null }) => Promise<string | null> | string | null;
+  // Optional Zoom/video-meeting capability probe (mirrors meeting-book's gate).
+  // Given a catalogue provider id, answers whether that carrier supports a booked
+  // VIDEO (Zoom) consultation:
+  //   true/false → the live public.provider_capabilities.supports_zoom_meeting
+  //                answer (false also covers "no row" — the read-side default is
+  //                unsupported);
+  //   null       → the query FAILED — the caller falls back to the const list
+  //                (ZOOM_SUPPORTED_PROVIDERS_FALLBACK) so a transient DB blip
+  //                can't block a legit request.
+  // When absent, book_callback's video path uses providerSupportsZoomDb (the same
+  // service-role REST read pattern as _shared/db.ts). Tests inject a fake.
+  // PLAIN PHONE CALLBACKS NEVER CONSULT THIS — only the video/meeting path.
+  providerSupportsZoom?: (provider: string) => Promise<boolean | null> | boolean | null;
 };
 
 // Uniform tool result. `ok` drives whether the agent treats it as success; the
@@ -722,25 +736,183 @@ export async function createLead(
   };
 }
 
+// ── Zoom-provider capability gate (GAP 2) ─────────────────────────────────────
+// The app/web/meeting-book gate VIDEO consultations to carriers whose
+// public.provider_capabilities.supports_zoom_meeting is true. book_callback's
+// VIDEO path applies the SAME gate BEFORE any lead is written, so the agent can
+// tell the user UP FRONT that a provider has no video meetings instead of the
+// request failing after the lead lands. Plain phone callbacks stay ungated.
+//
+// The runtime authority is the live table; this const is the OFFLINE FALLBACK
+// ONLY — used when the table query errors (transient DB blip / missing env) so a
+// legit request isn't blocked. It MUST stay in sync with meeting-book/lib.ts's
+// ZOOM_SUPPORTED_PROVIDERS (the 10 Zoom-supported providers, exact catalogue ids).
+export const ZOOM_SUPPORTED_PROVIDERS_FALLBACK: ReadonlySet<string> = new Set<string>([
+  "פרטנר",
+  "yes",
+  "STING TV",
+  "HOT",
+  "NextTV",
+  "סלקום",
+  "גולן טלקום",
+  "בזק",
+  "פלאפון",
+  "הוט מובייל",
+]);
+
+// Read the live capability flag for ONE provider from public.provider_capabilities
+// (service-role, same REST pattern as the rest of _shared via db.ts fetchRows).
+//   true/false → the table's supports_zoom_meeting for an EXISTING row (false also
+//                covers "no row" — the read-side default is unsupported).
+//   null       → the query FAILED (no env / DB error) — the caller falls back to
+//                the const set so a transient blip can't block a legit request.
+export async function providerSupportsZoomDb(provider: string): Promise<boolean | null> {
+  const q = `/rest/v1/provider_capabilities?select=supports_zoom_meeting` +
+    `&provider=eq.${encodeURIComponent(provider)}&limit=1`;
+  const rows = await fetchRows<{ supports_zoom_meeting: boolean }>(q);
+  if (rows === null) return null; // query errored → signal fallback
+  if (rows.length === 0) return false; // no row ⇒ unsupported by default
+  return rows[0].supports_zoom_meeting === true;
+}
+
+// Decide whether `provider` may be offered a video meeting, given the DB answer.
+// Pure (unit-testable); mirrors meeting-book/lib.ts providerSupportsZoom exactly:
+// DB true → allow, DB false/missing → reject, DB unreadable (null) → const list.
+export function resolveZoomSupport(provider: unknown, dbSupports: boolean | null): boolean {
+  const p = String(provider ?? "").trim();
+  if (!p) return false;
+  if (dbSupports === null) return ZOOM_SUPPORTED_PROVIDERS_FALLBACK.has(p); // DB unreadable → const fallback
+  return dbSupports === true;
+}
+
+// Is this book_callback call asking for a VIDEO (Zoom) meeting, vs a plain phone
+// callback? An explicit meeting_type wins in BOTH directions ("phone" is never
+// gated even if the notes mention zoom in passing); otherwise we sniff the
+// slot/notes free text for video/zoom cues (he/ar/ru/en) so a model that didn't
+// set meeting_type still can't book an un-checked video meeting. Deterministic,
+// no model call — unit-testable, can't drift.
+const VIDEO_MEETING_RE = /zoom|זום|וידאו|וידיאו|video|فيديو|زوم|видео|зум/i;
+export function isVideoMeetingRequest(args: { meeting_type?: unknown; slot?: unknown; notes?: unknown }): boolean {
+  const t = String(args.meeting_type ?? "").trim().toLowerCase();
+  if (t === "video" || t === "zoom") return true;
+  if (t === "phone" || t === "call" || t === "callback") return false; // explicit phone: never gated
+  return VIDEO_MEETING_RE.test(`${String(args.slot ?? "")} ${String(args.notes ?? "")}`);
+}
+
 // ── book_callback ─────────────────────────────────────────────────────────────
 // Consent-gated callback request. Same honest-consent gate as create_lead; the
 // requested slot is folded into the lead notes (no separate scheduling table in
 // the agent core — the rep follows up). §7b disclosure surfaced.
+//
+// VIDEO (Zoom) PRE-CHECK — GAP 2: when the request is for a VIDEO meeting (an
+// explicit meeting_type="video" or zoom/video wording in slot/notes), the
+// provider's capability is verified FIRST — before consent collection and before
+// any lead write — via ctx.providerSupportsZoom (live table; const-list fallback
+// on a query error, mirroring the app/meeting-book semantics). Unsupported →
+// a structured, polite refusal that offers the phone-callback / regular-lead
+// alternative, and NOTHING is written. Supported → the flow is unchanged (same
+// consent gate, same §7b disclosure). Plain PHONE callbacks skip the check
+// entirely and behave exactly as before.
 export async function bookCallback(
   ctx: ToolContext,
-  args: { slot?: unknown; name?: unknown; phone?: unknown; consent?: unknown; notes?: unknown },
+  args: {
+    slot?: unknown;
+    name?: unknown;
+    phone?: unknown;
+    consent?: unknown;
+    notes?: unknown;
+    meeting_type?: unknown;
+    provider?: unknown;
+  },
 ): Promise<ToolResult> {
   const slot = clipStr(args.slot, 40);
-  const notes = [clipStr(args.notes, 400), slot ? `מועד מועדף: ${slot}` : ""].filter(Boolean).join(" | ");
+  const rawNotes = clipStr(args.notes, 400);
+  const isVideo = isVideoMeetingRequest({ meeting_type: args.meeting_type, slot, notes: rawNotes });
+
+  let videoProvider = "";
+  if (isVideo) {
+    const lang = ctxLang(ctx);
+    // Resolve the provider to a canonical catalogue id when possible (the
+    // capability table keys off exact catalogue ids); an unrecognized name is
+    // still checked as-is — no row ⇒ honestly unsupported.
+    const rawProvider = clipStr(args.provider, 120);
+    const providers = catalogueProviders(ctx.plans as CataloguePlan[]);
+    videoProvider = normalizeProvider(rawProvider, providers) || rawProvider;
+
+    if (!videoProvider) {
+      // Can't verify a video meeting without knowing the provider — ask (fail-
+      // closed for VIDEO only; a phone callback needs no provider and is untouched).
+      await audit(ctx, "book_callback", false, "video_provider_required");
+      return {
+        ok: false,
+        reason: "provider_required",
+        data: { videoMeetingRequested: true, alternatives: ["phone_callback"] },
+        note: tr(lang, {
+          he: "כדי לקבוע פגישת וידאו צריך לדעת על איזה ספק מדובר — לא כל הספקים תומכים בפגישות וידאו. איזה ספק? (אפשר כמובן גם שיחה טלפונית רגילה, בלי תלות בספק.)",
+          ar: "لتحديد اجتماع فيديو أحتاج لمعرفة المزوّد المعني — ليس كل المزوّدين يدعمون اجتماعات الفيديو. أي مزوّد؟ (يمكن طبعًا أيضًا مكالمة هاتفية عادية، بلا اعتماد على المزوّد.)",
+          ru: "Чтобы назначить видеовстречу, нужно знать, о каком провайдере речь — не все провайдеры поддерживают видеовстречи. Какой провайдер? (Разумеется, возможен и обычный телефонный звонок — он от провайдера не зависит.)",
+          en: "To book a video meeting I need to know which provider it's about — not all providers support video meetings. Which provider? (A regular phone callback is of course also possible, provider-independent.)",
+        }),
+      };
+    }
+
+    // Live capability read (injected sink in tests; the service-role REST read in
+    // production). A thrown probe is treated exactly like a failed query — the
+    // const-list fallback — so a DB/network error behaves fail-soft, never a crash.
+    let dbSupports: boolean | null = null;
+    try {
+      dbSupports = ctx.providerSupportsZoom
+        ? await ctx.providerSupportsZoom(videoProvider)
+        : await providerSupportsZoomDb(videoProvider);
+    } catch (e) {
+      dbSupports = null;
+      await ctx.logSecurityEvent?.("agent_zoom_capability_error", { channel: ctx.channel, error: String(e) });
+    }
+
+    if (!resolveZoomSupport(videoProvider, dbSupports)) {
+      // TRUTH UP FRONT: no lead is written; the agent tells the user now and
+      // offers the honest alternatives instead of a booking that would fail later.
+      await audit(ctx, "book_callback", false, `video_unsupported:${videoProvider.slice(0, 40)}`);
+      return {
+        ok: false,
+        reason: "video_not_supported",
+        data: {
+          provider: videoProvider,
+          videoMeetingRequested: true,
+          videoMeetingSupported: false,
+          capabilitySource: dbSupports === null ? "fallback_list" : "db",
+          alternatives: ["phone_callback", "create_lead"],
+        },
+        note: tr(lang, {
+          he: "ספק זה אינו תומך כרגע בשיחות וידאו, אז לא אקבע פגישת זום שלא תצא לפועל. אפשר במקום זאת לתאם שיחה טלפונית חוזרת מנציג, או שאשאיר פנייה רגילה והנציג יחזור אליך — מה נוח לך?",
+          ar: "هذا المزوّد لا يدعم حاليًا مكالمات الفيديو، لذا لن أحدد اجتماع زوم لن يتم. بدلًا من ذلك يمكن تنسيق مكالمة هاتفية من مندوب، أو أن أترك طلبًا عاديًا وسيعاود المندوب الاتصال بك — أيهما يناسبك؟",
+          ru: "Этот провайдер сейчас не поддерживает видеозвонки, поэтому я не стану назначать Zoom-встречу, которая не состоится. Вместо этого можно договориться о телефонном звонке от представителя или оставить обычную заявку — как вам удобнее?",
+          en: "This provider doesn't currently support video calls, so I won't book a Zoom meeting that wouldn't happen. Instead I can arrange a phone callback from a rep, or leave a regular request and a rep will get back to you — which works for you?",
+        }),
+      };
+    }
+  }
+
+  const notes = [
+    rawNotes,
+    slot ? `מועד מועדף: ${slot}` : "",
+    isVideo ? "בקשת פגישת וידאו (זום)" : "",
+  ].filter(Boolean).join(" | ");
   // Delegate to the same consent-gated lead path (source/notes carry the slot).
-  return await createLead(ctx, {
+  const res = await createLead(ctx, {
     name: args.name,
     phone: args.phone,
     consent: args.consent,
     notes: notes || "בקשת התקשרות",
     category: undefined,
-    provider: undefined,
+    // Video path: record which (verified-supported) provider the meeting is about.
+    provider: isVideo ? videoProvider : undefined,
   });
+  if (isVideo && res.ok) {
+    // Honest, machine-readable confirmation the capability WAS verified.
+    res.data = { ...(res.data ?? {}), videoMeetingRequested: true, videoMeetingSupported: true };
+  }
+  return res;
 }
 
 // ── escalate_to_human ─────────────────────────────────────────────────────────
@@ -1269,7 +1441,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "book_callback",
     description:
-      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר בהערות והנציג חוזר.",
+      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר בהערות והנציג חוזר. פגישת וידאו (זום): אם המשתמש מבקש פגישת וידאו/זום — העבר meeting_type=\"video\" ואת שם הספק ב-provider; הכלי בודק מראש אם הספק תומך בפגישות וידאו (לא כל הספקים תומכים). אם אינו תומך — הכלי יסרב בנימוס ותציע במקומה שיחה טלפונית רגילה או פנייה לנציג; לעולם אל תבטיח פגישת וידאו לפני שהכלי אישר. שיחה טלפונית רגילה אינה תלויה בספק ואינה נבדקת.",
     parameters: {
       type: "object",
       properties: {
@@ -1278,6 +1450,12 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
         phone: { type: "string" },
         consent: { type: "boolean", description: "אישור מפורש — חובה true; רק אם המשתמש אישר בפועל" },
         notes: { type: "string" },
+        meeting_type: {
+          type: "string",
+          enum: ["phone", "video"],
+          description: "סוג הפגישה: phone = שיחה טלפונית חוזרת (ברירת מחדל); video = פגישת וידאו/זום — נבדק מראש שהספק תומך",
+        },
+        provider: { type: "string", description: "שם הספק שהפגישה לגביו (חובה כשמבקשים פגישת וידאו; לא נדרש לשיחה טלפונית)" },
       },
       required: ["name", "phone", "consent"],
     },

@@ -3204,7 +3204,7 @@ ${nav}
         <div class="app-shots">
           <figure class="app-shot reveal"><img src="assets/app/shot-home.webp" alt="מסך הבית של SWITCHY — חיסכון פוטנציאלי ועסקאות חמות" width="390" height="844" loading="lazy" decoding="async"><figcaption>דף הבית — החיסכון שלכם במבט אחד</figcaption></figure>
           <figure class="app-shot reveal"><img src="assets/app/shot-results.webp" alt="השוואת מסלולים ב-SWITCHY — דירוג חכם וציון התאמה" width="390" height="844" loading="lazy" decoding="async"><figcaption>השוואת מסלולים עם ציון התאמה</figcaption></figure>
-          <figure class="app-shot reveal"><img src="assets/app/shot-meeting.webp" alt="קביעת פגישת וידאו ב-Zoom עם נציג מכירות" width="390" height="844" loading="lazy" decoding="async"><figcaption><img class="app-shot__zoom" src="assets/logos/zoom.svg" alt="" width="16" height="16"> פגישת Zoom אישית עם נציג</figcaption></figure>
+          <figure class="app-shot reveal"><img src="assets/app/shot-meeting.webp" alt="קביעת פגישת וידאו ב-Zoom עם נציג מכירות" width="390" height="844" loading="lazy" decoding="async"><figcaption><img class="app-shot__zoom" src="assets/logos/zoom.png" alt="" width="16" height="16" loading="lazy" decoding="async"> פגישת Zoom אישית עם נציג</figcaption></figure>
         </div>
       </div>
     </section>

@@ -12,6 +12,14 @@
 
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 
+// Order-independence guard: these unit tests count EXACT fetch calls of the
+// retry mechanics. If an earlier test file leaked SUPABASE_URL/KEY into the
+// process, the observability error-capture would fire an EXTRA PostgREST
+// fetch into our stub and break the counts — force it dark here.
+Deno.env.delete("SUPABASE_URL");
+Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+
+
 Deno.env.set("WHATSAPP_TOKEN", "test-token");
 Deno.env.set("WHATSAPP_PHONE_ID", "PHONE123");
 Deno.env.set("GRAPH_API_VERSION", "v21.0");

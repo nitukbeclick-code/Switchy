@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -69,14 +68,18 @@ class _ReferralWidgetState extends State<ReferralWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    // Reduced motion: entrances keep their fade but drop the slide settle.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return StickyCtaScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: ffTheme.primaryText,
+        // Sourced from the headline scale (Rubik 18) — no raw GoogleFonts; the
+        // token's w600→w700 delta rides via copyWith.
         title: Text('הזמינו חבר',
-            style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700)),
+            style: ffTheme.headlineMedium.copyWith(fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded),
           tooltip: 'חזרה',
@@ -87,12 +90,17 @@ class _ReferralWidgetState extends State<ReferralWidget> {
       // it stays one tap away while the "how it works" steps scroll.
       cta: AppButton(
         text: 'שתפו את הקוד',
-        icon: const Icon(Icons.share_rounded, color: Colors.white, size: 18),
-        color: ffTheme.primary,
+        // Contrast-aware ink ON the solid-green ACTION fill (pinned white fell
+        // to ~1.7:1 on the lifted dark-mode green-400); AppButton already picks
+        // the matching label ink itself, so no pinned colour on the text.
+        icon: Icon(Icons.share_rounded, color: ffTheme.onSaving, size: 18),
+        // The CONST ink sentinel (not the theme getter, which flips to
+        // off-white in dark and silently lost the green ACTION treatment) —
+        // AppColors.primary is what earns AppButton's primary-CTA gradient.
+        color: AppColors.primary,
         height: 52,
         width: double.infinity,
-        textStyle: GoogleFonts.rubik(
-            fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+        textStyle: ffTheme.titleLarge,
         onPressed: () async => _share(),
       ),
       body: ListView(
@@ -103,48 +111,57 @@ class _ReferralWidgetState extends State<ReferralWidget> {
             width: double.infinity,
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
+              // Flat ink hero — resting content carries no float under the
+              // one-elevation story (only sheets/FABs/sticky bars lift).
               gradient: ffTheme.brandGradient,
               borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-              boxShadow: ffTheme.shadowLifted,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                // Decorative glyph tile on the permanently-dark hero (the
+                // headline carries the meaning) — white-token wash, the dark-
+                // hero medallion language.
+                ExcludeSemantics(
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: ffTheme.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                    ),
+                    child: Icon(Icons.card_giftcard_rounded,
+                        color: ffTheme.white, size: 24),
                   ),
-                  child: const Icon(Icons.card_giftcard_rounded,
-                      color: Colors.white, size: 24),
                 ),
                 const SizedBox(height: 16),
+                // Display-scale token (Rubik); the 24px/w800 deltas ride via
+                // copyWith. The hero stays ink in BOTH themes, so the white
+                // token is the correct ink here (not a pinned label colour).
                 Text('עזרו לחבר לחסוך',
-                    style: GoogleFonts.rubik(
+                    style: ffTheme.displaySmall.copyWith(
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white)),
+                        color: ffTheme.white)),
                 const SizedBox(height: 8),
                 Text(
                   'שתפו את Switchy AI עם מי שמשלם יותר מדי על תקשורת. השוואה חינמית, '
                   'שקופה וללא התחייבות — מתנה אמיתית, בלי אותיות קטנות.',
-                  style: GoogleFonts.assistant(
-                      fontSize: 14,
+                  style: ffTheme.bodyMedium.copyWith(
                       height: 1.5,
-                      color: Colors.white.withValues(alpha: 0.85)),
+                      color: ffTheme.white.withValues(alpha: 0.85)),
                 ),
               ],
             ),
-          ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06),
+          ).animate().fadeIn(duration: 350.ms).slideY(begin: reduceMotion ? 0 : 0.06),
 
           const SizedBox(height: 20),
 
           // The code
-          Text('הקוד שלך', style: ffTheme.labelMedium)
-              .animate()
-              .fadeIn(delay: 100.ms),
+          Semantics(
+            header: true,
+            child: Text('הקוד שלך', style: ffTheme.labelMedium),
+          ).animate().fadeIn(delay: 100.ms),
           const SizedBox(height: 8),
           Semantics(
             label: 'קוד ההזמנה שלך: $_code. הקש להעתקה',
@@ -163,7 +180,11 @@ class _ReferralWidgetState extends State<ReferralWidget> {
                       Expanded(
                         child: Text(
                           _code,
-                          style: GoogleFonts.rubik(
+                          // Code numeral sourced from the numeric scale
+                          // (tabular figures keep the SW-XXXXXX glyphs on a
+                          // fixed advance); the 26px / w800 / wide-tracking
+                          // deltas ride via copyWith — no raw GoogleFonts.
+                          style: ffTheme.numericMedium.copyWith(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
                             color: ffTheme.primary,
@@ -178,7 +199,7 @@ class _ReferralWidgetState extends State<ReferralWidget> {
                 ),
               ),
             ),
-          ).animate().fadeIn(delay: 140.ms).slideY(begin: 0.05),
+          ).animate().fadeIn(delay: 140.ms).slideY(begin: reduceMotion ? 0 : 0.05),
 
           const SizedBox(height: 24),
 
@@ -187,15 +208,16 @@ class _ReferralWidgetState extends State<ReferralWidget> {
           // steps below scroll.
 
           // How it works
-          Text('איך זה עובד', style: ffTheme.titleLarge)
-              .animate()
-              .fadeIn(delay: 240.ms),
+          Semantics(
+            header: true,
+            child: Text('איך זה עובד', style: ffTheme.titleLarge),
+          ).animate().fadeIn(delay: 240.ms),
           const SizedBox(height: 12),
           ..._steps.asMap().entries.map((e) => _HowStep(
                 index: e.key + 1,
                 text: e.value,
                 ffTheme: ffTheme,
-              ).animate().fadeIn(delay: (260 + e.key * 70).ms).slideX(begin: 0.05)),
+              ).animate().fadeIn(delay: (260 + e.key * 70).ms).slideX(begin: reduceMotion ? 0 : 0.05)),
 
           const SizedBox(height: 16),
 
@@ -251,14 +273,17 @@ class _HowStep extends StatelessWidget {
             height: 26,
             decoration: BoxDecoration(
               color: ffTheme.primary,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
             ),
             child: Center(
               child: Text('$index',
-                  style: GoogleFonts.rubik(
-                      fontSize: 13,
+                  // Title-scale token (Rubik 13); the number reads in the
+                  // CARD-SURFACE ink so it stays visible on the ink badge in
+                  // BOTH themes — pinned white vanished on the off-white
+                  // dark-mode [primary] fill.
+                  style: ffTheme.titleSmall.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: Colors.white)),
+                      color: ffTheme.secondaryBackground)),
             ),
           ),
           const SizedBox(width: 12),

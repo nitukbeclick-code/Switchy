@@ -7,6 +7,9 @@ import '../../core/nav.dart';
 import '../../data.dart' show categoryById;
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/street_price.dart';
 
@@ -207,10 +210,13 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   }
 
   Widget _intro(AppTheme t) {
+    // VALUE-tinted intro band: the canonical brandAccentTint surface with a
+    // green VALUE glyph — but the reading copy stays ink (green is never a
+    // paragraph colour).
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: t.saving.withValues(alpha: 0.12),
+        color: t.brandAccentTint,
         borderRadius: BorderRadius.circular(t.radiusCard),
         border: Border.all(color: t.saving.withValues(alpha: 0.3)),
       ),
@@ -221,8 +227,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
             children: [
               Icon(Icons.insights_rounded, color: t.savingText, size: 20),
               const SizedBox(width: 8),
-              Text('מה אנשים באמת משלמים',
-                  style: t.titleSmall.copyWith(color: t.savingText)),
+              Text('מה אנשים באמת משלמים', style: t.titleSmall),
             ],
           ),
           const SizedBox(height: 8),
@@ -230,7 +235,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
             'לעיתים קרובות יש מחיר "רחוב" נמוך מהמחיר המפורסם — הצעת שימור אישית '
             'שמקבלים בטלפון. כאן רואים מחיר טיפוסי לפי דיווחים אמיתיים, וגם אתם '
             'יכולים לשתף את המחיר שלכם. מציגים נתון רק כשיש מספיק דיווחים.',
-            style: t.bodySmall.copyWith(color: t.savingText, height: 1.5),
+            style: t.bodySmall.copyWith(color: t.primaryText, height: 1.5),
           ),
         ],
       ),
@@ -240,7 +245,9 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   Widget _providerChips(AppTheme t) {
     return Wrap(
       spacing: 8,
-      runSpacing: 8,
+      // Each chip carries 6px of invisible vertical hit-padding (see _chip), so
+      // a small runSpacing keeps the visual rhythm at ~14px between rows.
+      runSpacing: 2,
       children: _providers.map((p) {
         final selected = _provider == p;
         return _chip(t, label: p, selected: selected, onTap: () => _selectProvider(p));
@@ -251,7 +258,8 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   Widget _categoryChips(AppTheme t) {
     return Wrap(
       spacing: 8,
-      runSpacing: 8,
+      // Matches _providerChips: hit-padding inside each chip, tight runSpacing.
+      runSpacing: 2,
       children: _providerCategories.map((id) {
         final selected = _category == id;
         final name = categoryById(id)?.name ?? id;
@@ -271,29 +279,36 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
       {required String label,
       required bool selected,
       required VoidCallback onTap}) {
+    // ONE chip language — ACTIVE = green TINT + green text + green 1px border
+    // (never a solid-green fill; solid green is reserved for CTAs). The outer
+    // vertical padding grows the hit area toward the 48dp minimum without
+    // inflating the painted chip.
     return Semantics(
       button: true,
       selected: selected,
       label: label,
       excludeSemantics: true,
-      child: GestureDetector(
+      child: Pressable(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? t.brandAccent : t.cardSurface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected ? t.brandAccent : t.alternate,
-              width: selected ? 1.5 : 1,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected ? t.brandAccentTint : t.cardSurface,
+              borderRadius: BorderRadius.circular(t.radiusPill),
+              border: Border.all(
+                color: selected ? t.brandAccent : t.alternate,
+                width: selected ? 1.5 : 1,
+              ),
             ),
-          ),
-          child: Text(
-            label,
-            style: t.bodyMedium.copyWith(
-              color: selected ? Colors.white : t.primaryText,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            child: Text(
+              label,
+              style: t.bodyMedium.copyWith(
+                color: selected ? t.brandAccentText : t.primaryText,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -347,41 +362,37 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            // The typical street price is the page's VALUE moment (real money
-            // people pay) → amber, not the green ACTION accent. A large bold
-            // numeral clears AA at [saving]; small text would need [savingText].
-            Text('₪${agg.typicalText}',
-                style: t.displaySmall
-                    .copyWith(color: t.savingText, fontWeight: FontWeight.w800)),
+            // The typical street price is a DATA figure → ink, rendered through
+            // PriceText (bidi-safe LTR isolate + tabular figures). Green stays
+            // reserved for the SavingPill delta below.
+            PriceText('₪${agg.typicalText}',
+                style: t.displaySmall.copyWith(fontWeight: FontWeight.w800)),
             const SizedBox(width: 6),
             Text('לחודש', style: t.bodySmall),
           ],
         )),
         const SizedBox(height: 10),
         if (agg.hasSpread)
-          row(Text('טווח דיווחים: ₪${agg.lowText}–₪${agg.highText}', style: t.bodySmall)),
+          row(Row(
+            children: [
+              Text('טווח דיווחים: ', style: t.bodySmall),
+              // The ₪-range goes through PriceText so the ₪ + digits + dash
+              // keep a stable order inside the RTL sentence.
+              PriceText('₪${agg.lowText}–₪${agg.highText}', style: t.bodySmall),
+            ],
+          )),
         const SizedBox(height: 6),
         row(Text('מבוסס על ${agg.reportCount} דיווחים אמיתיים שאומתו', style: t.labelSmall)),
         if (agg.beatsCatalogue && agg.savingVsCatalogueText != null) ...[
           const SizedBox(height: 12),
-          row(Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: t.saving.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(t.radiusPill),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.trending_down_rounded, size: 16, color: t.savingText),
-                const SizedBox(width: 6),
-                Text(
-                  '₪${agg.savingVsCatalogueText} מתחת למחירון'
+          // The honest street-beats-sticker delta is a savings figure → the ONE
+          // canonical SavingPill treatment (tint + glyph + tabular figures).
+          row(Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SavingPill(
+              icon: Icons.trending_down_rounded,
+              text: '₪${agg.savingVsCatalogueText} מתחת למחירון'
                   '${agg.catalogueLowestText != null ? ' (₪${agg.catalogueLowestText})' : ''}',
-                  style: t.labelMedium.copyWith(
-                      color: t.savingText, fontWeight: FontWeight.w700),
-                ),
-              ],
             ),
           )),
         ],
@@ -468,15 +479,15 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
               filled: true,
               fillColor: t.background,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(t.radiusMd),
                 borderSide: BorderSide(color: t.alternate),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(t.radiusMd),
                 borderSide: BorderSide(color: t.alternate),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(t.radiusMd),
                 borderSide: BorderSide(color: t.brandAccent, width: 1.5),
               ),
               contentPadding:

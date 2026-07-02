@@ -9,8 +9,9 @@ import '../../data.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/savings_summary.dart';
 import '../../widgets/app_card.dart';
-import '../../widgets/stat_pill.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../widgets/whatsapp_button.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
@@ -176,14 +177,19 @@ class MatchesWidget extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: ffTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: ffTheme.shadowAccent,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                  // Sticky bars are one of the few sanctioned lifted surfaces
+                  // (shadowAccent resolves to empty under Geist).
+                  boxShadow: ffTheme.shadowLifted,
                 ),
                 child: Row(
                   children: [
                     Text(
                       'השווה ${appState.comparePlans.length} מסלולים',
-                      style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                      // Contrast-aware on-green ink: white on light green-600,
+                      // near-black on the lifted dark green-400 (pinned white
+                      // fell to ~1.7:1 in dark mode).
+                      style: ffTheme.titleSmall.copyWith(color: ffTheme.onSaving),
                     ),
                     const Spacer(),
                     ElevatedButton(
@@ -193,10 +199,14 @@ class MatchesWidget extends StatelessWidget {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
+                        // Const green-700 holds ≥4.5:1 on the white fill in both
+                        // themes (the theme getter lifts to green-500 on dark,
+                        // which fails on white).
                         foregroundColor: AppColors.brandAccentDark,
                         elevation: 0,
+                        minimumSize: const Size(0, kMinTapTarget),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusLg)),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 8),
                       ),
@@ -298,50 +308,47 @@ class MatchesWidget extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              // Top-saver crown — amber VALUE, the list's single focal point:
-              // the category where switching saves the most real money.
+              // Top-saver crown — the VALUE-pill tint treatment (the one green
+              // tint token), the list's single focal point.
               if (isTopSaver && match.annualSaving > 0) ...[
                 const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(20),
-                    border:
-                        Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
+                    color: ffTheme.brandAccentTint,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                    border: Border.all(color: ffTheme.brandAccent),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.emoji_events_rounded,
-                          size: 11, color: ffTheme.savingDark),
+                          size: 11, color: ffTheme.savingText),
                       const SizedBox(width: 3),
                       Text('החיסכון הגדול ביותר',
                           style: ffTheme.labelSmall.copyWith(
                               color: ffTheme.savingText,
-                              fontSize: 10,
                               fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
               ],
               const Spacer(),
-              // Match score badge — green = ACTION/match signal, rendered as the
-              // accent gradient with a soft glow so it reads as the win state on
-              // both light and dark surfaces.
+              // Match score badge — ACTIVE-chip language (green tint + green 1px
+              // border + AA green ink); the old solid-green gradient chip read as
+              // a CTA and its pinned white failed on the lifted dark green.
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
-                  gradient: ffTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: ffTheme.shadowAccent,
+                  color: ffTheme.brandAccentTint,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  border: Border.all(color: ffTheme.brandAccent),
                 ),
                 child: Text(
                   '${match.scorePct}% התאמה',
                   style: ffTheme.labelSmall.copyWith(
-                    color: Colors.white,
-                    fontSize: 11,
+                    color: ffTheme.brandAccentText,
                     fontWeight: FontWeight.w700,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
@@ -390,17 +397,20 @@ class MatchesWidget extends StatelessWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Green = the affirmative "why it fits" tell.
-                                Icon(Icons.check_circle_rounded,
-                                    size: 13, color: ffTheme.brandAccent),
+                                // The green CHECK is the affirmative tell; the
+                                // copy itself stays ink (green discipline: data
+                                // and supporting text are never green).
+                                ExcludeSemantics(
+                                  child: Icon(Icons.check_circle_rounded,
+                                      size: 13, color: ffTheme.brandAccent),
+                                ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     r,
                                     style: ffTheme.labelSmall.copyWith(
-                                      color: ffTheme.brandAccentText,
+                                      color: ffTheme.primaryText,
                                       fontWeight: FontWeight.w600,
-                                      fontSize: 11,
                                     ),
                                   ),
                                 ),
@@ -408,22 +418,24 @@ class MatchesWidget extends StatelessWidget {
                             ),
                           )),
                     ],
-                    // A single honest caveat (promo expiry / commitment) — the
-                    // amber VALUE note so the trade-off is visible up-front.
+                    // A single honest caveat (promo expiry / commitment) — a
+                    // muted, neutral note so the trade-off is visible up-front
+                    // (green stays reserved for value/active, never a caveat).
                     if (topCaveat != null) ...[
                       const SizedBox(height: 2),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.info_outline_rounded,
-                              size: 13, color: ffTheme.savingDark),
+                          ExcludeSemantics(
+                            child: Icon(Icons.info_outline_rounded,
+                                size: 13, color: ffTheme.secondaryText),
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               topCaveat,
                               style: ffTheme.labelSmall.copyWith(
                                 color: ffTheme.secondaryText,
-                                fontSize: 11,
                               ),
                             ),
                           ),
@@ -432,15 +444,16 @@ class MatchesWidget extends StatelessWidget {
                     ],
                     if (match.annualSaving > 0) ...[
                       const SizedBox(height: 8),
-                      StatPill(
-                        value: personalized
-                            ? '₪${match.annualSaving}'
+                      // The ONE savings treatment app-wide: the shared SavingPill
+                      // (pale tint + glyph + tabular figures). Honest copy keeps
+                      // the estimate marker when bills aren't personalized.
+                      SavingPill(
+                        text: personalized
+                            ? 'חיסכון ₪${match.annualSaving} לשנה'
+                            : 'הערכה: ~₪${match.annualSaving} לשנה',
+                        shortText: personalized
+                            ? 'חיסכון ₪${match.annualSaving}'
                             : '~₪${match.annualSaving}',
-                        label: personalized ? 'חיסכון לשנה' : 'הערכה לשנה',
-                        // Amber = VALUE. Theme-aware so the savings badge holds
-                        // contrast on both the glass-white and slate surfaces.
-                        backgroundColor: ffTheme.saving.withValues(alpha: 0.14),
-                        textColor: ffTheme.savingDark,
                       ),
                     ],
                   ],
@@ -450,12 +463,13 @@ class MatchesWidget extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
+                  // Money renders through PriceText — the LTR isolate keeps
+                  // ₪+digits stable inside the RTL card; price stays INK.
+                  PriceText(
                     '₪${plan.priceText}',
                     style: ffTheme.titleLarge.copyWith(
                       color: ffTheme.primary,
                       fontWeight: FontWeight.w800,
-                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                   Text(
@@ -525,7 +539,9 @@ class MatchesWidget extends StatelessWidget {
 }
 
 /// A compact, equal-width secondary action used in the match-card CTA row.
-/// Tinted-green when idle; solid-green "active" when the plan is in compare.
+/// One chip/toggle language: neutral (surface + hairline + ink) when idle;
+/// ACTIVE = green tint + green 1px border + AA green ink — solid green stays
+/// reserved for primary CTAs.
 class _MatchAction extends StatelessWidget {
   const _MatchAction({
     required this.icon,
@@ -545,17 +561,20 @@ class _MatchAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = active ? Colors.white : ffTheme.brandAccentText;
+    final fg = active ? ffTheme.brandAccentText : ffTheme.primaryText;
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+      side: BorderSide(
+          color: active ? ffTheme.brandAccent : ffTheme.lineColor),
+    );
     return Semantics(
       button: true,
       label: semanticLabel ?? label,
       child: Material(
-        color: active
-            ? ffTheme.brandAccent
-            : ffTheme.brandAccent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        color: active ? ffTheme.brandAccentTint : ffTheme.cardSurface,
+        shape: shape,
         child: InkWell(
-          borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+          customBorder: shape,
           onTap: onTap,
           // Guarantee a comfortable, accessible touch target (>= kMinTapTarget).
           child: ConstrainedBox(
@@ -570,7 +589,7 @@ class _MatchAction extends StatelessWidget {
                   children: [
                     Icon(icon,
                         size: 16,
-                        color: active ? Colors.white : ffTheme.brandAccent),
+                        color: active ? ffTheme.brandAccent : ffTheme.primaryText),
                     const SizedBox(width: 6),
                     Text(
                       label,

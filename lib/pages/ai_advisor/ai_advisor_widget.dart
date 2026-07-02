@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -226,7 +225,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       backgroundColor: ffTheme.background,
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: BoxDecoration(gradient: ffTheme.accentGradient),
+          // Fixed ink header (const token) — matches the app-wide dark-hero
+          // header language; green stays reserved for CTAs/active states.
+          decoration: const BoxDecoration(color: AppColors.primary),
         ),
         title: Row(
           children: [
@@ -236,7 +237,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                 height: 34,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 ),
                 child: const Center(
                   child: Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white),
@@ -247,22 +248,21 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                // Title + status ride the type scale; white-on-ink is the only
+                // delta (fixed header, valid in both themes).
+                Text('Switchy AI', style: ffTheme.titleLarge.copyWith(color: Colors.white)),
                 Row(
                   children: [
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: Colors.white.withValues(alpha: 0.6), blurRadius: 6),
-                        ],
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Text('מחובר עכשיו', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
+                    Text('מחובר עכשיו', style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w400, color: Colors.white70)),
                   ],
                 ),
               ],
@@ -339,7 +339,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   crossAxisCount: 3,
                   mainAxisSpacing: 6,
                   crossAxisSpacing: 6,
-                  childAspectRatio: 2.6,
+                  // 2.4 keeps every quick-start chip cell at/above the 48dp
+                  // accessible tap minimum on common phone widths.
+                  childAspectRatio: 2.4,
                 ),
                 itemCount: quickStarts.length,
                 itemBuilder: (ctx, i) {
@@ -354,7 +356,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         decoration: BoxDecoration(
                           color: ffTheme.brandAccentTint,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
                         ),
                         child: Text(
@@ -398,9 +400,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         hintTextDirection: TextDirection.rtl,
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.alternate)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusPill), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
                         filled: true,
                         fillColor: ffTheme.background,
                       ),
@@ -414,12 +416,12 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     child: Pressable(
                       onTap: () => _send(_inputCtrl.text),
                       child: Container(
-                        width: 46,
-                        height: 46,
+                        // >=48dp accessible tap target for the primary send CTA.
+                        width: kMinTapTarget,
+                        height: kMinTapTarget,
                         decoration: BoxDecoration(
                           gradient: ffTheme.accentGradient,
                           shape: BoxShape.circle,
-                          boxShadow: ffTheme.shadowAccent,
                         ),
                         child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                       ),
@@ -513,7 +515,6 @@ class _MessageBubble extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: ffTheme.accentGradient,
                       shape: BoxShape.circle,
-                      boxShadow: ffTheme.shadowAccent,
                     ),
                     child: const Center(
                       child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
@@ -526,14 +527,16 @@ class _MessageBubble extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: ffTheme.secondaryBackground,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(18),
-                        topRight: Radius.circular(18),
-                        bottomLeft: Radius.circular(4),
-                        bottomRight: Radius.circular(18),
+                      // Bubble corners from the radius scale (largest content
+                      // corner + the small tail); flat + 1px hairline — resting
+                      // content carries no shadow.
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(ffTheme.radiusXl),
+                        topRight: Radius.circular(ffTheme.radiusXl),
+                        bottomLeft: Radius.circular(ffTheme.radiusXs),
+                        bottomRight: Radius.circular(ffTheme.radiusXl),
                       ),
-                      border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.10)),
-                      boxShadow: ffTheme.shadowSoft,
+                      border: Border.all(color: ffTheme.lineColor),
                     ),
                     child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
                   ),
@@ -544,13 +547,12 @@ class _MessageBubble extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     gradient: ffTheme.accentGradient,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(18),
-                      topRight: Radius.circular(18),
-                      bottomLeft: Radius.circular(18),
-                      bottomRight: Radius.circular(4),
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(ffTheme.radiusXl),
+                      topRight: Radius.circular(ffTheme.radiusXl),
+                      bottomLeft: Radius.circular(ffTheme.radiusXl),
+                      bottomRight: Radius.circular(ffTheme.radiusXs),
                     ),
-                    boxShadow: ffTheme.shadowAccent,
                   ),
                   child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(color: Colors.white, height: 1.5), textDirection: TextDirection.rtl),
                 ),
@@ -575,11 +577,13 @@ class _MessageBubble extends StatelessWidget {
                       Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
                       context.pushNamed('Results');
                     },
-                    child: Container(
+                    // >=48dp hit area; the painted pill keeps its compact size.
+                    child: _MinTapTarget(
+                      child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
                         color: ffTheme.brandAccentTint,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
                       ),
                       child: Row(
@@ -589,6 +593,7 @@ class _MessageBubble extends StatelessWidget {
                           const SizedBox(width: 4),
                           Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.brandAccent),
                         ],
+                      ),
                       ),
                     ),
                   ),
@@ -600,12 +605,12 @@ class _MessageBubble extends StatelessWidget {
                     label: 'דבר עם נציג',
                     child: Pressable(
                       onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}, queryParameters: {'source': 'advisor'}),
-                      child: Container(
+                      child: _MinTapTarget(
+                        child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
                           gradient: ffTheme.accentGradient,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: ffTheme.shadowAccent,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -614,6 +619,7 @@ class _MessageBubble extends StatelessWidget {
                             const SizedBox(width: 5),
                             Text('דבר עם נציג', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                           ],
+                        ),
                         ),
                       ),
                     ),
@@ -632,22 +638,24 @@ class _MessageBubble extends StatelessWidget {
               label: 'דברו עם נציג',
               child: Pressable(
                 onTap: () => context.pushNamed('Callback'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    gradient: ffTheme.accentGradient,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: ffTheme.shadowAccent,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.support_agent_rounded, size: 14, color: Colors.white),
-                      const SizedBox(width: 5),
-                      Text('דברו עם נציג — חינם',
-                          style: ffTheme.labelSmall
-                              .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                    ],
+                // >=48dp hit area; the painted pill keeps its compact size.
+                child: _MinTapTarget(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.support_agent_rounded, size: 14, color: Colors.white),
+                        const SizedBox(width: 5),
+                        Text('דברו עם נציג — חינם',
+                            style: ffTheme.labelSmall
+                                .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -716,7 +724,6 @@ class _TypingBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: ffTheme.accentGradient,
                 shape: BoxShape.circle,
-                boxShadow: ffTheme.shadowAccent,
               ),
               child: const Center(
                 child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
@@ -727,13 +734,15 @@ class _TypingBubble extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: ffTheme.secondaryBackground,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(18),
+              // Same token-sourced bubble corners + flat hairline as the agent
+              // bubbles — one elevation story, no resting shadow.
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(ffTheme.radiusXl),
+                topRight: Radius.circular(ffTheme.radiusXl),
+                bottomLeft: Radius.circular(ffTheme.radiusXs),
+                bottomRight: Radius.circular(ffTheme.radiusXl),
               ),
-              boxShadow: ffTheme.shadowSoft,
+              border: Border.all(color: ffTheme.lineColor),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -744,4 +753,20 @@ class _TypingBubble extends StatelessWidget {
       ),
     ).animate().fadeIn(duration: 200.ms, curve: ffTheme.easeOut);
   }
+}
+
+/// Raises a small control's HIT AREA to the >=48dp accessibility minimum
+/// ([kMinTapTarget]) without growing the painted control itself — the child
+/// keeps its intrinsic size, centered inside the enlarged (transparent) box.
+/// The wrapping [Pressable] hit-tests opaquely, so the whole box accepts taps.
+class _MinTapTarget extends StatelessWidget {
+  const _MinTapTarget({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(
+            minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+        child: Align(widthFactor: 1, heightFactor: 1, child: child),
+      );
 }

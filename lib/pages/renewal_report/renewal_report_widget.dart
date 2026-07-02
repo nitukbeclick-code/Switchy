@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/saving_pill.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/push_notification_service.dart';
@@ -88,11 +90,16 @@ class _RenewalReportWidgetState extends State<RenewalReportWidget> {
 
                   Row(
                     children: [
-                      Icon(Icons.table_chart_rounded, size: 18, color: ffTheme.primary),
+                      ExcludeSemantics(
+                        child: Icon(Icons.table_chart_rounded, size: 18, color: ffTheme.primary),
+                      ),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text('כל המסלולים — מהמשתלם ביותר',
-                            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                        child: Semantics(
+                          header: true,
+                          child: Text('כל המסלולים — מהמשתלם ביותר',
+                              style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                        ),
                       ),
                       Text('${matches.length} מסלולים',
                           style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
@@ -184,9 +191,9 @@ class _Hero extends StatelessWidget {
     final priceCaption =
         isAbroad ? unit : '$unit · ₪${tp.monthlyPrice * 12}/שנה';
     return Container(
+      // Flat ink hero band — resting content carries no shadow.
       decoration: BoxDecoration(
         gradient: ffTheme.brandGradient,
-        boxShadow: ffTheme.shadowSoft,
       ),
       child: SafeArea(
         bottom: false,
@@ -206,9 +213,13 @@ class _Hero extends StatelessWidget {
                     },
                   ),
                   Expanded(
-                    child: Text('טבלת השוואה מלאה',
-                        style: GoogleFonts.rubik(
-                            fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                    child: Semantics(
+                      header: true,
+                      // Type-scale token; white-on-ink is the only delta.
+                      child: Text('טבלת השוואה מלאה',
+                          style: ffTheme.headlineMedium.copyWith(
+                              fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
                   ),
                 ],
               ),
@@ -223,7 +234,7 @@ class _Hero extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: ffTheme.brandAccent.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXl),
                     border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.5)),
                   ),
                   child: Row(
@@ -234,7 +245,7 @@ class _Hero extends StatelessWidget {
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                           ),
                           child: LogoWidget(provider: tp.provider, size: 40),
                         ),
@@ -246,19 +257,21 @@ class _Hero extends StatelessWidget {
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.person_pin_circle_rounded,
-                                    size: 13, color: Colors.white.withValues(alpha: 0.9)),
+                                ExcludeSemantics(
+                                  child: Icon(Icons.person_pin_circle_rounded,
+                                      size: 13, color: Colors.white.withValues(alpha: 0.9)),
+                                ),
                                 const SizedBox(width: 4),
+                                // Type-scale tokens; white-on-ink is the only
+                                // delta (fixed ink hero).
                                 Text('המסלול שלך היום',
-                                    style: GoogleFonts.assistant(
-                                        fontSize: 12,
+                                    style: ffTheme.labelMedium.copyWith(
                                         fontWeight: FontWeight.w700,
                                         color: Colors.white.withValues(alpha: 0.9))),
                               ],
                             ),
                             Text('${tp.provider} · ${tp.planName}',
-                                style: GoogleFonts.rubik(
-                                    fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                                style: ffTheme.titleLarge.copyWith(color: Colors.white),
                                 maxLines: 1, overflow: TextOverflow.ellipsis),
                           ],
                         ),
@@ -266,12 +279,15 @@ class _Hero extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('₪${tp.monthlyPrice}',
-                              style: GoogleFonts.rubik(
-                                  fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                          // Money via PriceText — numeric token, tabular,
+                          // bidi-safe.
+                          PriceText('₪${tp.monthlyPrice}',
+                              style: ffTheme.numericMedium.copyWith(
+                                  fontWeight: FontWeight.w800, color: Colors.white)),
                           Text(priceCaption,
-                              style: GoogleFonts.assistant(
-                                  fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+                              style: ffTheme.labelSmall.copyWith(
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.white.withValues(alpha: 0.8))),
                         ],
                       ),
                     ],
@@ -286,12 +302,14 @@ class _Hero extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.alarm_rounded, size: 15, color: ffTheme.secondary),
+                        // Fixed white on the fixed ink hero (the themed
+                        // `secondary` token goes dark-on-dark in dark mode).
+                        const Icon(Icons.alarm_rounded, size: 15, color: Colors.white),
                         const SizedBox(width: 6),
                         Text(
                           days < 0
@@ -299,8 +317,8 @@ class _Hero extends StatelessWidget {
                               : days == 0
                                   ? 'המבצע מסתיים היום!'
                                   : 'המבצע מסתיים בעוד $days ימים',
-                          style: GoogleFonts.assistant(
-                              fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white),
+                          style: ffTheme.labelMedium.copyWith(
+                              fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                       ],
                     ),
@@ -342,8 +360,8 @@ class _SaverBanner extends StatelessWidget {
     final shareText = isAbroad
         ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם Switchy AI'
         : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם Switchy AI';
-    // The headline saving is the page's hero VALUE moment — amber wash, amber
-    // figure, with a celebratory icon badge.
+    // The headline saving is the page's hero VALUE moment — the green savings
+    // tint treatment, with a celebratory icon badge.
     // Light selection haptic on the saver tap targets — matches the tactile
     // feedback the Pressable rows below emit.
     void tapWithHaptic() {
@@ -358,13 +376,13 @@ class _SaverBanner extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: tapWithHaptic,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ffTheme.radiusXl),
           splashColor: ffTheme.saving.withValues(alpha: 0.12),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: ffTheme.saving.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
+              color: ffTheme.brandAccentTint,
+              borderRadius: BorderRadius.circular(ffTheme.radiusXl),
               border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
             ),
             child: Column(
@@ -372,23 +390,27 @@ class _SaverBanner extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: ffTheme.saving.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(13),
+                    // Neutral icon medallion pattern with the VALUE glyph.
+                    ExcludeSemantics(
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: ffTheme.saving.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                        ),
+                        child: Icon(Icons.celebration_rounded, size: 24, color: ffTheme.savingText),
                       ),
-                      child: Icon(Icons.celebration_rounded, size: 24, color: ffTheme.savingDark),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Headline token; the savings green is the VALUE ink.
                           Text(headline,
-                              style: GoogleFonts.rubik(
-                                  fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                              style: ffTheme.headlineMedium.copyWith(
+                                  fontWeight: FontWeight.w800, color: ffTheme.savingText)),
                           const SizedBox(height: 2),
                           Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
                               style: ffTheme.bodySmall.copyWith(
@@ -400,29 +422,20 @@ class _SaverBanner extends StatelessWidget {
                     const SizedBox(width: 4),
                     IconButton(
                       tooltip: 'שתף',
-                      icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.savingDark),
+                      icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.savingText),
                       onPressed: () => Share.share(shareText),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Explicit green ACTION CTA — the saving figure is the VALUE
-                // (amber wash); switching is the ACTION, so the button leads.
-                SizedBox(
+                // The screen's ONE primary gradient CTA — the saving is the
+                // VALUE (tint); switching is the ACTION, so the button leads.
+                AppButton(
+                  text: 'צפה במסלול החוסך',
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  color: AppColors.primary,
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: tapWithHaptic,
-                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text('צפה במסלול החוסך'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.brandAccent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      textStyle: GoogleFonts.rubik(fontSize: 14.5, fontWeight: FontWeight.w800),
-                    ),
-                  ),
+                  onPressed: () async => tapWithHaptic(),
                 ),
               ],
             ),
@@ -442,14 +455,17 @@ class _NoSaverNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
+      // Neutral tint surface + 1px hairline (no ad-hoc ink border).
       decoration: BoxDecoration(
         color: ffTheme.accent1,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(ffTheme.radiusXl),
+        border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
         children: [
-          Icon(Icons.thumb_up_alt_outlined, size: 26, color: ffTheme.primary),
+          ExcludeSemantics(
+            child: Icon(Icons.thumb_up_alt_outlined, size: 26, color: ffTheme.primary),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -496,12 +512,13 @@ class _AlternativeRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
-        // Premium card surface; the top pick keeps its strong ink border + a
-        // stronger lift, the rest fall back to the soft ink hairline.
-        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd).copyWith(
-          border: isTop ? Border.all(color: ffTheme.primary, width: 2) : null,
-          boxShadow: isTop ? ffTheme.shadowCard : ffTheme.shadowSoft,
-        ),
+        // Flat resting card + 1px hairline; the top pick earns the strong ink
+        // border as its focal tell (no lift — one elevation story).
+        decoration: isTop
+            ? ffTheme.cardDecoration(radius: ffTheme.radiusMd).copyWith(
+                border: Border.all(color: ffTheme.primary, width: 2),
+              )
+            : ffTheme.cardDecoration(radius: ffTheme.radiusMd),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -535,9 +552,11 @@ class _AlternativeRow extends StatelessWidget {
                           ),
                           if (rating > 0) ...[
                             const SizedBox(width: 6),
+                            // Amber star = the universal rating glyph (a
+                            // documented warning-token exception).
                             Icon(Icons.star_rounded, size: 13, color: ffTheme.warning),
                             Text(rating.toStringAsFixed(1),
-                                style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11)),
+                                style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700)),
                           ],
                         ],
                       ),
@@ -550,11 +569,11 @@ class _AlternativeRow extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₪${plan.priceText}',
-                        style: ffTheme.titleSmall.copyWith(
-                            color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                    // Money = ink, tabular + bidi-safe via PriceText.
+                    PriceText('₪${plan.priceText}',
+                        style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
                     Text(plan.hasPromo ? 'ואז ₪${plan.afterText}' : priceUnitLabel(plan),
-                        style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                        style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                   ],
                 ),
               ],
@@ -562,34 +581,26 @@ class _AlternativeRow extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                // Match score chip
+                // Match score chip — neutral chip language.
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                    border: Border.all(color: ffTheme.lineColor),
                   ),
                   child: Text('${match.scorePct}% התאמה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 10.5)),
+                          color: ffTheme.primary, fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(width: 8),
-                // Saving vs current — VALUE chip in amber.
+                // Saving vs current — the ONE shared VALUE-pill treatment.
                 if (saving > 0)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: ffTheme.saving.withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(savingLabel,
-                        style: GoogleFonts.rubik(
-                            fontSize: 10.5, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
-                  )
+                  Flexible(child: SavingPill(text: savingLabel))
                 else
                   Text(
                     plan.price <= currentPrice ? 'מחיר דומה' : 'יקר מהנוכחי',
-                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10.5),
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                   ),
                 const Spacer(),
                 Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.secondaryText),
@@ -618,19 +629,19 @@ class _ReminderCta extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      // Active (reminder on) keeps its ink-tinted wash + accent border; the
-      // inactive state uses the premium soft card hairline.
+      // ON = a success/active confirmation → the green tint treatment; the
+      // inactive state is a standard flat card + hairline.
       decoration: on
           ? BoxDecoration(
-              color: ffTheme.primary.withValues(alpha: 0.07),
+              color: ffTheme.brandAccentTint,
               borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.4)),
+              border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.4)),
             )
           : ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       child: on
           ? Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: ffTheme.primary, size: 24),
+                Icon(Icons.check_circle_rounded, color: ffTheme.brandAccent, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -662,30 +673,23 @@ class _ReminderCta extends StatelessWidget {
                   style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
+                // Secondary AppButton — the saver banner above holds the
+                // screen's single primary gradient CTA.
+                AppButton.secondary(
+                  text: 'שלחו לי תזכורת',
+                  icon: const Icon(Icons.notifications_active_rounded, size: 18),
                   width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      HapticFeedback.selectionClick();
-                      appState.setRenewalReminders(true);
-                      appBackend.setRenewalReminder(true).catchError((_) {});
-                      await PushNotificationService.instance.requestPermission();
-                      await PushNotificationService.instance.syncRenewalReminders(appState);
-                      if (context.mounted) {
-                        AppSnackBar.success(
-                            context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
-                      }
-                    },
-                    icon: const Icon(Icons.notifications_active_rounded, size: 18),
-                    label: const Text('שלחו לי תזכורת'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      textStyle: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700),
-                    ),
-                  ),
+                  height: 48,
+                  onPressed: () async {
+                    appState.setRenewalReminders(true);
+                    appBackend.setRenewalReminder(true).catchError((_) {});
+                    await PushNotificationService.instance.requestPermission();
+                    await PushNotificationService.instance.syncRenewalReminders(appState);
+                    if (context.mounted) {
+                      AppSnackBar.success(
+                          context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
+                    }
+                  },
                 ),
               ],
             ),
@@ -728,22 +732,15 @@ class _NotFound extends StatelessWidget {
                   textAlign: TextAlign.center),
               const SizedBox(height: 24),
               // Never dead-end — route back to the renewal radar so the user can
-              // re-add or pick another tracked plan to compare.
-              SizedBox(
+              // re-add or pick another tracked plan to compare. The empty
+              // screen's single action = the primary AppButton CTA.
+              AppButton(
+                text: 'חזרה למעקב חידושים',
+                icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                color: AppColors.primary,
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () =>
-                      context.canPop() ? context.safePop() : context.goNamed('Renewal'),
-                  icon: const Icon(Icons.notifications_active_outlined, size: 18),
-                  label: const Text('חזרה למעקב חידושים'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ffTheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    textStyle: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700),
-                  ),
-                ),
+                onPressed: () async =>
+                    context.canPop() ? context.safePop() : context.goNamed('Renewal'),
               ),
             ],
           ),

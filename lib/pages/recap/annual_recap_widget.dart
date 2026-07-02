@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -12,6 +11,8 @@ import '../../services/referral_code.dart';
 import '../../services/backend/local_backend.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/saving_pill.dart';
+import '../../widgets/price_text.dart';
 
 /// A polished, shareable yearly savings recap: the headline ₪ the user could
 /// save this year, how many plans they're tracking, which categories carry an
@@ -48,8 +49,9 @@ class AnnualRecapWidget extends StatelessWidget {
           onPressed: () => context.safePop(),
         ),
         title: Text('הסיכום השנתי שלי',
-            style: GoogleFonts.rubik(
-                fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primaryText)),
+            // Sourced from the headline scale (Rubik 18); the heavier w800 is
+            // the genuine delta, carried via copyWith — no raw GoogleFonts.
+            style: ffTheme.headlineMedium.copyWith(fontWeight: FontWeight.w800)),
         centerTitle: true,
         actions: [
           if (hasAnything)
@@ -239,8 +241,13 @@ class _RecapBody extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text('פירוט ההזדמנויות',
-                  style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              // Announced as a section heading so screen-reader users can jump
+              // between the recap's sections.
+              Semantics(
+                header: true,
+                child: Text('פירוט ההזדמנויות',
+                    style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -272,34 +279,31 @@ class _RecapBody extends StatelessWidget {
         // prominent share affordance so the recap never dead-ends.
         if (onActOnTop != null) ...[
           AppButton(
-            text: 'התחל לחסוך עכשיו',
-            icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+            text: 'התחילו לחסוך עכשיו',
+            // Contrast-aware ink ON the solid-green ACTION fill (pinned white
+            // fell to ~1.7:1 on the lifted dark-mode green-400); AppButton
+            // already picks the matching label ink itself.
+            icon: Icon(Icons.bolt_rounded, color: ffTheme.onSaving, size: 20),
             onPressed: () async => onActOnTop!(),
             color: AppColors.primary,
-            textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+            textStyle: ffTheme.titleSmall,
             width: double.infinity,
             height: 52,
             borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           ).animate(delay: 320.ms).fadeIn(duration: 300.ms),
           const SizedBox(height: 12),
         ],
-        // Share affordance — a confident, full-width secondary. When there's a
-        // top opportunity above it sits as the calm second action; when sharing
-        // is the only action (already-realized, nothing left to act on) it still
-        // reads as a clear, inviting CTA. Brand ink so it never competes with the
-        // green ACTION primary above.
-        OutlinedButton.icon(
-          onPressed: onShare,
-          icon: const Icon(Icons.ios_share_rounded, size: 18),
-          label: Text('שתף את הסיכום שלי',
-              style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: ffTheme.primary,
-            side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5), width: 1.5),
-            minimumSize: const Size(double.infinity, 52),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(ffTheme.radiusMd)),
-          ),
+        // Share affordance — the shared SECONDARY variant (surface fill +
+        // hairline + ink label) so the recap's two actions read as one system:
+        // green ACTION primary above, calm secondary below.
+        AppButton.secondary(
+          text: 'שתפו את הסיכום שלי',
+          icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.primaryText),
+          onPressed: () async => onShare(),
+          textStyle: ffTheme.titleSmall,
+          width: double.infinity,
+          height: 52,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         ).animate(delay: 380.ms).fadeIn(duration: 300.ms),
 
         const SizedBox(height: 8),
@@ -319,15 +323,16 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final year = DateTime.now().year;
+    // Reduced motion: the count-up starts (and stays) at the real total.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       decoration: BoxDecoration(
-        // A premium ink hero: soft wash + a pronounced lift so the headline
-        // figure floats off the page.
+        // The ink hero — flat, per the one-elevation story (resting content
+        // carries no float; only sheets/FABs/sticky bars lift).
         gradient: ffTheme.brandGradient,
         borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         children: [
@@ -344,14 +349,24 @@ class _HeroCard extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.celebration_rounded, color: ffTheme.saving, size: 16)
-                    .animate()
-                    .scale(
-                      begin: const Offset(0.8, 0.8),
-                      end: const Offset(1, 1),
-                      duration: 450.ms,
-                      curve: Curves.easeOutBack,
-                    ),
+                // Decorative glyph (the badge text carries the meaning); the
+                // small settle is skipped under reduced motion.
+                if (reduceMotion)
+                  ExcludeSemantics(
+                      child: Icon(Icons.celebration_rounded,
+                          color: ffTheme.saving, size: 16))
+                else
+                  ExcludeSemantics(
+                    child: Icon(Icons.celebration_rounded,
+                            color: ffTheme.saving, size: 16)
+                        .animate()
+                        .scale(
+                          begin: const Offset(0.8, 0.8),
+                          end: const Offset(1, 1),
+                          duration: 450.ms,
+                          curve: Curves.easeOutBack,
+                        ),
+                  ),
                 const SizedBox(width: 6),
                 Text('הסיכום של $year',
                     style: ffTheme.labelMedium.copyWith(
@@ -362,31 +377,25 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: 18),
           Text(
             'החיסכון הפוטנציאלי שלך לשנה',
-            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.6)),
+            style: ffTheme.labelMedium.copyWith(color: ffTheme.white.withValues(alpha: 0.7)),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 10),
-          // The amber VALUE figure is the single dominant focal point of the
-          // whole recap — display-medium (44px) with a soft VALUE glow halo so it
-          // reads as the celebratory headline number.
+          // The VALUE figure is the single dominant focal point of the whole
+          // recap. Flat under Geist — no glow halo — and sourced from the
+          // numeric scale (tabular figures so the count-up doesn't jitter);
+          // PriceText pins the ₪+digits run LTR (bidi-safe money).
           TweenAnimationBuilder<int>(
-            tween: IntTween(begin: 0, end: total),
+            tween: IntTween(begin: reduceMotion ? total : 0, end: total),
             duration: const Duration(milliseconds: 1400),
             curve: Curves.easeOutCubic,
-            builder: (_, value, __) => Text(
+            builder: (_, value, __) => PriceText(
               personalized ? '₪$value' : '~₪$value',
-              style: ffTheme.displayMedium.copyWith(
+              textAlign: TextAlign.center,
+              style: ffTheme.numericLarge.copyWith(
+                fontSize: 28,
                 color: ffTheme.saving,
                 fontWeight: FontWeight.w900,
-                // A warm amber glow lifts the figure off the ink hero — a real
-                // "moment", not a flat numeral.
-                shadows: [
-                  Shadow(
-                      color: ffTheme.saving.withValues(alpha: 0.45),
-                      blurRadius: 24),
-                ],
-                // Fixed-width digits — the count-up doesn't jitter sideways.
-                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
@@ -395,7 +404,7 @@ class _HeroCard extends StatelessWidget {
             personalized
                 ? 'על בסיס המסלולים שאנחנו ממליצים עבורכם'
                 : 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
+            style: ffTheme.bodySmall.copyWith(color: ffTheme.white.withValues(alpha: 0.65)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -439,8 +448,10 @@ class _StatTile extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(value,
-              style: GoogleFonts.rubik(
-                  fontSize: 24, fontWeight: FontWeight.w800, color: ffTheme.primaryText)),
+              // Stat numeral sourced from the numeric scale (numericMedium is
+              // exactly Rubik 24, + tabular figures); only the heavier w800
+              // rides via copyWith — no raw GoogleFonts.
+              style: ffTheme.numericMedium.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
           Text(label,
               style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
@@ -461,14 +472,15 @@ class _RealizedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Realised savings = a banked win → green ACTION tint, distinct from the
-    // amber "potential" figures elsewhere on the recap.
+    // Realised savings = a banked win — a SUCCESS confirmation, so it earns
+    // the designed VALUE tint token + green hairline, mirroring the /savings
+    // realized card so the two read as the same surface.
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+        color: ffTheme.brandAccentTint,
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -476,21 +488,29 @@ class _RealizedCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: ffTheme.primary.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+              // Card-surface medallion so the tile stays visible ON the tint.
+              color: ffTheme.secondaryBackground,
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
             ),
-            child: Icon(Icons.savings_rounded, color: ffTheme.primary, size: 22),
+            child: Icon(Icons.savings_rounded, color: ffTheme.brandAccent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
+            // Text.rich (not raw RichText): it inherits the ambient MediaQuery
+            // textScaler, so the sentence grows with the user's OS text size.
+            child: Text.rich(
+              TextSpan(
                 style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700),
                 children: [
                   const TextSpan(text: 'כבר חסכת '),
                   TextSpan(
                       text: '₪$amount',
-                      style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.brandAccentText,
+                          fontWeight: FontWeight.w800,
+                          // Tabular figures — aligns with the shared savings
+                          // treatment.
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                   const TextSpan(text: ' דרך Switchy AI השנה'),
                 ],
               ),
@@ -545,18 +565,14 @@ class _OpportunityRow extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: ffTheme.saving.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
-              style: GoogleFonts.rubik(
-                  fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText),
-            ),
-          ),
+          // The shared VALUE pill (tint bg + savings glyph + tabular figures)
+          // replaces the hand-rolled green badge, so the recap's per-category
+          // savings read as the same category as every other savings surface.
+          // TRUTH-ONLY: the real annual figure is unchanged.
+          SavingPill(
+              text: personalized
+                  ? '₪${saving.annualSaving}/שנה'
+                  : '~₪${saving.annualSaving}/שנה'),
         ],
       ),
     );

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -15,7 +14,9 @@ import '../../services/search.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/section_header.dart';
 
 /// Global search across every provider and plan in the catalogue.
 ///
@@ -180,16 +181,21 @@ class _SearchWidgetState extends State<SearchWidget> {
                 Semantics(
                   button: true,
                   label: 'נקה חיפוש',
-                  child: GestureDetector(
+                  child: Pressable(
                     onTap: () {
                       _ctrl.clear();
                       _setQuery('');
                       _focus.requestFocus();
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 2, left: 2),
-                      child: Icon(Icons.close_rounded,
-                          size: 18, color: ffTheme.secondaryText),
+                    // A full-height invisible hit zone — the visible glyph stays
+                    // 18px, the tap target fills the 44px field.
+                    child: SizedBox(
+                      width: 40,
+                      height: 44,
+                      child: Center(
+                        child: Icon(Icons.close_rounded,
+                            size: 18, color: ffTheme.secondaryText),
+                      ),
                     ),
                   ),
                 ),
@@ -284,8 +290,9 @@ class _FacetBar extends StatelessWidget {
       context: context,
       backgroundColor: ffTheme.secondaryBackground,
       shape: RoundedRectangleBorder(
+        // Edge-anchored sheets take the dedicated sheet radius token.
         borderRadius:
-            BorderRadius.vertical(top: Radius.circular(ffTheme.radiusLg)),
+            BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
       ),
       builder: (sheetCtx) {
         return SafeArea(
@@ -726,18 +733,24 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(text,
-            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+        Semantics(
+            header: true,
+            child: Text(text,
+                style:
+                    ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800))),
         const SizedBox(width: 8),
+        // Result count is DATA, not an active state → neutral chip (surface +
+        // hairline + ink), keeping green for actions/savings only.
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: ffTheme.brandAccentTint,
+            color: ffTheme.accent1,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+            border: Border.all(color: ffTheme.lineColor),
           ),
           child: Text('$count',
               style: ffTheme.labelSmall.copyWith(
-                  color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
+                  color: ffTheme.secondaryText, fontWeight: FontWeight.w800)),
         ),
       ],
     );
@@ -782,7 +795,9 @@ class _Highlighted extends StatelessWidget {
     final low = text.toLowerCase();
     final hlStyle = base.copyWith(
       fontWeight: FontWeight.w800,
-      color: AppTheme.of(context).brandAccent,
+      // AA-safe green ink for the matched-term emphasis (the fill hue fails
+      // 4.5:1 as small text on the pale tint).
+      color: AppTheme.of(context).brandAccentText,
       backgroundColor: highlight,
     );
 
@@ -883,7 +898,7 @@ class _HighlightedPlanCard extends StatelessWidget {
                     query: query,
                     base: ffTheme.labelSmall
                         .copyWith(color: ffTheme.secondaryText),
-                    highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
+                    highlight: ffTheme.brandAccentTint,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -933,11 +948,12 @@ class _CategoryResultChip extends StatelessWidget {
               _Highlighted(
                 text: hit.name,
                 query: query,
-                base: GoogleFonts.assistant(
-                    fontSize: 14,
+                // Type-scale token (was a raw GoogleFonts style) + AA-safe
+                // green ink on the tint surface.
+                base: ffTheme.labelLarge.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: ffTheme.brandAccent),
-                highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
+                    color: ffTheme.brandAccentText),
+                highlight: ffTheme.brandAccentTint,
               ),
               const SizedBox(width: 6),
               Icon(Icons.chevron_left_rounded,
@@ -986,13 +1002,13 @@ class _ProviderChip extends StatelessWidget {
                 text: name,
                 query: query,
                 base: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
-                highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
+                highlight: ffTheme.brandAccentTint,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               Text('$planCount מסלולים',
                   style: ffTheme.labelSmall
-                      .copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                      .copyWith(color: ffTheme.secondaryText)),
             ],
           ),
         ),
@@ -1030,24 +1046,12 @@ class _Suggestions extends StatelessWidget {
         SliverList(
           delegate: SliverChildListDelegate([
             if (recent.isNotEmpty) ...[
-              Row(
-                children: [
-                  Text('חיפושים אחרונים',
-                      style: ffTheme.titleMedium
-                          .copyWith(fontWeight: FontWeight.w800)),
-                  const Spacer(),
-                  Semantics(
-                    button: true,
-                    label: 'נקה חיפושים אחרונים',
-                    child: GestureDetector(
-                      onTap: onClearRecent,
-                      child: Text('נקה',
-                          style: ffTheme.labelMedium.copyWith(
-                              color: ffTheme.brandAccentText,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
+              // Shared section-header pattern: title + trailing action chip
+              // (replaces the bespoke bare-text GestureDetector "נקה" link).
+              SectionHeader(
+                title: 'חיפושים אחרונים',
+                trailingLabel: 'נקה',
+                onTrailingTap: onClearRecent,
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -1066,9 +1070,11 @@ class _Suggestions extends StatelessWidget {
             ],
 
             // Browse by category — real categories.
-            Text('עיון לפי קטגוריה',
-                style:
-                    ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+            Semantics(
+                header: true,
+                child: Text('עיון לפי קטגוריה',
+                    style: ffTheme.titleMedium
+                        .copyWith(fontWeight: FontWeight.w800))),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -1096,11 +1102,12 @@ class _Suggestions extends StatelessWidget {
                                 Icon(categoryIconData(c.id),
                                     size: 15, color: ffTheme.brandAccent),
                                 const SizedBox(width: 6),
+                                // Type-scale token + AA-safe green ink (was a
+                                // raw GoogleFonts style in the fill hue).
                                 Text(c.name,
-                                    style: GoogleFonts.assistant(
-                                        fontSize: 13,
+                                    style: ffTheme.labelLarge.copyWith(
                                         fontWeight: FontWeight.w700,
-                                        color: ffTheme.brandAccent)),
+                                        color: ffTheme.brandAccentText)),
                               ],
                             ),
                           ),
@@ -1112,9 +1119,11 @@ class _Suggestions extends StatelessWidget {
 
             // The cheapest real plan in each category — a useful, honest jump-off.
             if (cheapest.isNotEmpty) ...[
-              Text('המסלולים הזולים ביותר',
-                  style: ffTheme.titleMedium
-                      .copyWith(fontWeight: FontWeight.w800)),
+              Semantics(
+                  header: true,
+                  child: Text('המסלולים הזולים ביותר',
+                      style: ffTheme.titleMedium
+                          .copyWith(fontWeight: FontWeight.w800))),
               const SizedBox(height: 4),
               Text('המחיר הנמוך ביותר בכל קטגוריה, מתוך הקטלוג',
                   style:
@@ -1200,11 +1209,11 @@ class _PillChip extends StatelessWidget {
             children: [
               Icon(icon, size: 14, color: ffTheme.secondaryText),
               const SizedBox(width: 6),
+              // Type-scale token (was a raw GoogleFonts style); ink label on
+              // the neutral chip surface.
               Text(label,
-                  style: GoogleFonts.assistant(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: ffTheme.primaryText)),
+                  style: ffTheme.labelLarge
+                      .copyWith(fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -1283,13 +1292,14 @@ class _CheapestRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₪${plan.priceText}',
-                      style: ffTheme.titleMedium.copyWith(
-                          color: ffTheme.brandAccent,
-                          fontWeight: FontWeight.w800)),
+                  // Price is DATA → ink, via PriceText (bidi-safe + tabular).
+                  // Green stays reserved for actions/savings.
+                  PriceText('₪${plan.priceText}',
+                      style: ffTheme.titleMedium
+                          .copyWith(fontWeight: FontWeight.w800)),
                   Text(priceUnitShort(plan),
-                      style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.secondaryText, fontSize: 10)),
+                      style: ffTheme.labelSmall
+                          .copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ],

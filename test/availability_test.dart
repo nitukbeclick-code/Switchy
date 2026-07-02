@@ -93,7 +93,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Tap the CTA without entering a city.
+      // Tap the CTA without entering a city. The swept layout can place the
+      // CTA below the 800x600 test surface — bring it on-screen first.
+      await tester.ensureVisible(find.text('בדוק זמינות'));
+      await tester.pump();
       await tester.tap(find.text('בדוק זמינות'));
       await tester.pump(); // let the SnackBar enter
       await tester.pump(const Duration(milliseconds: 300));

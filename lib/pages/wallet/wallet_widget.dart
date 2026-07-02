@@ -9,6 +9,7 @@ import '../../services/savings_summary.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/saving_pill.dart';
+import '../../widgets/price_text.dart';
 
 /// "ארנק התקשורת" (Telecom Wallet) — a PERSONAL realized-savings view plus an
 /// HONEST aggregate social-proof block.
@@ -155,16 +156,17 @@ class _RealizedHeroFigure extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // The realized figure is the VALUE headline → amber. Capped at 30
+                // The realized figure is the VALUE headline. Capped at 30
                 // (was 44) so the hero reads calm, not shouty — the figure itself
                 // is KEPT, only the size is dialed down.
-                Text(
+                PriceText(
                   '₪${wallet.realizedSaving}',
                   // The hero realized total IS numericLarge (Rubik 30 / w800 /
                   // height 1 / tabular) — sourced from the numeric scale so it
                   // aligns with the shared savings treatment. The genuine deltas
                   // (VALUE-green colour + the tighter -1 tracking the hero wants)
-                  // ride via copyWith.
+                  // ride via copyWith. PriceText pins the ₪+digits run LTR
+                  // (bidi-safe money inside the RTL header).
                   style: ffTheme.numericLarge.copyWith(
                     color: valueAmber,
                     letterSpacing: -1,
@@ -302,10 +304,12 @@ class _PotentialNudge extends StatelessWidget {
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           child: Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ffTheme.saving.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-              border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
+            // A calm card surface with a green hairline — the SavingPill inside
+            // carries the VALUE green (a full green wash under the pill made
+            // the pill's own tint disappear, tint-on-tint).
+            decoration: ffTheme.cardDecoration(
+              radius: ffTheme.radiusMd,
+              borderColor: ffTheme.brandAccent.withValues(alpha: 0.4),
             ),
             child: Row(
               children: [
@@ -320,7 +324,7 @@ class _PotentialNudge extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'יש לך עוד פוטנציאל חיסכון — בוא נראה איפה',
+                        'יש לך עוד פוטנציאל חיסכון — בואו נראה איפה',
                         style: ffTheme.bodySmall.copyWith(
                             color: ffTheme.primaryText,
                             fontWeight: FontWeight.w700,

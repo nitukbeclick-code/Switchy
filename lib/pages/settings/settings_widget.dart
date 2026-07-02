@@ -281,11 +281,12 @@ class SettingsWidget extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          gradient: ffTheme.accentGradient,
+                          // Neutral accent1 medallion — decorative icon tiles
+                          // don't spend the green (CTAs/active states only).
+                          color: ffTheme.accent1,
                           borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                          boxShadow: ffTheme.shadowAccent,
                         ),
-                        child: const Center(child: ExcludeSemantics(child: Icon(Icons.savings_outlined, size: 22, color: Colors.white))),
+                        child: Center(child: ExcludeSemantics(child: Icon(Icons.savings_outlined, size: 22, color: ffTheme.secondaryText))),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -300,11 +301,13 @@ class SettingsWidget extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: ffTheme.brandAccentTint,
+                          // Neutral INFO chip: surface + hairline + ink — the
+                          // version number is data, not an active/green state.
+                          color: ffTheme.accent1,
                           borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
+                          border: Border.all(color: ffTheme.lineColor),
                         ),
-                        child: Text('1.0.4', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                        child: Text('1.0.10', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -603,8 +606,10 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// A 3-way segmented control for the app theme: system / light / dark.
-/// Bound to [AppState.themeMode]; the active segment carries the green ACTION
-/// gradient so the choice reads at a glance in both light and dark.
+/// Bound to [AppState.themeMode]; the active segment carries the canonical
+/// ACTIVE chip treatment (brandAccentTint + green hairline + green ink) — not a
+/// solid-green fill, which is reserved for primary CTAs and whose pinned-white
+/// label went illegible on the lifted dark-mode green.
 class _ThemeSegmented extends StatelessWidget {
   const _ThemeSegmented({required this.ffTheme, required this.mode, required this.onChanged});
   final AppTheme ffTheme;
@@ -642,21 +647,25 @@ class _ThemeSegmented extends StatelessWidget {
                   curve: ffTheme.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    gradient: active ? ffTheme.accentGradient : null,
+                    color: active ? ffTheme.brandAccentTint : null,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                    boxShadow: active ? ffTheme.shadowAccent : null,
+                    border: Border.all(
+                      color: active
+                          ? ffTheme.brandAccent.withValues(alpha: 0.22)
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ExcludeSemantics(
-                        child: Icon(s.$3, size: 18, color: active ? Colors.white : ffTheme.secondaryText),
+                        child: Icon(s.$3, size: 18, color: active ? ffTheme.brandAccentText : ffTheme.secondaryText),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         s.$2,
                         style: ffTheme.labelSmall.copyWith(
-                          color: active ? Colors.white : ffTheme.secondaryText,
+                          color: active ? ffTheme.brandAccentText : ffTheme.secondaryText,
                           fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                         ),
                       ),
@@ -694,7 +703,9 @@ class _Divider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Divider(height: 1, indent: 16, endIndent: 16, color: ffTheme.alternate);
+    // In-card row separators use the default hairline token, not the heavier
+    // input-emphasis `alternate`.
+    return Divider(height: 1, indent: 16, endIndent: 16, color: ffTheme.lineColor);
   }
 }
 
@@ -776,7 +787,10 @@ class _ActionRow extends StatelessWidget {
     // tactile press-scale (scale 0.97, ease-out settle) + light haptic via the
     // shared [Pressable] — the same press language as every other tappable row
     // in the app. Reduced-motion skips the scale (handled inside Pressable).
-    return Pressable(
+    // Button role for the tappable row (Pressable adds no semantics itself).
+    return Semantics(
+      button: true,
+      child: Pressable(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -801,9 +815,10 @@ class _ActionRow extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
           ],
         ),
+      ),
       ),
     );
   }
@@ -952,9 +967,12 @@ class _TelegramRowState extends State<_TelegramRow> {
           ),
         );
     } else {
-      return InkWell(
+      // Same press language as every other tappable row (Pressable), with an
+      // explicit button role — InkWell alone announced nothing.
+      return Semantics(
+        button: true,
+        child: Pressable(
         onTap: _busy ? null : _connectTelegram,
-        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -981,9 +999,10 @@ class _TelegramRowState extends State<_TelegramRow> {
               if (_busy)
                 const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               else
-                Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
+                ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
             ],
           ),
+        ),
         ),
       );
     }
@@ -1098,10 +1117,21 @@ class _HoldToConfirmState extends State<_HoldToConfirm>
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final radius = BorderRadius.circular(ffTheme.radiusMd);
     const height = 52.0;
-    final labelStyle = ffTheme.titleLarge.copyWith(
-      fontSize: 14,
-      color: Colors.white,
+    // Contrast-aware ink, judged against what's actually under the label right
+    // now: the dimmed resting track (destructive hue at 34% over the sheet
+    // surface — pale in light mode, where pinned white vanished) or, while
+    // armed, the full destructive fill (which lifts to red-400/amber in dark,
+    // where white also fails). Same luminance rule AppButton applies.
+    final restFill = Color.alphaBlend(
+      widget.color.withValues(alpha: 0.34),
+      ffTheme.cardSurface,
     );
+    final underLabel = _holding ? widget.color : restFill;
+    final onFill = underLabel.computeLuminance() > 0.45
+        ? AppColors.primaryText
+        : Colors.white;
+    // Type-scale token (titleLarge, 15/w700) — no raw fontSize override.
+    final labelStyle = ffTheme.titleLarge.copyWith(color: onFill);
 
     // REDUCED-MOTION / a11y fallback: a plain destructive tap button. No timed
     // hold to fight, same label + colour + action. (AppButton already supplies
@@ -1168,7 +1198,7 @@ class _HoldToConfirmState extends State<_HoldToConfirm>
                                     ? Icons.lock_open_rounded
                                     : Icons.lock_rounded,
                                 size: 16,
-                                color: Colors.white,
+                                color: onFill,
                               ),
                             ),
                             const SizedBox(width: 8),

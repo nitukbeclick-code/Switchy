@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -9,6 +8,9 @@ import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/switch_economics.dart';
+import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
+import '../../widgets/price_text.dart';
 
 class SwitchCalcWidget extends StatefulWidget {
   const SwitchCalcWidget({super.key});
@@ -126,9 +128,10 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('מחשבון מעבר', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            // Type-scale tokens; white-on-ink is the only delta (fixed header).
+            Text('מחשבון מעבר', style: ffTheme.titleLarge.copyWith(color: Colors.white)),
             Text(_catInfo.firstWhere((c) => c.$1 == _selectedCat, orElse: () => _catInfo.first).$2,
-              style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
+              style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w400, color: Colors.white70)),
           ],
         ),
         elevation: 0,
@@ -139,13 +142,20 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('מחשבון מעבר', style: ffTheme.headlineMedium),
+            Semantics(
+              header: true,
+              child: Text('מחשבון מעבר', style: ffTheme.headlineMedium),
+            ),
             const SizedBox(height: 4),
             Text('חשבו אם המעבר משתלם לכם', style: ffTheme.bodySmall),
             const SizedBox(height: 16),
 
+            // Category chips — the ONE chip language: neutral = surface +
+            // hairline + ink; ACTIVE = green tint + green hairline + green ink
+            // (solid green stays reserved for CTAs). The rail is tall enough
+            // for a >=48dp tap target per chip.
             SizedBox(
-              height: 40,
+              height: 52,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _catInfo.length,
@@ -153,32 +163,37 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 itemBuilder: (ctx, i) {
                   final cat = _catInfo[i];
                   final isActive = cat.$1 == _selectedCat;
-                  return GestureDetector(
-                    onTap: () => _selectCat(cat.$1),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        // GEIST: flat. Active = solid green (active state); the
-                        // unselected fill is the themable card surface (was a
-                        // light-only hardcoded white) and carries no glow.
-                        color: isActive ? ffTheme.brandAccent : ffTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isActive ? ffTheme.brandAccent : ffTheme.alternate),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ExcludeSemantics(
-                            child: Icon(categoryIconData(cat.$1), size: 15,
-                              color: isActive ? Colors.white : ffTheme.brandAccent),
+                  return Semantics(
+                    button: true,
+                    selected: isActive,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _selectCat(cat.$1),
+                      child: Center(
+                        widthFactor: 1,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isActive ? ffTheme.brandAccentTint : ffTheme.cardSurface,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(color: isActive ? ffTheme.brandAccent : ffTheme.alternate),
                           ),
-                          const SizedBox(width: 6),
-                          Text(cat.$2, style: ffTheme.labelMedium.copyWith(
-                            color: isActive ? Colors.white : ffTheme.primaryText,
-                            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                          )),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ExcludeSemantics(
+                                child: Icon(categoryIconData(cat.$1), size: 15,
+                                  color: isActive ? ffTheme.brandAccent : ffTheme.secondaryText),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(cat.$2, style: ffTheme.labelMedium.copyWith(
+                                color: isActive ? ffTheme.brandAccentText : ffTheme.primaryText,
+                                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                              )),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -238,24 +253,34 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 Text('הגדר במהירות: ', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ...[0, 100, 200, 300, 500].map((fee) {
                   final active = _exitFee.round() == fee;
-                  return GestureDetector(
-                    onTap: () => setState(() => _exitFee = fee.toDouble()),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      margin: const EdgeInsetsDirectional.only(end: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        // Active = solid green (active state); unselected fill is
-                        // the themable card surface (was hardcoded white).
-                        color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                  final chipStyle = ffTheme.labelSmall.copyWith(
+                    color: active ? ffTheme.brandAccentText : ffTheme.primaryText,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  );
+                  // ACTIVE = green tint chip (one chip language); >=48dp hit
+                  // area around the unchanged painted pill.
+                  return Semantics(
+                    button: true,
+                    selected: active,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _exitFee = fee.toDouble()),
+                      child: _MinTapTarget(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          margin: const EdgeInsetsDirectional.only(end: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: active ? ffTheme.brandAccentTint : ffTheme.cardSurface,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                          ),
+                          child: fee == 0
+                              ? Text('ללא', style: chipStyle)
+                              // Money renders bidi-safe via PriceText.
+                              : PriceText('₪$fee', style: chipStyle),
+                        ),
                       ),
-                      child: Text(fee == 0 ? 'ללא' : '₪$fee',
-                        style: ffTheme.labelSmall.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
                     ),
                   );
                 }),
@@ -270,18 +295,20 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               width: double.infinity,
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
+                // Status-tinted verdict surface — flat + 1px hairline (one
+                // elevation story: resting content carries no shadow).
                 color: _resultColor(ffTheme).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-                border: Border.all(color: _resultColor(ffTheme).withValues(alpha: 0.3), width: 2),
-                boxShadow: ffTheme.shadowSoft,
+                border: Border.all(color: _resultColor(ffTheme).withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
-                  Text(_resultText(), style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: _resultColor(ffTheme))),
+                  Text(_resultText(), style: ffTheme.headlineMedium.copyWith(fontWeight: FontWeight.w800, color: _resultColor(ffTheme))),
                   const SizedBox(height: 20),
                   // The ₪ figures are the VALUE the calculator exists to surface —
-                  // amber (VALUE), not the verdict's status hue. A zero saving
-                  // reads as neutral ink so we never paint "₪0" as a win.
+                  // the green savings ink (VALUE), not the verdict's status hue.
+                  // A zero saving reads as muted ink so we never paint "₪0" as
+                  // a win.
                   Row(
                     children: [
                       Expanded(child: _ResultStat(label: _selectedCat == 'abroad' ? 'חיסכון לחבילה' : 'חיסכון חודשי', value: '₪${econ.monthlySaving}', color: econ.monthlySaving > 0 ? ffTheme.savingText : ffTheme.secondaryText, ffTheme: ffTheme)),
@@ -342,7 +369,10 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('חיסכון לאורך זמן', style: ffTheme.titleSmall),
+                    Semantics(
+                      header: true,
+                      child: Text('חיסכון לאורך זמן', style: ffTheme.titleMedium),
+                    ),
                     const SizedBox(height: 16),
                     _SavingsBarChart(
                       econ: econ,
@@ -392,23 +422,13 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             const SizedBox(height: 12),
 
             if (econ.annualSaving > 0)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: ffTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: ffTheme.shadowAccent,
-                ),
-                child: ElevatedButton(
-                  onPressed: () => context.pushNamed('Results'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    elevation: 0,
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
-                ),
+              // The screen's ONE primary gradient CTA — the shared AppButton
+              // (contrast-aware label, press feedback, focus ring).
+              AppButton(
+                text: 'מצא מסלולים מתאימים',
+                color: AppColors.primary,
+                width: double.infinity,
+                onPressed: () async => context.pushNamed('Results'),
               ).animate().fadeIn(delay: 480.ms),
 
             const SizedBox(height: 32),
@@ -440,12 +460,15 @@ class _RecommendedPlanCard extends StatelessWidget {
     final priceLabel = priceUnitLabel(plan);
     final topReasons = match.reasons.take(2).toList();
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: 'המסלול המומלץ למעבר — ${plan.provider}. צפייה במסלול',
+      child: Pressable(
       onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          // GEIST: flat. A solid green "recommended" tint + green hairline keeps
+          // GEIST: flat. A green "recommended" tint + green hairline keeps
           // the active/best-match read (was a green wash gradient with a glow).
           color: ffTheme.brandAccentTint,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
@@ -464,14 +487,17 @@ class _RecommendedPlanCard extends StatelessWidget {
                 Text('המסלול המומלץ למעבר',
                     style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
                 const Spacer(),
+                // Score badge as a chip, not a solid-green pill (solid green =
+                // CTAs only): surface chip + green hairline + green ink.
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ffTheme.brandAccent,
-                    borderRadius: BorderRadius.circular(20),
+                    color: ffTheme.cardSurface,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                    border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35)),
                   ),
                   child: Text('${match.scorePct}% התאמה',
-                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -498,8 +524,9 @@ class _RecommendedPlanCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₪${plan.priceText}',
-                        style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                    // Money = ink, tabular + bidi-safe via PriceText.
+                    PriceText('₪${plan.priceText}',
+                        style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
                     Text(priceLabel,
                         style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                   ],
@@ -517,7 +544,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   ),
                   child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                 )).toList(),
@@ -531,35 +558,18 @@ class _RecommendedPlanCard extends StatelessWidget {
                   style: ffTheme.bodySmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
             ],
 
-            // Prefill action
+            // Prefill action — an in-card utility, so it takes the quiet
+            // secondary AppButton (the gradient CTA stays unique on-screen).
             const SizedBox(height: 12),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: ffTheme.accentGradient,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: ffTheme.shadowAccent,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: onUsePrefill,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 9),
-                    alignment: Alignment.center,
-                    child: Text(
-                      'השתמש במחיר המומלץ (₪${plan.priceText})',
-                      textAlign: TextAlign.center,
-                      style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ),
+            AppButton.secondary(
+              text: 'השתמש במחיר המומלץ (₪${plan.priceText})',
+              width: double.infinity,
+              height: 48,
+              onPressed: () async => onUsePrefill(),
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -590,7 +600,7 @@ class _SavingsBarChart extends StatelessWidget {
             children: [
               SizedBox(
                 width: 64,
-                child: Text(m.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
+                child: Text(m.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
               ),
               Expanded(
                 child: ClipRRect(
@@ -602,7 +612,7 @@ class _SavingsBarChart extends StatelessWidget {
                     builder: (_, v, __) => LinearProgressIndicator(
                       value: v,
                       backgroundColor: ffTheme.saving.withValues(alpha: 0.16),
-                      // Accumulated savings = VALUE → one confident amber fill,
+                      // Accumulated savings = VALUE → one confident green fill,
                       // not a tri-colour gradient that reads as a status signal.
                       valueColor: AlwaysStoppedAnimation(ffTheme.saving),
                       minHeight: 12,
@@ -613,9 +623,9 @@ class _SavingsBarChart extends StatelessWidget {
               const SizedBox(width: 8),
               SizedBox(
                 width: 52,
-                child: Text(
+                child: PriceText(
                   '₪$amount',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800, fontSize: 11),
+                  style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800),
                   textAlign: TextAlign.end,
                 ),
               ),
@@ -650,7 +660,7 @@ class _LeadingPlanCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
                 child: Text('הצעה מובילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
               ),
               if (matching.isEmpty) ...[
@@ -676,33 +686,44 @@ class _LeadingPlanCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₪${plan.priceText}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
+                  // Money = ink, tabular + bidi-safe via PriceText.
+                  PriceText('₪${plan.priceText}', style: ffTheme.headlineSmall),
                   Text(priceUnitLabel(plan), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
+          // Quiet secondary action via the shared AppButton (>=48dp, hairline).
+          AppButton.secondary(
+            text: 'הצג מסלול',
             width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {
-                Provider.of<AppState>(context, listen: false).setCategory(selectedCat);
-                context.pushNamed('Results');
-              },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: ffTheme.brandAccent),
-                foregroundColor: ffTheme.brandAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-              child: Text('הצג מסלול', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-            ),
+            height: 48,
+            onPressed: () async {
+              Provider.of<AppState>(context, listen: false).setCategory(selectedCat);
+              if (context.mounted) context.pushNamed('Results');
+            },
           ),
         ],
       ),
     );
   }
+}
+
+/// Raises a small control's HIT AREA to the >=48dp accessibility minimum
+/// ([kMinTapTarget]) without growing the painted control itself — the child
+/// keeps its intrinsic size, centered inside the enlarged (transparent) box.
+/// Pair with a [GestureDetector] using [HitTestBehavior.opaque].
+class _MinTapTarget extends StatelessWidget {
+  const _MinTapTarget({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(
+            minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+        child: Align(widthFactor: 1, heightFactor: 1, child: child),
+      );
 }
 
 class _SliderSection extends StatelessWidget {
@@ -727,7 +748,9 @@ class _SliderSection extends StatelessWidget {
               const SizedBox(width: 8),
               Text(label, style: ffTheme.titleSmall),
               const Spacer(),
-              Text('₪${value.round()}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.brandAccent)),
+              // The live readout is DATA, not a savings claim — ink, tabular,
+              // bidi-safe (green stays for CTAs/savings).
+              PriceText('₪${value.round()}', style: ffTheme.headlineSmall),
             ],
           ),
           Slider(
@@ -741,8 +764,8 @@ class _SliderSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('₪${min.round()}', style: ffTheme.labelSmall),
-              Text('₪${max.round()}', style: ffTheme.labelSmall),
+              PriceText('₪${min.round()}', style: ffTheme.labelSmall),
+              PriceText('₪${max.round()}', style: ffTheme.labelSmall),
             ],
           ),
         ],
@@ -763,7 +786,9 @@ class _ResultStat extends StatelessWidget {
       children: [
         Text(label, style: ffTheme.labelSmall),
         const SizedBox(height: 4),
-        Text(value, style: ffTheme.headlineSmall.copyWith(color: color)),
+        // Numeric token (tabular) + bidi-safe money via PriceText; the caller
+        // colours a real saving green (VALUE) and a zero muted-ink.
+        PriceText(value, style: ffTheme.numericMedium.copyWith(color: color)),
       ],
     );
   }
@@ -780,9 +805,10 @@ class _TimelineStat extends StatelessWidget {
     final amount = econ.milestoneAmount(months);
     return Column(
       children: [
-        Text(
+        PriceText(
           '₪$amount',
-          // Cumulative saving milestone = VALUE → amber, consistent with the bar.
+          // Cumulative saving milestone = VALUE → the green savings ink,
+          // consistent with the bar; tabular + bidi-safe via PriceText.
           style: ffTheme.titleMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),

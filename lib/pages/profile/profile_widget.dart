@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/app_sheet.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/price_text.dart';
+import '../../widgets/saving_pill.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -61,7 +64,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       context: context,
       isScrollControlled: true,
       backgroundColor: ffTheme.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      // Sheets are the one lifted surface — they get the larger sheet radius token.
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet))),
       builder: (ctx) => const EditProfileSheet(),
     );
   }
@@ -171,7 +175,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: ffTheme.glassDecoration(radius: 14),
+                        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
                         child: Row(
                           children: [
                             Expanded(
@@ -187,13 +191,20 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(5, (i) => Icon(
-                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
-                                size: 15,
-                                color: ffTheme.warning,
-                              )),
+                            // The stars are meaning-bearing: expose ONE spoken
+                            // rating instead of five unlabeled icons.
+                            Semantics(
+                              label: 'דירוג $overall מתוך 5',
+                              child: ExcludeSemantics(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(5, (i) => Icon(
+                                    i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    size: 15,
+                                    color: ffTheme.warning,
+                                  )),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -265,8 +276,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
+                            // Canonical ACTIVE chip: tint bg + green hairline + green text.
                             color: ffTheme.brandAccentTint,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
                           ),
                           child: Text('פעיל', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                         ),
@@ -319,20 +332,15 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
                   const SizedBox(height: 28),
 
-                  // Logout
+                  // Logout — destructive (signs out + wipes local state), so it
+                  // runs through the standard AppButton in the error hue and a
+                  // confirm sheet, matching the settings screen's logout.
                   if (appState.isLoggedIn)
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        appState.logout();
-                        context.goNamed('Onboarding');
-                      },
-                      icon: Icon(Icons.logout_rounded, color: ffTheme.error),
-                      label: Text('התנתקות', style: ffTheme.titleSmall.copyWith(color: ffTheme.error)),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: ffTheme.error),
-                        minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
+                    AppButton(
+                      text: 'התנתקות',
+                      color: ffTheme.error,
+                      width: double.infinity,
+                      onPressed: () async => _confirmLogout(context, appState),
                     ).animate().fadeIn(delay: 400.ms),
 
                   const SizedBox(height: 32),
@@ -343,6 +351,41 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         ],
       ),
     );
+  }
+
+  /// Logout confirm — the same AppSheet pattern the settings screen uses:
+  /// destructive primary (error fill) + quiet cancel. Only a confirmed sheet
+  /// runs the exact pre-existing logout behaviour (logout → Onboarding).
+  Future<void> _confirmLogout(BuildContext context, AppState appState) async {
+    final ffTheme = AppTheme.of(context);
+    final confirmed = await AppSheet.show<bool>(
+      context,
+      title: 'התנתקות',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('האם להתנתק מהחשבון?', style: ffTheme.bodyMedium),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'התנתק',
+            color: ffTheme.error,
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 8),
+          AppButton.secondary(
+            text: 'ביטול',
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      appState.logout();
+      context.goNamed('Onboarding');
+    }
   }
 
   // ── Sections ────────────────────────────────────────────────────────────────
@@ -365,13 +408,13 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     final Widget figure;
     if (hasOpportunity) {
       subtitle = 'פוטנציאל החיסכון השנתי שלך';
-      figure = Text(
-        'עד ₪$total בשנה',
-        textAlign: TextAlign.center,
-        style: ffTheme.displaySmall.copyWith(
-          color: ffTheme.savingText,
-          fontWeight: FontWeight.w800,
-        ),
+      // The ONE canonical savings treatment: the shared VALUE pill (tint bg +
+      // green text + tabular figures) at a hero numeral size — never a loose
+      // green display string (green discipline: green = CTA/pill/active only).
+      figure = SavingPill(
+        text: 'עד ₪$total בשנה',
+        icon: Icons.trending_down_rounded,
+        textStyle: ffTheme.numericMedium.copyWith(color: ffTheme.savingText),
       );
     } else if (_savings.hasAnyBill) {
       // Bills entered but no positive saving — stay truthful, don't fake a number.
@@ -411,7 +454,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
-      backgroundColor: ffTheme.primary,
+      // Permanently-ink hero: [primaryDark] resolves to true black in BOTH
+      // themes, so the pinned bar the header collapses onto always carries its
+      // white foreground. (The previous `ffTheme.primary` flipped to OFF-WHITE
+      // in dark mode, leaving white icons/text on a near-white bar.)
+      backgroundColor: ffTheme.primaryDark,
       leading: Navigator.canPop(context)
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
@@ -431,11 +478,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [ffTheme.primary, ffTheme.tertiary],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
+            // The shared premium ink wash — documented to keep a white
+            // foreground valid on both stops in BOTH themes. (The previous
+            // primary→tertiary pair became off-white→slate in dark mode and
+            // drowned the pinned-white avatar/name/stats.)
+            gradient: ffTheme.brandGradient,
           ),
           child: SafeArea(
             child: Column(
@@ -530,6 +577,12 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildGuestCard(BuildContext context, AppTheme ffTheme) {
+    // Contrast-aware ink over the green ACTION fill — the same luminance rule
+    // AppButton applies: in dark mode the accent lifts to green-400, where a
+    // pinned white label goes illegible, so light fills carry dark ink.
+    final onAccent = ffTheme.accentGradient.colors.first.computeLuminance() > 0.45
+        ? AppColors.primaryText
+        : Colors.white;
     // Button role for the tappable card (Pressable adds no semantics itself).
     return Semantics(
       button: true,
@@ -547,20 +600,20 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: const Center(child: Icon(Icons.person_outline_rounded, size: 22, color: Colors.white)),
+              decoration: BoxDecoration(color: onAccent.withValues(alpha: 0.16), shape: BoxShape.circle),
+              child: Center(child: ExcludeSemantics(child: Icon(Icons.person_outline_rounded, size: 22, color: onAccent))),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('התחבר לחשבון', style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                  Text('שמור מסלולים, עקוב אחר חיסכון וקבל התראות', style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
+                  Text('התחבר לחשבון', style: ffTheme.titleSmall.copyWith(color: onAccent, fontWeight: FontWeight.w700)),
+                  Text('שמור מסלולים, עקוב אחר חיסכון וקבל התראות', style: ffTheme.bodySmall.copyWith(color: onAccent.withValues(alpha: 0.78))),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, color: onAccent.withValues(alpha: 0.78), size: 16)),
           ],
         ),
       ),
@@ -590,15 +643,19 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                   Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  // Money renders through PriceText (bidi-safe LTR isolate) in
+                  // ink — prices are data, not green.
+                  PriceText('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
+                // Canonical ACTIVE chip: tint bg + green hairline + green text.
                 color: ffTheme.brandAccentTint,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -801,7 +858,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             onTap: () => context.pushNamed('RenewalReport', pathParameters: {'trackedId': tp.id}),
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: ffTheme.glassDecoration(radius: 14),
+              decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
               child: Row(
                 children: [
                   LogoWidget(provider: tp.provider, size: 40),
@@ -813,7 +870,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         Text(tp.provider, style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w700)),
                         Text(tp.planName, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 4),
-                        Text('₪${tp.monthlyPrice}/חודש', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        // Money via PriceText (bidi-safe), ink not green.
+                        PriceText('₪${tp.monthlyPrice}/חודש', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -822,7 +880,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: chipColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     ),
                     child: Text(chipText, style: ffTheme.labelSmall.copyWith(color: chipColor, fontWeight: FontWeight.w700)),
                   ),
@@ -880,7 +938,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             child: Container(
               width: 130,
               padding: const EdgeInsets.all(12),
-              decoration: ffTheme.glassDecoration(radius: 12),
+              decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -892,7 +950,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                  PriceText('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                   const SizedBox(height: 2),
                   Text(p.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
@@ -907,7 +965,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   Widget _buildQuizSummary(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: ffTheme.glassDecoration(radius: 14),
+      decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
       child: Wrap(
         spacing: 8,
         runSpacing: 6,
@@ -921,32 +979,42 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildQuizCTA(BuildContext context, AppTheme ffTheme) {
+    // A quiet navigational card in the shared row language (accent1 medallion +
+    // ink text + chevron) — NOT a second green banner: solid green is reserved
+    // for the single primary CTA (the guest sign-in card, when present). Copy
+    // is comparison-framed, not a savings promise (the de-push holds).
     // Button role for the tappable card (Pressable adds no semantics itself).
     return Semantics(
       button: true,
       child: Pressable(
       onTap: () => context.pushNamed('Quiz'),
       child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: ffTheme.accentGradient,
-          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-          boxShadow: ffTheme.shadowAccent,
-        ),
+        padding: const EdgeInsets.all(16),
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
         child: Row(
           children: [
-            const Icon(Icons.adjust, size: 24, color: Colors.white),
-            const SizedBox(width: 12),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: ExcludeSemantics(
+                child: Icon(Icons.tune_rounded, size: 20, color: ffTheme.secondaryText),
+              ),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('גלה כמה תחסוך', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
-                  Text('ענה על 4 שאלות קצרות', style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
+                  Text('התאימו את ההשוואה אליכם', style: ffTheme.titleSmall),
+                  Text('4 שאלות קצרות — והתוצאות מסודרות לפי מה שחשוב לכם', style: ffTheme.bodySmall),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, color: ffTheme.secondaryText, size: 14)),
           ],
         ),
       ),
@@ -990,8 +1058,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
 /// A 3-way segmented control for the app theme: system / light / dark.
-/// Bound to [AppState.themeMode]; the active segment carries the green ACTION
-/// gradient so the choice reads at a glance in both light and dark.
+/// Bound to [AppState.themeMode]; the active segment carries the canonical
+/// ACTIVE chip treatment (brandAccentTint + green hairline + green ink) — not a
+/// solid-green fill, which is reserved for primary CTAs and whose pinned-white
+/// label went illegible on the lifted dark-mode green.
 class _ThemeSegmented extends StatelessWidget {
   const _ThemeSegmented({required this.ffTheme, required this.mode, required this.onChanged});
   final AppTheme ffTheme;
@@ -1010,7 +1080,7 @@ class _ThemeSegmented extends StatelessWidget {
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -1029,21 +1099,25 @@ class _ThemeSegmented extends StatelessWidget {
                   curve: ffTheme.easeOut,
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    gradient: active ? ffTheme.accentGradient : null,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: active ? ffTheme.shadowAccent : null,
+                    color: active ? ffTheme.brandAccentTint : null,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                    border: Border.all(
+                      color: active
+                          ? ffTheme.brandAccent.withValues(alpha: 0.22)
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ExcludeSemantics(
-                        child: Icon(s.$3, size: 18, color: active ? Colors.white : ffTheme.secondaryText),
+                        child: Icon(s.$3, size: 18, color: active ? ffTheme.brandAccentText : ffTheme.secondaryText),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         s.$2,
                         style: ffTheme.labelSmall.copyWith(
-                          color: active ? Colors.white : ffTheme.secondaryText,
+                          color: active ? ffTheme.brandAccentText : ffTheme.secondaryText,
                           fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                         ),
                       ),
@@ -1067,10 +1141,14 @@ class _HeroStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // White is safe here: the hero background is the permanently-ink
+    // brandGradient in both themes. Money values route through PriceText so
+    // the ₪+digits run stays bidi-stable inside the RTL layout.
+    final style = ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+        if (value.contains('₪')) PriceText(value, style: style) else Text(value, style: style),
         Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white70)),
       ],
     );
@@ -1089,7 +1167,7 @@ class _QuizChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: ffTheme.brandAccentTint,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
       ),
       child: Row(
@@ -1123,7 +1201,7 @@ class _ToggleTile extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: ffTheme.glassDecoration(radius: 14),
+        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
         child: Row(
           children: [
             Container(
@@ -1131,7 +1209,7 @@ class _ToggleTile extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
               ),
               child: Icon(icon, color: ffTheme.secondaryText, size: 20),
             ),
@@ -1282,9 +1360,9 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
               filled: true,
               fillColor: ffTheme.cardSurface,
               prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd), borderSide: BorderSide(color: ffTheme.alternate)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
             ),
           ),
           const SizedBox(height: 16),
@@ -1305,20 +1383,20 @@ class _EditProfileSheetState extends State<EditProfileSheet> {
               filled: true,
               fillColor: ffTheme.cardSurface,
               prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd), borderSide: BorderSide(color: ffTheme.alternate)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
             ),
           ),
           const SizedBox(height: 24),
+          // Primary CTA — AppButton picks the contrast-aware label ink and the
+          // standard button corner itself (no pinned white, no literal radius).
           AppButton(
             text: 'שמור שינויים',
             onPressed: _save,
             width: double.infinity,
             height: 52,
             color: AppColors.primary,
-            textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-            borderRadius: BorderRadius.circular(14),
           ),
         ],
       ),

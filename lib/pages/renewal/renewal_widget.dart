@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -11,6 +10,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/price_text.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/reminder_schedule.dart';
@@ -79,11 +79,9 @@ class _RenewalWidgetState extends State<RenewalWidget> {
         elevation: 0,
         title: Text(
           'מעקב חידושים',
-          style: GoogleFonts.rubik(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
-          ),
+          // Type-scale token; white-on-ink is the only delta (fixed header).
+          style: ffTheme.headlineMedium
+              .copyWith(fontWeight: FontWeight.w700, color: Colors.white),
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white),
@@ -128,7 +126,10 @@ class _RenewalWidgetState extends State<RenewalWidget> {
             Row(
               children: [
                 Expanded(
-                  child: Text('המסלולים במעקב', style: ffTheme.titleLarge),
+                  child: Semantics(
+                    header: true,
+                    child: Text('המסלולים במעקב', style: ffTheme.titleLarge),
+                  ),
                 ),
                 Text('${plans.length}',
                     style: ffTheme.titleLarge
@@ -147,12 +148,11 @@ class _RenewalWidgetState extends State<RenewalWidget> {
                 ).animate().fadeIn(delay: (100 + e.key * 80).ms)),
 
             const SizedBox(height: 16),
+            // Shared AppButton defaults: contrast-aware label, no pinned white.
             AppButton(
               text: 'הוסף מסלול',
-              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+              icon: const Icon(Icons.add_rounded, size: 20),
               color: AppColors.primary,
-              textStyle: GoogleFonts.rubik(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
               onPressed: () async => _showAddSheet(context),
             ).animate().fadeIn(delay: 200.ms),
           ],
@@ -187,19 +187,19 @@ class _RenewalWidgetState extends State<RenewalWidget> {
       builder: (ctx) {
         final ffTheme = AppTheme.of(ctx);
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('הסרת מסלול',
-              style: GoogleFonts.rubik(fontWeight: FontWeight.w700)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl)),
+          title: Text('הסרת מסלול', style: ffTheme.titleLarge),
           content: Text('להסיר את "${plan.planName}" של ${plan.provider}?',
               style: ffTheme.bodyMedium),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('ביטול', style: TextStyle(color: ffTheme.secondaryText)),
+              child: Text('ביטול', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
             ),
+            // Destructive confirm — error ink inside a confirm dialog.
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: Text('הסר', style: TextStyle(color: ffTheme.error)),
+              child: Text('הסר', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error, fontWeight: FontWeight.w700)),
             ),
           ],
         );
@@ -225,10 +225,10 @@ class _IntroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        // Premium ink hero — generous bento corner + a soft lift.
+        // Ink hero band — flat (one elevation story: resting content carries
+        // no shadow), generous bento corner.
         gradient: ffTheme.brandGradient,
         borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        boxShadow: ffTheme.shadowLifted,
       ),
       child: Row(
         children: [
@@ -247,12 +247,8 @@ class _IntroCard extends StatelessWidget {
           Expanded(
             child: Text(
               'נעקוב מתי המבצע שלך נגמר ונזכיר לך לפני שהמחיר קופץ — כדי שלא תשלם יותר מדי',
-              style: GoogleFonts.assistant(
-                fontSize: 13.5,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-                height: 1.45,
-              ),
+              // Body token; white-on-ink is the only delta (fixed hero band).
+              style: ffTheme.bodyMedium.copyWith(color: Colors.white, height: 1.45),
             ),
           ),
         ],
@@ -329,7 +325,9 @@ class _WatchSummary extends StatelessWidget {
 Color _chipColor(int days, AppTheme ffTheme) {
   if (days < 0) return ffTheme.error;
   if (days <= 21) return ffTheme.error;
-  if (days <= 45) return ffTheme.savingDark;
+  // Mid-band urgency = the WARNING token (green stays for CTAs/savings/
+  // success — "renews soon" is a heads-up, not a win).
+  if (days <= 45) return ffTheme.warning;
   return ffTheme.secondaryText;
 }
 
@@ -381,11 +379,13 @@ class _CountdownRing extends StatelessWidget {
               ),
               Text(
                 centerLabel,
-                style: GoogleFonts.rubik(
-                    fontSize: days >= 100 ? 12 : 14,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                    fontFeatures: const [FontFeature.tabularFigures()]),
+                // Nearest Rubik tokens (titleSmall for 3+ digits, titleLarge
+                // otherwise) + tabular figures so the countdown never jitters.
+                style: (days >= 100 ? ffTheme.titleSmall : ffTheme.titleLarge)
+                    .copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
               ),
             ],
           ),
@@ -430,8 +430,9 @@ class _PlanCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      // Premium card surface — generous corner, soft hairline + a touch of lift.
-      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg, elevated: true),
+      // Standard resting card — flat, 1px hairline (no lift; one elevation
+      // story).
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -460,11 +461,10 @@ class _PlanCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 2),
-                      Text(
+                      // Money = ink, tabular + bidi-safe via PriceText.
+                      PriceText(
                         '₪${plan.monthlyPrice}/${plan.category == 'abroad' ? 'חבילה' : 'חודש'}',
-                        style: ffTheme.titleSmall.copyWith(
-                            color: ffTheme.primary,
-                            fontWeight: FontWeight.w800),
+                        style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ],
                   ),
@@ -499,7 +499,7 @@ class _PlanCard extends StatelessWidget {
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: _chipColor(days, ffTheme).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                             border: Border.all(
                                 color: _chipColor(days, ffTheme).withValues(alpha: 0.4)),
                           ),
@@ -512,8 +512,7 @@ class _PlanCard extends StatelessWidget {
                               const SizedBox(width: 4),
                               Text(
                                 _chipLabel(days),
-                                style: GoogleFonts.assistant(
-                                  fontSize: 12,
+                                style: ffTheme.labelMedium.copyWith(
                                   fontWeight: FontWeight.w700,
                                   color: _chipColor(days, ffTheme),
                                 ),
@@ -537,7 +536,7 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
 
-          // Best alternative banner — a VALUE moment: amber savings wash.
+          // Best alternative banner — a VALUE moment: the green savings tint.
           if (bestMatch != null && bestMatch.annualSaving > 0) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -548,13 +547,13 @@ class _PlanCard extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () => onBestMatch(bestMatch.plan.id),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                     splashColor: ffTheme.saving.withValues(alpha: 0.12),
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: ffTheme.saving.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        color: ffTheme.brandAccentTint,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                         border:
                             Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                       ),
@@ -588,24 +587,16 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
 
-          // Compare button — a light selection haptic on tap, then navigate to
-          // the full RenewalReport comparison table.
+          // Compare button — the shared secondary AppButton (>=48dp, hairline,
+          // built-in haptic + press feedback), then navigate to the report.
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
-            child: OutlinedButton.icon(
-              onPressed: () {
-                HapticFeedback.selectionClick();
-                onCompare();
-              },
+            child: AppButton.secondary(
+              text: 'טבלת השוואה מלאה',
               icon: const Icon(Icons.table_chart_rounded, size: 17),
-              label: const Text('טבלת השוואה מלאה'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: ffTheme.primary,
-                side: BorderSide(color: ffTheme.primary),
-                minimumSize: const Size(double.infinity, 40),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
+              width: double.infinity,
+              height: 48,
+              onPressed: () async => onCompare(),
             ),
           ),
         ],
@@ -656,12 +647,11 @@ class _EmptyState extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
+        // Shared AppButton defaults: contrast-aware label, no pinned white.
         AppButton(
           text: 'הוסף מסלול ראשון',
-          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+          icon: const Icon(Icons.add_rounded, size: 20),
           color: AppColors.primary,
-          textStyle: GoogleFonts.rubik(
-              fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
           onPressed: () async => onAdd(),
         ),
         const SizedBox(height: 12),
@@ -671,7 +661,10 @@ class _EmptyState extends StatelessWidget {
           onPressed: onFind,
           icon: const Icon(Icons.search_rounded, size: 18),
           label: const Text('או מצא מסלול חדש לחיסכון'),
-          style: TextButton.styleFrom(foregroundColor: ffTheme.primary),
+          style: TextButton.styleFrom(
+            foregroundColor: ffTheme.primary,
+            minimumSize: const Size(0, kMinTapTarget),
+          ),
         ),
         const SizedBox(height: 16),
         // Two more ways to set one up without typing it all in by hand: answer a
@@ -686,28 +679,20 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onQuiz,
+              child: AppButton.secondary(
+                text: 'שאלון התאמה',
                 icon: const Icon(Icons.quiz_outlined, size: 18),
-                label: const Text('שאלון התאמה'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: ffTheme.primary,
-                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+                height: 48,
+                onPressed: () async => onQuiz(),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: onBills,
+              child: AppButton.secondary(
+                text: 'החשבון שלי',
                 icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                label: const Text('החשבון שלי'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: ffTheme.primary,
-                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+                height: 48,
+                onPressed: () async => onBills(),
               ),
             ),
           ],
@@ -745,7 +730,8 @@ class _ReminderTile extends StatelessWidget {
               if (v) await PushNotificationService.instance.requestPermission();
               await PushNotificationService.instance.syncRenewalReminders(appState);
             },
-            activeThumbColor: ffTheme.primary,
+            // ON = an active state → the green accent (not ink).
+            activeThumbColor: ffTheme.brandAccent,
             title: Text('תזכורות חידוש',
                 style: ffTheme.titleSmall
                     .copyWith(fontWeight: FontWeight.w700)),
@@ -762,7 +748,7 @@ class _ReminderTile extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
               ),
               child: Icon(Icons.notifications_active_outlined,
                   color: ffTheme.primary, size: 20),
@@ -802,6 +788,22 @@ class _ReminderTile extends StatelessWidget {
 }
 
 // ── Add Plan Bottom Sheet ─────────────────────────────────────────────────────
+
+/// Raises a small control's HIT AREA to the >=48dp accessibility minimum
+/// ([kMinTapTarget]) without growing the painted control itself — the child
+/// keeps its intrinsic size, centered inside the enlarged (transparent) box.
+/// Pair with a [GestureDetector] using [HitTestBehavior.opaque].
+class _MinTapTarget extends StatelessWidget {
+  const _MinTapTarget({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => ConstrainedBox(
+        constraints: const BoxConstraints(
+            minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+        child: Align(widthFactor: 1, heightFactor: 1, child: child),
+      );
+}
 
 class _AddPlanSheet extends StatefulWidget {
   const _AddPlanSheet();
@@ -887,7 +889,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
     return Container(
       decoration: BoxDecoration(
         color: ffTheme.cardSurface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusSheet)),
       ),
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       child: Form(
@@ -909,9 +911,12 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('הוסף מסלול',
-                  style: ffTheme.titleLarge
-                      .copyWith(fontWeight: FontWeight.w800)),
+              Semantics(
+                header: true,
+                child: Text('הוסף מסלול',
+                    style: ffTheme.titleLarge
+                        .copyWith(fontWeight: FontWeight.w800)),
+              ),
               const SizedBox(height: 20),
 
               // Category chips
@@ -922,44 +927,54 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                 runSpacing: 8,
                 children: categories.map((cat) {
                   final selected = _selectedCat == cat.id;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedCat = cat.id;
-                        _provider = '';
-                        _providerCtrl.clear();
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: selected ? AppColors.primary : ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: selected
-                              ? AppColors.primary
-                              : ffTheme.alternate,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            categoryIconData(cat.id),
-                            size: 14,
-                            color: selected ? Colors.white : ffTheme.primaryText,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            cat.name,
-                            style: GoogleFonts.assistant(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: selected ? Colors.white : ffTheme.primaryText,
+                  // ONE chip language — ACTIVE = green tint + green hairline +
+                  // green ink (no ink-filled chips); announced as a selectable
+                  // button with a >=48dp hit area around the painted pill.
+                  return Semantics(
+                    button: true,
+                    selected: selected,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        setState(() {
+                          _selectedCat = cat.id;
+                          _provider = '';
+                          _providerCtrl.clear();
+                        });
+                      },
+                      child: _MinTapTarget(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: selected ? ffTheme.brandAccentTint : ffTheme.accent1,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(
+                              color: selected
+                                  ? ffTheme.brandAccent
+                                  : ffTheme.alternate,
                             ),
                           ),
-                        ],
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ExcludeSemantics(
+                                child: Icon(
+                                  categoryIconData(cat.id),
+                                  size: 14,
+                                  color: selected ? ffTheme.brandAccent : ffTheme.secondaryText,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                cat.name,
+                                style: ffTheme.labelMedium.copyWith(
+                                  color: selected ? ffTheme.brandAccentText : ffTheme.primaryText,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -968,8 +983,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
               if (_selectedCat == null) ...[
                 const SizedBox(height: 4),
                 Text('יש לבחור קטגוריה',
-                    style: TextStyle(
-                        color: ffTheme.error, fontSize: 11)),
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.error)),
               ],
 
               const SizedBox(height: 18),
@@ -1042,14 +1056,17 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
               Text('תאריך סיום המבצע (אופציונלי)',
                   style: ffTheme.labelMedium),
               const SizedBox(height: 8),
-              GestureDetector(
+              Semantics(
+                button: true,
+                label: 'בחירת תאריך סיום המבצע',
+                child: GestureDetector(
                 onTap: _pickDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 14),
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                     border: Border.all(color: ffTheme.alternate),
                   ),
                   child: Row(
@@ -1073,14 +1090,19 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                           button: true,
                           label: 'נקה תאריך סיום מבצע',
                           child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: () =>
                                 setState(() => _promoEndDate = null),
-                            child: Icon(Icons.close_rounded,
-                                size: 16, color: ffTheme.secondaryText),
+                            // >=48dp hit area around the small painted X.
+                            child: _MinTapTarget(
+                              child: Icon(Icons.close_rounded,
+                                  size: 16, color: ffTheme.secondaryText),
+                            ),
                           ),
                         ),
                     ],
                   ),
+                ),
                 ),
               ),
 
@@ -1090,14 +1112,15 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
               Container(
                 decoration: BoxDecoration(
                   color: ffTheme.accent1,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                   border: Border.all(color: ffTheme.alternate),
                 ),
                 child: SwitchListTile(
                   dense: true,
                   value: _joinedViaUs,
                   onChanged: (v) => setState(() => _joinedViaUs = v),
-                  activeThumbColor: ffTheme.primary,
+                  // ON = an active state → the green accent (not ink).
+                  activeThumbColor: ffTheme.brandAccent,
                   title: Text('הצטרפתי דרך Switchy AI',
                       style: ffTheme.bodyMedium
                           .copyWith(fontWeight: FontWeight.w600)),
@@ -1111,10 +1134,6 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
               AppButton(
                 text: 'שמור מסלול',
                 color: AppColors.primary,
-                textStyle: GoogleFonts.rubik(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white),
                 onPressed: () async {
                   if (_selectedCat == null) {
                     setState(() {});
@@ -1139,19 +1158,19 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           borderSide: BorderSide(color: ffTheme.alternate),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           borderSide: BorderSide(color: ffTheme.alternate),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           borderSide: BorderSide(color: ffTheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
           borderSide: BorderSide(color: ffTheme.error),
         ),
       );

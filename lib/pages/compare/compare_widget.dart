@@ -9,6 +9,7 @@ import '../../widgets/app_button.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/price_text.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/pressable.dart';
 import '../../app_state.dart';
@@ -172,11 +173,10 @@ class _HeroSaving extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
+        // Money renders through PriceText — the LTR isolate pins ₪ before its
+        // digits inside the RTL header. Same numericLarge-derived treatment.
+        PriceText(
           '₪$saving',
-          // Hero stat numeral → numericLarge (30/w800/tabular); copyWith carries
-          // the genuine deltas (34px hero size, VALUE-green savingText, the -1
-          // tracking, flat 1.0 height) so the figure renders identically.
           style: ffTheme.numericLarge.copyWith(
             fontSize: 34,
             color: ffTheme.savingText,
@@ -245,9 +245,10 @@ class _WinnerCtaBar extends StatelessWidget {
                   },
                   height: 56,
                   // Const brand ink → AppButton lifts this into the green ACTION
-                  // gradient + glow in BOTH themes (white-on-green).
+                  // gradient in BOTH themes and resolves the on-gradient label
+                  // ink itself (no pinned white).
                   color: AppColors.primary,
-                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+                  textStyle: ffTheme.titleSmall,
                   // No token equals 16 (radiusCard 12 / radiusSheet 20 straddle it
                   // equally); radiusCard keeps this CTA on the content-corner scale.
                   borderRadius: BorderRadius.circular(ffTheme.radiusCard),
@@ -445,7 +446,8 @@ class _EmptyState extends StatelessWidget {
                             overflow: TextOverflow.ellipsis),
                       ],
                     )),
-                    Text('₪${firstPlan!.priceText}',
+                    // Bidi-safe money via PriceText; price stays ink.
+                    PriceText('₪${firstPlan!.priceText}',
                         style: ffTheme.titleMedium
                             .copyWith(color: ffTheme.primary)),
                   ],
@@ -699,12 +701,13 @@ class _CompareTableState extends State<_CompareTable> {
               children: [
                 Icon(Icons.tune_rounded, size: 14, color: ffTheme.secondaryText),
                 const SizedBox(width: 6),
+                // Hebrew label — zero tracking (Latin letterSpacing pinches
+                // Hebrew letterforms; see the type-scale note in app_theme).
                 Text(
                   'מפרט',
                   style: ffTheme.labelSmall.copyWith(
                     color: ffTheme.secondaryText,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
                   ),
                 ),
               ],
@@ -750,8 +753,9 @@ class _CompareTableState extends State<_CompareTable> {
                   Icon(Icons.info_outline_rounded, size: 16, color: ffTheme.warning),
                   const SizedBox(width: 8),
                   Expanded(
+                    // Plural voice — the app speaks in "אתם" everywhere else.
                     child: Text(
-                      'אתה משווה מסלולים מקטגוריות שונות',
+                      'אתם משווים מסלולים מקטגוריות שונות',
                       style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -824,9 +828,12 @@ class _CompareTableState extends State<_CompareTable> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Divider(color: ffTheme.alternate),
+                Divider(color: ffTheme.lineColor),
                 const SizedBox(height: 8),
-                Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                Semantics(
+                  header: true,
+                  child: Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                ),
                 const SizedBox(height: 12),
                 _FrozenMatrixStrip(
                   group: _hGroup,
@@ -1214,26 +1221,30 @@ class _WinnerSummaryCard extends StatelessWidget {
             decoration: BoxDecoration(
               // Flat ink hero — theme-locked near-black in BOTH themes (the
               // bespoke [primaryDark, primary] wash inverted to off-white on
-              // dark, breaking the white-on-ink foreground).
+              // dark, breaking the white-on-ink foreground). FLAT: resting
+              // content never lifts (only sheets/FABs/sticky bars do).
               gradient: ffTheme.freshGradient,
               borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-              boxShadow: ffTheme.shadowLifted,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    // The win state wears the VALUE accent (amber), not grey.
+                    // The win badge in the VALUE-pill treatment (pale tint +
+                    // green ink) — solid green stays reserved for CTAs.
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(color: ffTheme.saving, borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
+                      decoration: BoxDecoration(
+                        color: ffTheme.brandAccentTint,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.emoji_events_rounded, size: 13, color: ffTheme.onSaving),
+                          Icon(Icons.emoji_events_rounded, size: 13, color: ffTheme.savingText),
                           const SizedBox(width: 4),
-                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: ffTheme.onSaving, fontWeight: FontWeight.w800)),
+                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                         ],
                       ),
                     ),
@@ -1241,7 +1252,8 @@ class _WinnerSummaryCard extends StatelessWidget {
                     if (winnerSave > 0)
                       Text('חיסכון ₪$winnerSave/שנה',
                           // Rubik 13 → titleSmall; copyWith carries w700, the
-                          // VALUE-green colour and the tabular figures.
+                          // VALUE-green colour (saving clears contrast on the ink
+                          // hero) and the tabular figures.
                           style: ffTheme.titleSmall.copyWith(
                               fontWeight: FontWeight.w700,
                               color: ffTheme.saving,
@@ -1272,9 +1284,9 @@ class _WinnerSummaryCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // Price numeral → numericLarge (30/w800/tabular); copyWith
-                        // carries the 28px size, -1 tracking and on-ink white.
-                        Text('₪${winner.priceText}', style: ffTheme.numericLarge.copyWith(fontSize: 28, color: Colors.white, letterSpacing: -1)),
+                        // Price numeral → numericLarge deltas via PriceText (bidi-
+                        // safe ₪+digits): 28px size, -1 tracking, on-ink white.
+                        PriceText('₪${winner.priceText}', style: ffTheme.numericLarge.copyWith(fontSize: 28, color: Colors.white, letterSpacing: -1)),
                         // Assistant 11 → labelSmall (11); copyWith restores w400 + on-ink white60.
                         Text(priceUnitLabel(winner), style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w400, color: Colors.white60)),
                       ],
@@ -1362,7 +1374,10 @@ class _WinnerSummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Price bars comparison
-          Text('השוואת מחירים', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+          Semantics(
+            header: true,
+            child: Text('השוואת מחירים', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+          ),
           const SizedBox(height: 10),
           ...plans.map((p) {
             final fraction = maxPrice > 0 ? p.price / maxPrice : 0.0;
@@ -1395,7 +1410,8 @@ class _WinnerSummaryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 56,
-                    child: Text('₪${p.priceText}', style: ffTheme.labelSmall.copyWith(
+                    // Bidi-safe money cell (tabular via the price base token).
+                    child: PriceText('₪${p.priceText}', style: ffTheme.labelSmall.copyWith(
                       color: isWinner ? ffTheme.primary : ffTheme.primaryText,
                       fontWeight: isWinner ? FontWeight.w800 : FontWeight.w600,
                     ), textAlign: TextAlign.end),
@@ -1413,7 +1429,7 @@ class _WinnerSummaryCard extends StatelessWidget {
           }),
 
           const SizedBox(height: 4),
-          Divider(color: ffTheme.alternate),
+          Divider(color: ffTheme.lineColor),
           const SizedBox(height: 4),
         ],
       ),
@@ -1468,25 +1484,26 @@ class _PlanHeader extends StatelessWidget {
       child: Column(
         children: [
           if (isWinner)
+            // Winner badge in the VALUE-pill treatment (pale tint + green ink +
+            // green 1px border) — solid green stays reserved for CTAs.
             Container(
               margin: const EdgeInsets.only(bottom: 6),
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: ffTheme.saving,
-                // A small pill badge: radiusPill capsules it (was a bespoke 20 that
-                // already fully rounded this ~20px-tall chip).
+                color: ffTheme.brandAccentTint,
                 borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                border: Border.all(color: ffTheme.brandAccent),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.emoji_events_rounded,
-                      size: 13, color: ffTheme.onSaving),
+                      size: 13, color: ffTheme.savingText),
                   const SizedBox(width: 4),
                   Text('זוכה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.onSaving,
+                          color: ffTheme.savingText,
                           fontWeight: FontWeight.w700)),
                 ],
               ),
@@ -1499,48 +1516,47 @@ class _PlanHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
-          // Match score badge
+          // Match score badge — the ONE chip language: winner = ACTIVE (green
+          // tint + green border + AA green ink; the black-filled chip is gone),
+          // others = neutral surface + hairline + ink.
           if (match != null) ...[
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                // Winner: ink chip + white text. Others: light-grey chip + dark
-                // text (never grey-on-dark — keeps the % legible).
-                color: isWinner ? ffTheme.primary : ffTheme.secondary,
+                color: isWinner ? ffTheme.brandAccentTint : ffTheme.secondary,
                 borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                border: Border.all(
+                    color: isWinner ? ffTheme.brandAccent : ffTheme.lineColor),
               ),
               child: Text(
                 '${match!.scorePct}% התאמה',
                 style: ffTheme.labelSmall.copyWith(
-                  color: isWinner
-                      ? (ffTheme.dark ? ffTheme.background : Colors.white)
-                      : ffTheme.primaryText,
+                  color: isWinner ? ffTheme.brandAccentText : ffTheme.primaryText,
                   fontWeight: isWinner ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: isWinner ? null : 10,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
           ],
           const SizedBox(height: 2),
-          // Remove-from-compare: the glyph stays 18dp but the hit area is raised
-          // to the min tap target so the small "×" is comfortably tappable.
+          // Remove-from-compare: a real IconButton (48dp target, ripple, focus)
+          // instead of the bespoke GestureDetector; the Semantics label stays.
           Semantics(
             button: true,
             label: 'הסר מהשוואה',
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
+            excludeSemantics: true,
+            child: IconButton(
+              onPressed: () {
                 HapticFeedback.selectionClick();
                 appState.toggleCompare(plan.id);
               },
-              child: SizedBox(
-                width: kMinTapTarget,
-                height: kMinTapTarget,
-                child: Icon(Icons.close_rounded,
-                    size: 18, color: ffTheme.secondaryText),
-              ),
+              tooltip: 'הסר מהשוואה',
+              iconSize: 18,
+              constraints: const BoxConstraints(
+                  minWidth: kMinTapTarget, minHeight: kMinTapTarget),
+              icon: Icon(Icons.close_rounded, color: ffTheme.secondaryText),
             ),
           ),
         ],
@@ -1637,6 +1653,23 @@ class _RowWidget extends StatelessWidget {
     );
   }
 
+  /// A single-line cell text; money runs (leading `₪`) get an LTR isolate so
+  /// the currency glyph and digits keep a stable internal order in the RTL grid.
+  Widget _cellText(String v, TextStyle style) {
+    final text = Text(
+      v,
+      // maxLines:1 keeps every value cell a single line so its baseline matches
+      // the frozen label across the row — a 2-line value (e.g. multi-line fees)
+      // would otherwise grow only the scrolling half and shear the grid.
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
+      textAlign: TextAlign.center,
+    );
+    if (!v.startsWith('₪')) return text;
+    return Directionality(textDirection: TextDirection.ltr, child: text);
+  }
+
   Widget _valueCell(int idx, String v) {
     final plan = plans[idx];
     final isWinner = plan.id == winnerId;
@@ -1656,40 +1689,30 @@ class _RowWidget extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    // Savings highlight wears the VALUE accent (amber) for the
-                    // winner; others stay a quiet glass tint.
+                    // Winner's saving highlight wears the VALUE-pill tint token;
+                    // others stay a quiet neutral wash.
                     color: isWinner
-                        ? ffTheme.saving.withValues(alpha: 0.18)
+                        ? ffTheme.brandAccentTint
                         : ffTheme.background,
                     borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   ),
-                  child: Text(
+                  child: _cellText(
                     v,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: ffTheme.labelSmall.copyWith(
+                    ffTheme.labelSmall.copyWith(
                       color:
-                          isWinner ? ffTheme.savingDark : ffTheme.secondaryText,
+                          isWinner ? ffTheme.savingText : ffTheme.secondaryText,
                       fontWeight:
                           isWinner ? FontWeight.w800 : FontWeight.w500,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 )
-              : Text(
+              : _cellText(
                   v,
-                  // maxLines:1 keeps every value cell a single line so its
-                  // baseline matches the frozen label across the row — a 2-line
-                  // value (e.g. multi-line fees) would otherwise grow only the
-                  // scrolling half and shear the grid.
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: ffTheme.bodySmall.copyWith(
+                  ffTheme.bodySmall.copyWith(
                     color: textColor,
                     fontWeight: FontWeight.w600,
                   ),
-                  textAlign: TextAlign.center,
                 ),
         ),
       ),

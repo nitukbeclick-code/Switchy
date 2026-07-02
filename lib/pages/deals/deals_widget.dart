@@ -287,11 +287,12 @@ class _DealCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drop banner — the honest old→new headline. Amber = VALUE.
+          // Drop banner — the honest old→new headline. Green VALUE tint (the
+          // canonical brandAccentTint surface, matching the SavingPill language).
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: ffTheme.saving.withValues(alpha: 0.12),
+              color: ffTheme.brandAccentTint,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(ffTheme.radiusCard),
                 topRight: Radius.circular(ffTheme.radiusCard),
@@ -341,7 +342,11 @@ class _DealCard extends StatelessWidget {
                     ),
                     child: Text('-${drop.dropPctRounded}%',
                         style: ffTheme.labelSmall.copyWith(
-                            color: Colors.white, fontWeight: FontWeight.w800)),
+                            // Contrast-aware ink on the solid green VALUE fill —
+                            // white on light, near-black on the lifted dark green
+                            // (pinned Colors.white failed AA in dark mode).
+                            color: ffTheme.onSaving,
+                            fontWeight: FontWeight.w800)),
                   ),
                 ),
               ],
@@ -374,12 +379,12 @@ class _DealSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drop-banner ghost — warm amber tint so the loading state already
-          // reads as a VALUE surface, matching the real banner above the card.
+          // Drop-banner ghost — the green VALUE tint so the loading state
+          // already reads as a VALUE surface, matching the real banner above.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
             decoration: BoxDecoration(
-              color: t.saving.withValues(alpha: 0.10),
+              color: t.brandAccentTint,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(t.radiusCard),
                 topRight: Radius.circular(t.radiusCard),

@@ -13,6 +13,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/analytics_service.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/provider_ratings.dart';
@@ -55,6 +56,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
         provider: viewedPlan.provider,
         category: viewedPlan.cat,
       ).catchError((_) {});
+      // Funnel beacon — one planView per screen open. Fire-and-forget,
+      // scalars only, no PII.
+      AnalyticsService.track(AnalyticsEvent.planView, props: {
+        'provider': viewedPlan.provider,
+        'cat': viewedPlan.cat,
+      });
     }
     // Record the view once per visit, after the first frame so the
     // notifyListeners doesn't fire mid-build.
@@ -274,7 +281,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
+                            // Expanded (not intrinsic): at large text scales the
+                            // promo line + commitment pill pushed the SavingPill
+                            // past the card edge (27px overflow at the 1.3×
+                            // clamp) — let this side wrap instead.
+                            Expanded(
+                              child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // FittedBox: the single big price numeral
@@ -320,8 +332,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       style: ffTheme.labelSmall),
                                 ),
                               ],
+                              ),
                             ),
-                            const Spacer(),
+                            const SizedBox(width: 12),
                             if (saveYear > 0)
                               // Savings figures render through the ONE canonical
                               // SavingPill treatment (green TINT + glyph +
@@ -759,7 +772,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             const SizedBox(height: 12),
                             SizedBox(
                               // A hair taller so the SavingPill row breathes.
-                              height: 118,
+                              // Scaled with the user's text size (house idiom,
+                              // results_widget:854) — at the app's 1.3× clamp
+                              // the fixed 118 overflowed the card Column by 5px.
+                              height: MediaQuery.textScalerOf(context).scale(118),
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: topSimilar.length,

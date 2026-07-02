@@ -63,11 +63,11 @@ class LogoWidget extends StatelessWidget {
   // Real logo image files (assets/providers/, slug-named). Checked by substring
   // like _colors. Any provider without a file gracefully shows the initials badge.
   static const Map<String, String> _logoAsset = {
-    'סלקום': 'cellcom.png', 'פרטנר': 'partner.png', 'פלאפון': 'pelephone.png', 'גולן': 'golan.png',
-    'הוט מובייל': 'hot-mobile.png', 'HOT': 'hot.png', 'הוט': 'hot.png', 'Xphone': 'xphone.png',
-    'רמי לוי': 'rami-levy.webp', 'WeCom': 'wecom.png', '019': '019mobile.png', 'וואלה': 'walla-mobile.webp',
-    'בזק': 'bezeq.webp', 'גילת': 'gilat.png', 'CCC': 'ccc.png', 'STING': 'sting-tv.png', 'yes': 'yes.png',
-    'NextTV': 'nexttv.png', 'NEXT TV': 'nexttv.png', 'Airalo': 'airalo.png', 'FreeTV': 'freetv.png',
+    'סלקום': 'cellcom.webp', 'פרטנר': 'partner.webp', 'פלאפון': 'pelephone.webp', 'גולן': 'golan.webp',
+    'הוט מובייל': 'hot-mobile.webp', 'HOT': 'hot.webp', 'הוט': 'hot.webp', 'Xphone': 'xphone.webp',
+    'רמי לוי': 'rami-levy.webp', 'WeCom': 'wecom.webp', '019': '019mobile.webp', 'וואלה': 'walla-mobile.webp',
+    'בזק': 'bezeq.webp', 'גילת': 'gilat.webp', 'CCC': 'ccc.webp', 'STING': 'sting-tv.webp', 'yes': 'yes.webp',
+    'NextTV': 'nexttv.webp', 'NEXT TV': 'nexttv.webp', 'Airalo': 'airalo.webp', 'FreeTV': 'freetv.webp',
   };
 
   // Resolving the brand color-key, logo file and initials each does a linear

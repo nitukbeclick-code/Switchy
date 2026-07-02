@@ -13,6 +13,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../services/backend/local_backend.dart';
+import '../../services/review_prompt.dart';
 
 class TrackerWidget extends StatefulWidget {
   const TrackerWidget({super.key});
@@ -149,6 +150,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
     // Completion state
     if (step >= 4) {
+      // The genuine win moment — the switch is done, so this is the ONE place
+      // we ever ask for a store review. Fire-and-forget: the persisted
+      // once-flag inside maybeAskForReview makes rebuild repeats no-ops, and
+      // it covers both paths into step 4 (local confirm + remote LeadStepSync).
+      maybeAskForReview();
       return Scaffold(
         backgroundColor: AppColors.primary,
         appBar: AppBar(

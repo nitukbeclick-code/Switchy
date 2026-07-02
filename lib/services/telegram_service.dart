@@ -35,7 +35,7 @@ class TelegramService {
     bool parseHtml = true,
   }) async {
     if (_botToken.isEmpty) {
-      debugPrint('⚠️ Telegram: Bot token not configured');
+      if (kDebugMode) debugPrint('⚠️ Telegram: Bot token not configured');
       return false;
     }
 
@@ -51,14 +51,17 @@ class TelegramService {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        debugPrint('✅ Telegram message sent to $chatId');
+        if (kDebugMode) debugPrint('✅ Telegram message sent to $chatId');
         return true;
       } else {
-        debugPrint('❌ Telegram error: ${response.statusCode} ${response.body}');
+        if (kDebugMode) {
+          debugPrint(
+              '❌ Telegram error: ${response.statusCode} ${response.body}');
+        }
         return false;
       }
     } catch (e) {
-      debugPrint('❌ Telegram error: $e');
+      if (kDebugMode) debugPrint('❌ Telegram error: $e');
       return false;
     }
   }

@@ -65,12 +65,12 @@ void main() {
     // Regression: the substring scan let 'הוט מובייל' reverse-match the bare
     // input 'הוט' (key.contains(provider)); the exact-match pass must win.
     await tester.pumpWidget(_wrap(const LogoWidget(provider: 'הוט')));
-    expect(assetOf(tester), 'assets/providers/hot.png');
+    expect(assetOf(tester), 'assets/providers/hot.webp');
   });
 
   testWidgets('הוט מובייל still resolves to the HOT Mobile logo', (tester) async {
     await tester.pumpWidget(_wrap(const LogoWidget(provider: 'הוט מובייל')));
-    expect(assetOf(tester), 'assets/providers/hot-mobile.png');
+    expect(assetOf(tester), 'assets/providers/hot-mobile.webp');
   });
 
   testWidgets('בזק resolves to the webp brand asset', (tester) async {

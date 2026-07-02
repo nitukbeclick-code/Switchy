@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 /// it MUST stay in sync with the `ALLOWED_EVENTS` set in
 /// `supabase/functions/analytics-track/index.ts`.
 enum AnalyticsEvent {
+  appOpen('appOpen'),
   leadStart('leadStart'),
   leadSubmit('leadSubmit'),
   quizComplete('quizComplete'),
@@ -16,7 +17,8 @@ enum AnalyticsEvent {
   searchQuery('searchQuery'),
   whatsappClick('whatsappClick'),
   savingsViewed('savingsViewed'),
-  planView('planView');
+  planView('planView'),
+  meetingRequest('meetingRequest');
 
   const AnalyticsEvent(this.name);
 

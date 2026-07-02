@@ -13,6 +13,7 @@ import '../../widgets/saving_pill.dart';
 import '../../widgets/skeleton.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../services/analytics_service.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
@@ -739,6 +740,10 @@ class _QuizWidgetState extends State<QuizWidget> {
     appState.setQuizBudget(_budget.round());
     appState.setQuizCat(_cat);
     appState.setQuizCompleted(true);
+    // Funnel beacon — the quiz just reached its completed state (this branch
+    // runs exactly once per finish, covering both the reveal and the
+    // empty-recs → Results exits). Fire-and-forget, scalars only, no PII.
+    AnalyticsService.track(AnalyticsEvent.quizComplete, props: {'cat': _cat});
     final needs5G = _priority.startsWith('speed') || _priority == 'data';
     final needsAbroad = _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad';
     appBackend.upsertQuiz({

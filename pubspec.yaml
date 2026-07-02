@@ -4,7 +4,7 @@ description: >
   abroad) in one place. Find the best deal, calculate your savings, and switch
   providers with step-by-step porting guidance. Hebrew-first, RTL Flutter app.
 publish_to: 'none'
-version: 1.0.13+14
+version: 1.0.14+15
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -38,6 +38,11 @@ dependencies:
   flutter_secure_storage: ^10.3.1
   flutter_local_notifications: ^22.0.0
   timezone: ^0.11.0
+  # Crash reporting — dark (never initialized) unless SENTRY_DSN is supplied
+  # at build time via --dart-define; see main.dart. No tracing, no PII.
+  sentry_flutter: ^8.9.0
+  # Native Play/App Store in-app review prompt (wired in the app layer).
+  in_app_review: ^2.0.9
 
 dev_dependencies:
   flutter_test:

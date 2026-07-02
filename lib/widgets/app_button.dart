@@ -187,9 +187,6 @@ class _AppButtonState extends State<AppButton> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    // The "quiet" variants (white secondary / tinted ghost) default to an ink
-    // label; everything else stays white-on-fill.
-    final lightFill = widget.color == Colors.white || widget.color == AppColors.accent1;
     // The const .secondary constructor pins a light-only white fill (and a
     // light hairline border) that can't see the theme; remap it to the
     // themable surface/line tokens here so it flips in dark mode.
@@ -200,10 +197,27 @@ class _AppButtonState extends State<AppButton> {
         widget.borderSide?.color == AppColors.alternate
             ? widget.borderSide!.copyWith(color: ffTheme.lineColor)
             : widget.borderSide;
-    final foreground =
-        widget.textStyle?.color ?? (lightFill ? ffTheme.primaryText : Colors.white);
-    final labelStyle = widget.textStyle ??
-        GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: foreground);
+    // CONTRAST-AWARE label: the ink is picked by the RESOLVED fill's luminance,
+    // not by theme. In dark mode the brand green lifts to green-400 (#4ADE80) —
+    // white-on-green-400 is ~1.7:1 (far below AA) — so LIGHT fills carry a dark
+    // ink and dark fills carry white. One rule covers every fill in both themes
+    // (green-600 light → white; green-400 dark → ink; white/tint → ink; slate
+    // secondary in dark → white).
+    // The rule is AUTHORITATIVE: a caller's textStyle contributes size/weight/
+    // family only — its color is overridden, because pinned `Colors.white`
+    // labels (the old pattern at ~10 call sites) go illegible on the lifted
+    // dark-mode green. Gradient CTAs (color == AppColors.primary, see below)
+    // judge contrast against the ACTUAL green gradient, not the ink placeholder.
+    final isGradientCta =
+        (widget.borderSide == null || widget.borderSide == BorderSide.none) &&
+            widget.color == AppColors.primary;
+    final contrastFill =
+        isGradientCta ? ffTheme.accentGradient.colors.first : resolvedColor;
+    final onLightFill = contrastFill.computeLuminance() > 0.45;
+    final foreground = onLightFill ? AppColors.primaryText : Colors.white;
+    final labelStyle = (widget.textStyle ??
+            GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700))
+        .copyWith(color: foreground);
     // Corner source of truth: an explicit [borderRadius] always wins; otherwise
     // a [pill] CTA rounds to the full-round [radiusPill] capsule, and the
     // default is the standard [radiusMd] button corner.
@@ -212,11 +226,9 @@ class _AppButtonState extends State<AppButton> {
 
     // The primary CTA: brand ink colour, no outline → it earns the green
     // ACTION gradient + glow. Any other colour (or an outlined/ghost variant)
-    // stays on the calm solid-fill path.
-    final isPrimaryCta =
-        (widget.borderSide == null || widget.borderSide == BorderSide.none) &&
-            widget.color == AppColors.primary;
-    final useGradient = isPrimaryCta;
+    // stays on the calm solid-fill path. (Same detection as [isGradientCta]
+    // above, which the label-contrast rule already used.)
+    final useGradient = isGradientCta;
 
     final button = ElevatedButton(
       focusNode: _focusNode,

@@ -219,10 +219,13 @@ class AppTheme {
   Color get savingText => dark ? AppColors.darkSaving : AppColors.savingText;
 
   /// The ink read out ON a SOLID green VALUE fill ("best value" badges that fill
-  /// with [saving]) — white, matching white-on-green CTAs. The SavingPill uses
-  /// the pale [brandAccentTint] bg + [savingText] instead, so reach for [onSaving]
-  /// only where a chip/badge fills solid green underneath.
-  Color get onSaving => AppColors.onSaving;
+  /// with [saving]). Light mode: white on green-600. Dark mode: the fill lifts
+  /// to green-400, where white ink falls to ~1.7:1 — so dark carries a
+  /// near-black green-tinted ink instead (AA-safe on the lifted fill). The
+  /// SavingPill uses the pale [brandAccentTint] bg + [savingText] instead, so
+  /// reach for [onSaving] only where a chip/badge fills solid green underneath.
+  Color get onSaving =>
+      dark ? const Color(0xFF062817) : AppColors.onSaving;
 
   // ── Spacing scale — one shared rhythm for gaps, padding, insets ────────────
   // Use these instead of ad-hoc magic numbers so vertical/horizontal rhythm

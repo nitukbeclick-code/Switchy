@@ -133,18 +133,23 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         </nav>
 
         {/* Light/dark toggle — pushed to the far end (RTL: left edge), with the
-            CTA. Stays visible on every breakpoint (unlike the primary nav). */}
-        <ThemeToggle className="ms-auto" />
+            CTA. Stays visible on every breakpoint (unlike the primary nav).
+            min-h-11/min-w-11 lifts the tap target to ≥44×44px (its own h-9/w-9
+            glyph box stays centred inside the larger hit area). */}
+        <ThemeToggle className="ms-auto min-h-11 min-w-11" />
 
         {/* CTA — the single green ACTION in the masthead → the Zoom consultation
             scheduler (/book), labelled so it's clearly a Zoom video meeting (not
-            just a callback form). The homepage LeadForm (#lead) remains its own
-            section lower on the page. */}
+            just a callback form). Shown ONLY at md+ (hidden md:inline-flex): on a
+            phone the masthead stays chrome-only (brand + toggle + menu trigger,
+            zero solid-green fill) and this action lives as a plain nav item inside
+            the mobile <details> menu below. The homepage LeadForm (#lead) remains
+            its own section lower on the page. */}
         <TrackedCtaLink
           href="/book"
           location="header"
           label="consult"
-          className="rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="hidden items-center justify-center rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:inline-flex"
         >
           שיחת ייעוץ בזום
         </TrackedCtaLink>
@@ -159,7 +164,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         >
           <summary
             aria-label="תפריט ניווט"
-            className="flex cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+            className="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
           >
             <Icon
               name="chevron"
@@ -184,6 +189,32 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
                   </Link>
                 </li>
               ))}
+
+              {/* Consult (Zoom) — the ACTION that lives as a solid green pill in
+                  the md+ masthead is folded here as a plain nav row on mobile, so
+                  the phone masthead stays chrome-only (no solid-green fill). Same
+                  /book route + header/consult analytics as the desktop CTA; the
+                  green Icon chevron marks it as the highest-intent row without a
+                  fill. Direction-aware via <Icon> — never a hardcoded ←/→. */}
+              <li>
+                <TrackedCtaLink
+                  href="/book"
+                  location="header"
+                  label="consult"
+                  className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-accent-text transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  שיחת ייעוץ בזום
+                  {/* Page is always dir="rtl"; -scale-x-100 flips the end-pointing
+                      chevron so it points to the logical "forward" (left), matching
+                      the site's arrow convention — direction-aware, never a
+                      hardcoded ←/→. */}
+                  <Icon
+                    name="chevron"
+                    size={16}
+                    className="shrink-0 -scale-x-100 text-accent"
+                  />
+                </TrackedCtaLink>
+              </li>
             </ul>
 
             {/* Category landings — labelled group, divided from the main links. */}

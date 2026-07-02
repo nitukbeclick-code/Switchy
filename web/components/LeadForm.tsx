@@ -122,6 +122,31 @@ export default function LeadForm({
   // advance — the denominator for the form's micro-funnel / drop-off analysis.
   const startedRef = useRef(false);
 
+  // One ref per step's actionable input/select, so a successful next() can
+  // programmatically focus the newly-revealed field. On mobile this keeps the
+  // soft keyboard up between the four steps instead of collapsing (a re-tap per
+  // step = a quiet conversion leak). react-hook-form owns its own ref via
+  // register(); mergeRef() below wires both without stealing RHF's.
+  const stepInputRefs = useRef<Array<HTMLInputElement | HTMLSelectElement | null>>(
+    [],
+  );
+
+  /**
+   * Merge react-hook-form's ref callback with our per-step ref so both receive
+   * the node. RHF needs its ref for validation/focus; we need ours to focus the
+   * next step's input after it mounts. Generic over the concrete element type so
+   * the returned callback stays assignable to each field's `ref` prop.
+   */
+  function mergeStepRef<T extends HTMLInputElement | HTMLSelectElement>(
+    index: number,
+    rhfRef: (instance: T | null) => void,
+  ) {
+    return (node: T | null) => {
+      rhfRef(node);
+      stepInputRefs.current[index] = node;
+    };
+  }
+
   // Subscribe to the consent field so the submit button reflects its state.
   const consentChecked = useWatch({ control, name: "consent" });
 
@@ -142,7 +167,18 @@ export default function LeadForm({
       step: step + 1,
       step_name: STEP_TITLES[step],
     });
-    setStep((s) => Math.min(s + 1, lastStep));
+    const nextStep = Math.min(step + 1, lastStep);
+    setStep(nextStep);
+    // Keep the mobile soft keyboard up: focus the next step's input on the frame
+    // after it mounts (the previous step unmounts, so the ref must exist first).
+    // A double rAF is used so focus lands after React has committed the new DOM.
+    // Guarded — focus() is a no-op if the node isn't there. select() is skipped
+    // (the field is empty on arrival).
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        stepInputRefs.current[nextStep]?.focus();
+      });
+    });
   }
 
   function back() {
@@ -285,8 +321,15 @@ export default function LeadForm({
           carries the accessible progressbar semantics. Presentation only; `step`
           is already tracked, this just renders it. */}
       <div className="mt-3 mb-5">
+        {/* SR-only polite announcer: the visible line below is static inline
+            text (not a live region), so screen readers wouldn't announce a step
+            change on their own. This mirrors it as an aria-live="polite" region
+            so SR users hear "שלב X מתוך 4" each time the step advances. */}
+        <p aria-live="polite" className="sr-only">
+          שלב {step + 1} מתוך {STEP_FIELDS.length}: {STEP_TITLES[step]}
+        </p>
         <div className="mb-1.5 flex items-center justify-between text-xs text-muted">
-          <span>
+          <span aria-hidden="true">
             שלב {step + 1} מתוך {STEP_FIELDS.length}: {STEP_TITLES[step]}
           </span>
           <span>{progress}%</span>
@@ -337,19 +380,26 @@ export default function LeadForm({
           >
             שם מלא
           </label>
-          <input
-            id="lead-name"
-            type="text"
-            autoComplete="name"
-            aria-required="true"
-            aria-invalid={errors.name ? "true" : "false"}
-            aria-describedby={errors.name ? "lead-name-error" : undefined}
-            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-            {...register("name", {
+          {(() => {
+            const { ref, ...rest } = register("name", {
               required: "נא להזין שם",
               minLength: { value: 2, message: "השם קצר מדי" },
-            })}
-          />
+            });
+            return (
+              <input
+                id="lead-name"
+                type="text"
+                autoComplete="name"
+                enterKeyHint="next"
+                aria-required="true"
+                aria-invalid={errors.name ? "true" : "false"}
+                aria-describedby={errors.name ? "lead-name-error" : undefined}
+                className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                ref={mergeStepRef<HTMLInputElement>(0, ref)}
+                {...rest}
+              />
+            );
+          })()}
           {errors.name && (
             <p id="lead-name-error" role="alert" className="mt-1 text-xs text-danger-text">
               {errors.name.message}
@@ -367,22 +417,29 @@ export default function LeadForm({
           >
             מספר טלפון
           </label>
-          <input
-            id="lead-phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            dir="ltr"
-            aria-required="true"
-            aria-invalid={errors.phone ? "true" : "false"}
-            aria-describedby={errors.phone ? "lead-phone-error" : undefined}
-            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-            {...register("phone", {
+          {(() => {
+            const { ref, ...rest } = register("phone", {
               required: "נא להזין מספר טלפון",
               validate: (v) =>
                 isValidIsraeliPhone(v) || "מספר הטלפון אינו תקין",
-            })}
-          />
+            });
+            return (
+              <input
+                id="lead-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                enterKeyHint="next"
+                dir="ltr"
+                aria-required="true"
+                aria-invalid={errors.phone ? "true" : "false"}
+                aria-describedby={errors.phone ? "lead-phone-error" : undefined}
+                className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                ref={mergeStepRef<HTMLInputElement>(1, ref)}
+                {...rest}
+              />
+            );
+          })()}
           {errors.phone && (
             <p id="lead-phone-error" role="alert" className="mt-1 text-xs text-danger-text">
               {errors.phone.message}
@@ -400,19 +457,26 @@ export default function LeadForm({
           >
             עיר מגורים
           </label>
-          <input
-            id="lead-city"
-            type="text"
-            autoComplete="address-level2"
-            aria-required="true"
-            aria-invalid={errors.city ? "true" : "false"}
-            aria-describedby={errors.city ? "lead-city-error" : undefined}
-            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-            {...register("city", {
+          {(() => {
+            const { ref, ...rest } = register("city", {
               required: "נא להזין עיר מגורים",
               minLength: { value: 2, message: "שם העיר קצר מדי" },
-            })}
-          />
+            });
+            return (
+              <input
+                id="lead-city"
+                type="text"
+                autoComplete="address-level2"
+                enterKeyHint="next"
+                aria-required="true"
+                aria-invalid={errors.city ? "true" : "false"}
+                aria-describedby={errors.city ? "lead-city-error" : undefined}
+                className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                ref={mergeStepRef<HTMLInputElement>(2, ref)}
+                {...rest}
+              />
+            );
+          })()}
           {errors.city && (
             <p id="lead-city-error" role="alert" className="mt-1 text-xs text-danger-text">
               {errors.city.message}
@@ -431,23 +495,32 @@ export default function LeadForm({
             >
               איזה שירות מעניין אתכם?
             </label>
-            <select
-              id="lead-category"
-              aria-required="true"
-              aria-invalid={errors.category ? "true" : "false"}
-              aria-describedby={
-                errors.category ? "lead-category-error" : undefined
-              }
-              className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-              {...register("category", { required: "נא לבחור שירות" })}
-            >
-              <option value="">בחרו שירות…</option>
-              {SERVICE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {CATEGORY_HE[cat]}
-                </option>
-              ))}
-            </select>
+            {(() => {
+              const { ref, ...rest } = register("category", {
+                required: "נא לבחור שירות",
+              });
+              return (
+                <select
+                  id="lead-category"
+                  enterKeyHint="done"
+                  aria-required="true"
+                  aria-invalid={errors.category ? "true" : "false"}
+                  aria-describedby={
+                    errors.category ? "lead-category-error" : undefined
+                  }
+                  className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  ref={mergeStepRef<HTMLSelectElement>(3, ref)}
+                  {...rest}
+                >
+                  <option value="">בחרו שירות…</option>
+                  {SERVICE_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {CATEGORY_HE[cat]}
+                    </option>
+                  ))}
+                </select>
+              );
+            })()}
             {errors.category && (
               <p
                 id="lead-category-error"

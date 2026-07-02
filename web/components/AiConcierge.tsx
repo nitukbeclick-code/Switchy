@@ -83,6 +83,12 @@ export default function AiConcierge() {
   // reduced-motion / no-layout). Re-opening mid-exit cancels `closing` and the
   // enter transition replays from the launcher corner.
   const [closing, setClosing] = useState(false);
+  // True while the sticky lead bar (<StickyLeadCta>) occupies the bottom-start
+  // thumb-zone. It publishes `document.body.dataset.leadCta = 'visible'`; we mirror
+  // that here and LIFT the FAB above the bar so only ONE floating affordance ever
+  // sits in that corner. (While the chat panel is open we ignore it — the open
+  // panel already owns the corner.)
+  const [leadBarVisible, setLeadBarVisible] = useState(false);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [turns, setTurns] = useState<Turn[]>([{ role: "bot", text: GREETING }]);
   const [input, setInput] = useState("");
@@ -110,6 +116,22 @@ export default function AiConcierge() {
   // Mint the session id once on mount (client-only).
   useEffect(() => {
     sessionIdRef.current = loadSessionId();
+  }, []);
+
+  // Watch the sticky-lead-bar signal on <body> so the FAB can step out of the
+  // bottom-start thumb-zone while that bar shows. The bar toggles
+  // `document.body.dataset.leadCta` in its own IntersectionObserver; we sync it via
+  // a MutationObserver (attribute filter) + read the current value once on mount.
+  useEffect(() => {
+    const sync = () =>
+      setLeadBarVisible(document.body.dataset.leadCta === "visible");
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["data-lead-cta"],
+    });
+    return () => mo.disconnect();
   }, []);
 
   // Auto-scroll the transcript to the newest message.
@@ -321,17 +343,26 @@ export default function AiConcierge() {
         aria-controls={open ? titleId : undefined}
         aria-label={open ? "סגירת הצ׳אט עם Switchy AI" : "פתיחת צ׳אט עם Switchy AI"}
         className={[
-          // Compact 56px (h-14) single-ring brand-green launcher; z-30 keeps it
-          // BELOW the sticky site header (z-50) and the bottom bars (z-40).
-          "fixed bottom-4 z-30 flex h-14 w-14 items-center justify-center rounded-full",
+          // Compact 56px (h-14 ≥ 44px min-target) single-ring brand-green launcher;
+          // z-30 keeps it BELOW the sticky site header (z-50) and the bottom bars
+          // (z-40).
+          "fixed z-30 flex h-14 w-14 items-center justify-center rounded-full",
           // Bottom-START (RTL → right side of the screen visually mirrors LTR's
           // left; we pin to the inline-start corner via `start-4`).
           "start-4",
+          // Only ONE floating affordance in the thumb-zone at a time: when the
+          // sticky lead bar occupies the bottom-start corner (and the chat isn't
+          // already open), LIFT the FAB above it — the calc already folds in the
+          // safe-area inset, so we drop the separate `mb-` in that state. Otherwise
+          // sit at `bottom-4` and clear the home-indicator via `mb-`.
+          leadBarVisible && !open
+            ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]"
+            : "bottom-4 mb-[env(safe-area-inset-bottom)]",
+          // Move smoothly between the two resting spots (reduced-motion-safe).
+          "transition-[bottom] duration-300 ease-[var(--ease-drawer)] motion-reduce:transition-none",
           "bg-accent text-accent-contrast shadow-float",
           "interactive press hover:bg-accent-hover",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-          // Respect the safe area (home-indicator) so the FAB never sits under it.
-          "mb-[env(safe-area-inset-bottom)]",
         ].join(" ")}
       >
         <Icon name={open ? "close" : "chat"} size={24} strokeWidth={2} />
@@ -403,11 +434,9 @@ export default function AiConcierge() {
               type="button"
               onClick={closePanel}
               aria-label="סגירת הצ׳אט"
-              className="interactive press rounded-lg p-1.5 text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="interactive press -me-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              <span aria-hidden="true" className="text-lg leading-none">
-                ✕
-              </span>
+              <Icon name="close" size={20} aria-hidden="true" />
             </button>
           </div>
 
@@ -585,11 +614,11 @@ export default function AiConcierge() {
               type="submit"
               disabled={sending || !input.trim()}
               aria-label="שליחה"
-              className="interactive press flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-contrast shadow-soft hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+              className="interactive press flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-contrast shadow-soft hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              <span aria-hidden="true" className="text-base leading-none">
-                ↑
-              </span>
+              {/* "Send" points UP regardless of text direction (not RTL-semantic):
+                  rotate the shared horizontal arrow rather than hardcode a glyph. */}
+              <Icon name="arrow" size={18} aria-hidden="true" className="-rotate-90" />
             </button>
           </form>
 

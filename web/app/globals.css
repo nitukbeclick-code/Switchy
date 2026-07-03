@@ -640,6 +640,145 @@ a:hover {
      still ease for legible state feedback.
    • Neutralize the transform on the motion utilities so their hover/active
      end-states snap rather than slide. */
+/* ════════════════════════════════════════════════════════════════════════════
+   ACCESSIBILITY WIDGET adjustments — user-toggled a11y preferences (Israel:
+   תקנות שוויון זכויות (התאמות נגישות לשירות) התשע"ג-2013 + ת"י 5568 / WCAG 2.0 AA).
+
+   The <AccessibilityWidget> writes these classes / CSS vars onto <html>
+   (document.documentElement) and persists them in localStorage; a pre-hydration
+   inline <head> script re-applies them before first paint (mirrors the theme
+   guard) so returning users see no flash. Everything here degrades gracefully in
+   light + dark + RTL, and reuses the existing brand tokens.
+
+   Font scaling is driven by --a11y-font-scale on :root: because the whole app is
+   authored in rem (Tailwind), scaling the ROOT font-size scales every surface
+   proportionally. Default is 1 (16px UA base) — untouched until the user steps it.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --a11y-font-scale: 1;
+}
+:root.a11y-font-scaled {
+  /* 100% × scale (clamped 0.9–1.6 by the widget). Applies to the root box so all
+     rem-based type/spacing tracks it. Media/token pixel values are unaffected. */
+  font-size: calc(100% * var(--a11y-font-scale));
+}
+
+/* (2) ניגודיות גבוהה — high-contrast. Push text to pure ink/​paper, thicken
+   borders, and force link/focus colors to their strongest grade. Uses the SAME
+   logical tokens so it inverts correctly in dark mode. */
+:root.a11y-contrast {
+  --foreground: #000000;
+  --ink: #000000;
+  --muted: #1a1f27; /* small metadata still ≥7:1 on paper */
+  --background: #ffffff;
+  --surface: #ffffff;
+  --border: #000000;
+  --border-strong: #000000;
+  --accent-text: #0a5c2a; /* darker link green — ≥7:1 on white */
+  --accent-hover: #0a5c2a;
+  --danger-text: #8a0f0f;
+}
+:root.a11y-contrast[data-theme="dark"] {
+  --foreground: #ffffff;
+  --ink: #ffffff;
+  --muted: #e6e9ee;
+  --background: #000000;
+  --surface: #000000;
+  --border: #ffffff;
+  --border-strong: #ffffff;
+  --accent-text: #7bed9f;
+  --accent-hover: #7bed9f;
+  --danger-text: #ff9a9a;
+}
+:root.a11y-contrast body,
+:root.a11y-contrast .card,
+:root.a11y-contrast .bento,
+:root.a11y-contrast .glass,
+:root.a11y-contrast .glass-strong {
+  /* Kill translucency/blur so text always sits on a solid, maximal-contrast bg. */
+  background-color: var(--surface) !important;
+  backdrop-filter: none !important;
+}
+:root.a11y-contrast * {
+  /* Any hairline that reads as a border/divider becomes a solid, visible line. */
+  border-color: var(--border) !important;
+}
+
+/* (3) הדגשת קישורים — emphasize links: underline + a distinct, non-color-only
+   treatment so links are identifiable without relying on hue alone. */
+:root.a11y-underline-links a {
+  text-decoration: underline !important;
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: 0.08em;
+  font-weight: 600;
+}
+
+/* (4) גופן קריא — readable font: a clearer system UI stack + generous
+   letter/word/line spacing. Overrides the brand Rubik/Assistant faces app-wide. */
+:root.a11y-readable-font,
+:root.a11y-readable-font body,
+:root.a11y-readable-font h1,
+:root.a11y-readable-font h2,
+:root.a11y-readable-font h3,
+:root.a11y-readable-font h4,
+:root.a11y-readable-font h5,
+:root.a11y-readable-font h6 {
+  font-family:
+    "Segoe UI", Arial, "Helvetica Neue", system-ui, sans-serif !important;
+  letter-spacing: normal !important;
+}
+:root.a11y-readable-font body {
+  line-height: 1.8 !important;
+  letter-spacing: 0.02em !important;
+  word-spacing: 0.1em !important;
+}
+:root.a11y-readable-font p,
+:root.a11y-readable-font li,
+:root.a11y-readable-font a,
+:root.a11y-readable-font span,
+:root.a11y-readable-font button,
+:root.a11y-readable-font label,
+:root.a11y-readable-font input,
+:root.a11y-readable-font td,
+:root.a11y-readable-font th {
+  line-height: 1.8 !important;
+}
+
+/* (6) הדגשת מיקוד מקלדת — strong keyboard-focus outline everywhere, on BOTH
+   :focus and :focus-visible (some native controls only expose :focus), so keyboard
+   users always see where they are. Non-text UI → the fill green (3:1) is fine. */
+:root.a11y-focus :focus,
+:root.a11y-focus :focus-visible {
+  outline: 4px solid var(--accent) !important;
+  outline-offset: 3px !important;
+  border-radius: 2px;
+}
+
+/* (5) עצירת אנימציות — stop animations. The user explicitly opted OUT of motion,
+   so (unlike prefers-reduced-motion, which we treat gently) this is a HARD stop:
+   collapse every animation AND transition to instant. Content stays visible at its
+   resting state (opacity/transform reset) — never hidden. */
+:root.a11y-no-motion *,
+:root.a11y-no-motion *::before,
+:root.a11y-no-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-delay: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+:root.a11y-no-motion .reveal,
+:root.a11y-no-motion .sw-reveal,
+:root.a11y-no-motion .stagger > *,
+:root.a11y-no-motion .blur-mask,
+:root.a11y-no-motion .popover {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

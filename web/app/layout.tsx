@@ -7,6 +7,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ConsentBanner from "@/components/ConsentBanner";
 import AiConcierge from "@/components/AiConcierge";
+import AccessibilityWidget from "@/components/AccessibilityWidget";
 import PwaInstaller from "@/components/PwaInstaller";
 import CatalogueLiveRefresh from "@/components/CatalogueLiveRefresh";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
@@ -107,6 +108,19 @@ export default function RootLayout({
             __html: `try{var t=localStorage.getItem('chosech-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='dark')?t:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));}catch(e){}`,
           }}
         />
+        {/* No-flash ACCESSIBILITY guard — runs synchronously during HTML parsing,
+            BEFORE first paint, so a returning user's saved a11y adjustments (font
+            scale, high contrast, readable font, etc.) are applied without a flash.
+            Reads the same localStorage key ("switchy-a11y") and applies the same
+            <html> classes + --a11y-font-scale var that <AccessibilityWidget> does
+            (kept in sync with that component + app/globals.css). Mirrors the theme
+            guard above; the injected string is a static literal (no user input),
+            fail-soft in private mode. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var s=JSON.parse(localStorage.getItem('switchy-a11y')||'{}'),r=document.documentElement,f=Math.min(1.6,Math.max(0.9,Number(s.fontScale)||1));r.style.setProperty('--a11y-font-scale',String(f));r.classList.toggle('a11y-font-scaled',f!==1);r.classList.toggle('a11y-contrast',!!s.contrast);r.classList.toggle('a11y-underline-links',!!s.underlineLinks);r.classList.toggle('a11y-readable-font',!!s.readableFont);r.classList.toggle('a11y-no-motion',!!s.noMotion);r.classList.toggle('a11y-focus',!!s.focusOutline);}catch(e){}`,
+          }}
+        />
         {/* Tell the UA both schemes exist so native controls/scrollbars adapt. */}
         <meta name="color-scheme" content="light dark" />
 
@@ -195,6 +209,16 @@ export default function RootLayout({
             the real catalogue; offers consented lead capture (§7b disclosure +
             mandatory consent) when a switch/contact intent is detected. */}
         <AiConcierge />
+
+        {/* Persistent accessibility widget (Israel: תקנות שוויון זכויות (התאמות
+            נגישות לשירות) התשע"ג-2013 + ת"י 5568 / WCAG 2.0 AA). A floating,
+            keyboard-operable menu on every page — text sizing, high contrast, link
+            emphasis, readable font, motion off, strong focus, reset — that toggles
+            classes/CSS vars on <html> and persists in localStorage (re-applied by
+            the pre-hydration <head> guard above). Pinned to the inline-END corner,
+            opposite the concierge FAB, and lifts above the sticky lead bar. Links
+            to the existing /accessibility statement (never reworded). */}
+        <AccessibilityWidget />
 
         {/* Realtime catalogue freshness ON TOP of the server-rendered ISR HTML.
             A SINGLE Supabase Realtime channel (site-wide) listens for owner edits

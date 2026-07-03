@@ -851,6 +851,164 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 /* Lift the WhatsApp FAB above the sticky bar so they never overlap. */
 body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 
+/* ── Accessibility widget (a11y) ──────────────────────────────────────────────
+   Legally-required floating accessibility control (Israel: תקנות שוויון זכויות /
+   ת"י 5568 / WCAG 2.0 AA). Persistent on EVERY page. The trigger sits in the
+   OPPOSITE bottom corner to the WhatsApp FAB (inset-inline-START vs END) so the
+   two never collide; z-index is one below the WhatsApp FAB. Chrome uses the
+   shared --accent/--ink/--white/--line tokens so it inverts cleanly in dark mode
+   and mirrors correctly in RTL. */
+.a11y-fab {
+  position: fixed; inset-inline-start: 16px; bottom: 16px; z-index: 44;
+  width: 52px; height: 52px; border-radius: 50%;
+  display: grid; place-items: center; padding: 0; cursor: pointer;
+  color: #fff; border: 2px solid rgba(255,255,255,.85);
+  background: linear-gradient(165deg, var(--accent), var(--accent-d));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.36), 0 2px 6px rgba(21,128,61,.26);
+  transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease);
+}
+.a11y-fab:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 12px 28px rgba(22,163,74,.44), 0 2px 8px rgba(21,128,61,.30); }
+.a11y-fab:active { transform: scale(.94); }
+.a11y-fab svg { width: 28px; height: 28px; display: block; }
+.a11y-fab:focus-visible { outline: none; box-shadow: var(--ring); }
+/* Match the WhatsApp FAB behaviour: lift above the sticky CTA bar when it shows. */
+body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
+@media (prefers-reduced-motion: reduce) { .a11y-fab { transition: none; } }
+
+/* Panel — a real modal dialog. Sits above the grain overlay (z 9999) via a very
+   high stacking context; the backdrop dims the page and closes on click. */
+.a11y-panel { position: fixed; inset: 0; z-index: 10000; display: none; }
+.a11y-panel.is-open { display: block; }
+.a11y-panel__backdrop { position: absolute; inset: 0; background: rgba(11,15,20,.44); }
+.a11y-panel__sheet {
+  position: absolute; inset-inline-start: 16px; bottom: 16px;
+  width: min(340px, calc(100vw - 32px)); max-height: min(80vh, 560px);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  background: var(--white); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 18px 18px 20px;
+  transform: translateY(8px); opacity: 0;
+  transition: transform .22s var(--ease), opacity .22s var(--ease);
+}
+.a11y-panel.is-open .a11y-panel__sheet { transform: translateY(0); opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .a11y-panel__sheet { transition: none; transform: none; }
+}
+.a11y-panel__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px;
+}
+.a11y-panel__title { font-family: 'Rubik', system-ui, sans-serif; font-size: 19px; font-weight: 700; color: var(--ink); margin: 0; }
+.a11y-panel__x {
+  flex: none; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  background: var(--mint); color: var(--ink); border: 1px solid var(--line);
+  font-size: 18px; line-height: 1;
+}
+.a11y-panel__x:hover { background: var(--ink-100); }
+.a11y-panel__x:focus-visible { outline: none; box-shadow: var(--ring-flush); }
+
+/* Controls — text-size stepper row + a stack of toggle rows. */
+.a11y-group { margin-bottom: 14px; }
+.a11y-group__label { display: block; font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+.a11y-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.a11y-step {
+  display: grid; place-items: center; gap: 2px; padding: 10px 6px; min-height: 48px;
+  cursor: pointer; border-radius: var(--radius-xs);
+  background: var(--mint); color: var(--ink); border: 1px solid var(--line);
+  font-size: 13px; font-weight: 700; text-align: center;
+}
+.a11y-step:hover { background: var(--ink-050); }
+.a11y-step:focus-visible { outline: none; box-shadow: var(--ring-flush); }
+.a11y-step b { font-size: 17px; line-height: 1; }
+
+.a11y-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 12px 14px; min-height: 48px; cursor: pointer;
+  border-radius: var(--radius-xs); margin-bottom: 8px; text-align: start;
+  background: var(--mint); color: var(--ink); border: 1px solid var(--line);
+  font-size: 14.5px; font-weight: 600; font-family: inherit;
+}
+.a11y-toggle:hover { background: var(--ink-050); }
+.a11y-toggle:focus-visible { outline: none; box-shadow: var(--ring-flush); }
+.a11y-toggle__state {
+  flex: none; width: 40px; height: 22px; border-radius: 999px;
+  background: var(--ink-200); position: relative; transition: background .18s var(--ease);
+}
+.a11y-toggle__state::after {
+  content: ""; position: absolute; top: 2px; inset-inline-start: 2px;
+  width: 18px; height: 18px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .18s var(--ease);
+}
+.a11y-toggle[aria-pressed="true"] { border-color: var(--accent); }
+.a11y-toggle[aria-pressed="true"] .a11y-toggle__state { background: var(--accent); }
+.a11y-toggle[aria-pressed="true"] .a11y-toggle__state::after { transform: translateX(-18px); }
+/* LTR safety: the knob travels the other way when the document is left-to-right. */
+:root[dir="ltr"] .a11y-toggle[aria-pressed="true"] .a11y-toggle__state::after { transform: translateX(18px); }
+@media (prefers-reduced-motion: reduce) {
+  .a11y-toggle__state, .a11y-toggle__state::after { transition: none; }
+}
+
+.a11y-reset {
+  display: block; width: 100%; padding: 12px 14px; min-height: 48px; cursor: pointer;
+  border-radius: var(--radius-xs); margin-top: 4px;
+  background: transparent; color: var(--accent-ink); border: 1px solid var(--accent);
+  font-size: 14.5px; font-weight: 700; font-family: inherit;
+}
+.a11y-reset:hover { background: var(--accent-t); }
+.a11y-reset:focus-visible { outline: none; box-shadow: var(--ring-flush); }
+
+.a11y-statement { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); text-align: center; }
+.a11y-statement a { color: var(--accent-ink); font-weight: 700; font-size: 13.5px; text-decoration: underline; }
+
+/* ── Adjustments applied to the whole document via <html> classes ─────────────
+   Each maps to one control and persists in localStorage (re-applied on load). */
+/* (2) High contrast — deepen text, force solid surfaces, strengthen borders. */
+:root.a11y-contrast body { background: #fff; }
+:root.a11y-contrast { --ink: #000; --muted: #1a1a1a; --line: #000; }
+:root.a11y-contrast[data-theme="dark"] body { background: #000; }
+:root.a11y-contrast[data-theme="dark"] { --ink: #fff; --muted: #eaeaea; --line: #fff; }
+:root.a11y-contrast a { text-decoration: underline; }
+:root.a11y-contrast .btn,
+:root.a11y-contrast .card,
+:root.a11y-contrast .feature { border: 2px solid currentColor; }
+
+/* (3) Highlight links — underline + distinct weight/colour on every link. */
+:root.a11y-links a { text-decoration: underline !important; text-underline-offset: 3px; font-weight: 700 !important; }
+:root.a11y-links a:not(.btn):not(.brand) { color: var(--accent-ink) !important; }
+
+/* (4) Readable font — swap to a system sans, add letter/line spacing. Applied to
+   body broadly, then the widget's own chrome is reset so the compact panel keeps
+   its normal rhythm. (Simple selectors only — no fragile complex :not().) */
+:root.a11y-readfont body,
+:root.a11y-readfont body * {
+  font-family: Arial, 'Assistant', system-ui, sans-serif !important;
+  letter-spacing: .02em !important; line-height: 1.75 !important;
+}
+:root.a11y-readfont .a11y-panel__sheet,
+:root.a11y-readfont .a11y-panel__sheet * {
+  letter-spacing: normal !important; line-height: 1.4 !important;
+}
+
+/* (5) Stop animations — kill transitions/animations everywhere (incl. grain). */
+:root.a11y-noanim *,
+:root.a11y-noanim *::before,
+:root.a11y-noanim *::after {
+  animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important; scroll-behavior: auto !important;
+}
+:root.a11y-noanim body::after { display: none; }
+
+/* (6) Strong keyboard-focus outline — a bold ring on every focused element. */
+:root.a11y-focus *:focus,
+:root.a11y-focus *:focus-visible {
+  outline: 3px solid var(--accent) !important; outline-offset: 2px !important;
+}
+
+/* Text-size stepping is applied as an inline font-size on <html> by script.js
+   (clamped 90%–160%); rem-based type across the site scales with it. */
+
 /* ── Post-submit referral nudge ──────────────────────────────────────────── */
 .cta__referral { margin-top: 14px; text-align: center; font-size: 14px; color: var(--muted); }
 .cta__referral a { color: var(--accent-ink); font-weight: 700; }

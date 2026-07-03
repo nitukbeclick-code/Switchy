@@ -2847,4 +2847,134 @@
       banner.hidden = true;
     });
   })();
+
+  // ── Accessibility widget (a11y) ─────────────────────────────────────────────
+  // Wires the floating accessibility control emitted on every page (build.js
+  // footer helper + the hand-written index.html). Legally-required per the
+  // Israeli accessibility regulations / ת"י 5568 / WCAG 2.0 AA. Every adjustment
+  // toggles a class (or an inline font-size) on <html> and persists to
+  // localStorage; an inline <head> guard already re-applies the saved state
+  // before first paint, so here we only re-sync the CONTROL state and handle
+  // interaction. Dependency-free, keyboard-operable, focus-trapped, dark+RTL safe.
+  (() => {
+    const fab = $('a11yFab');
+    const panel = $('a11yPanel');
+    if (!fab || !panel) return;
+    const sheet = panel.querySelector('.a11y-panel__sheet');
+    const root = document.documentElement;
+    const KEY = 'chosech-a11y';
+    const FONT_MIN = 90, FONT_MAX = 160, FONT_STEP = 10;
+    const TOGGLES = ['contrast', 'links', 'readfont', 'noanim', 'focus'];
+
+    const read = () => {
+      try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
+      catch (_) { return {}; }
+    };
+    const write = (s) => {
+      try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (_) { /* private mode */ }
+    };
+
+    // Apply saved settings to <html> AND reflect them in the panel controls.
+    const apply = (s) => {
+      TOGGLES.forEach((k) => root.classList.toggle('a11y-' + k, !!s[k]));
+      const font = clampFont(s.font);
+      if (font !== 100) root.style.fontSize = font + '%';
+      else root.style.removeProperty('font-size');
+      // Reflect toggle state on the buttons.
+      TOGGLES.forEach((k) => {
+        const btn = panel.querySelector('[data-a11y-toggle="' + k + '"]');
+        if (btn) btn.setAttribute('aria-pressed', s[k] ? 'true' : 'false');
+      });
+    };
+    const clampFont = (v) => {
+      const n = Number(v);
+      if (!Number.isFinite(n) || n === 0) return 100;
+      return Math.min(FONT_MAX, Math.max(FONT_MIN, n));
+    };
+
+    let state = read();
+    // Migrate/normalise the font field so the stored value is always sane.
+    state.font = clampFont(state.font);
+    apply(state);
+
+    // ── Open / close with full focus management ──────────────────────────────
+    const FOCUSABLE = 'button, [href], input, select, [tabindex]:not([tabindex="-1"])';
+    const isOpen = () => panel.classList.contains('is-open');
+
+    const open = () => {
+      if (isOpen()) return;
+      panel.hidden = false;
+      // Force reflow so the CSS open-transition runs from the hidden state.
+      void panel.offsetWidth;
+      panel.classList.add('is-open');
+      fab.setAttribute('aria-expanded', 'true');
+      const first = sheet.querySelector(FOCUSABLE);
+      if (first) first.focus();
+    };
+    const close = () => {
+      if (!isOpen()) return;
+      panel.classList.remove('is-open');
+      fab.setAttribute('aria-expanded', 'false');
+      const done = () => { panel.hidden = true; };
+      if (reduceMotion) done();
+      else {
+        let ran = false;
+        const onEnd = () => { if (ran) return; ran = true; sheet.removeEventListener('transitionend', onEnd); done(); };
+        sheet.addEventListener('transitionend', onEnd);
+        setTimeout(onEnd, 300); // fallback if transitionend never fires
+      }
+      // Per spec: closing always returns focus to the trigger button.
+      fab.focus();
+    };
+
+    fab.addEventListener('click', () => { isOpen() ? close() : open(); });
+
+    // Backdrop + X close.
+    panel.addEventListener('click', (e) => {
+      if (e.target.closest && e.target.closest('[data-a11y-close]')) close();
+    });
+
+    // ESC closes (returns focus to the button); Tab is trapped inside the sheet.
+    panel.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key !== 'Tab') return;
+      const f = Array.from(sheet.querySelectorAll(FOCUSABLE))
+        .filter((el) => !el.disabled && el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+
+    // ── Controls ─────────────────────────────────────────────────────────────
+    // Text-size stepper.
+    panel.querySelectorAll('[data-a11y-font]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const op = btn.getAttribute('data-a11y-font');
+        if (op === 'reset') state.font = 100;
+        else if (op === 'inc') state.font = clampFont(state.font + FONT_STEP);
+        else if (op === 'dec') state.font = clampFont(state.font - FONT_STEP);
+        write(state); apply(state);
+      });
+    });
+
+    // Toggles (aria-pressed).
+    panel.querySelectorAll('[data-a11y-toggle]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const k = btn.getAttribute('data-a11y-toggle');
+        state[k] = !state[k];
+        write(state); apply(state);
+      });
+    });
+
+    // Reset everything (clears storage + all adjustments).
+    const resetBtn = panel.querySelector('[data-a11y-reset]');
+    if (resetBtn) resetBtn.addEventListener('click', () => {
+      TOGGLES.forEach((k) => root.classList.remove('a11y-' + k));
+      root.style.removeProperty('font-size');
+      try { localStorage.removeItem(KEY); } catch (_) { /* ignore */ }
+      state = { font: 100 };
+      apply(state);
+    });
+  })();
 })();

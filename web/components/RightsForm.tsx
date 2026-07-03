@@ -97,7 +97,7 @@ export default function RightsForm() {
   if (done) {
     return (
       <div
-        className="rounded-2xl border border-border bg-surface p-6 text-center"
+        className="bento p-6 text-center"
         role="status"
         aria-live="polite"
       >
@@ -107,7 +107,7 @@ export default function RightsForm() {
         >
           ✓
         </div>
-        <h3 className="font-display text-lg font-bold text-ink">
+        <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הבקשה התקבלה, תודה!
         </h3>
         <p className="mt-1 text-sm text-muted">
@@ -124,11 +124,11 @@ export default function RightsForm() {
       onSubmit={handleSubmit(onSubmit)}
       noValidate
       aria-labelledby="rights-form-heading"
-      className="rounded-2xl border border-border bg-surface p-5 sm:p-6"
+      className="bento p-5 sm:p-6"
     >
       <h2
         id="rights-form-heading"
-        className="font-display text-lg font-bold text-ink"
+        className="font-display text-lg font-bold tracking-tight text-ink"
       >
         הגשת בקשה
       </h2>
@@ -151,7 +151,7 @@ export default function RightsForm() {
             aria-required="true"
             aria-invalid={errors.kind ? "true" : "false"}
             aria-describedby={errors.kind ? "rights-kind-error" : undefined}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("kind", { required: "נא לבחור סוג בקשה" })}
           >
             <option value="">בחרו סוג בקשה…</option>
@@ -187,7 +187,7 @@ export default function RightsForm() {
             aria-required="true"
             aria-invalid={errors.name ? "true" : "false"}
             aria-describedby={errors.name ? "rights-name-error" : undefined}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("name", {
               required: "נא להזין שם",
               minLength: { value: 2, message: "השם קצר מדי" },
@@ -220,7 +220,7 @@ export default function RightsForm() {
             dir="ltr"
             aria-invalid={errors.email ? "true" : "false"}
             aria-describedby={errors.email ? "rights-email-error" : undefined}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("email", {
               validate: (v) =>
                 !v || EMAIL_RE.test(v) || "כתובת האימייל אינה תקינה",
@@ -255,7 +255,7 @@ export default function RightsForm() {
             aria-describedby={
               errors.phone ? "rights-phone-error" : "rights-contact-hint"
             }
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("phone", {
               validate: (v) =>
                 !v || isValidIsraeliPhone(v) || "מספר הטלפון אינו תקין",
@@ -287,7 +287,7 @@ export default function RightsForm() {
           <textarea
             id="rights-details"
             rows={4}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             placeholder="לדוגמה: אילו פרטים תרצו לתקן/למחוק, או כל מידע שיעזור לנו לטפל בבקשה."
             {...register("details", {
               maxLength: { value: 2000, message: "הטקסט ארוך מדי" },
@@ -352,7 +352,7 @@ export default function RightsForm() {
         type="submit"
         disabled={isSubmitting}
         aria-disabled={isSubmitting}
-        className="mt-6 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+        className="interactive press mt-6 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
       >
         {isSubmitting ? "שולח…" : "שליחת הבקשה"}
       </button>

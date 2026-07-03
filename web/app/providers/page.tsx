@@ -16,6 +16,8 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import EmptyState from "@/components/EmptyState";
 import ScrollReveal from "@/components/ScrollReveal";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
+import Icon from "@/components/Icon";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getCategories,
@@ -53,6 +55,16 @@ export default function ProvidersIndexPage() {
   // Transparent "best value" order: cheapest entry point first (stated below).
   const providers = buildProviderRankings();
   const categories = getCategories();
+
+  // Real catalogue-derived entry price for the hero VALUE clause: the cheapest
+  // starting price across all providers. Because rankings are sorted by minPrice
+  // ascending, rank-0's minPrice IS the catalogue floor — never a fabricated
+  // figure. Falls back to 0 only on an empty catalogue.
+  const minFeatured = providers.length ? providers[0].minPrice : 0;
+  // The category the hero CTA routes into — the highest-traffic compare hub.
+  const featuredCat = categories.includes("cellular")
+    ? "cellular"
+    : (categories[0] ?? "cellular");
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -120,31 +132,78 @@ export default function ProvidersIndexPage() {
         <span className="text-foreground">ספקים</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Hero (flat-ink panel) ─────────────────────────────────────────────
+          Calm, flat-ink editorial hero (bank-grade): a solid deep-ink panel
+          (#111827, the light-theme --ink) in BOTH themes so "white text on ink"
+          always holds, with the white H1 set directly on it — NO photo/video
+          behind — and ONE green primary CTA plus ONE quiet secondary link. Green
+          is applied ONLY to the price clause (VALUE), bound to the real catalogue
+          entry price (minFeatured). A hairline border keeps it defined on the
+          dark page background. Entrance staggers via the global .sw-reveal alias
+          (globals.css) — no page-scoped keyframes needed. */}
       <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-          כל ספקי התקשורת בישראל
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
-          {providers.length} ספקים בקטלוג שלנו, ממוינים לפי המחיר ההתחלתי הזול
-          ביותר. בחרו ספק כדי לראות את כל המסלולים, המחירים והמחיר אחרי המבצע.
-        </p>
-        {/* Compact catalogue stat line — two figures as the only anchors:
-            providers (structure) + categories (scope). No fabricated metrics. */}
-        <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-sm">
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">ספקים בקטלוג</dt>
-            <dd className="font-display text-xl font-bold tracking-tight text-ink">
-              {providers.length}
-            </dd>
+        <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <div className="mx-auto max-w-2xl">
+            <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
+              כל ספקי התקשורת בישראל.{" "}
+              <span className="text-accent">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+            </h1>
+            <p
+              className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
+              style={{ animationDelay: "60ms" }}
+            >
+              {providers.length} ספקים בקטלוג שלנו, ממוינים לפי המחיר ההתחלתי הזול
+              ביותר. בחרו ספק כדי לראות את כל המסלולים, המחירים והמחיר אחרי המבצע.
+            </p>
+            {/* CTA row — exactly ONE primary (solid green, glow, press). The
+                consult path is a quiet SECONDARY white text link so only one
+                action reads as primary per viewport. */}
+            <div
+              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+              style={{ animationDelay: "120ms" }}
+            >
+              <TrackedCtaLink
+                href={`/compare/${featuredCat}`}
+                location="hero"
+                label="compare"
+                className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+              >
+                בדקו כמה תחסכו
+                <Icon name="chevron" size={18} aria-hidden="true" />
+              </TrackedCtaLink>
+              <TrackedCtaLink
+                href="/book"
+                location="hero"
+                label="consult"
+                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              >
+                או דברו עם יועץ
+              </TrackedCtaLink>
+            </div>
+            {/* Trust band — REAL catalogue counts: providers (structure) +
+                categories (scope). The entry price is the hook so it carries the
+                green VALUE emphasis (text-accent on ink), NOT a button. */}
+            <p
+              className="sw-reveal mt-8 text-sm text-white/70"
+              style={{ animationDelay: "150ms" }}
+            >
+              {providers.length} ספקים · {categories.length} קטגוריות · החל מ-
+              <span className="font-display font-bold text-accent">
+                {ils(minFeatured)}
+              </span>{" "}
+              לחודש
+            </p>
+            {/* Quiet qualitative value line — honest framing (no fabricated
+                figure), muted with a small green tick. */}
+            <p
+              className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
+              style={{ animationDelay: "180ms" }}
+            >
+              <Icon name="check" size={16} className="shrink-0 text-accent" />
+              מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
+            </p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">קטגוריות שירות</dt>
-            <dd className="font-display text-xl font-bold tracking-tight text-ink">
-              {categories.length}
-            </dd>
-          </div>
-        </dl>
+        </section>
       </header>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
@@ -184,7 +243,9 @@ export default function ProvidersIndexPage() {
                 >
                   {/* Identity row: brand-colored avatar + name. The "ערך מוביל"
                       VALUE pill marks the single cheapest entry point (rank 0),
-                      tied to the stated methodology below — amber = VALUE. */}
+                      tied to the stated methodology below. Mono-green: a labeled
+                      outline VALUE chip (green tokens), never a green fill that
+                      reads as a button. */}
                   <div className="flex items-center gap-3">
                     <ProviderLogo provider={p.name} size={44} rounded="2xl" />
                     <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
@@ -200,7 +261,9 @@ export default function ProvidersIndexPage() {
                     {p.categories.map((c) => CATEGORY_HE[c] ?? c).join(" · ")}
                   </span>
                   {/* Stat row: plan count (neutral) + starting price as the VALUE
-                      figure (amber text) — the single number the user scans for. */}
+                      figure (green value text) — the single number the user scans
+                      for. text-value-text is the AA ≥4.5:1 shade for a figure on
+                      a light surface (never the raw fill green). */}
                   <span className="mt-4 flex items-baseline gap-2 text-sm text-muted">
                     <span>{p.planCount} מסלולים</span>
                     <span aria-hidden="true">·</span>
@@ -211,8 +274,18 @@ export default function ProvidersIndexPage() {
                       </span>
                     </span>
                   </span>
-                  <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
-                    לכל המסלולים של {p.name} ←
+                  {/* Tertiary CTA — plain text link + direction-aware chevron
+                      (no border/fill). text-accent-text is the AA link green on a
+                      light surface; the chevron mirrors correctly under RTL, so
+                      never a hardcoded ←/→. */}
+                  <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-colors group-hover:text-accent-hover">
+                    לכל המסלולים של {p.name}
+                    <Icon
+                      name="chevron"
+                      size={16}
+                      aria-hidden="true"
+                      className="transition-transform group-hover:-translate-x-0.5"
+                    />
                   </span>
                 </Link>
               </ScrollReveal>

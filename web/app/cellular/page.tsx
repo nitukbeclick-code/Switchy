@@ -17,6 +17,9 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
+import Icon from "@/components/Icon";
+import { ils } from "@/lib/format";
 import { plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
@@ -60,6 +63,13 @@ export default async function CellularLandingPage() {
   const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
   const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
   const plans = cheapestPlans(all);
+  // Catalogue-derived entry price for the flat-ink hero's green VALUE clause — the
+  // lowest headline price among the SAME featured `plans` CategoryLanding renders,
+  // so the two figures can never disagree. Undefined ⇒ no fabricated number shown.
+  const pricedFeatured = plans.filter((p) => typeof p.price === "number");
+  const minFeatured = pricedFeatured.length
+    ? Math.min(...pricedFeatured.map((p) => p.price))
+    : undefined;
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -131,15 +141,68 @@ export default async function CellularLandingPage() {
         <span className="text-foreground">{CATEGORY_HE[CATEGORY]}</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
-          השוואת מסלולים
-        </p>
-        <h1 className="mt-2 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-          מסלולי סלולר
-        </h1>
-      </header>
+      {/* ── Flat-ink hero panel ───────────────────────────────────────────────
+          The bank-grade page hero (mirrors app/page.tsx): a solid deep-ink panel
+          (#111827 in BOTH themes, so white-on-ink always holds) with the page
+          <h1> set directly on it — NO photo/video behind. Green is applied ONLY
+          to the catalogue-derived entry-price clause (VALUE), never as a second
+          fill. Exactly ONE primary CTA (green fill + glow) into the full compare
+          hub + ONE quiet secondary text link to the advisor. The featured table
+          below comes from <CategoryLanding hideHero> so there is a single ink
+          hero + single primary CTA per view. */}
+      <section className="relative isolate mt-6 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+            מסלולי סלולר
+            {minFeatured !== undefined ? (
+              <>
+                {" "}
+                <span className="text-accent">מ-{ils(minFeatured)} לחודש.</span>
+              </>
+            ) : null}
+          </h1>
+          <p
+            className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
+            style={{ animationDelay: "60ms" }}
+          >
+            השוואה חינמית של כל חבילות הסלולר בישראל — כולל המחיר שאחרי המבצע.
+          </p>
+          <div
+            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+            style={{ animationDelay: "120ms" }}
+          >
+            <TrackedCtaLink
+              href={`/compare/${CATEGORY}`}
+              location="category-hero"
+              label="compare"
+              className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+            >
+              לכל מסלולי הסלולר
+              <Icon name="chevron" size={18} aria-hidden="true" />
+            </TrackedCtaLink>
+            <TrackedCtaLink
+              href="/book"
+              location="category-hero"
+              label="consult"
+              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+            >
+              או דברו עם יועץ
+            </TrackedCtaLink>
+          </div>
+          {minFeatured !== undefined ? (
+            <p
+              className="sw-reveal mt-8 text-sm text-white/70"
+              style={{ animationDelay: "150ms" }}
+            >
+              {all.length} מסלולים · החל מ-
+              <span className="font-display font-bold text-accent">
+                {ils(minFeatured)}
+              </span>{" "}
+              לחודש
+            </p>
+          ) : null}
+        </div>
+      </section>
 
       {/* ── Freshness stamp (honest "data as of" date, near the table) ────── */}
       <div className="mt-6">
@@ -147,11 +210,13 @@ export default async function CellularLandingPage() {
       </div>
 
       {/* ── Category landing (intro + featured table + disclosure/caveat +
-          /compare hand-off + subcategory links) ───────────────────────────── */}
+          /compare hand-off + subcategory links). hideHero: the flat-ink hero +
+          the page <h1> live above, so this starts at the disclosure/table. ──── */}
       <div className="mt-4">
         <CategoryLanding
           category={CATEGORY}
           titleHe={TITLE_HE}
+          hideHero
           intro="כל חבילות הסלולר במקום אחד — 5G, גלישה ללא הגבלה, דקות ו-SMS. השוו מחירים מכל החברות, כולל המחיר אחרי תקופת המבצע, ומצאו את המסלול שמתאים בדיוק לכם. הטבלה מציגה את המסלולים הזולים ביותר בקטלוג, ממוינים מהזול ליקר."
           plans={plans}
           subcats={subcats}

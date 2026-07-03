@@ -19,6 +19,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import Icon from "@/components/Icon";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
@@ -26,6 +27,7 @@ import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import { breadcrumbSchema, webPageSchema, howToSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
+import { ils, priceUnitLabel } from "@/lib/format";
 import { NEGOTIATE_CATEGORIES } from "./lib";
 import NegotiateClient from "./NegotiateClient";
 
@@ -50,13 +52,27 @@ export default function NegotiatePage() {
   // The real provider display names for the client's (optional) provider picker.
   // Restrict to providers that actually run a plan in a negotiate category.
   const negotiateCats = new Set<string>(NEGOTIATE_CATEGORIES);
+  const negotiatePlans = getPlans().filter((p) => negotiateCats.has(p.cat));
   const providerNames = [
-    ...new Set(
-      getPlans()
-        .filter((p) => negotiateCats.has(p.cat))
-        .map((p) => p.provider),
-    ),
+    ...new Set(negotiatePlans.map((p) => p.provider)),
   ].sort((a, b) => a.localeCompare(b, "he"));
+
+  // The REAL market floor: the cheapest comparable catalogue price across the
+  // negotiate categories — the same starting-point number the grounded script is
+  // built on (never a fabricated figure). It carries the green VALUE emphasis in
+  // the hero. 0 → the hero simply omits the price clause.
+  // Restricted to genuinely-MONTHLY rows so the hero's hardcoded "לחודש" suffix
+  // stays truthful — negotiatePlans includes 'abroad' rows priced per-minute/
+  // day/package (e.g. a ₪1 per-minute roaming tariff) that must never be shown
+  // as "₪1 לחודש". The honest monthly floor is the cheapest per-month plan.
+  const marketFloor = negotiatePlans
+    .filter(
+      (p) =>
+        typeof p.price === "number" &&
+        p.price > 0 &&
+        priceUnitLabel(p) === "לחודש",
+    )
+    .reduce((min, p) => (min === 0 || p.price < min ? p.price : min), 0);
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -139,21 +155,78 @@ export default function NegotiatePage() {
         <span className="text-foreground">מיקוח על המחיר</span>
       </nav>
 
-      {/* ── Heading — single focal point: the H1, lifted by an ACTION eyebrow ── */}
-      <header className="mt-5">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
-          <Icon name="spark" size={14} aria-hidden />
-          תסריט שימור מבוסס נתונים
-        </span>
-        <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[2.65rem]">
-          לפני שעוזבים: כך משיגים מהספק את המחיר
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
-          רוצים להישאר אצל הספק אבל לשלם פחות? בחרו שירות וקבלו תסריט מיקוח אמיתי
-          למחלקת השימור — מבוסס על המחיר הזול ביותר בשוק מתוך הקטלוג שלנו. זו נקודת
-          פתיחה למשא ומתן, לא הבטחה.
-        </p>
-      </header>
+      {/* ── Hero — flat-ink editorial panel (premium-2026) ────────────────────
+          A solid deep-ink panel (#111827 in BOTH themes) with the white H1 set
+          directly on it — NO photo behind the text — and ONE green primary CTA.
+          The H1 is a CHECK/promise ("כך משיגים מהספק את המחיר"), never a promised
+          amount; green is applied ONLY to the real catalogue market-floor price
+          (VALUE), which is exactly the number the grounded script anchors on. The
+          Zoom /book path is demoted to a SECONDARY quiet white text link so only
+          one action reads as primary. White-on-ink holds because the panel is a
+          fixed ink fill in both themes. ─────────────────────────────────────── */}
+      <section className="relative isolate mt-5 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+        <div className="mx-auto max-w-2xl">
+          <span className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+            <Icon name="spark" size={14} aria-hidden />
+            תסריט שימור מבוסס נתונים
+          </span>
+          <h1 className="sw-reveal mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-white sm:text-[2.65rem]">
+            לפני שעוזבים: כך משיגים מהספק את המחיר.{" "}
+            {marketFloor > 0 ? (
+              <span className="text-accent">
+                המחיר הזול בשוק מ-{ils(marketFloor)} לחודש.
+              </span>
+            ) : null}
+          </h1>
+          <p
+            className="sw-reveal mx-auto mt-4 max-w-2xl text-lg font-medium leading-relaxed text-white/85"
+            style={{ animationDelay: "60ms" }}
+          >
+            רוצים להישאר אצל הספק אבל לשלם פחות? בחרו שירות וקבלו תסריט מיקוח אמיתי
+            למחלקת השימור — מבוסס על המחיר הזול ביותר בשוק מתוך הקטלוג שלנו. זו נקודת
+            פתיחה למשא ומתן, לא הבטחה.
+          </p>
+          <div
+            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+            style={{ animationDelay: "120ms" }}
+          >
+            <TrackedCtaLink
+              href="#negotiate-h"
+              location="hero"
+              label="negotiate"
+              className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+            >
+              בנו לי תסריט מיקוח
+              <Icon name="chevron" size={18} aria-hidden="true" />
+            </TrackedCtaLink>
+            <TrackedCtaLink
+              href="/book"
+              location="hero"
+              label="consult"
+              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+            >
+              או דברו עם יועץ
+            </TrackedCtaLink>
+          </div>
+          {/* Trust band — REAL catalogue counts; the market-floor entry price
+              carries the green VALUE emphasis (text-accent), NOT a button. */}
+          <p
+            className="sw-reveal mt-8 text-sm text-white/70"
+            style={{ animationDelay: "150ms" }}
+          >
+            {planCount} מסלולים · {providerCount} ספקים
+            {marketFloor > 0 ? (
+              <>
+                {" · "}הזול בשוק מ-
+                <span className="font-display font-bold text-accent">
+                  {ils(marketFloor)}
+                </span>{" "}
+                לחודש
+              </>
+            ) : null}
+          </p>
+        </div>
+      </section>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">

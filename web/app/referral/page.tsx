@@ -71,23 +71,68 @@ export default function ReferralPage() {
         <span className="text-foreground">הזמינו חבר</span>
       </nav>
 
-      {/* ── Heading — ACTION eyebrow (sharing is the user's action) ───────── */}
+      {/* ── Hero — FLAT-INK HERO PANEL (premium-2026) ──────────────────────────
+          A solid deep-ink panel (#111827 in BOTH themes) with the white headline
+          set directly on it — NO photo/video behind — and green applied ONLY to
+          the VALUE word ("חינם"). TRUTH-ONLY: this is a share-the-tool page with
+          no catalogue price to quote, so the hero promises a CHECK ("בדקו כמה
+          תוכלו לחסוך") and never fabricates a figure or a reward. Exactly ONE
+          primary CTA (jump to the card) + ONE quiet secondary text link. The
+          .sw-reveal children stagger 60→150ms via inline animationDelay. */}
       <header className="mt-5">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
-          <Icon name="spark" size={14} aria-hidden />
-          שיתוף הכלי · חינם
-        </span>
-        <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[2.65rem]">
-          שתפו את Switchy AI עם חברים
-        </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
-          אם Switchy AI עזר לכם לבדוק כמה אתם יכולים לחסוך, יש סיכוי טוב שהוא יעזור גם
-          לחברים שלכם. קבלו קוד הזמנה אישי ושתפו אותו — חינם, בלי התחייבות.
-        </p>
+        <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <div className="mx-auto max-w-2xl">
+            <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              שתפו את Switchy AI עם חברים.{" "}
+              <span className="text-accent">חינם, בלי התחייבות.</span>
+            </h1>
+            <p
+              className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
+              style={{ animationDelay: "60ms" }}
+            >
+              אם Switchy AI עזר לכם לבדוק כמה אתם יכולים לחסוך, יש סיכוי טוב שהוא יעזור
+              גם לחברים שלכם. קבלו קוד הזמנה אישי ושתפו אותו.
+            </p>
+            <div
+              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+              style={{ animationDelay: "120ms" }}
+            >
+              {/* PRIMARY — solid green fill + accent glow + press feedback. Jumps
+                  to the card, which mints the real code on demand. */}
+              <Link
+                href="#referral-card"
+                className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+              >
+                קבלו קוד הזמנה אישי
+                <Icon name="chevron" size={18} aria-hidden="true" />
+              </Link>
+              {/* SECONDARY — quiet white text link, no fill, no glow. */}
+              <Link
+                href="/compare"
+                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              >
+                או השוו מסלולים בעצמכם
+              </Link>
+            </div>
+            {/* Quiet qualitative value line — muted, small green tick, no fabricated
+                figure. "חינם" is a true value claim, not a promised amount. */}
+            <p
+              className="sw-reveal mt-8 inline-flex items-center gap-1.5 text-sm text-white/75"
+              style={{ animationDelay: "150ms" }}
+            >
+              <Icon name="check" size={16} className="shrink-0 text-accent" />
+              כלי חינמי להשוואת מסלולי תקשורת — שיתוף הכלי, ללא הבטחת תגמול כספי
+            </p>
+          </div>
+        </section>
       </header>
 
       {/* ── The referral card (mints a real code; share-the-tool framing) ──── */}
-      <section aria-labelledby="referral-card-h" className="mt-8">
+      <section
+        id="referral-card"
+        aria-labelledby="referral-card-h"
+        className="mt-8 scroll-mt-6"
+      >
         <ReferralCard />
       </section>
 

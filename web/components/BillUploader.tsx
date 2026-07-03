@@ -242,7 +242,9 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
           prevent-jarring; reduced-motion drops the transform automatically. */}
       <style>{`@keyframes bill-result-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {/* ── Uploader card ──────────────────────────────────────────────────── */}
-      <div className="bento p-6 sm:p-8">
+      {/* id + scroll-mt: the hero's primary CTA (#bill-upload) lands here; the
+          scroll-margin keeps the sticky header from covering the card top. */}
+      <div id="bill-upload" className="bento scroll-mt-6 p-6 sm:p-8">
         <label htmlFor="bill-file" className="block">
           <span className="font-display text-lg font-semibold tracking-tight text-ink">
             צלמו או העלו את החשבון
@@ -264,7 +266,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
           capture="environment"
           disabled={busy}
           onChange={(e) => onFile(e.target.files?.[0])}
-          className="mt-4 block w-full cursor-pointer rounded-xl border border-border/70 bg-surface px-4 py-3 text-sm text-foreground file:me-4 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:font-medium file:text-accent-contrast hover:file:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
+          className="interactive mt-4 block w-full cursor-pointer rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none file:me-4 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:font-medium file:text-accent-contrast hover:file:bg-accent-hover focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
         {/* Privacy note — plain, prominent, never buried. */}
@@ -327,7 +329,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
             <button
               type="button"
               onClick={reset}
-              className="interactive press mt-3 inline-block rounded-lg border border-border/60 px-4 py-2 text-sm font-medium text-ink hover:border-accent/40 hover:bg-surface"
+              className="interactive press mt-3 inline-block rounded-xl border border-border/60 bg-surface px-4 py-2.5 text-sm font-medium text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
             >
               נסו שוב
             </button>
@@ -355,9 +357,10 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
           <button
             type="button"
             onClick={reset}
-            className="interactive press mt-4 inline-block rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-contrast hover:bg-accent-hover"
+            className="press mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
           >
             צילום מחדש
+            <Icon name="chevron" size={16} aria-hidden="true" />
           </button>
         </div>
       )}

@@ -24,8 +24,11 @@ import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import BillUploader from "@/components/BillUploader";
 import EmptyState from "@/components/EmptyState";
 import SkeletonCard from "@/components/SkeletonCard";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
+import Icon from "@/components/Icon";
 import type { ForensicsPlan } from "@/lib/bill-forensics";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
+import { ils } from "@/lib/format";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
@@ -42,8 +45,16 @@ export default function BillsPage() {
   // REAL catalogue totals for the honest trust block (no fabricated figures).
   const plans = getPlans();
   const planCount = plans.length;
-  const providerCount = getProviders().length;
+  const providers = getProviders();
+  const providerCount = providers.length;
   const categoryCount = getCategories().length;
+
+  // The real cheapest catalogue entry price — the ONLY figure that carries the
+  // green VALUE emphasis in the hero. Never a fabricated/promised number.
+  const priced = plans.filter((p) => typeof p.price === "number");
+  const minFeatured = priced.length
+    ? Math.min(...priced.map((p) => p.price))
+    : 0;
 
   // Slim, serializable catalogue projection for the bill-forensics expired-promo
   // detection (needs the promo→post-promo `after` step-up). Only plans that carry
@@ -111,16 +122,73 @@ export default function BillsPage() {
         <span className="text-foreground">צילום חשבון</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          צלמו את החשבון, ראו כמה אפשר לחסוך
-        </h1>
-        <p className="mt-4 text-lg leading-relaxed text-foreground">
-          מעלים תמונה של החשבון החודשי — אנחנו קוראים ממנה את הספק, הסכום וסוג
-          השירות, ומציגים מסלולים זולים יותר מהקטלוג, עם החיסכון השנתי.
-        </p>
-      </header>
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          Flat-ink editorial hero (bank-grade, mirrored from the home hero): a
+          solid deep-ink panel (#111827 in BOTH themes) with the white headline
+          set directly on it — NO photo behind the text. The headline is a CHECK
+          ("צלמו… בדקו כמה אפשר לחסוך"), never a promised amount; green is applied
+          ONLY to the real catalogue entry-price clause (VALUE). Exactly ONE
+          primary CTA (down to the uploader) + ONE quiet secondary text link. */}
+      <section className="relative isolate mt-3 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
+            צלמו את החשבון, בדקו כמה אפשר לחסוך.{" "}
+            <span className="text-accent">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+          </h1>
+          <p
+            className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
+            style={{ animationDelay: "60ms" }}
+          >
+            מעלים תמונה של החשבון החודשי — אנחנו קוראים ממנה את הספק, הסכום וסוג
+            השירות, ומציגים מסלולים זולים יותר מהקטלוג.
+          </p>
+          {/* CTA row — exactly ONE primary (solid green, glow, press) that jumps
+              to the uploader; the /book consult path is a quiet SECONDARY link. */}
+          <div
+            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+            style={{ animationDelay: "120ms" }}
+          >
+            <TrackedCtaLink
+              href="#bill-upload"
+              location="bills-hero"
+              label="upload"
+              className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+            >
+              צלמו את החשבון
+              <Icon name="chevron" size={18} aria-hidden="true" />
+            </TrackedCtaLink>
+            <TrackedCtaLink
+              href="/book"
+              location="bills-hero"
+              label="consult"
+              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+            >
+              או דברו עם יועץ
+            </TrackedCtaLink>
+          </div>
+          {/* Trust band — REAL catalogue counts; the entry price carries the green
+              VALUE emphasis (text on ink), NOT a button. */}
+          <p
+            className="sw-reveal mt-8 text-sm text-white/70"
+            style={{ animationDelay: "150ms" }}
+          >
+            {planCount} מסלולים · {providerCount} ספקים · החל מ-
+            <span className="font-display font-bold text-accent">
+              {ils(minFeatured)}
+            </span>{" "}
+            לחודש
+          </p>
+          {/* Quiet qualitative value line — muted, small green tick, honest (no
+              fabricated figure). */}
+          <p
+            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
+            style={{ animationDelay: "180ms" }}
+          >
+            <Icon name="check" size={16} className="shrink-0 text-accent" />
+            הקריאה אוטומטית, חינם, וההשוואה בלי התחייבות — התמונה אינה נשמרת
+          </p>
+        </div>
+      </section>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">

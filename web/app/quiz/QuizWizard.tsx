@@ -30,6 +30,7 @@ import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import SwitchyMascot from "@/components/SwitchyMascot";
 import SkeletonCard from "@/components/SkeletonCard";
+import Icon from "@/components/Icon";
 import { CATEGORY_HE } from "@/lib/categories";
 import { ils } from "@/lib/format";
 import { trackEvent } from "@/lib/tracking";
@@ -444,14 +445,27 @@ export default function QuizWizard() {
             )}
           </fieldset>
 
-          {/* Navigation */}
+          {/* Navigation — three-tier button grammar:
+              • PREV ("חזרה")  = SECONDARY ghost (border, no fill), reverse chevron.
+              • NEXT ("המשך")  = PRIMARY (solid green + accent glow + press),
+                                 direction-aware forward chevron.
+              • SUBMIT (step 5) = same PRIMARY fill but a check icon (a completion,
+                                 not a forward step).
+              The direction-aware chevrons are <Icon> glyphs (never hardcoded ←/→);
+              the "back" chevron is mirrored via -scale-x-100. */}
           <div className="mt-6 flex items-center gap-3">
             {step > 0 && (
               <button
                 type="button"
                 onClick={back}
-                className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="interactive press inline-flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
+                <Icon
+                  name="chevron"
+                  size={16}
+                  aria-hidden="true"
+                  className="-scale-x-100"
+                />
                 חזרה
               </button>
             )}
@@ -460,9 +474,14 @@ export default function QuizWizard() {
               onClick={next}
               disabled={step === 0 && !answers.category}
               aria-disabled={step === 0 && !answers.category}
-              className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+              className="interactive press flex flex-1 items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform hover:bg-accent-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none disabled:active:scale-100"
             >
               {step < lastStep ? "המשך" : "מצאו לי מסלולים"}
+              <Icon
+                name={step < lastStep ? "chevron" : "check"}
+                size={18}
+                aria-hidden="true"
+              />
             </button>
           </div>
 

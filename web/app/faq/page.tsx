@@ -15,6 +15,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import SgeSummary from "@/components/SgeSummary";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
@@ -201,9 +202,10 @@ export default function FaqPage() {
             <p className="mt-4 text-sm">
               <Link
                 href={s.more.href}
-                className="interactive inline-flex items-center gap-1 font-medium text-accent-text transition-transform hover:-translate-x-0.5"
+                className="interactive inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-hover"
               >
-                {s.more.label} ←
+                {s.more.label}
+                <Icon name="chevron" size={16} aria-hidden="true" />
               </Link>
             </p>
           )}

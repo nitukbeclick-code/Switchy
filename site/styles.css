@@ -2752,3 +2752,94 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); box-shadow: 0 10px 24px -10
   .feature, .guide-card, .plan, .provider-card, .cat, .collection-chip, .step,
   .rating-card { transition: box-shadow .01s, border-color .01s; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PREMIUM-SAAS HOME ADDITIONS (additive-only; composed from existing tokens so
+   dark parity is automatic and no new palette/font is introduced). Covers:
+   direction-aware CTA chevron, the ink-hero counts-bar, the quiet secondary
+   hero link, the green-tick hedge line, the "best/הכי זול" green pill, the
+   repeated providers CTA row, the deals §17-style caveat, and category
+   count/price polish.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Direction-aware chevron — the SVG glyph points to the READING-END (RTL: left),
+   so it replaces the hardcoded "←" and flips automatically in an LTR context via
+   logical CSS. No arrow glyph is ever hardcoded. Sits inside a .btn label. */
+.btn__chev { display: inline-flex; align-items: center; margin-inline-start: 8px; }
+.btn__chev svg { width: 17px; height: 17px; display: block; transition: transform .18s var(--ease); }
+.btn__chev--sm svg { width: 14px; height: 14px; }
+/* The path is drawn pointing LEFT (correct for the RTL default). In an LTR
+   document it must point right, so mirror it there only. */
+:dir(ltr) .btn__chev svg { transform: scaleX(-1); }
+[dir="ltr"] .btn__chev svg { transform: scaleX(-1); }
+/* Hover nudge toward the reading-end (logical): RTL → left, LTR → right. */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover .btn__chev svg { transform: translateX(-2px); }
+  :dir(ltr) .btn:hover .btn__chev svg { transform: scaleX(-1) translateX(-2px); }
+  [dir="ltr"] .btn:hover .btn__chev svg { transform: scaleX(-1) translateX(-2px); }
+}
+@media (prefers-reduced-motion: reduce) { .btn__chev svg, .btn:hover .btn__chev svg { transition: none; } }
+
+/* Quiet secondary hero action — a text link, NOT a second button, so exactly one
+   green primary reads as "the action" per viewport. On the ink hero it sits in
+   off-white/70; the --ink variant is for the light providers band. */
+.hero__link {
+  align-self: center; font-weight: 700; font-size: 15px; text-decoration: none;
+  color: rgba(245,247,248,.82); border-bottom: 1px solid rgba(245,247,248,.28);
+  padding-bottom: 1px; transition: color .15s, border-color .15s;
+}
+.hero__link:hover { color: #fff; border-color: rgba(245,247,248,.6); }
+.hero__link--ink { color: var(--accent-ink); border-bottom-color: rgba(22,163,74,.35); }
+.hero__link--ink:hover { color: var(--accent-ink); border-bottom-color: var(--accent); }
+
+/* Counts-bar — the single truthful above-the-fold proof line on the ink hero.
+   Inline figures separated by hairline dividers (inverse --line on the dark
+   panel); tabular-nums so digits column-align. Pure layout, no new colour. */
+.counts-bar {
+  list-style: none; margin: 22px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 0;
+  font-size: 14px; color: rgba(245,247,248,.72);
+  font-variant-numeric: tabular-nums;
+}
+.counts-bar li { display: inline-flex; align-items: center; padding-inline: 16px; }
+.counts-bar li:first-child { padding-inline-start: 0; }
+.counts-bar li + li { border-inline-start: 1px solid rgba(245,247,248,.18); }
+.counts-bar b { font-family: 'Rubik', sans-serif; font-weight: 800; color: #fff; font-size: 18px; margin-inline-end: 6px; }
+@media (max-width: 520px) {
+  .counts-bar { gap: 6px 0; font-size: 13px; }
+  .counts-bar li { padding-inline: 12px; }
+  .counts-bar b { font-size: 16px; }
+}
+
+/* Hedge line — honest/qualitative, with a green tick. Never a promised figure. */
+.hero__hedge {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 14px; font-size: 13.5px; color: rgba(245,247,248,.78);
+}
+.hero__hedge .ico { width: 17px; height: 17px; flex: none; color: #4ADE80; }
+
+/* Best-entry green pill — the ONE green pill among the plan flags (blueprint:
+   green pill only on the best/value cell). Everything else stays neutral grey. */
+.pflag--best { background: var(--accent-t); color: var(--accent-ink); }
+:root[data-theme="dark"] .pflag--best { background: var(--accent-t); color: var(--accent); }
+
+/* Deals §17-style caveat — restyled honesty line under the cheapest-3. */
+.deals__caveat {
+  max-width: 620px; margin: 22px auto 0; text-align: center;
+  font-size: 12.5px; line-height: 1.6; color: var(--ink-600);
+}
+
+/* Repeated hero CTA after the logo wall — same green primary + one quiet link. */
+.providers__cta {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 16px 22px; margin-top: 30px;
+}
+
+/* Category card: real per-category count under the honest entry price, both
+   tabular where numeric. Keeps the card compact and premium. */
+.cat__price { color: var(--muted); font-size: 14px; margin-top: 3px; }
+.cat__count {
+  display: block; margin-top: 6px; font-size: 12px; font-weight: 700;
+  color: var(--accent-ink); font-variant-numeric: tabular-nums;
+}
+:root[data-theme="dark"] .cat__count { color: var(--accent); }

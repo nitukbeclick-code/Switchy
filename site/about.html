@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=c5ea8db8" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -130,7 +130,7 @@
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← על SWITCHY</p>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span>על SWITCHY</p>
         <h1>על SWITCHY</h1>
         <div class="article-meta"><span>משווים, חוסכים, עוברים — בלי כאב ראש.</span></div>
       </div>
@@ -138,14 +138,23 @@
     <section class="section">
       <div class="container">
         <div class="prose">
-        <h2>מי אנחנו</h2>
+            <nav class="toc" aria-label="תוכן העניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+                <li><a class="toc__link" href="#sec-1">מי אנחנו</a></li>
+                <li><a class="toc__link" href="#sec-2">המודל שלנו — והשירות חינמי לכם</a></li>
+                <li><a class="toc__link" href="#sec-3">למה לסמוך עלינו</a></li>
+                <li><a class="toc__link" href="#sec-4">מה אנחנו עושים בשבילכם</a></li>
+              </ol>
+            </nav>
+        <h2 id="sec-1">מי אנחנו</h2>
         <p>SWITCHY מרכזת את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל — במקום אחד, ועוזרת לכם למצוא את המסלול המשתלם ביותר ולעבור אליו בקלות.</p>
         <p>השירות מופעל על-ידי אריאל תקשורת (עוסק מורשה 322253618), מרחוב ליאו בק 64, נהריה.</p>
 
-        <h2>המודל שלנו — והשירות חינמי לכם</h2>
+        <h2 id="sec-2">המודל שלנו — והשירות חינמי לכם</h2>
         <p>השירות חינמי לחלוטין למשתמשים. אנחנו מקבלים עמלה מחברת התקשורת כשעוברים דרכנו — אבל המחיר שאתם משלמים זהה, והעמלה אינה משפיעה על הדירוג. אנחנו מדרגים מסלולים לפי ההתאמה לכם, לא לפי מי שמשלם לנו.</p>
 
-        <h2>למה לסמוך עלינו</h2>
+        <h2 id="sec-3">למה לסמוך עלינו</h2>
         <ul>
           <li>מחירים מעודכנים מכל החברות במקום אחד.</li>
           <li>המלצה מוסברת — רואים בדיוק למה מסלול דורג גבוה.</li>
@@ -153,7 +162,7 @@
           <li>קהילה וחוות דעת אמיתיות של לקוחות.</li>
         </ul>
 
-        <h2>מה אנחנו עושים בשבילכם</h2>
+        <h2 id="sec-4">מה אנחנו עושים בשבילכם</h2>
         <ul>
           <li>משווים את כל השוק בשניות.</li>
           <li>ממליצים לפי הצרכים והתקציב שלכם.</li>
@@ -165,7 +174,7 @@
           <div class="article-cta">
             <h3>מוכנים לחסוך?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו ←</a>
+            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           </div>
       </div>
     </section>
@@ -225,6 +234,6 @@
     </div>
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=15cda558" defer></script>
+  <script src="script.js?v=e81b7fae" defer></script>
 </body>
 </html>

@@ -13,6 +13,8 @@
 
 import Link from "next/link";
 
+import Icon from "@/components/Icon";
+
 /**
  * A single related-page link. `external` opts into a plain anchor + noopener.
  * Anchor text accepts either `label` or `title`; sub-text accepts either `hint`
@@ -89,12 +91,12 @@ export default function RelatedAuthorityPages({
             <>
               <span className="flex items-center gap-1.5 font-medium text-foreground transition-colors group-hover:text-accent">
                 {label}
-                <span
+                <Icon
+                  name="arrow"
+                  size={15}
                   aria-hidden="true"
                   className="text-accent transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:-translate-x-0.5"
-                >
-                  ←
-                </span>
+                />
               </span>
               {hint ? (
                 <span className="mt-0.5 block text-xs text-muted">{hint}</span>

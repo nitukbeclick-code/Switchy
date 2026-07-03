@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=c5ea8db8" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -147,33 +147,43 @@
         </g>
       </svg></div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="triple.html">חבילה משולבת</a> ← מחשבון חיסכון</p>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="triple.html">חבילה משולבת</a><span class="crumbs__sep" aria-hidden="true"></span>מחשבון חיסכון</p>
         <span class="pill pill--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg> מחשבון חינמי · בלי התחייבות</span>
         <h1>מחשבון חיסכון חבילה משולבת</h1>
         <p>הזינו כמה אתם משלמים היום על חבילה משולבת, ונראה לכם הערכה כמה אפשר לחסוך בשנה מול המסלול הזול ביותר בשוק.</p>
+        <ul class="stat-band" aria-label="נתוני הקטלוג — מהקטלוג">
+            <li><b data-count-to="11">11</b> מסלולים</li>
+            <li><b data-count-to="6">6</b> ספקים</li>
+            <li>החל מ-<b dir="ltr">₪119</b> לחודש</li>
+          </ul>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#calc">חשבו את החיסכון<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+          <a class="hero__link hero__link--ink" href="triple.html">לכל מסלולי החבילה משולבת</a>
+        </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
 
     <section class="section">
       <div class="container">
-        <div id="calc" class="glass" data-cheapest="119" data-cat="triple" style="max-width:560px;margin:0 auto;border:1px solid #E4E8EC;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(17,24,39,.05)">
-          <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על חבילה משולבת?</h2>
-          <p style="margin:0 0 4px">המסלול הזול ביותר בחבילה משולבת כרגע: <span style="color:#0B0F14;font-weight:700">NextTV אינטרנט סיבים + TV 1GB — 119</span>.</p>
-          <label for="calcBill" style="display:block;font-weight:700;margin:14px 0 0">כמה אתם משלמים היום? (₪ לחודש)</label>
-          <div class="calc-quick" role="group" aria-label="בחירה מהירה" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px">
-            <button type="button" class="chip calc-quick__btn" data-val="250">₪250</button><button type="button" class="chip calc-quick__btn" data-val="270">₪270</button><button type="button" class="chip calc-quick__btn" data-val="300">₪300</button><button type="button" class="chip calc-quick__btn" data-val="320">₪320</button>
+        <div id="calc" class="calc-card reveal" data-cheapest="119" data-cat="triple">
+          <h2 class="calc-card__title">כמה אתם יכולים לחסוך על חבילה משולבת?</h2>
+          <p class="calc-card__lead">המסלול הזול ביותר בחבילה משולבת כרגע: <b>NextTV אינטרנט סיבים + TV 1GB — 119</b>.</p>
+          <label for="calcBill" class="calc-card__label">כמה אתם משלמים היום? (₪ לחודש)</label>
+          <div class="calc-quick calc-card__quick" role="group" aria-label="בחירה מהירה">
+            <button type="button" class="chip calc-quick__btn" data-val="250"><span dir="ltr">₪250</span></button><button type="button" class="chip calc-quick__btn" data-val="270"><span dir="ltr">₪270</span></button><button type="button" class="chip calc-quick__btn" data-val="300"><span dir="ltr">₪300</span></button><button type="button" class="chip calc-quick__btn" data-val="320"><span dir="ltr">₪320</span></button>
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 16px">
-            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px" />
+          <div class="calc-card__inputrow">
+            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
-          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
+          <p id="calcOut" class="calc-card__out" role="status" aria-live="polite"></p>
           <div id="calcChart" class="calc-chart" data-chart="savings" hidden></div>
-          <a id="calcCta" class="btn btn--primary btn--lg" href="#cta" hidden style="margin-top:14px">בדקו אילו מסלולים חוסכים לכם את זה ←</a>
-          <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
+          <a id="calcCta" class="btn btn--primary btn--lg btn--block" href="#cta" hidden style="margin-top:14px">בדקו אילו מסלולים חוסכים לכם את זה<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+          <p class="calc-card__fine">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">
-          <a class="btn btn--ghost btn--lg" href="triple.html">לכל מסלולי החבילה משולבת ←</a>
+          <a class="btn btn--ghost btn--lg" href="triple.html">לכל מסלולי החבילה משולבת<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
         </div>
       </div>
     </section>
@@ -313,6 +323,6 @@
     </div>
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=15cda558" defer></script>
+  <script src="script.js?v=e81b7fae" defer></script>
 </body>
 </html>

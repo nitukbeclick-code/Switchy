@@ -613,8 +613,9 @@ function Results({
         </button>
       </div>
 
-      {/* Ranked match cards — staggered reveal so #1 lands first. */}
-      <ol className="space-y-4">
+      {/* Ranked match cards — staggered reveal so #1 lands first. tabular-nums
+          column-aligns the price / % / saving digits (parity with the home). */}
+      <ol className="nums-tabular space-y-4">
         {matches.map((m, i) => (
           <li
             key={m.id}
@@ -787,13 +788,16 @@ function MatchCard({
         </p>
       )}
 
-      {/* Deep-link into the full comparison for this category (no dead-end). */}
+      {/* Deep-link into the full comparison for this category (no dead-end).
+          Direction-aware <Icon name="chevron"> — never a hardcoded ←/→ glyph, so
+          it mirrors correctly in the RTL flow (matches the home's link pattern). */}
       <div className="mt-4 border-t border-border/60 pt-3">
         <Link
           href={`/compare/${match.cat}`}
-          className="interactive text-sm font-medium text-accent-text hover:text-accent-hover"
+          className="interactive inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-hover"
         >
-          השוואת כל מסלולי {CATEGORY_HE[match.cat] ?? match.cat} ←
+          השוואת כל מסלולי {CATEGORY_HE[match.cat] ?? match.cat}
+          <Icon name="chevron" size={16} aria-hidden="true" />
         </Link>
       </div>
     </article>

@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=c5ea8db8" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -130,7 +130,7 @@
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← מחיקת חשבון ומידע</p>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span>מחיקת חשבון ומידע</p>
         <h1>מחיקת חשבון ומידע</h1>
         <div class="article-meta"><span>עודכן לאחרונה: 30 ביוני 2026</span></div>
       </div>
@@ -138,17 +138,28 @@
     <section class="section">
       <div class="container">
         <div class="prose">
-        <h2>על מי חל</h2>
+            <nav class="toc" aria-label="תוכן העניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+                <li><a class="toc__link" href="#sec-1">על מי חל</a></li>
+                <li><a class="toc__link" href="#sec-2">איך מבקשים מחיקה</a></li>
+                <li><a class="toc__link" href="#sec-3">איזה מידע יימחק</a></li>
+                <li><a class="toc__link" href="#sec-4">מידע שאנו עשויים לשמור (לפי דין)</a></li>
+                <li><a class="toc__link" href="#sec-5">תוך כמה זמן</a></li>
+                <li><a class="toc__link" href="#sec-6">יצירת קשר</a></li>
+              </ol>
+            </nav>
+        <h2 id="sec-1">על מי חל</h2>
         <p>עמוד זה מסביר כיצד לבקש מחיקה של חשבון באפליקציית Switchy AI (מזהה il.co.chosech) ובאתר SWITCHY, ושל המידע האישי המשויך אליו. השירות מופעל על-ידי אריאל תקשורת (עוסק מורשה 322253618), מרחוב ליאו בק 64, נהריה.</p>
 
-        <h2>איך מבקשים מחיקה</h2>
+        <h2 id="sec-2">איך מבקשים מחיקה</h2>
         <ul>
           <li>באפליקציה: היכנסו ל&quot;הגדרות&quot; ← &quot;מחיקת חשבון ונתונים&quot;, ועקבו אחר ההנחיות.</li>
           <li>בדוא״ל: שלחו בקשה לכתובת hello@switchy-ai.com מהכתובת שאיתה נרשמתם, עם הנושא &quot;מחיקת חשבון&quot;.</li>
           <li>בוואטסאפ: כתבו לנו ל-050-503-7537 ובקשו מחיקת חשבון ומידע.</li>
         </ul>
 
-        <h2>איזה מידע יימחק</h2>
+        <h2 id="sec-3">איזה מידע יימחק</h2>
         <p>לאחר אימות זהותכם נמחק את המידע האישי הקשור לחשבונכם, ובכלל זה:</p>
         <ul>
           <li>פרטי החשבון וההזדהות (Auth).</li>
@@ -161,7 +172,7 @@
           <li>קישור לחשבון טלגרם, אם חיברתם.</li>
         </ul>
 
-        <h2>מידע שאנו עשויים לשמור (לפי דין)</h2>
+        <h2 id="sec-4">מידע שאנו עשויים לשמור (לפי דין)</h2>
         <p>חלק מהמידע נשמר גם לאחר מחיקת החשבון, רק במידה הנדרשת על פי דין ולמשך התקופה הקבועה בו:</p>
         <ul>
           <li>רשומות הסכמה ורישומי הסרה מדיוור (Opt-out) — כראיה משפטית לפי סעיף 30א לחוק התקשורת.</li>
@@ -169,10 +180,10 @@
           <li>נתונים מצרפיים ואנונימיים שאינם מזהים אתכם.</li>
         </ul>
 
-        <h2>תוך כמה זמן</h2>
+        <h2 id="sec-5">תוך כמה זמן</h2>
         <p>נטפל בבקשה ונשלים את המחיקה בתוך 30 יום ממועד אימות הבקשה, ללא תשלום (למעט מקרים חריגים הקבועים בדין). לצורך אבטחת המידע ייתכן שנבקש פרטים לאימות זהותכם לפני ביצוע המחיקה.</p>
 
-        <h2>יצירת קשר</h2>
+        <h2 id="sec-6">יצירת קשר</h2>
         <p>לכל שאלה בנושא מחיקת חשבון או מידע: hello@switchy-ai.com או בוואטסאפ 050-503-7537. ראו גם את מדיניות הפרטיות המלאה שלנו לפירוט הזכויות שלכם.</p>
 
         </div>
@@ -235,6 +246,6 @@
     </div>
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=15cda558" defer></script>
+  <script src="script.js?v=e81b7fae" defer></script>
 </body>
 </html>

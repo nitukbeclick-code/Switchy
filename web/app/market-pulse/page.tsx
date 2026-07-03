@@ -312,7 +312,7 @@ export default function MarketPulsePage() {
 
       {/* ── Honesty note: history will accrue for real future trends. ─────── */}
       <aside
-        className="bento mt-10 p-5 text-sm text-foreground sm:p-6"
+        className="bento mt-14 p-5 text-sm text-foreground sm:p-6"
         aria-label="הערה על נתוני מגמה"
       >
         <h2 className="mb-1.5 flex items-center gap-2 font-display text-base font-semibold text-ink">
@@ -331,7 +331,7 @@ export default function MarketPulsePage() {
       </aside>
 
       {/* ── Smart contract timer — "כדאי לעבור עכשיו" calculator. ──────────── */}
-      <section aria-labelledby="timer-h" className="mt-10">
+      <section aria-labelledby="timer-h" className="mt-14">
         <h2 id="timer-h" className="sr-only">
           מחשבון סיום התחייבות
         </h2>

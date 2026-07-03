@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=c5ea8db8" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -147,11 +147,22 @@
         </g>
       </svg></div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← הוט מובייל</p>
-        <div style="margin-bottom:14px"><span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/hot-mobile.webp" alt="" width="64" height="64" loading="lazy" decoding="async"></span></div>
-        <h1>כל המסלולים של <span class="hl">הוט מובייל</span></h1>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="plans.html">כל החבילות</a><span class="crumbs__sep" aria-hidden="true"></span>הוט מובייל</p>
+        <div class="provider-hero__lockup">
+          <span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/hot-mobile.webp" alt="" width="64" height="64" loading="lazy" decoding="async"></span>
+          <h1>כל המסלולים של <span class="hl">הוט מובייל</span></h1>
+        </div>
         <p>7 מסלולים (חבילות חו״ל · סלולר) — החל מ-₪9. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
-        <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
+        <ul class="stat-band" aria-label="נתוני הוט מובייל — מהקטלוג">
+          <li><b data-count-to="7">7</b> מסלולים</li>
+          <li><b>2</b> קטגוריות</li>
+          <li>החל מ-<b dir="ltr">₪9</b></li>
+        </ul>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+          <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
+        </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
       <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">סלולר</span><h2>הוט מובייל סלולר — המסלולים הזולים</h2></header>
@@ -186,10 +197,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪9</b> <span>ליום</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20%E2%82%AA8.90%2F%D7%99%D7%95%D7%9D%20%E2%80%94%20%D7%90%D7%99%D7%A8%D7%95%D7%A4%D7%94%20(%E2%82%AA9)" aria-label="מעוניין/ת בהוט מובייל ₪8.90/יום — אירופה — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20%E2%82%AA8.90%2F%D7%99%D7%95%D7%9D%20%E2%80%94%20%D7%90%D7%99%D7%A8%D7%95%D7%A4%D7%94%20(%E2%82%AA9)" aria-label="מעוניין/ת בהוט מובייל ₪8.90/יום — אירופה — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=ab_hot" title="השוו מסלול זה" aria-label="השוו את הוט מובייל ₪8.90/יום — אירופה"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="ab_hot" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל ₪8.90/יום — אירופה"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="ab_hot" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל ₪8.90/יום — אירופה"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan" data-cat="cellular" data-text="הוט מובייל 20gb data only 20gb גלישה sim דאטה לטאבלט/לפטופ/מודם 20gb" data-price="10.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly20">
         
@@ -199,10 +210,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪10.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%2020GB%20Data%20Only%20(%E2%82%AA10.90)" aria-label="מעוניין/ת בהוט מובייל 20GB Data Only — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%2020GB%20Data%20Only%20(%E2%82%AA10.90)" aria-label="מעוניין/ת בהוט מובייל 20GB Data Only — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_dataonly20" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 20GB Data Only"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_dataonly20" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 20GB Data Only"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_dataonly20" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 20GB Data Only"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan" data-cat="cellular" data-text="הוט מובייל 150gb data only 150gb גלישה sim דאטה 150gb" data-price="21.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly150">
         
@@ -212,10 +223,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪21.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20150GB%20Data%20Only%20(%E2%82%AA21.90)" aria-label="מעוניין/ת בהוט מובייל 150GB Data Only — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20150GB%20Data%20Only%20(%E2%82%AA21.90)" aria-label="מעוניין/ת בהוט מובייל 150GB Data Only — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_dataonly150" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 150GB Data Only"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_dataonly150" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 150GB Data Only"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_dataonly150" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 150GB Data Only"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan plan--premium" data-cat="cellular" data-text="הוט מובייל 5g gen 2000gb 2026 5g 2000gb גלישה גלישה חופשית באפליקציות 300 דק׳ ל-27 יעדים 6,000 300 דק׳ ל-27 יעדים 300 דק׳ 2000gb" data-price="59.9" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_5ggen2000">
         
@@ -225,10 +236,10 @@
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪59.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Gen%202000GB%202026%20(%E2%82%AA59.90)" aria-label="מעוניין/ת בהוט מובייל 5G Gen 2000GB 2026 — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Gen%202000GB%202026%20(%E2%82%AA59.90)" aria-label="מעוניין/ת בהוט מובייל 5G Gen 2000GB 2026 — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_5ggen2000" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 5G Gen 2000GB 2026"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5ggen2000" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Gen 2000GB 2026"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5ggen2000" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Gen 2000GB 2026"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan plan--premium" data-cat="cellular" data-text="הוט מובייל 5g ultra 2500gb 5g 2500gb גלישה נתיב מהיר 500 דק׳ ל-27 יעדים 7,000 500 דק׳ ל-27 יעדים 500 דק׳ 2500gb" data-price="69.9" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_5gultra2500">
         
@@ -238,10 +249,10 @@
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪69.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Ultra%202500GB%20(%E2%82%AA69.90)" aria-label="מעוניין/ת בהוט מובייל 5G Ultra 2500GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Ultra%202500GB%20(%E2%82%AA69.90)" aria-label="מעוניין/ת בהוט מובייל 5G Ultra 2500GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_5gultra2500" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 5G Ultra 2500GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5gultra2500" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Ultra 2500GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5gultra2500" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Ultra 2500GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan plan--premium" data-cat="cellular" data-text="הוט מובייל 5g ultra premium 5g 3000gb גלישה נתיב מהיר 500 דק׳ ל-27 יעדים 10,000 500 דק׳ ל-27 יעדים 500 דק׳ 3000gb" data-price="79.9" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_5gultrapremium3000">
         
@@ -251,10 +262,10 @@
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪79.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Ultra%20Premium%20(%E2%82%AA79.90)" aria-label="מעוניין/ת בהוט מובייל 5G Ultra Premium — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Ultra%20Premium%20(%E2%82%AA79.90)" aria-label="מעוניין/ת בהוט מובייל 5G Ultra Premium — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_5gultrapremium3000" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 5G Ultra Premium"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5gultrapremium3000" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Ultra Premium"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5gultrapremium3000" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Ultra Premium"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan plan--premium" data-cat="cellular" data-text="הוט מובייל 5g ultra plus fly 5g 3000gb גלישה 10gb חו&quot;ל + 100 דק׳/sms cyber 10,000 10gb + 100 דק׳/sms 500 דק׳ 3000gb" data-price="109.9" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_5gultraplus3000">
         
@@ -264,15 +275,15 @@
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪109.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Ultra%20Plus%20Fly%20(%E2%82%AA109.90)" aria-label="מעוניין/ת בהוט מובייל 5G Ultra Plus Fly — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%205G%20Ultra%20Plus%20Fly%20(%E2%82%AA109.90)" aria-label="מעוניין/ת בהוט מובייל 5G Ultra Plus Fly — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_5gultraplus3000" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 5G Ultra Plus Fly"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5gultraplus3000" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Ultra Plus Fly"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_hotmobile_5gultraplus3000" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 5G Ultra Plus Fly"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="השוואה לפי קטגוריה">
+    <section class="providers providers--band section--alt" aria-label="השוואה לפי קטגוריה">
       <div class="container">
         <p class="providers__title">השוו את הוט מובייל מול כל הספקים</p>
         <div class="providers__row">
@@ -281,7 +292,7 @@
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="ספקים דומים">
+    <section class="providers providers--band" aria-label="ספקים דומים">
       <div class="container">
         <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
         <div class="providers__row">
@@ -294,7 +305,7 @@
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="השוואות ראש בראש">
+    <section class="providers providers--band section--alt" aria-label="השוואות ראש בראש">
       <div class="container">
         <p class="providers__title">הוט מובייל מול ספקים אחרים</p>
         <div class="providers__row">
@@ -438,6 +449,6 @@
     </div>
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=15cda558" defer></script>
+  <script src="script.js?v=e81b7fae" defer></script>
 </body>
 </html>

@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=c5ea8db8" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -130,7 +130,7 @@
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← הצהרת נגישות</p>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span>הצהרת נגישות</p>
         <h1>הצהרת נגישות</h1>
         <div class="article-meta"><span>עודכן לאחרונה: יוני 2026</span></div>
       </div>
@@ -138,15 +138,27 @@
     <section class="section">
       <div class="container">
         <div class="prose">
-        <h2>המחויבות שלנו לנגישות</h2>
+            <nav class="toc" aria-label="תוכן העניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+                <li><a class="toc__link" href="#sec-1">המחויבות שלנו לנגישות</a></li>
+                <li><a class="toc__link" href="#sec-2">רמת ההנגשה באתר</a></li>
+                <li><a class="toc__link" href="#sec-3">התאמות הנגישות שבוצעו באתר</a></li>
+                <li><a class="toc__link" href="#sec-4">הסתייגות ומגבלות ידועות</a></li>
+                <li><a class="toc__link" href="#sec-5">הגורם האחראי לנגישות</a></li>
+                <li><a class="toc__link" href="#sec-6">פנייה ומנגנון טיפול בתלונות נגישות</a></li>
+                <li><a class="toc__link" href="#sec-7">עדכון ההצהרה</a></li>
+              </ol>
+            </nav>
+        <h2 id="sec-1">המחויבות שלנו לנגישות</h2>
         <p>ב-SWITCHY אנו רואים חשיבות רבה במתן שירות שוויוני ונגיש לכלל המשתמשים, לרבות אנשים עם מוגבלות. אנו פועלים להנגשת האתר והשירותים הדיגיטליים שלנו כך שיהיו נוחים וזמינים ככל הניתן עבור כולם.</p>
         <p>הנגשת האתר נעשית בהתאם להוראות תקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע&quot;ג-2013, ובהתבסס על המלצות התקן הישראלי ת&quot;י 5568 לנגישות תכנים באינטרנט, המבוסס על הנחיות WCAG 2.0.</p>
 
-        <h2>רמת ההנגשה באתר</h2>
+        <h2 id="sec-2">רמת ההנגשה באתר</h2>
         <p>אנו שואפים לעמוד ברמת הנגישות AA לפי הנחיות WCAG 2.0 / ת&quot;י 5568.</p>
         <p>נכון למועד עדכון הצהרה זו, האתר טרם עבר בדיקת נגישות חיצונית פורמלית, ולכן איננו מצהירים על עמידה מלאה ומאושרת ברמה AA. אנו פועלים באופן שוטף להשגת יעד זה, ונעדכן הצהרה זו עם השלמת בדיקה מקצועית.</p>
 
-        <h2>התאמות הנגישות שבוצעו באתר</h2>
+        <h2 id="sec-3">התאמות הנגישות שבוצעו באתר</h2>
         <ul>
           <li>מבנה דפים סמנטי ותמיכה בניווט וקריאה מימין לשמאל (RTL) בעברית.</li>
           <li>טקסט חלופי לתמונות ותוויות נגישות (aria-label) לפקדים ולכפתורים.</li>
@@ -156,21 +168,21 @@
           <li>טפסים עם תוויות מקושרות והודעות שגיאה ברורות.</li>
         </ul>
 
-        <h2>הסתייגות ומגבלות ידועות</h2>
+        <h2 id="sec-4">הסתייגות ומגבלות ידועות</h2>
         <p>למרות מאמצינו להנגיש את כלל הדפים והרכיבים, ייתכן שחלקים מסוימים באתר טרם הונגשו במלואם או נמצאים בתהליך הנגשה. אנו ממשיכים לשפר את נגישות האתר באופן שוטף.</p>
         <p>אם נתקלתם בקושי נגישות בעמוד או ברכיב כלשהו, נשמח שתפנו אלינו ונפעל לתקן זאת בהקדם.</p>
 
-        <h2>הגורם האחראי לנגישות</h2>
+        <h2 id="sec-5">הגורם האחראי לנגישות</h2>
         <p>הגורם האחראי על הטיפול בנושאי נגישות ב-SWITCHY (Switch AI) הוא צוות Switch AI. בהתאם להיקף הפעילות של החברה, איננו נדרשים למינוי רכז נגישות ייעודי, וצוות Switch AI מרכז את הטיפול בפניות הנגישות ומחויב לתת להן מענה.</p>
         <p>פרטי יצירת קשר לנושאי נגישות:</p>
         <p>דוא&quot;ל: hello@switchy-ai.com</p>
         <p>וואטסאפ / טלפון: 050-503-7537</p>
 
-        <h2>פנייה ומנגנון טיפול בתלונות נגישות</h2>
+        <h2 id="sec-6">פנייה ומנגנון טיפול בתלונות נגישות</h2>
         <p>נשמח לקבל פניות, הערות והצעות לשיפור בנושא נגישות האתר, וכן תלונות על ליקויי נגישות. בעת הפנייה נבקש לפרט את העמוד או הרכיב שבו נתקלתם בקושי, את סוג הקושי, ואת אמצעי הקשר לחזרה אליכם.</p>
         <p>אנו מתחייבים לבחון כל פנייה, להשיב למגיש/ת הפנייה ולפעול לתיקון ליקוי הנגישות, ככל הניתן, בתוך 60 ימים ממועד קבלת הפנייה. במקרים מורכבים שבהם נדרש זמן טיפול ארוך יותר, נעדכן אתכם על כך ועל לוח הזמנים הצפוי.</p>
 
-        <h2>עדכון ההצהרה</h2>
+        <h2 id="sec-7">עדכון ההצהרה</h2>
         <p>הצהרת נגישות זו עודכנה לאחרונה בחודש יוני 2026. אנו בוחנים ומעדכנים אותה מעת לעת בהתאם לשיפורים המתבצעים באתר.</p>
 
         </div>
@@ -233,6 +245,6 @@
     </div>
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=15cda558" defer></script>
+  <script src="script.js?v=e81b7fae" defer></script>
 </body>
 </html>

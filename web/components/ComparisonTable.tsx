@@ -296,14 +296,17 @@ export default function ComparisonTable({
                 </Link>
               </p>
 
-              {/* Price big + unit, then the honest post-promo line. */}
+              {/* Price big + unit, then the honest post-promo line. tabular-nums
+                  column-aligns the ₪ digits so the price reads as an even ledger
+                  even where no .nums-tabular ancestor wraps this table (parity
+                  with the home tables, which do wrap it). */}
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-display text-2xl font-bold tracking-tight text-ink">
+                <span className="font-display text-2xl font-bold tracking-tight text-ink tabular-nums">
                   ₪{d.price}
                 </span>
                 <span className="text-sm text-muted">{priceUnitLabel(plan)}</span>
               </div>
-              <div className="mt-0.5 text-[13px]">
+              <div className="mt-0.5 text-[13px] tabular-nums">
                 <AfterLine after={d.after} />
               </div>
               <PriceDrop plan={plan} {...sharedDropProps} />
@@ -456,8 +459,10 @@ export default function ComparisonTable({
                     </Link>
                   </td>
 
-                  {/* מחיר */}
-                  <td className="px-4 py-3 text-start whitespace-nowrap">
+                  {/* מחיר — tabular-nums aligns the ₪ digits down the column so
+                      the price stack reads as an even ledger even without a
+                      .nums-tabular ancestor (parity with the home tables). */}
+                  <td className="px-4 py-3 text-start whitespace-nowrap tabular-nums">
                     <span className="font-display text-base font-bold text-ink">
                       ₪{d.price}
                     </span>{" "}
@@ -465,8 +470,9 @@ export default function ComparisonTable({
                     <PriceDrop plan={plan} {...sharedDropProps} />
                   </td>
 
-                  {/* מחיר אחרי תקופה */}
-                  <td className="px-4 py-3 text-start whitespace-nowrap text-[13px]">
+                  {/* מחיר אחרי תקופה — tabular-nums keeps the post-promo ₪ jump
+                      aligned with the headline price column above. */}
+                  <td className="px-4 py-3 text-start whitespace-nowrap text-[13px] tabular-nums">
                     {d.after.kind === "jump" ? (
                       <span className="font-medium text-foreground">{d.after.text}</span>
                     ) : (

@@ -211,15 +211,14 @@ export default function ProvidersIndexPage() {
         <SgeSummary heading="השורה התחתונה: ספקים">{summary}</SgeSummary>
       </div>
 
-      {/* ── Methodology note (transparent ranking) ────────────────────────── */}
-      <p className="mt-8 max-w-2xl text-sm text-muted">
-        שיטת הסידור שקופה: מיון לפי המחיר ההתחלתי הנמוך ביותר (מהזול ליקר), ובמקרה
-        של שוויון — לפי מספר המסלולים. זהו סידור &quot;ערך&quot; עובדתי, לא ציון
-        איכות סמוי ולא תשלום על מיקום.
-      </p>
-
       {/* ── Provider grid ─────────────────────────────────────────────────── */}
-      <section aria-labelledby="providers-h" className="mt-8">
+      <section aria-labelledby="providers-h" className="mt-14">
+        {/* Methodology note (transparent ranking) — the grid's honest intro. */}
+        <p className="max-w-2xl text-sm text-muted">
+          שיטת הסידור שקופה: מיון לפי המחיר ההתחלתי הנמוך ביותר (מהזול ליקר),
+          ובמקרה של שוויון — לפי מספר המסלולים. זהו סידור &quot;ערך&quot; עובדתי,
+          לא ציון איכות סמוי ולא תשלום על מיקום.
+        </p>
         <h2 id="providers-h" className="sr-only">
           רשימת הספקים
         </h2>
@@ -231,10 +230,10 @@ export default function ProvidersIndexPage() {
             title="אין ספקים להצגה כרגע"
             description="לא נמצאו ספקים בקטלוג. נסו את מרכז ההשוואה לכל המסלולים והשירותים."
             cta={{ label: "למרכז ההשוואה", href: "/compare" }}
-            className="card"
+            className="card mt-6"
           />
         ) : (
-          <ul className="bento-grid">
+          <ul className="bento-grid mt-6">
             {providers.map((p, i) => (
               <ScrollReveal as="li" key={p.slug} index={i} className="h-full">
                 <Link

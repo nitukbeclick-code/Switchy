@@ -299,8 +299,10 @@ function ScriptResult({
         {copied ? "התסריט הועתק ללוח" : ""}
       </span>
 
-      {/* Real market evidence — the numbers the script stands on. */}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      {/* Real market evidence — the numbers the script stands on. tabular-nums
+          column-aligns the ₪ market-floor / same-provider prices, post-promo
+          figures and annual savings (parity with the home's numeric ledger). */}
+      <div className="nums-tabular mt-4 grid gap-4 sm:grid-cols-2">
         <EvidenceCard
           title="המחיר הזול בשוק"
           subtitle="נקודת הייחוס למיקוח (כל הספקים)"

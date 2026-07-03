@@ -578,6 +578,76 @@ function providerLogo(name, size = 36) {
   return `<span class="plogo" style="width:${size}px;height:${size}px;background:${color}1a;color:${color};border-color:${color}40;font-size:${fs}px">${esc(initials)}</span>`;
 }
 
+// Direction-aware CTA chevron — the SVG points to the reading-end (RTL: left)
+// and mirrors automatically in an LTR context via the .btn__chev logical CSS,
+// so NO arrow glyph ("←"/"→") is ever hardcoded in markup. Drops inside a .btn
+// label. `sm` shrinks it for the tertiary/plan CTAs (matches index.html).
+const chev = (sm) =>
+  `<span class="btn__chev${sm ? ' btn__chev--sm' : ''}" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span>`;
+
+// Breadcrumb — links joined by a direction-aware CSS chevron (no hardcoded "←").
+// `trail` is an array of [label, href] (href null for the current page).
+const crumbsHtml = (trail) =>
+  `<p class="crumbs">${trail
+    .map(([label, href]) => (href ? `<a href="${href}">${esc(label)}</a>` : esc(label)))
+    .join('<span class="crumbs__sep" aria-hidden="true"></span>')}</p>`;
+
+// ── Shared lead-hero proof primitives ────────────────────────────────────────
+// The category page() hero (staticA) leads with a catalogue-derived stat-band +
+// a neutral-commission trust line. These helpers let the comparison / calculator
+// / collection heroes carry the SAME real-proof band and neutrality note, so the
+// whole premium-SaaS surface speaks one language. Every figure is catalogue-
+// derived (count / provider count / honest monthly entry price) — nothing is
+// invented, and the band is omitted when a plan set is too thin to carry weight.
+const heroTrustLine = () =>
+  `<p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>`;
+
+// Real stat band from a plan set. Prices come from the MONTHLY subset (so a
+// mixed-unit set never pairs a /חודש price with a per-day figure); the count is
+// taken from the SAME subset it prices, mirroring the category-hero rule. Returns
+// '' when there are fewer than `min` monthly plans (a 2-item band adds no weight).
+function heroStatBand(plans, { min = 3 } = {}) {
+  const list = (plans || []).slice();
+  const monthly = list.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const set = monthly.length ? monthly : list;
+  if (set.length < min) return '';
+  const entry = Math.min(...set.map((p) => offerPrice(p)));
+  const providerCount = new Set(list.map((p) => p.provider)).size;
+  const monthlyPriced = monthly.length > 0;
+  return `<ul class="stat-band" aria-label="נתוני הקטלוג — מהקטלוג">
+            <li><b data-count-to="${set.length}">${set.length}</b> מסלולים</li>
+            <li><b data-count-to="${providerCount}">${providerCount}</b> ספקים</li>
+            <li>החל מ-<b dir="ltr">₪${entry}</b>${monthlyPriced ? ' לחודש' : ''}</li>
+          </ul>`;
+}
+
+// Provider pages exist ONLY for providers that carry catalogue plans (see the
+// write loop: `provider-<slug>.html` is emitted per catalogue provider). Some
+// category display lists include marketing/legacy names ("We4G", "019", "סלקום
+// TV", "FreeTV", "Airalo") that don't map to a catalogue provider — chipping
+// those as links would 404. This set is the source of truth for "does a provider
+// page exist", keyed by the canonical slug so display-name variants resolve too.
+const PROVIDER_PAGE_SLUGS = new Set(catalogue.plans.map((p) => providerSlug(p.provider)));
+
+// Logo-carrying provider chip — the SAME lockup the hand-written home uses (a
+// .chip with the real provider logo + name), so every generated "providers
+// strip" matches the premium home band instead of bare text chips. The chip is a
+// LINK only when a real provider page exists for that name (guards against 404s
+// from display-only names); otherwise it's a non-linking span, exactly as the old
+// bare chips were. The logo resolves via providerLogo() (real logo file when
+// known, coloured-initials badge otherwise) — a provider brand mark is never
+// recoloured. Optional per-chip href override forces a link (e.g. a category page).
+function providerChip(name, href) {
+  const inner = `${providerLogo(name, 22)} ${esc(name)}`;
+  if (href) return `<a class="chip" href="${href}">${inner}</a>`;
+  return PROVIDER_PAGE_SLUGS.has(providerSlug(name))
+    ? `<a class="chip" href="provider-${providerSlug(name)}.html">${inner}</a>`
+    : `<span class="chip">${inner}</span>`;
+}
+function providerChipRow(names) {
+  return names.map((n) => providerChip(n)).join('\n          ');
+}
+
 // Render one real plan as a card. Used on category pages and the all-plans page.
 const UNIT_HE = { month: 'לחודש', package: 'לחבילה', day: 'ליום', minute: 'לדקה' };
 // A simple, explainable "value score" (0–100) for a card badge. It is NOT a
@@ -656,10 +726,10 @@ function planCardHtml(p, best) {
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
           <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול${chev(true)}</button>
       </article>`;
 }
 
@@ -1397,7 +1467,11 @@ ${trs}
 function page(c) {
   const url = `${SITE}/${c.slug}.html`;
   const bullets = c.bullets.map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
-  const chips = c.providers.map((p) => `<span class="chip">${esc(p)}</span>`).join('\n          ');
+  // Provider strip — logo-carrying chips matching the hand-written home band.
+  // `c.providers` is a curated display list (some entries are display-only names
+  // like "We4G" / "019"); the chip renderer resolves a logo+slug when it maps to
+  // a catalogue provider and gracefully falls back to a coloured-initials badge.
+  const chips = providerChipRow(c.providers);
   const faqs = c.faq.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n');
   const catGuides = relatedGuides(c.name, null, 4).map(guideCard).join('\n');
   const catPlans = plansByCat[c.slug] || [];
@@ -1415,6 +1489,19 @@ function page(c) {
     if (maxSave < 100) return '';
     return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-₪${cheapest}/חודש · חסכו עד <strong>₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (₪${avg})</p>`;
   })();
+  // Above-the-fold real-proof band — the light-hero analog of the home ink
+  // counts-bar. Every figure is catalogue-derived (this category's live plan
+  // count, its provider count, its honest entry price). Rendered only when the
+  // category has enough plans for the numbers to carry weight.
+  const catProviderCount = new Set(catPlans.map((p) => p.provider)).size;
+  const catEntryPrice = catPlans.length ? Math.min(...catPlans.map((p) => p.price)) : null;
+  const statBand = catPlans.length >= 4 && catEntryPrice != null
+    ? `<ul class="stat-band" aria-label="נתוני הקטלוג בקטגוריה זו — מהקטלוג">
+            <li><b data-count-to="${catPlans.length}">${catPlans.length}</b> מסלולים</li>
+            <li><b data-count-to="${catProviderCount}">${catProviderCount}</b> ספקים</li>
+            <li>החל מ-<b dir="ltr">₪${catEntryPrice}</b> לחודש</li>
+          </ul>`
+    : '';
   const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
   // Versus pages anchored to this category (e.g. internet → "סיב אופטי מול כבלים")
   // — surfaced as their own strip so the head-to-head comparisons are reachable
@@ -1435,7 +1522,7 @@ function page(c) {
         <div class="providers__row" style="justify-content:center">
           ${versChips.join('\n          ')}
         </div>
-        <div style="text-align:center;margin-top:16px"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות ←</a></div>
+        <div style="text-align:center;margin-top:16px"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות${chev()}</a></div>
       </div>
     </section>` : '';
   const colsStrip = cols.length ? `
@@ -1460,16 +1547,17 @@ ${nav}
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container lead-hero__grid">
         <div class="lead-hero__text">
-          <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(c.name)}</p>
+          ${crumbsHtml([['דף הבית', 'index.html'], [c.name, null]])}
           <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
           <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
           <p>${esc(c.intro)}</p>
-          <p class="hero__trust-note">חינם — אנחנו מקבלים עמלה מהספק, לא מכם</p>
-          ${heroStats}
+          ${statBand}
           <div class="hero__cta">
-            <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-            ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="how-it-works.html">איך זה עובד?</a>'}
+            <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
+            ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="hero__link hero__link--ink" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="hero__link hero__link--ink" href="how-it-works.html">איך זה עובד?</a>'}
           </div>
+          <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
+          ${heroStats}
         </div>
         <div class="lead-hero__media" aria-hidden="false">
           <figure class="app-shot app-shot--hero">
@@ -1479,9 +1567,9 @@ ${nav}
       </div>
     </section>
 
-    <section class="providers" aria-label="ספקים">
+    <section class="providers providers--band" aria-label="ספקים">
       <div class="container">
-        <p class="providers__title">משווים את כל הספקים ב${esc(c.name)}</p>
+        <p class="providers__title">משווים את כל הספקים ב${esc(c.name)} — במקום אחד</p>
         <div class="providers__row">
           ${chips}
         </div>
@@ -1904,7 +1992,7 @@ ${navNoCta}
     <article>
       <section class="article-hero">
         <div class="container">
-          <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="guides.html">מדריכים</a> ← ${esc(g.cat)}</p>
+          ${crumbsHtml([['דף הבית', 'index.html'], ['מדריכים', 'guides.html'], [g.cat, null]])}
           <h1>${esc(g.h1)}</h1>
           <div class="article-meta"><span>${esc(g.cat)}</span><span>· ${dateHe}</span><span>· ${g.read} דק׳ קריאה</span></div>
         </div>
@@ -1921,8 +2009,8 @@ ${toc}${body}
             ${(() => {
               const catSlug = guideCatToSlug[g.cat];
               const href = catSlug ? `${catSlug}.html` : 'plans.html';
-              const label = catSlug ? `השוו מסלולי ${g.cat} ←` : 'ראו את כל המסלולים ←';
-              return `<a class="btn btn--inverse btn--lg" href="${href}">${esc(label)}</a>`;
+              const label = catSlug ? `השוו מסלולי ${g.cat}` : 'ראו את כל המסלולים';
+              return `<a class="btn btn--inverse btn--lg" href="${href}">${esc(label)}${chev()}</a>`;
             })()}
           </div>
         </div>
@@ -2039,7 +2127,7 @@ ${navNoCta}
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← מדריכים</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['מדריכים', null]])}
         <h1>מדריכים — איך לא לשלם יותר מדי</h1>
         <div class="article-meta"><span>${guides.length} מדריכים • טיפים, השוואות ומדריכי החלטה שיחסכו לכם כסף</span></div>
         <div style="margin-top:20px;max-width:480px">
@@ -2165,7 +2253,7 @@ ${navNoCta}
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← שאלות נפוצות</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['שאלות נפוצות', null]])}
         <h1>שאלות נפוצות</h1>
         <div class="article-meta"><span>${totalQ} שאלות ותשובות על מעבר ספק, סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל — מרוכזות במקום אחד.</span></div>
         <div class="providers__row" style="justify-content:flex-start;margin-top:18px">
@@ -2307,14 +2395,20 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← איך זה עובד</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['איך זה עובד', null]])}
         <span class="pill pill--ico">${iconFor('✨')} פשוט כמו 1·2·3 · חינם · בלי התחייבות</span>
         <h1>איך <span class="hl">SWITCHY</span> עובד</h1>
         <p>אנחנו מרכזים את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל — במקום אחד, משווים בשבילכם ומלווים את המעבר. הנה כל התהליך, מהשאלון ועד החיסכון.</p>
+        <ul class="stat-band" aria-label="נתוני הקטלוג — מהקטלוג">
+          <li><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים</li>
+          <li><b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים</li>
+          <li><b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות</li>
+        </ul>
         <div class="hero__cta">
-          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          <a class="btn btn--ghost btn--lg" href="plans.html">דפדפו בכל המסלולים</a>
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
+          <a class="hero__link hero__link--ink" href="plans.html">דפדפו בכל המסלולים</a>
         </div>
+        ${heroTrustLine()}
       </div>
     </section>
 
@@ -2526,13 +2620,30 @@ const staticPages = [
   },
 ];
 
+// Render the static/legal body. Each <h2> gets a stable ASCII anchor (sec-N) so
+// a table of contents can deep-link into long legal pages WITHOUT slugifying the
+// Hebrew heading (which would be fragile). Pure layout — no copy is altered.
 function sectionsHtml(sections) {
-  return sections.map((s) => {
-    let html = `        <h2>${esc(s.h2)}</h2>\n`;
+  return sections.map((s, i) => {
+    let html = `        <h2 id="sec-${i + 1}">${esc(s.h2)}</h2>\n`;
     if (s.p) html += s.p.map((p) => `        <p>${esc(p)}</p>`).join('\n') + '\n';
     if (s.ul) html += `        <ul>\n${s.ul.map((li) => `          <li>${esc(li)}</li>`).join('\n')}\n        </ul>\n`;
     return html;
   }).join('\n');
+}
+
+// Auto table of contents for a long static/legal page — reuses the guide .toc
+// component (already styled + dark-safe). Repositions the dense legal copy into a
+// navigable spine; the heading text is quoted verbatim, nothing is reworded. Only
+// rendered when there are enough sections for a TOC to earn its space.
+function staticToc(sections) {
+  if (!sections || sections.length < 4) return '';
+  return `            <nav class="toc" aria-label="תוכן העניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+${sections.map((s, i) => `                <li><a class="toc__link" href="#sec-${i + 1}">${esc(s.h2)}</a></li>`).join('\n')}
+              </ol>
+            </nav>\n`;
 }
 
 function staticPage(p) {
@@ -2541,7 +2652,7 @@ function staticPage(p) {
     ? `          <div class="article-cta">
             <h3>מוכנים לחסוך?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו ←</a>
+            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו${chev()}</a>
           </div>`
     : '';
   // Breadcrumb + a typed WebPage node (AboutPage for /about) so even the legal
@@ -2563,7 +2674,7 @@ ${navNoCta}
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(p.h1)}</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], [p.h1, null]])}
         <h1>${esc(p.h1)}</h1>
         ${p.intro ? `<div class="article-meta"><span>${esc(p.intro)}</span></div>` : ''}
       </div>
@@ -2571,7 +2682,7 @@ ${navNoCta}
     <section class="section">
       <div class="container">
         <div class="prose">
-${sectionsHtml(p.sections)}
+${staticToc(p.sections)}${sectionsHtml(p.sections)}
         </div>
 ${cta}
       </div>
@@ -2681,9 +2792,16 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← כל החבילות</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', null]])}
+        <span class="pill pill--ico">${svgIcon('check')} מחירון מלא · מעודכן יומית</span>
         <h1>כל החבילות — <span class="hl">מחירון מלא</span></h1>
         <p><span data-count-to="${catalogue.plans.length}">${catalogue.plans.length}</span> מסלולים מכל חברות התקשורת, ממוינים מהזול ביותר. סננו לפי קטגוריה או חפשו ספק/מסלול/תכונה.</p>
+        <ul class="stat-band" aria-label="נתוני המחירון — מהקטלוג">
+          <li><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים</li>
+          <li><b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים</li>
+          <li><b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות</li>
+        </ul>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
     <section class="section">
@@ -2821,11 +2939,22 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
-        <div style="margin-bottom:14px">${providerLogo(name, 64)}</div>
-        <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [name, null]])}
+        <div class="provider-hero__lockup">
+          ${providerLogo(name, 64)}
+          <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
+        </div>
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
-        <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
+        <ul class="stat-band" aria-label="נתוני ${esc(name)} — מהקטלוג">
+          <li><b data-count-to="${plans.length}">${plans.length}</b> מסלולים</li>
+          ${catNames.length ? `<li><b>${catNames.length}</b> קטגוריות</li>` : ''}
+          <li>החל מ-<b dir="ltr">₪${cheapest}</b></li>
+        </ul>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם${chev()}</a>
+          <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
+        </div>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
 ${provTables}
@@ -2837,7 +2966,7 @@ ${provTables}
         </div>
       </div>
     </section>
-    ${catLinks ? `<section class="providers" aria-label="השוואה לפי קטגוריה">
+    ${catLinks ? `<section class="providers providers--band section--alt" aria-label="השוואה לפי קטגוריה">
       <div class="container">
         <p class="providers__title">השוו את ${esc(name)} מול כל הספקים</p>
         <div class="providers__row">
@@ -2845,7 +2974,7 @@ ${provTables}
         </div>
       </div>
     </section>` : ''}
-    ${relatedChips ? `<section class="providers" aria-label="ספקים דומים">
+    ${relatedChips ? `<section class="providers providers--band" aria-label="ספקים דומים">
       <div class="container">
         <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
         <div class="providers__row">
@@ -2853,7 +2982,7 @@ ${provTables}
         </div>
       </div>
     </section>` : ''}
-    ${provVsLinks ? `<section class="providers" aria-label="השוואות ראש בראש">
+    ${provVsLinks ? `<section class="providers providers--band section--alt" aria-label="השוואות ראש בראש">
       <div class="container">
         <p class="providers__title">${esc(name)} מול ספקים אחרים</p>
         <div class="providers__row">
@@ -2940,9 +3069,16 @@ ${navNoCta}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← ספקים</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['ספקים', null]])}
+        <span class="pill pill--ico">${svgIcon('check')} כל הספקים · השוואה חינם</span>
         <h1>כל ה<span class="hl">ספקים</span></h1>
         <p>כל חברות התקשורת במקום אחד. בחרו ספק כדי לראות את כל המסלולים שלו, מחירים ודירוגים.</p>
+        <ul class="stat-band" aria-label="נתוני הספקים — מהקטלוג">
+          <li><b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים</li>
+          <li><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים</li>
+          <li><b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות</li>
+        </ul>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
     <section class="section">
@@ -3072,9 +3208,16 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['השוואה', null]])}
+        <span class="pill pill--ico">${svgIcon('scale')} השוואה חינם · בלי התחייבות</span>
         <h1>השוואת מסלולים <span class="hl">צד לצד</span></h1>
         <p>בחרו עד 3 מסלולים והשוו ביניהם — מחיר, רשת, התחייבות, חו״ל ומפרט.</p>
+        ${heroStatBand(catalogue.plans)}
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#compareTable">בחרו מסלולים להשוואה${chev()}</a>
+          <a class="hero__link hero__link--ink" href="plans.html">דפדפו בכל המסלולים</a>
+        </div>
+        ${heroTrustLine()}
       </div>
     </section>
     <section class="section">
@@ -3470,14 +3613,16 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(col.h1)}</p>
-        <span class="pill">${esc(col.eyebrow)} · השוואה חינם · בלי התחייבות</span>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [col.h1, null]])}
+        <span class="pill pill--ico">${iconFor((categories.find((c) => c.slug === col.catSlug) || {}).icon || '💸')} ${esc(col.eyebrow)} · השוואה חינם · בלי התחייבות</span>
         <h1>${esc(col.h1)}</h1>
         <p>${esc(col.intro)}</p>
+        ${heroStatBand(shown)}
         <div class="hero__cta">
-          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          <a class="btn btn--ghost btn--lg" href="${col.catSlug}.html">לכל מסלולי ה${esc(col.catName)}</a>
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
+          <a class="hero__link hero__link--ink" href="${col.catSlug}.html">לכל מסלולי ה${esc(col.catName)}</a>
         </div>
+        ${heroTrustLine()}
       </div>
     </section>
 
@@ -3794,39 +3939,45 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${c.slug}.html">${esc(c.name)}</a> ← מחשבון חיסכון</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], [c.name, `${c.slug}.html`], ['מחשבון חיסכון', null]])}
         <span class="pill pill--ico">${svgIcon('calculator')} מחשבון חינמי · בלי התחייבות</span>
         <h1>${esc(h1)}</h1>
         <p>הזינו כמה אתם משלמים היום על ${esc(c.name)}, ונראה לכם הערכה כמה אפשר לחסוך בשנה מול המסלול הזול ביותר בשוק.</p>
+        ${heroStatBand(plansByCat[c.slug] || [])}
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#calc">חשבו את החיסכון${chev()}</a>
+          <a class="hero__link hero__link--ink" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)}</a>
+        </div>
+        ${heroTrustLine()}
       </div>
     </section>
 
     <section class="section">
       <div class="container">
-        <div id="calc" class="glass" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;border:1px solid #E4E8EC;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(17,24,39,.05)">
-          <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
-          <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#0B0F14;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
-          <label for="calcBill" style="display:block;font-weight:700;margin:14px 0 0">כמה אתם משלמים היום? (₪ לחודש)</label>
-          <div class="calc-quick" role="group" aria-label="בחירה מהירה" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px">
+        <div id="calc" class="calc-card reveal" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}">
+          <h2 class="calc-card__title">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
+          <p class="calc-card__lead">המסלול הזול ביותר ב${esc(c.name)} כרגע: <b>${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</b>.</p>
+          <label for="calcBill" class="calc-card__label">כמה אתם משלמים היום? (₪ לחודש)</label>
+          <div class="calc-quick calc-card__quick" role="group" aria-label="בחירה מהירה">
             ${(() => {
               const monthly = (plansByCat[c.slug] || []).filter((p) => !p.priceUnit || p.priceUnit === 'month').map((p) => p.price).sort((a, b) => a - b);
               if (!monthly.length) return '';
               const pct = (p) => monthly[Math.floor(p * (monthly.length - 1))];
               const vals = [pct(0.4), pct(0.6), pct(0.8), pct(0.95)].map((v) => Math.round((v * 1.6) / 10) * 10).filter((v, i, a) => a.indexOf(v) === i && v > (offerPrice(ch)));
-              return vals.slice(0, 4).map((v) => `<button type="button" class="chip calc-quick__btn" data-val="${v}">₪${v}</button>`).join('');
+              return vals.slice(0, 4).map((v) => `<button type="button" class="chip calc-quick__btn" data-val="${v}"><span dir="ltr">₪${v}</span></button>`).join('');
             })()}
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 16px">
-            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px" />
+          <div class="calc-card__inputrow">
+            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
-          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
+          <p id="calcOut" class="calc-card__out" role="status" aria-live="polite"></p>
           <div id="calcChart" class="calc-chart" data-chart="savings" hidden></div>
-          <a id="calcCta" class="btn btn--primary btn--lg" href="#cta" hidden style="margin-top:14px">בדקו אילו מסלולים חוסכים לכם את זה ←</a>
-          <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
+          <a id="calcCta" class="btn btn--primary btn--lg btn--block" href="#cta" hidden style="margin-top:14px">בדקו אילו מסלולים חוסכים לכם את זה${chev()}</a>
+          <p class="calc-card__fine">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">
-          <a class="btn btn--ghost btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a>
+          <a class="btn btn--ghost btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)}${chev()}</a>
         </div>
       </div>
     </section>
@@ -3899,7 +4050,7 @@ function glossaryPage() {
   // Definition cards — each links into the matching hub for deeper crawl reach.
   const cards = GLOSSARY.map((t) => {
     const link = GLOSSARY_LINKS[t.id];
-    const linkHtml = link ? `\n            <a class="glossary__link" href="${esc(link[1])}">${esc(link[0])} ←</a>` : '';
+    const linkHtml = link ? `\n            <a class="glossary__link" href="${esc(link[1])}">${esc(link[0])}</a>` : '';
     return `          <article class="feature feature--check reveal" id="term-${esc(t.id)}">
             <h3>${esc(t.term)}</h3>
             <p>${esc(t.def)}</p>${linkHtml}
@@ -3934,7 +4085,7 @@ ${navNoCta}
   <main id="main">
     <section class="article-hero">
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← מילון מונחים</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['מילון מונחים', null]])}
         <h1>מילון מונחי תקשורת</h1>
         <div class="article-meta"><span>${GLOSSARY.length} מושגים שכדאי להבין לפני שמשווים מסלול — בעברית פשוטה, בלי ז׳רגון.</span></div>
         <div class="providers__row" style="justify-content:flex-start;margin-top:18px">
@@ -4078,14 +4229,16 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${v.catSlug}.html">${esc(v.catName)}</a> ← ${esc(v.h1)}</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], [v.catName, `${v.catSlug}.html`], [v.h1, null]])}
         <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
         <h1>${esc(v.h1)}</h1>
         <p>${esc(v.intro)}</p>
+        ${heroStatBand([...a.matched, ...b.matched])}
         <div class="hero__cta">
-          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          <a class="btn btn--ghost btn--lg" href="${v.catSlug}.html">לכל מסלולי ה${esc(v.catName)}</a>
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
+          <a class="hero__link hero__link--ink" href="${v.catSlug}.html">לכל מסלולי ה${esc(v.catName)}</a>
         </div>
+        ${heroTrustLine()}
       </div>
     </section>
 
@@ -4320,14 +4473,16 @@ ${nav}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${catSlug}.html">${esc(catName)}</a> ← ${esc(h1)}</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], [catName, `${catSlug}.html`], [h1, null]])}
         <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
         <h1>${esc(a.provider)} מול <span class="hl">${esc(b.provider)}</span></h1>
         <p>השוואה אמיתית של מסלולי ה${esc(catName)} של ${esc(a.provider)} ו${esc(b.provider)} — מחיר, כמות מסלולים, 5G והתחייבות — עם המסלולים הזולים בכל צד.</p>
+        ${heroStatBand([...a.plans, ...b.plans], { min: 2 })}
         <div class="hero__cta">
-          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          <a class="btn btn--ghost btn--lg" href="${catSlug}.html">לכל מסלולי ה${esc(catName)}</a>
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
+          <a class="hero__link hero__link--ink" href="${catSlug}.html">לכל מסלולי ה${esc(catName)}</a>
         </div>
+        ${heroTrustLine()}
       </div>
     </section>
 
@@ -4417,10 +4572,16 @@ ${navNoCta}
     <section class="lead-hero">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואות</p>
+        ${crumbsHtml([['דף הבית', 'index.html'], ['השוואות', null]])}
         <span class="pill pill--ico">${svgIcon('scale')} ${builtVersus.length + builtProviderVs.length} השוואות ראש בראש</span>
         <h1>כל ה<span class="hl">השוואות</span> במקום אחד</h1>
         <p>ספק מול ספק וסוג מול סוג, לפי קטגוריה. כל הנתונים מהקטלוג המעודכן — בחרו השוואה וראו מי מנצח בכל קריטריון.</p>
+        <ul class="stat-band" aria-label="נתוני ההשוואות — מהקטלוג">
+          <li><b data-count-to="${builtVersus.length + builtProviderVs.length}">${builtVersus.length + builtProviderVs.length}</b> השוואות</li>
+          <li><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים</li>
+          <li><b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים</li>
+        </ul>
+        ${heroTrustLine()}
       </div>
     </section>
 ${groups}

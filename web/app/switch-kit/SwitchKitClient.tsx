@@ -431,8 +431,10 @@ function KitResult({ kit }: { kit: SwitchKit }) {
       </h1>
 
       {/* Target summary (screen) — the "מסלול היעד" card is the outcome focal
-          point (accent glow); the saving is the amber VALUE inside it. */}
-      <div className="switchkit-screen-only mt-4 grid gap-4 sm:grid-cols-2">
+          point (accent glow); the saving is the green VALUE inside it. tabular-nums
+          aligns the ₪ target price, the saving figure and the steps count (parity
+          with the home's numeric ledger). */}
+      <div className="nums-tabular switchkit-screen-only mt-4 grid gap-4 sm:grid-cols-2">
         <div className="card glow-accent p-5">
           <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
             <Icon name="check" size={14} />
@@ -467,7 +469,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
             <span className="mr-1 text-sm font-medium text-muted"> שלבים</span>
           </p>
           <div
-            className="mt-3 h-2 w-full overflow-hidden rounded-full bg-secondary"
+            className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border"
             role="progressbar"
             aria-valuemin={0}
             aria-valuemax={total}
@@ -539,7 +541,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
                           ? "bg-accent/15 text-accent-text"
                           : state === "in_progress"
                             ? "bg-value/15 text-value-text"
-                            : "bg-secondary text-muted"
+                            : "bg-border/60 text-muted"
                       }`}
                     >
                       {STATUS_HE[state]}

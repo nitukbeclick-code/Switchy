@@ -239,6 +239,18 @@ h4 {
   letter-spacing: -0.02em;
 }
 
+/* Premium-SaaS type polish (parity with the static site, which already sets
+   text-wrap:balance on its H1/H2). `balance` evens ragged lines on short
+   display headings so a two-line hero/section title never leaves an orphan
+   word; it is a no-op past a few lines so long body headings are unaffected.
+   In @layer base so a Tailwind `text-wrap-*` utility could still override it. */
+@layer base {
+  h1,
+  h2 {
+    text-wrap: balance;
+  }
+}
+
 a {
   /* AA: link text on a light surface uses the text-grade green (≥4.5:1), not the
      headline #16A34A fill green (3.30:1). */
@@ -568,6 +580,18 @@ a:hover {
 }
 .blur-mask {
   animation: swBlurIn var(--duration-dropdown) var(--ease-out) both;
+}
+
+/* ── Numeric alignment (tabular figures) ──────────────────────────────────────
+   Column-align digits so prices and the hero counts bar read as an even numeric
+   ledger rather than a ragged proportional row (parity with the static site's
+   `.cmp__num`). Applied to the counts bars + ranking figures directly in the JSX,
+   and to the whole comparison-table region via `.nums-tabular` so every ₪ figure
+   inside <ComparisonTable> aligns without touching that component. Digits only —
+   a no-op on Hebrew text, so it is safe to scope broadly. */
+.nums-tabular,
+.nums-tabular * {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── Layout helpers ───────────────────────────────────────────────────────────

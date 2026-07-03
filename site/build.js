@@ -13,8 +13,9 @@ const SITE = 'https://switchy-ai.com';
 // serve *.css/*.js with `Cache-Control: immutable` for a year, so every
 // reference carries a content-hash query (?v=<hash>) — a changed file gets a
 // new URL and returning visitors fetch it immediately. No file renames needed.
-// NOTE: index.html is hand-written (not generated) — when these hashes change,
-// update its styles.css/script.js references to match (the build prints them).
+// NOTE: index.html is hand-written (not generated), but the build now rewrites
+// its styles.css/script.js ?v= refs in place at the end of the run (see the
+// "Sync the hand-written index.html" block) — no hand-editing required.
 const assetHash = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, file))).digest('hex').slice(0, 8);
 const CSS_V = assetHash('styles.css');
@@ -24,9 +25,10 @@ const JS_SRC = `script.js?v=${JS_V}`;
 
 // ── Analytics — Google Analytics 4 (free) ───────────────────────────────────
 // Live Measurement ID below (mirror it in index.html if you ever change it, then
-// rebuild). Custom conversion events (lead_submit, meeting_booked, whatsapp_click,
-// …) are sent via gtag() from script.js. NOTE: GA4 sets cookies — add a consent
-// banner if you target the EU.
+// rebuild). Custom conversion events (generate_lead, meeting_booked, outbound_click,
+// …) are sent via gtag() from script.js. Event names are the canonical taxonomy
+// shared with the web app — see docs/events.md. NOTE: GA4 sets cookies — add a
+// consent banner if you target the EU.
 const GA4_ID = 'G-YCTGRVN7SJ';
 const analyticsTag = () =>
   `<!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
@@ -212,6 +214,10 @@ function readPlansFromDbSync() {
 
 // Build the in-memory `catalogue` (SAME shape as data/plans.json): LIVE plans
 // when the DB read yields ≥1 valid normalised plan, else the bundled snapshot.
+// `CATALOGUE_SOURCE` records which path won ('live' | 'bundled') so the build can
+// (1) print one unambiguous provenance line and (2) stamp a machine-readable
+// `<meta name="build:catalogue-source">` into index.html at the end of the run.
+let CATALOGUE_SOURCE = 'bundled';
 const catalogue = (() => {
   let liveRows = null;
   try {
@@ -231,9 +237,11 @@ const catalogue = (() => {
       if (!Number.isNaN(t) && (newest == null || t > newest)) newest = t;
     }
     const generated = newest != null ? new Date(newest).toISOString() : new Date().toISOString();
+    CATALOGUE_SOURCE = 'live';
     console.log(`Catalogue source: LIVE Supabase (${livePlans.length} plans, data as of ${generated.slice(0, 10)}).`);
     return { generated, categories: bundledCatalogue.categories, plans: livePlans };
   }
+  CATALOGUE_SOURCE = 'bundled';
   console.log(
     `Catalogue source: BUNDLED data/plans.json (${(bundledCatalogue.plans || []).length} plans` +
       ` — live DB read failed/empty, serving last-known-good).`,
@@ -4676,4 +4684,74 @@ Host: ${SITE.replace(/^https?:\/\//, '')}
 fs.writeFileSync(path.join(__dirname, 'robots.txt'), robots);
 
 console.log(`Generated ${categories.length} category + ${builtVersus.length} versus + ${builtProviderVs.length} provider-vs + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + faq + glossary + how-it-works + plans + providers + comparisons hub + community + book + 404 + sitemap.xml + robots.txt`);
-console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);
+
+// ── Sync the hand-written index.html to this run ─────────────────────────────
+// index.html is authored by hand (not templated), but its two content-hash
+// asset refs (styles.css?v= / script.js?v=) MUST track the freshly-computed
+// fingerprints or returning visitors get a stale CSS/JS from the year-long
+// immutable cache. Rather than have a human hand-edit them on every asset change
+// (the old workflow — error-prone and easy to forget), the build rewrites them
+// in place here. It also stamps a machine-readable provenance meta so anyone can
+// tell from the shipped HTML whether the catalogue was read LIVE from Supabase
+// or fell back to the bundled snapshot on the run that produced it.
+//
+// FAIL-SOFT: every step is defensive — a missing index.html, an unmatched
+// pattern, or an unwritable file only prints a warning and never aborts the
+// build (the generated pages are already written above). Nothing here touches
+// page COPY: only the ?v= query values and a single <meta> in <head> change.
+(() => {
+  const indexPath = path.join(__dirname, 'index.html');
+  let html;
+  try {
+    html = fs.readFileSync(indexPath, 'utf8');
+  } catch {
+    console.warn('index.html sync: SKIPPED — index.html not found next to build.js.');
+    return;
+  }
+  const before = html;
+  const notes = [];
+
+  // 1) Cache-busting hashes — rewrite ANY existing ?v=<hash> on the styles.css /
+  //    script.js refs to the current fingerprints (idempotent; a no-op when equal).
+  const cssMatched = /href="styles\.css\?v=[0-9a-f]+"/.test(html);
+  const jsMatched = /src="script\.js\?v=[0-9a-f]+"/.test(html);
+  html = html.replace(/href="styles\.css\?v=[0-9a-f]+"/g, `href="${CSS_HREF}"`);
+  html = html.replace(/src="script\.js\?v=[0-9a-f]+"/g, `src="${JS_SRC}"`);
+  if (!cssMatched) notes.push('WARN: no styles.css?v= ref found to update');
+  if (!jsMatched) notes.push('WARN: no script.js?v= ref found to update');
+
+  // 2) Provenance meta — <meta name="build:catalogue-source" content="live|bundled">.
+  //    Update it in place if present, else inject after <meta charset> (falling
+  //    back to right after <head>). Content-free (does not alter any visible
+  //    copy); purely a build-provenance signal.
+  const metaTag = `<meta name="build:catalogue-source" content="${CATALOGUE_SOURCE}" />`;
+  if (/<meta\s+name="build:catalogue-source"[^>]*>/.test(html)) {
+    html = html.replace(/<meta\s+name="build:catalogue-source"[^>]*>/, metaTag);
+  } else if (/<meta\s+charset=[^>]*>/i.test(html)) {
+    // Inject right after <meta charset> so the charset declaration stays first
+    // in <head> (well inside the byte window browsers scan for it).
+    html = html.replace(/(<meta\s+charset=[^>]*>)/i, `$1\n  ${metaTag}`);
+  } else if (/<head[^>]*>/.test(html)) {
+    html = html.replace(/(<head[^>]*>)/, `$1\n  ${metaTag}`);
+  } else {
+    notes.push('WARN: no <head> found — provenance meta not stamped');
+  }
+
+  if (html !== before) {
+    try {
+      fs.writeFileSync(indexPath, html);
+    } catch (e) {
+      console.warn(`index.html sync: FAILED to write — ${e && e.message || e}`);
+      return;
+    }
+  }
+  console.log(
+    `index.html sync: styles.css?v=${CSS_V}  script.js?v=${JS_V}  ` +
+      `catalogue-source=${CATALOGUE_SOURCE}` +
+      (html !== before ? ' (updated)' : ' (already in sync)') +
+      (notes.length ? `  [${notes.join('; ')}]` : ''),
+  );
+})();
+
+console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (auto-synced into index.html by this build)`);
+console.log(`Build provenance: catalogue was read ${CATALOGUE_SOURCE === 'live' ? 'LIVE from Supabase' : 'from the BUNDLED snapshot (data/plans.json)'}  ·  meta build:catalogue-source=${CATALOGUE_SOURCE} stamped into index.html`);

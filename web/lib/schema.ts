@@ -436,6 +436,18 @@ export interface ArticleInput {
   dateModified?: string;
   /** The article's category/section label (e.g. "סלולר"). */
   section?: string;
+  /**
+   * REAL word count of the article body. Emitted ONLY when a positive integer is
+   * supplied — the caller must derive it from the genuine rendered text (never an
+   * estimate or invented figure). Omitted when absent so nothing is fabricated.
+   */
+  wordCount?: number;
+  /**
+   * REAL topics the article covers (`about` Things). Each entry must be a genuine
+   * subject the article actually discusses (e.g. its category label); duplicates
+   * and blanks are dropped. Omitted entirely when empty — never invented.
+   */
+  about?: string[];
 }
 
 /**
@@ -449,7 +461,7 @@ export interface ArticleInput {
 export function articleSchema(input: ArticleInput): Json {
   const url = absUrl(input.url);
   const org = brandOrgNode();
-  return {
+  const schema: Json = {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: input.headline,
@@ -464,6 +476,22 @@ export function articleSchema(input: ArticleInput): Json {
     author: org,
     publisher: org,
   };
+  // REAL word count only — a positive integer derived from the genuine body text.
+  if (
+    typeof input.wordCount === "number" &&
+    Number.isFinite(input.wordCount) &&
+    input.wordCount > 0
+  ) {
+    schema.wordCount = Math.round(input.wordCount);
+  }
+  // REAL `about` subjects only — deduped, blanks dropped; omitted when none.
+  const about = (input.about ?? [])
+    .map((t) => (typeof t === "string" ? t.trim() : ""))
+    .filter((t, i, arr) => t.length > 0 && arr.indexOf(t) === i);
+  if (about.length) {
+    schema.about = about.map((name) => ({ "@type": "Thing", name }));
+  }
+  return schema;
 }
 
 // ── HowTo (step-by-step guide) ───────────────────────────────────────────────
@@ -1066,6 +1094,50 @@ function providerOrgNode(provider: Provider | { name: string; slug?: string }): 
   const rating = aggregateRatingSchema(provider as Provider);
   if (rating) org.aggregateRating = rating; // real only
   return org;
+}
+
+/**
+ * A STANDALONE, top-level Organization node for a single provider's detail page
+ * (`/providers/[slug]`). Reuses {@link providerOrgNode} for the truthful base
+ * (real `name`, on-site `url`, `sameAs` → the provider's genuine official site
+ * when verified, and a real `aggregateRating` only when present), then stamps the
+ * `@context` that makes it a valid top-level JSON-LD document AND adds only
+ * catalogue-derived enrichments:
+ *
+ *  - `description`: the caller's REAL, catalogue-derived provider summary (the same
+ *    factual "N plans across C categories, from ₪X" copy the page renders) — never
+ *    a marketing superlative. Omitted when absent.
+ *  - `knowsAbout`: the Hebrew labels of the categories this provider GENUINELY has
+ *    plans in (from `provider.categories`) — a truthful competency, not invented.
+ *  - `areaServed`: Israel — the only market the catalogue covers.
+ *
+ * DELIBERATELY an `Organization`, NOT a `LocalBusiness`: the catalogue holds no
+ * per-provider street address, geo, phone or opening hours, and a LocalBusiness
+ * would require fabricating those. We stay with the honest supertype and only
+ * assert what the data verifiably supports.
+ *
+ * HONESTY: every field is real (provider name / on-site url / official `sameAs` /
+ * real rating only) or catalogue-derived (`description`, `knowsAbout`, `areaServed`);
+ * nothing here fabricates ratings, reviews, contact details or a physical location.
+ */
+export function providerOrganizationSchema(
+  provider: Provider | { name: string; slug?: string; categories?: string[] },
+  opts: { description?: string } = {},
+): Json {
+  const schema: Json = {
+    "@context": "https://schema.org",
+    ...providerOrgNode(provider),
+  };
+  const description = opts.description?.trim();
+  if (description) schema.description = description;
+  // knowsAbout = the categories the provider TRULY offers (Hebrew labels), deduped.
+  const cats = Array.isArray(provider.categories) ? provider.categories : [];
+  const knowsAbout = cats
+    .map((c) => CATEGORY_HE[c] ?? c)
+    .filter((c, i, arr) => c.length > 0 && arr.indexOf(c) === i);
+  if (knowsAbout.length) schema.knowsAbout = knowsAbout;
+  schema.areaServed = "IL";
+  return schema;
 }
 
 /**

@@ -27,6 +27,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import { HowItWorks, HOW_IT_WORKS_STEPS } from "@/components/HowItWorks";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
@@ -174,9 +175,10 @@ export default function HowItWorksPage() {
             href="/compare"
             location="how-it-works-hero"
             label="compare"
-            className="interactive press sw-lift inline-flex items-center justify-center rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
+            className="interactive press sw-lift inline-flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
           >
-            השוו ותחסכו ←
+            השוו ותחסכו
+            <Icon name="chevron" size={18} aria-hidden="true" />
           </TrackedCtaLink>
           <TrackedCtaLink
             href="/book"
@@ -257,9 +259,12 @@ export default function HowItWorksPage() {
             "אפשר לבקש את הסרת הפרטים בכל עת",
           ].map((point) => (
             <li key={point} className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-0.5 text-accent-text">
-                ✓
-              </span>
+              <Icon
+                name="check"
+                size={18}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-accent-text"
+              />
               <span>{point}</span>
             </li>
           ))}
@@ -271,9 +276,10 @@ export default function HowItWorksPage() {
             href="/compare"
             location="how-it-works-consent"
             label="compare"
-            className="interactive press sw-lift inline-flex items-center justify-center rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-soft hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
+            className="interactive press sw-lift inline-flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
           >
-            להשוואת מסלולים ←
+            להשוואת מסלולים
+            <Icon name="chevron" size={18} aria-hidden="true" />
           </TrackedCtaLink>
           <TrackedCtaLink
             href="/book"

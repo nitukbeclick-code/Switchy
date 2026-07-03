@@ -26,6 +26,7 @@ import {
   relatedGuides,
   guideInternalLinks,
   guideCompareSlug,
+  type Guide,
   type GuideSection,
 } from "@/lib/guides";
 import {
@@ -94,6 +95,34 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 /** Stable ASCII anchor id for a section (sec-N) — avoids slugifying Hebrew. */
 function sectionId(i: number): string {
   return `sec-${i + 1}`;
+}
+
+/** Whitespace-tokenised word count of a chunk of REAL guide text (0 for empty). */
+function wordsIn(text: string | undefined): number {
+  if (!text) return 0;
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  return tokens.length;
+}
+
+/**
+ * REAL `Article.wordCount` for a guide — the total word count of the genuine
+ * rendered body: every section heading, paragraph, bullet, tip/callout, the how-to
+ * steps and the TLDR. Purely derived from the ported content (never an estimate or
+ * a fabricated figure), so the schema figure always matches what the page shows.
+ */
+function countWords(guide: Guide): number {
+  let n = wordsIn(guide.tldr);
+  for (const s of guide.sections) {
+    n += wordsIn(s.h2);
+    for (const p of s.p ?? []) n += wordsIn(p);
+    for (const li of s.ul ?? []) n += wordsIn(li);
+    n += wordsIn(s.tip?.title) + wordsIn(s.tip?.text);
+    n += wordsIn(s.callout?.title) + wordsIn(s.callout?.text);
+  }
+  for (const step of guide.howto ?? []) {
+    n += wordsIn(step.name) + wordsIn(step.text);
+  }
+  return n;
 }
 
 /** A tip (amber/value) or neutral callout box inside a section. */
@@ -199,6 +228,12 @@ export default async function GuidePage({ params }: Params) {
     day: "numeric",
   });
 
+  // REAL word count of the article body (Article.wordCount) — derived purely from
+  // the guide's genuine rendered text: every heading, paragraph, list item, tip
+  // and callout that actually appears on the page. Whitespace-tokenised, so it is
+  // a truthful measure of the real content, never an estimate or invented figure.
+  const wordCount = countWords(guide);
+
   return (
     <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
       {/* Structured data: Article + Breadcrumb (always); FAQPage + HowTo (real);
@@ -214,6 +249,9 @@ export default async function GuidePage({ params }: Params) {
           datePublished: guide.date,
           dateModified: asOf,
           section: guide.cat,
+          wordCount,
+          // `about` = the guide's REAL category subject (what it genuinely covers).
+          about: [guide.cat],
         })}
       />
       <JsonLd data={breadcrumbSchema(crumbs)} />

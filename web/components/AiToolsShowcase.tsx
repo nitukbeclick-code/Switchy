@@ -16,6 +16,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import Icon from "@/components/Icon";
 
 type Tool = {
   /** Existing on-site route (verified to exist under web/app/). */
@@ -82,18 +83,15 @@ export function AiToolsShowcase({ className }: { className?: string }) {
               className="group sw-reveal card card-interactive flex h-full flex-col p-5"
               style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
             >
-              <span className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
-                <span
-                  aria-hidden="true"
-                  className="inline-block h-4 w-1 shrink-0 rounded-full bg-accent"
-                />
+              <span className="block font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                 {tool.title}
               </span>
               <span className="mt-2 block text-sm leading-relaxed text-foreground">
                 {tool.benefit}
               </span>
-              <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
-                לכלי ←
+              <span className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium text-accent-text group-hover:text-accent-hover">
+                לכלי
+                <Icon name="chevron" size={16} aria-hidden="true" />
               </span>
             </Link>
           </li>

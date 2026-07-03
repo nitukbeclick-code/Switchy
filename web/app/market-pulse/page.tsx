@@ -7,7 +7,9 @@ import MarketPulseCharts, {
   type MarketPulseCategory,
 } from "@/components/MarketPulseCharts";
 import SmartTimer from "@/components/SmartTimer";
-import { priceStats, CATEGORY_HE, getPlans } from "@/lib/data";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
+import Icon from "@/components/Icon";
+import { priceStats, CATEGORY_HE, getPlans, getProviders } from "@/lib/data";
 import {
   collectionPageSchema,
   breadcrumbSchema,
@@ -150,6 +152,20 @@ export default function MarketPulsePage() {
   const summary = buildSummary(rows);
   const authority = buildAuthority(rows);
 
+  // ── Hero facts (catalogue-derived, never fabricated) ─────────────────────────
+  // planCount = total priced plans across categories; providers.length = the real
+  // provider count; the cheapest current entry point in the market (min price and
+  // its category) drives the green VALUE price + the primary CTA target so the
+  // hook lands on the most relevant compare page.
+  const planCount = rows.reduce((n, r) => n + r.count, 0);
+  const providers = getProviders();
+  const cheapestCat = rows
+    .filter((r) => Number.isFinite(r.min))
+    .slice()
+    .sort((a, b) => a.min - b.min)[0];
+  const minFeatured = cheapestCat ? cheapestCat.min : 0;
+  const featuredCat = cheapestCat ? cheapestCat.category : rows[0]?.category;
+
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "מצב השוק", url: PAGE_PATH },
@@ -198,18 +214,76 @@ export default function MarketPulsePage() {
         <span className="text-foreground">מצב השוק</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          Flat-ink editorial hero (premium-2026): a solid deep-ink panel with the
+          white headline set directly on it — NO photo/video behind — and ONE
+          green primary CTA plus a quiet secondary text link. Green is applied
+          ONLY to the market's real cheapest entry price (VALUE); the headline is
+          a CHECK ("בודקים … בכל קטגוריה"), never a promised amount. The panel is a
+          fixed deep ink (#111827) in BOTH themes so "white on ink" always holds. */}
       <header className="mt-4">
-        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          מצב שוק התקשורת בישראל
-        </h1>
-        <p
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
-          style={{ animationDelay: "60ms" }}
-        >
-          תמונת מצב נוכחית של מחירי התקשורת — מחיר ממוצע, המחיר הזול ביותר והעסקה
-          המשתלמת ביותר בכל קטגוריה. הנתונים עדכניים נכון להיום.
-        </p>
+        <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <div className="mx-auto max-w-2xl">
+            <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              בודקים היכן מחירי התקשורת עומדים כרגע.{" "}
+              {minFeatured > 0 ? (
+                <span className="text-accent">
+                  נקודת כניסה מ-{ils(minFeatured)} לחודש.
+                </span>
+              ) : null}
+            </h1>
+            <p
+              className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
+              style={{ animationDelay: "60ms" }}
+            >
+              תמונת מצב נוכחית מהקטלוג — מחיר ממוצע, המחיר הזול ביותר והעסקה המשתלמת
+              ביותר בכל קטגוריה. הנתונים עדכניים נכון להיום.
+            </p>
+            {featuredCat ? (
+              <div
+                className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+                style={{ animationDelay: "120ms" }}
+              >
+                <TrackedCtaLink
+                  href={`/compare/${featuredCat}`}
+                  location="hero"
+                  label="compare"
+                  className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+                >
+                  בדקו כמה תחסכו
+                  <Icon name="chevron" size={18} aria-hidden="true" />
+                </TrackedCtaLink>
+                <TrackedCtaLink
+                  href="/book"
+                  location="hero"
+                  label="consult"
+                  className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+                >
+                  או דברו עם יועץ
+                </TrackedCtaLink>
+              </div>
+            ) : null}
+            {/* Trust band — REAL catalogue counts; the entry price carries the
+                green VALUE emphasis (text-accent), never a button. */}
+            <p
+              className="sw-reveal mt-8 text-sm text-white/70"
+              style={{ animationDelay: "150ms" }}
+            >
+              {planCount.toLocaleString("he-IL")} מסלולים · {providers.length}{" "}
+              ספקים · {rows.length} קטגוריות
+              {minFeatured > 0 ? (
+                <>
+                  {" "}
+                  · החל מ-
+                  <span className="font-display font-bold text-accent">
+                    {ils(minFeatured)}
+                  </span>{" "}
+                  לחודש
+                </>
+              ) : null}
+            </p>
+          </div>
+        </section>
       </header>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
@@ -229,7 +303,7 @@ export default function MarketPulsePage() {
       </div>
 
       {/* ── Charts (current state, no trend lines) ────────────────────────── */}
-      <section aria-labelledby="charts-h" className="mt-10">
+      <section aria-labelledby="charts-h" className="mt-14">
         <h2 id="charts-h" className="sr-only">
           תרשימי מצב השוק הנוכחי
         </h2>

@@ -24,6 +24,7 @@
 import Link from "next/link";
 import type { Plan } from "@/lib/types";
 import { priceUnitLabel } from "@/lib/format";
+import Icon from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { planDisplay, type PlanDisplay, type PlanField } from "@/lib/plan-display";
 import type { PriceDrop } from "@/lib/price-history";
@@ -99,7 +100,7 @@ function FeatureBadges({ label }: { label: FeatureLabel }) {
           "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
           label === "editor"
             ? "bg-value/15 text-value-text"
-            : "bg-accent/15 text-accent",
+            : "bg-accent/15 text-accent-text",
         ].join(" ")}
       >
         {LABEL_HE[label]}
@@ -329,14 +330,14 @@ export default function ComparisonTable({
                   detail page, linked below, is the canonical "פרטים מלאים".) */}
               {extraFineLines(d).length > 0 ? (
                 <details className="group mt-3">
-                  <summary className="interactive flex cursor-pointer list-none items-center gap-1 text-[13px] font-semibold text-accent marker:hidden">
+                  <summary className="interactive flex cursor-pointer list-none items-center gap-1 rounded-md text-[13px] font-semibold text-accent-text marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
                     אותיות קטנות
-                    <span
+                    <Icon
+                      name="chevron"
+                      size={14}
                       aria-hidden="true"
-                      className="transition-transform group-open:rotate-180"
-                    >
-                      ▾
-                    </span>
+                      className="rotate-90 transition-transform group-open:-rotate-90"
+                    />
                   </summary>
                   <ul className="mt-2 list-disc space-y-1 ps-5 text-[13px] leading-relaxed text-foreground">
                     {extraFineLines(d).map((line, i) => (
@@ -353,10 +354,10 @@ export default function ComparisonTable({
               <Link
                 href={`/plans/${plan.id}`}
                 aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
-                className="interactive press mt-3 inline-flex items-center gap-1 rounded-lg text-[13px] font-semibold text-accent underline-offset-4 transition-colors hover:text-accent-hover hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="interactive press mt-3 inline-flex items-center gap-1 rounded-lg text-[13px] font-semibold text-accent-text underline-offset-4 transition-colors hover:text-accent-hover hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 פרטים מלאים
-                <span aria-hidden="true">←</span>
+                <Icon name="chevron" size={14} aria-hidden="true" />
               </Link>
             </li>
           );
@@ -373,7 +374,7 @@ export default function ComparisonTable({
         <table className="w-full min-w-[720px] border-collapse text-right">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b border-border text-xs text-muted">
+            <tr className="border-b border-border bg-background/60 text-[11px] font-medium uppercase tracking-wide text-muted">
               {desktopColumns.map((col, i) => (
                 <th
                   key={col}

@@ -25,6 +25,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
+import Icon from "@/components/Icon";
 import {
   isReferralCode,
   referralLink,
@@ -138,10 +139,13 @@ export default function ReferralCard({ className }: { className?: string }) {
             type="button"
             onClick={issue}
             disabled={status === "loading"}
-            className="press interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            className="press interactive inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform ease-[var(--ease-out)] hover:bg-accent-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
             aria-busy={status === "loading"}
           >
             {status === "loading" ? "יוצרים קוד…" : "קבלו קוד הזמנה אישי"}
+            {status === "loading" ? null : (
+              <Icon name="chevron" size={18} aria-hidden="true" />
+            )}
           </button>
         ) : (
           <div>
@@ -157,7 +161,7 @@ export default function ReferralCard({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={() => copy(code, "הקוד")}
-                  className="press interactive rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="press interactive rounded-lg border border-border/60 bg-surface px-3 py-1.5 text-sm font-medium text-foreground ease-[var(--ease-out)] hover:border-accent/50 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   העתקת הקוד
                 </button>
@@ -167,14 +171,15 @@ export default function ReferralCard({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={share}
-                  className="press interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="press interactive inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform ease-[var(--ease-out)] hover:bg-accent-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   שיתוף ההזמנה
+                  <Icon name="chevron" size={18} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
                   onClick={() => copy(link, "הקישור")}
-                  className="press interactive inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="press interactive inline-flex items-center justify-center rounded-xl border border-border/60 bg-surface px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent/50 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   העתקת הקישור
                 </button>

@@ -174,12 +174,14 @@
     try { if (typeof window.gtag === 'function') window.gtag('event', name, props || undefined); } catch (_) { /* analytics is best-effort */ }
   };
 
-  // Fire a conversion event whenever a WhatsApp link is clicked (lead intent),
-  // tagging which surface it came from. Delegated so it also covers links that
-  // script.js injects later (compare table CTAs, plan cards).
+  // Fire an outbound-click event whenever a WhatsApp link is clicked (lead intent),
+  // tagging which surface it came from. Canonical name is `outbound_click` (matches
+  // the web app's TrackedOutboundLink); `dest` names the destination the way the
+  // web event does. Delegated so it also covers links that script.js injects later
+  // (compare table CTAs, plan cards).
   document.addEventListener('click', (e) => {
     const a = e.target.closest && e.target.closest('a[href*="wa.me"]');
-    if (a) track('whatsapp_click', { source: location.pathname });
+    if (a) track('outbound_click', { dest: 'whatsapp', source: location.pathname });
   }, true);
 
   // ── Toast notifications ─────────────────────────────────────────────────────
@@ -285,18 +287,29 @@
   const sendLead = async (lead) => {
     const cfg = window.CHOSECH_SUPABASE;
     if (!cfg || !cfg.url || !cfg.anonKey) return; // backend parked — local-only
-    const res = await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/leads', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: cfg.anonKey,
-        Authorization: 'Bearer ' + cfg.anonKey,
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(lead),
-    });
-    // fetch resolves on HTTP errors too — a rejected insert (validation gate,
-    // rate limit) must not be presented to the visitor as success.
+    let res;
+    try {
+      res = await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: cfg.anonKey,
+          Authorization: 'Bearer ' + cfg.anonKey,
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify(lead),
+      });
+    } catch (netErr) {
+      // fetch itself rejects only on a transport failure — offline, DNS, CORS,
+      // a dropped connection. That's distinct from a server that answered with
+      // an error status: tell the visitor honestly it's a connection problem,
+      // not that their details were rejected.
+      const err = new Error('lead network error');
+      err.code = 'network';
+      throw err;
+    }
+    // fetch resolves on HTTP errors too — a rejected insert (RLS/validation gate,
+    // rate limit, 4xx/5xx) must not be presented to the visitor as success.
     if (!res.ok) {
       let body = '';
       try { body = await res.text(); } catch (_) {}
@@ -413,15 +426,44 @@
       }
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
       if (!sent) {
+        // Fail LOUDLY: honest inline note + an assertive error toast, and actively
+        // OFFER the existing WhatsApp fallback CTA (the .cta__wa link already in the
+        // markup) — never swallow a failed submit as if it succeeded. The message
+        // is truthful about which failure it was: a duplicate (rate-limited), a
+        // dropped connection (network), or the server rejecting the insert.
         const errMsg = leadErrCode === 'rate_limited'
           ? 'קיבלנו כבר פנייה מכם — נחזור אליכם בהקדם! אם דחוף, כתבו לנו בוואטסאפ 💬'
-          : 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬';
+          : leadErrCode === 'network'
+            ? 'אין חיבור כרגע — בדקו את האינטרנט ונסו שוב, או כתבו לנו בוואטסאפ 💬'
+            : 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬';
         if (note) { note.classList.add('cta__note--err'); note.textContent = errMsg; }
-        toast(leadErrCode === 'rate_limited' ? 'פנייתכם כבר נקלטה — נחזור בהקדם' : 'שגיאה — נסו שוב בעוד רגע', 'error');
+        const toastMsg = leadErrCode === 'rate_limited'
+          ? 'פנייתכם כבר נקלטה — נחזור בהקדם'
+          : leadErrCode === 'network'
+            ? 'אין חיבור לאינטרנט — נסו שוב בעוד רגע'
+            : 'שגיאה — נסו שוב בעוד רגע';
+        toast(toastMsg, 'error');
+        track('lead_form_error', { source: location.pathname, reason: leadErrCode || 'server_error' });
+        // Surface the WhatsApp escape hatch: reveal + emphasise the existing link
+        // so it presents itself as the fallback rather than sitting there passively.
+        const waCta = (form.closest('.cta__inner, .container') || form.parentElement || document)
+          .querySelector('a.cta__wa[href*="wa.me"]');
+        if (waCta) {
+          waCta.classList.add('cta__wa--offer');
+          waCta.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+        }
         if (btn) btn.focus();
         return;
       }
-      track('lead_submit', { source: location.pathname });
+      // Recovered after a prior failure — drop the fallback emphasis so the CTA
+      // returns to its resting state on the successful retry.
+      const waCtaOk = (form.closest('.cta__inner, .container') || form.parentElement || document)
+        .querySelector('a.cta__wa--offer');
+      if (waCtaOk) waCtaOk.classList.remove('cta__wa--offer');
+      // Canonical lead-conversion event, matching the web app's fireLeadConversion
+      // (GA4 `generate_lead`). `lead_source` mirrors the web param; `source` is kept
+      // for continuity. No fabricated value/category — the static form has neither.
+      track('generate_lead', { lead_source: location.pathname, source: location.pathname, currency: 'ILS' });
       form.reset();
       fieldError(nameEl, null);
       fieldError(phoneEl, null);
@@ -432,12 +474,13 @@
       toast('תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם', 'success');
       showReferralShare();
     });
-    // form_start — fires once, the moment the visitor first engages the form.
+    // lead_form_start — fires once, the moment the visitor first engages the form.
+    // Canonical name matches the web app's LeadForm start event.
     let formStarted = false;
     form.addEventListener('focusin', () => {
       if (formStarted) return;
       formStarted = true;
-      track('form_start', { source: location.pathname });
+      track('lead_form_start', { source: location.pathname });
     });
   }
 
@@ -922,7 +965,9 @@
     document.body.appendChild(stickyBar);
     const stickyBtn = stickyBar.querySelector('button');
     stickyBtn.addEventListener('click', () => {
-      track('sticky_cta_click', { source: location.pathname });
+      // Canonical CTA-click event, matching the web app's StickyLeadCta
+      // (`cta_click` with location:"sticky", label:"lead").
+      track('cta_click', { location: 'sticky', label: 'lead', source: location.pathname });
       form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
       const first = $('leadName');
       if (first) first.focus({ preventScroll: true });
@@ -1106,6 +1151,10 @@
   // A trigger (data-mega-trigger / aria-controls) toggles a .mega-menu panel.
   // aria-expanded mirrors state; Esc and outside-click close and (for Esc)
   // return focus to the trigger. Multiple menus close each other.
+  // Keyboard (WAI-ARIA menu-button pattern): Enter/Space/ArrowDown on the trigger
+  // opens and focuses the first item; ArrowUp opens and focuses the last. Inside
+  // the panel, ArrowDown/ArrowUp roam the links (wrapping), Home/End jump to the
+  // ends, Tab lets focus leave (and closes), and Esc closes back to the trigger.
   (() => {
     const menus = Array.from(document.querySelectorAll('.mega-menu'));
     const triggers = Array.from(document.querySelectorAll('.mega__trigger, .nav__item--mega > a[aria-haspopup], [data-mega-trigger], [aria-controls].mega-trigger'));
@@ -1121,20 +1170,73 @@
       pair.panel.hidden = !open;
     };
     const closeAll = (except) => pairs.forEach((p) => { if (p !== except) setOpen(p, false); });
+    // Focusable menu items in a panel, in DOM order (skips disabled/hidden links).
+    const itemsOf = (panel) => Array.from(panel.querySelectorAll('a[href], button:not([disabled])'))
+      .filter((el) => el.offsetParent !== null || el.getClientRects().length);
+    // Move focus to item [i], wrapping around the ends. No-op if the panel is empty.
+    const focusItem = (panel, i) => {
+      const items = itemsOf(panel);
+      if (!items.length) return;
+      const n = items.length;
+      items[((i % n) + n) % n].focus();
+    };
     pairs.forEach((pair) => {
       if (!pair.trigger.hasAttribute('aria-expanded')) pair.trigger.setAttribute('aria-expanded', 'false');
       if (!pair.trigger.hasAttribute('aria-haspopup')) pair.trigger.setAttribute('aria-haspopup', 'true');
       pair.panel.hidden = pair.panel.classList.contains('is-open') ? false : true;
+      const isOpen = () => pair.trigger.getAttribute('aria-expanded') === 'true';
+      const open = (focus) => {
+        closeAll(pair);
+        setOpen(pair, true);
+        // focus: 'first' | 'last' | undefined. Wait a frame so the panel is shown
+        // (hidden removed) before we move focus into it.
+        if (focus) requestAnimationFrame(() => focusItem(pair.panel, focus === 'last' ? -1 : 0));
+      };
+      // Keyboard activation of an anchor (Enter/Space) also synthesizes a click.
+      // We handle those in keydown (to dive into the panel), so mark the moment
+      // and let the click handler skip the echo instead of toggling straight back.
+      let kbdAt = 0;
       pair.trigger.addEventListener('click', (e) => {
         e.preventDefault();
-        const open = pair.trigger.getAttribute('aria-expanded') !== 'true';
-        closeAll(pair);
-        setOpen(pair, open);
+        if (Date.now() - kbdAt < 400) return; // echo of a just-handled key press
+        if (isOpen()) { setOpen(pair, false); } else { open(); }
       });
-      // Esc anywhere within the menu/trigger closes it and restores focus.
-      const onKey = (e) => { if (e.key === 'Escape') { setOpen(pair, false); pair.trigger.focus(); } };
-      pair.trigger.addEventListener('keydown', onKey);
-      pair.panel.addEventListener('keydown', onKey);
+      // Trigger keys: open + dive into the panel.
+      pair.trigger.addEventListener('keydown', (e) => {
+        switch (e.key) {
+          case 'Escape':
+            setOpen(pair, false); pair.trigger.focus(); break;
+          case 'ArrowDown':
+          case 'Enter':
+          case ' ':
+          case 'Spacebar': // legacy key name
+            e.preventDefault(); kbdAt = Date.now(); open('first'); break;
+          case 'ArrowUp':
+            e.preventDefault(); kbdAt = Date.now(); open('last'); break;
+          default: break;
+        }
+      });
+      // Panel keys: roam the items, or close back to the trigger.
+      pair.panel.addEventListener('keydown', (e) => {
+        const items = itemsOf(pair.panel);
+        const idx = items.indexOf(document.activeElement);
+        switch (e.key) {
+          case 'Escape':
+            setOpen(pair, false); pair.trigger.focus(); break;
+          case 'ArrowDown':
+            e.preventDefault(); focusItem(pair.panel, idx + 1); break;
+          case 'ArrowUp':
+            e.preventDefault(); focusItem(pair.panel, idx - 1); break;
+          case 'Home':
+            e.preventDefault(); focusItem(pair.panel, 0); break;
+          case 'End':
+            e.preventDefault(); focusItem(pair.panel, -1); break;
+          case 'Tab':
+            // Let Tab move focus naturally, but close the menu behind it.
+            setOpen(pair, false); break;
+          default: break;
+        }
+      });
     });
     // Outside-click closes every open mega-menu.
     document.addEventListener('click', (e) => {

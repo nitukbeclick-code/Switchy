@@ -27,9 +27,10 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
 import Icon from "@/components/Icon";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
-import { priceUnitLabel } from "@/lib/format";
+import { ils, priceUnitLabel } from "@/lib/format";
 import { breadcrumbSchema, webPageSchema, howToSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { SWITCH_KIT_CATEGORIES } from "@/lib/switch-kit";
@@ -77,6 +78,17 @@ export default function SwitchKitPage() {
       after: typeof p.after === "number" ? p.after : null,
       priceUnit: priceUnitLabel(p),
     }));
+
+  // Real catalogue entry price for the hero VALUE clause (cheapest MONTHLY
+  // switch-kit target). Restricted to per-month rows so the hardcoded "לחודש"
+  // suffix in the hero stays truthful — the switch-kit set includes 'abroad'
+  // plans priced per-minute/day/package, whose price must never be labelled
+  // monthly. Never a fabricated figure — derived from the priced rows above.
+  const monthlyOptions = planOptions.filter((p) => p.priceUnit === "לחודש");
+  const minFeatured = monthlyOptions.reduce(
+    (min, p) => (p.price < min ? p.price : min),
+    monthlyOptions.length ? monthlyOptions[0].price : 0,
+  );
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -171,26 +183,76 @@ export default function SwitchKitPage() {
       </nav>
 
       {/* ── Hero ──────────────────────────────────────────────────────────────
-          Intent eyebrow → H1 focal point → factual promise → an honest amber
-          VALUE rail (qualitative — the move is free; no fabricated figure). ──── */}
-      <header className="mt-3">
-        <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3.5 py-1.5 text-sm font-semibold text-accent-text">
-          <Icon name="spark" size={16} />
-          ערכת מעבר אישית
-        </p>
-        <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          ערכת מעבר — מוכנה לשליחה על ידיכם
-        </h1>
-        <p className="mt-4 text-lg leading-relaxed text-foreground">
-          בחרו את הספק הנוכחי ומסלול יעד אמיתי מהקטלוג, וקבלו מכתב ניתוק לבדיקה,
-          צ׳קליסט ניוד מספר, מועדים חשובים וטראקר התקדמות. מבוסס על זכויות הצרכן
-          בישראל — בלי מספרי טלפון מומצאים, ואנחנו אף פעם לא שולחים את המכתב במקומכם.
-        </p>
-        <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text">
-          <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value" />
-          ניוד המספר חינמי — והערכה מבוססת על מחירים אמיתיים מהקטלוג
-        </p>
-      </header>
+          Flat-ink editorial hero (premium-2026): a solid deep-ink panel in BOTH
+          themes with the white headline set directly on it — NO photo behind —
+          and green applied ONLY to the real catalogue entry-price clause (VALUE).
+          The promise is a CHECK ("בונים לכם ערכת מעבר…"), never a promised amount.
+          ONE primary CTA (into the builder, this page's thesis) + ONE quiet
+          secondary text link. Every figure is catalogue-derived. ──────────── */}
+      <section className="relative isolate mt-3 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+            בונים לכם ערכת מעבר — מוכנה לשליחה על ידיכם.{" "}
+            {minFeatured > 0 ? (
+              <span className="text-accent">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+            ) : null}
+          </h1>
+          <p
+            className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
+            style={{ animationDelay: "60ms" }}
+          >
+            בוחרים ספק נוכחי ומסלול יעד אמיתי מהקטלוג — ומקבלים מכתב ניתוק לבדיקה,
+            צ׳קליסט ניוד מספר, מועדים חשובים וטראקר. אנחנו אף פעם לא שולחים את המכתב
+            במקומכם.
+          </p>
+          <div
+            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+            style={{ animationDelay: "120ms" }}
+          >
+            <a
+              href="#kit-builder-h"
+              className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+            >
+              בנו את ערכת המעבר
+              <Icon name="chevron" size={18} aria-hidden="true" />
+            </a>
+            <TrackedCtaLink
+              href="/compare"
+              location="hero"
+              label="compare"
+              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+            >
+              או עברו להשוואת כל המסלולים
+            </TrackedCtaLink>
+          </div>
+          {/* Trust band — REAL catalogue counts; the entry price carries the green
+              VALUE emphasis (text-accent on ink), NOT a button. */}
+          <p
+            className="sw-reveal mt-8 text-sm text-white/70"
+            style={{ animationDelay: "150ms" }}
+          >
+            {planCount} מסלולים · {providerCount} ספקים
+            {minFeatured > 0 ? (
+              <>
+                {" · "}החל מ-
+                <span className="font-display font-bold text-accent">
+                  {ils(minFeatured)}
+                </span>{" "}
+                לחודש
+              </>
+            ) : null}
+          </p>
+          {/* Quiet qualitative value line — muted, small green tick, no fabricated
+              figure. The move itself is free; the estimate uses real prices. */}
+          <p
+            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
+            style={{ animationDelay: "180ms" }}
+          >
+            <Icon name="check" size={16} className="shrink-0 text-accent" />
+            ניוד המספר חינמי — והערכה מבוססת על מחירים אמיתיים מהקטלוג
+          </p>
+        </div>
+      </section>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">
@@ -207,7 +269,7 @@ export default function SwitchKitPage() {
       </div>
 
       {/* ── The kit ───────────────────────────────────────────────────────── */}
-      <section aria-labelledby="kit-builder-h" className="mt-10">
+      <section aria-labelledby="kit-builder-h" className="mt-10 scroll-mt-6">
         <h2 id="kit-builder-h" className="sr-only">
           מחולל ערכת המעבר
         </h2>

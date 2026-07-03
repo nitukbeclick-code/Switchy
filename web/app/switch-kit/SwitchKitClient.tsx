@@ -252,9 +252,10 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
                   אין כרגע מסלולים בקטגוריה הזו בקטלוג.{" "}
                   <Link
                     href="/compare"
-                    className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+                    className="interactive inline-flex items-center gap-0.5 font-medium text-accent-text underline hover:text-accent-hover"
                   >
-                    עברו להשוואה המלאה ←
+                    עברו להשוואה המלאה
+                    <Icon name="chevron" size={14} aria-hidden="true" />
                   </Link>
                 </span>
               </p>
@@ -352,9 +353,10 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
             {error}{" "}
             <Link
               href="/compare"
-              className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+              className="interactive inline-flex items-center gap-0.5 font-medium text-accent-text underline hover:text-accent-hover"
             >
-              עברו להשוואה המלאה ←
+              עברו להשוואה המלאה
+              <Icon name="chevron" size={14} aria-hidden="true" />
             </Link>
           </p>
         </div>

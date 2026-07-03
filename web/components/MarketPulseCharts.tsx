@@ -547,7 +547,7 @@ export default function MarketPulseCharts({
               <li key={d.category}>
                 <a
                   href={d.cheapest.href}
-                  className="group interactive press flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background p-3.5 hover:-translate-y-0.5 hover:border-accent hover:shadow-card"
+                  className="card card-interactive group flex items-center justify-between gap-3 p-4"
                 >
                   <span className="min-w-0">
                     <span className="block text-xs text-muted">{d.label}</span>

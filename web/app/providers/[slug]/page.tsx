@@ -27,6 +27,7 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
+  providerOrganizationSchema,
   relatedLinksSchema,
   pageAggregateOfferSchema,
   type NavLink,
@@ -294,6 +295,16 @@ export default async function ProviderPage({ params }: Params) {
         const agg = pageAggregateOfferSchema(plans);
         return agg ? <JsonLd data={agg} /> : null;
       })()}
+
+      {/* Standalone Organization entity for THIS provider — real name, on-site url,
+          `sameAs` its genuine official site (when verified), catalogue-derived
+          description + the categories it truly offers (knowsAbout). Shares the same
+          `@id` as the provider node inside the Knowledge Graph below, so engines
+          merge them into one entity. Organization (not LocalBusiness): we hold no
+          per-provider address/geo/phone, so we never fabricate a physical location. */}
+      <JsonLd
+        data={providerOrganizationSchema(provider, { description: summary })}
+      />
 
       {/* Knowledge Graph: Organization (with real sameAs) cross-linked to its plans. */}
       <JsonLd

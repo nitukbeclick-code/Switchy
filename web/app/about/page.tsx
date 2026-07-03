@@ -320,10 +320,10 @@ export default function AboutPage() {
         </p>
         <Link
           href="/compare"
-          className="interactive press mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-soft transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform hover:bg-accent-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           להשוואת המסלולים
-          <Icon name="arrow" size={18} aria-hidden="true" className="rotate-180" />
+          <Icon name="chevron" size={18} aria-hidden="true" />
         </Link>
       </section>
 

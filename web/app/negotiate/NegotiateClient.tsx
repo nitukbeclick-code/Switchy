@@ -245,9 +245,10 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
             {error}{" "}
             <Link
               href="/compare"
-              className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+              className="interactive inline-flex items-center gap-1 font-medium text-accent-text underline hover:text-accent-hover"
             >
-              עברו להשוואה המלאה ←
+              עברו להשוואה המלאה
+              <Icon name="chevron" size={14} aria-hidden />
             </Link>
           </span>
         </p>
@@ -361,14 +362,14 @@ function ScriptResult({
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Link
           href={`/compare/${script.category}`}
-          className="interactive press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           להשוואת כל מסלולי {script.categoryHe}
-          <Icon name="arrow" size={18} aria-hidden />
+          <Icon name="chevron" size={18} aria-hidden />
         </Link>
         <Link
           href="/quiz"
-          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center rounded-xl border border-border bg-surface px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent/50 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           קבלו התאמה אישית והשאירו פרטים
         </Link>

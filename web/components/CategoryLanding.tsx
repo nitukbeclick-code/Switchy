@@ -201,8 +201,14 @@ export default function CategoryLanding({
           it can never drift from the page's data. The PriceCaveat (§17, VAT-
           inclusive / verify with provider) sits directly under the prices. The
           post-table hand-off is a TERTIARY text link (plain link + direction-
-          aware chevron) — the ONE green FILL primary CTA lives in the hero. */}
-      <div className="section">
+          aware chevron) — the ONE green FILL primary CTA lives in the hero.
+
+          `nums-tabular` column-aligns every ₪ figure inside <ComparisonTable>
+          (parity with the home featured/teaser tables in app/page.tsx) so prices
+          read as an even numeric ledger — the shared class means both this
+          component's consumers and the home stay in lockstep without editing the
+          table itself. */}
+      <div className="nums-tabular section">
         <ComparisonTable
           plans={plans}
           caption={`השוואת ${titleHe} — מחירים בשקלים, כולל המחיר אחרי המבצע`}

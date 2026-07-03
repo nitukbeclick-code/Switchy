@@ -365,9 +365,11 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
         </div>
       )}
 
-      {/* ── Readable result: extracted facts + cheaper plans + hand-off ───── */}
+      {/* ── Readable result: extracted facts + cheaper plans + hand-off ─────
+          nums-tabular column-aligns every ₪ figure (monthly spend, plan prices,
+          annual savings) into an even numeric ledger — parity with the home. */}
       {readable && result && (
-        <div className="mt-4 space-y-4 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]">
+        <div className="nums-tabular mt-4 space-y-4 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]">
           {/* Extracted summary. */}
           <div role="status" className="bento p-6">
             <h2 className="font-display text-xl font-bold tracking-tight text-ink">

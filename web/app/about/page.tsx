@@ -24,6 +24,7 @@ import Icon from "@/components/Icon";
 import { HowItWorks } from "@/components/HowItWorks";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import {
   orgSchema,
@@ -32,6 +33,7 @@ import {
   SITE_NAME,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
+import { ils } from "@/lib/format";
 import { CONTACT_EMAIL, CONTACT_WHATSAPP, CONTACT_WHATSAPP_INTL } from "@/lib/legal";
 
 export const metadata: Metadata = pageMetadata({
@@ -62,9 +64,16 @@ function aboutPageSchema(): Record<string, unknown> {
 
 export default function AboutPage() {
   // Catalogue-derived figures — the only numbers on the page. No fabrication.
-  const planCount = getPlans().length;
+  const plans = getPlans();
+  const planCount = plans.length;
   const providerCount = getProviders().length;
   const categoryCount = getCategories().length;
+
+  // Real catalogue entry price (lowest numeric price across the catalogue) — the
+  // green VALUE clause in the hero + the trust band. Catalogue-derived so it can
+  // never drift from the data; falls back to 0 only on an empty catalogue.
+  const priced = plans.filter((p) => typeof p.price === "number");
+  const minPrice = priced.length ? Math.min(...priced.map((p) => p.price)) : 0;
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -122,53 +131,103 @@ export default function AboutPage() {
         <span className="text-foreground">על Switchy AI</span>
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* ── Hero (flat-ink panel) ─────────────────────────────────────────────
+          Premium-2026 hero, mirroring the home: a solid deep-ink panel (#111827
+          in BOTH themes so "white text on ink" always holds) with the white H1
+          set directly on it — NO photo/video behind — an eyebrow pill, ONE green
+          primary CTA + ONE quiet secondary link, and a REAL catalogue trust band
+          (plans · providers · categories · entry price). Green is applied ONLY to
+          the entry-price clause (VALUE), bound to the real catalogue floor
+          (minPrice). Entrance staggers via the global `.sw-reveal` alias. A
+          hairline border keeps the panel defined on the dark page background. */}
       <header className="mt-4">
-        <p className="sw-reveal text-xs font-semibold uppercase tracking-wide text-accent-text">
-          מי אנחנו
-        </p>
-        <h1 className="sw-reveal mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          על Switchy AI
-        </h1>
-        <p
-          className="sw-reveal mt-4 max-w-prose text-lg leading-relaxed text-foreground"
-          style={{ animationDelay: "60ms" }}
-        >
-          משווים, חוסכים, עוברים — בלי כאב ראש. Switchy AI מרכזת את כל מסלולי
-          התקשורת בישראל — סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל — במקום
-          אחד, ועוזרת לכם למצוא את המסלול המשתלם ביותר ולעבור אליו בקלות.
-        </p>
-
-        {/* Catalogue stat line — the only figures on the page, all real. */}
-        <dl
-          className="sw-reveal mt-6 flex flex-wrap gap-x-8 gap-y-3 text-sm"
-          style={{ animationDelay: "120ms" }}
-        >
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">מסלולים בקטלוג</dt>
-            <dd className="font-display text-xl font-bold tracking-tight text-ink">
-              {planCount}
-            </dd>
+        <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <div className="mx-auto max-w-2xl">
+            <p
+              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
+              style={{ animationDelay: "0ms" }}
+            >
+              <Icon name="check" size={14} className="shrink-0 text-accent" />
+              מי אנחנו · שקוף וחינמי
+            </p>
+            <h1 className="sw-reveal mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              משווים, חוסכים, עוברים — בלי כאב ראש.{" "}
+              {minPrice > 0 ? (
+                <span className="text-accent">מסלולים מ-{ils(minPrice)} לחודש.</span>
+              ) : null}
+            </h1>
+            <p
+              className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl [text-wrap:pretty]"
+              style={{ animationDelay: "60ms" }}
+            >
+              Switchy AI מרכזת את כל מסלולי התקשורת בישראל — סלולר, אינטרנט,
+              טלוויזיה, חבילות משולבות וחו״ל — במקום אחד, ועוזרת לכם למצוא את
+              המסלול המשתלם ביותר ולעבור אליו בקלות.
+            </p>
+            {/* CTA row — exactly ONE primary (solid green, glow, press). The
+                consult path is a quiet SECONDARY white text link, so only one
+                action reads as primary per viewport. */}
+            <div
+              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+              style={{ animationDelay: "120ms" }}
+            >
+              <TrackedCtaLink
+                href="/compare"
+                location="about-hero"
+                label="compare"
+                className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+              >
+                בדקו כמה תחסכו
+                <Icon name="chevron" size={18} aria-hidden="true" />
+              </TrackedCtaLink>
+              <TrackedCtaLink
+                href="/book"
+                location="about-hero"
+                label="consult"
+                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              >
+                או דברו עם יועץ
+              </TrackedCtaLink>
+            </div>
+            {/* Catalogue trust band — the only figures on the page, all real; the
+                entry price is the hook so it carries the green VALUE emphasis
+                (text-accent on ink), NOT a button. tabular-nums column-aligns the
+                digits (parity with the home counts bar — same <p> shape). */}
+            <p
+              className="nums-tabular sw-reveal mt-8 text-sm text-white/70"
+              style={{ animationDelay: "150ms" }}
+            >
+              <span className="font-display font-bold text-white">
+                {planCount}
+              </span>{" "}
+              מסלולים ·{" "}
+              <span className="font-display font-bold text-white">
+                {providerCount}
+              </span>{" "}
+              ספקים ·{" "}
+              <span className="font-display font-bold text-white">
+                {categoryCount}
+              </span>{" "}
+              קטגוריות
+              {minPrice > 0 ? (
+                <>
+                  {" "}
+                  · החל מ-
+                  <span className="font-display font-bold text-accent">
+                    {ils(minPrice)}
+                  </span>{" "}
+                  לחודש
+                </>
+              ) : null}
+            </p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">ספקים</dt>
-            <dd className="font-display text-xl font-bold tracking-tight text-ink">
-              {providerCount}
-            </dd>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <dt className="text-muted">קטגוריות שירות</dt>
-            <dd className="font-display text-xl font-bold tracking-tight text-ink">
-              {categoryCount}
-            </dd>
-          </div>
-        </dl>
+        </section>
       </header>
 
       {/* ── The honest model (free service · referral fee) ─────────────────── */}
       <section
         aria-labelledby="model-h"
-        className="sw-reveal bento mt-10 p-6 sm:p-8"
+        className="sw-reveal bento mt-16 p-6 sm:p-8"
         style={{ animationDelay: "150ms" }}
       >
         <h2
@@ -187,7 +246,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── How it works (shared explainer — consent-only switch) ─────────── */}
-      <section aria-label="איך זה עובד" className="mt-12">
+      <section aria-label="איך זה עובד" className="mt-16">
         <HowItWorks
           eyebrow="שלושה צעדים"
           heading="איך זה עובד"
@@ -196,7 +255,7 @@ export default function AboutPage() {
       </section>
 
       {/* ── What we do for you ─────────────────────────────────────────────── */}
-      <section aria-labelledby="do-h" className="mt-12">
+      <section aria-labelledby="do-h" className="mt-16">
         <h2
           id="do-h"
           className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
@@ -232,7 +291,7 @@ export default function AboutPage() {
       {/* ── Why trust us (E-E-A-T / transparency stance) ───────────────────── */}
       <section
         aria-labelledby="trust-h"
-        className="sw-reveal bento mt-12 p-6 sm:p-8"
+        className="sw-reveal bento mt-16 p-6 sm:p-8"
         style={{ animationDelay: "60ms" }}
       >
         <h2
@@ -268,7 +327,7 @@ export default function AboutPage() {
       {/* ── Contact / WhatsApp ─────────────────────────────────────────────── */}
       <section
         aria-labelledby="contact-h"
-        className="sw-reveal bento mt-12 p-6 sm:p-8"
+        className="sw-reveal bento mt-16 p-6 sm:p-8"
         style={{ animationDelay: "60ms" }}
       >
         <h2
@@ -303,10 +362,10 @@ export default function AboutPage() {
         </p>
       </section>
 
-      {/* ── CTA — start comparing ──────────────────────────────────────────── */}
+      {/* ── CTA — start comparing (accent-tinted alternating ground) ──────── */}
       <section
         aria-labelledby="cta-h"
-        className="sw-reveal mt-12 rounded-xl border border-accent/20 bg-accent/5 p-6 text-center sm:p-8"
+        className="sw-reveal mt-16 rounded-3xl border border-border/50 bg-accent/[0.03] p-6 text-center sm:p-8"
         style={{ animationDelay: "60ms" }}
       >
         <h2
@@ -318,13 +377,15 @@ export default function AboutPage() {
         <p className="mx-auto mt-3 max-w-prose leading-relaxed text-foreground">
           השוואה חינם בשניות, בלי התחייבות.
         </p>
-        <Link
+        <TrackedCtaLink
           href="/compare"
-          className="interactive press mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform hover:bg-accent-hover active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          location="about-footer"
+          label="compare"
+          className="press mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           להשוואת המסלולים
           <Icon name="chevron" size={18} aria-hidden="true" />
-        </Link>
+        </TrackedCtaLink>
       </section>
 
       {/* Keep the entity web connected — never dead-end. */}

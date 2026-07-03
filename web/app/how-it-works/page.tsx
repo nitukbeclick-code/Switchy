@@ -150,45 +150,68 @@ export default function HowItWorksPage() {
         <span className="text-foreground">איך זה עובד</span>
       </nav>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      {/* ── Hero (flat-ink panel) ─────────────────────────────────────────────
+          Premium-2026 hero, mirroring the home: a solid deep-ink panel (#111827
+          in BOTH themes so "white on ink" always holds) with the white H1 set
+          directly on it — NO photo/video behind — an eyebrow pill, and exactly
+          ONE green primary CTA + ONE quiet secondary text link (single-CTA
+          discipline). This is a process page, so it renders NO prices/counts —
+          nothing that could fabricate a figure. The intro keeps its stable id
+          (#how-it-works-intro) so the speakable/voice schema still targets this
+          exact rendered paragraph. Entrance staggers via the global `.sw-reveal`
+          alias. A hairline border keeps the panel defined on the dark page bg. */}
       <header className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
-          פשוט כמו 1·2·3 · חינם · בלי התחייבות
-        </p>
-        <h1 className="sw-reveal mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-5xl">
-          איך זה עובד
-        </h1>
-        {/* The concise "what Switchy does" answer — a stable id so the speakable
-            (voice) schema can target this exact rendered paragraph for read-aloud. */}
-        <p
-          id="how-it-works-intro"
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
-        >
-          אנחנו מרכזים את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה,
-          חבילות משולבות וחו״ל — במקום אחד, משווים בשבילכם ומלווים את המעבר. הנה
-          כל התהליך, מההשוואה ועד החיסכון.
-        </p>
-        {/* Primary CTAs — one to the compare hub, one to book a consult. Tracked
-            with non-PII labels only. Mobile-first: stack, then row on sm. */}
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <TrackedCtaLink
-            href="/compare"
-            location="how-it-works-hero"
-            label="compare"
-            className="interactive press sw-lift inline-flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
-          >
-            השוו ותחסכו
-            <Icon name="chevron" size={18} aria-hidden="true" />
-          </TrackedCtaLink>
-          <TrackedCtaLink
-            href="/book"
-            location="how-it-works-hero"
-            label="book"
-            className="interactive press sw-lift inline-flex items-center justify-center rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"
-          >
-            תיאום שיחת ייעוץ
-          </TrackedCtaLink>
-        </div>
+        <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <div className="mx-auto max-w-2xl">
+            <p
+              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
+              style={{ animationDelay: "0ms" }}
+            >
+              <Icon name="check" size={14} className="shrink-0 text-accent" />
+              פשוט כמו 1·2·3 · חינם · בלי התחייבות
+            </p>
+            <h1 className="sw-reveal mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              איך זה עובד
+            </h1>
+            {/* The concise "what Switchy does" answer — a stable id so the
+                speakable (voice) schema can target this exact rendered paragraph
+                for read-aloud. On the ink panel the text is white. */}
+            <p
+              id="how-it-works-intro"
+              className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl [text-wrap:pretty]"
+              style={{ animationDelay: "60ms" }}
+            >
+              אנחנו מרכזים את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה,
+              חבילות משולבות וחו״ל — במקום אחד, משווים בשבילכם ומלווים את המעבר.
+              הנה כל התהליך, מההשוואה ועד החיסכון.
+            </p>
+            {/* CTA row — exactly ONE primary (solid green, glow, press). The
+                consult path is a quiet SECONDARY white text link so only one
+                action reads as primary per viewport. Tracked with non-PII labels. */}
+            <div
+              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+              style={{ animationDelay: "120ms" }}
+            >
+              <TrackedCtaLink
+                href="/compare"
+                location="how-it-works-hero"
+                label="compare"
+                className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+              >
+                השוו ותחסכו
+                <Icon name="chevron" size={18} aria-hidden="true" />
+              </TrackedCtaLink>
+              <TrackedCtaLink
+                href="/book"
+                location="how-it-works-hero"
+                label="book"
+                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              >
+                או דברו עם יועץ
+              </TrackedCtaLink>
+            </div>
+          </div>
+        </section>
       </header>
 
       {/* ── 3-step process (shared component, promoted to <h2>) ───────────── */}
@@ -234,7 +257,7 @@ export default function HowItWorksPage() {
       {/* ── Consent / §30A framing ────────────────────────────────────────── */}
       <section
         aria-labelledby="consent-h"
-        className="mt-16 rounded-xl border border-border bg-surface p-6 sm:p-8"
+        className="mt-16 rounded-3xl border border-border/60 bg-surface p-6 shadow-soft sm:p-8"
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
           הסכמה ופרטיות
@@ -271,12 +294,14 @@ export default function HowItWorksPage() {
         </ul>
         {/* §7b paid-relationship disclosure — prominent, before the hand-off. */}
         <CommissionDisclosure variant="inline" className="mt-5 max-w-2xl" />
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        {/* ONE primary (solid green, glow, press) + ONE ghost secondary — the
+            three-tier button grammar, so only one action reads as primary. */}
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <TrackedCtaLink
             href="/compare"
             location="how-it-works-consent"
             label="compare"
-            className="interactive press sw-lift inline-flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
+            className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             להשוואת מסלולים
             <Icon name="chevron" size={18} aria-hidden="true" />
@@ -285,7 +310,7 @@ export default function HowItWorksPage() {
             href="/book"
             location="how-it-works-consent"
             label="book"
-            className="interactive press sw-lift inline-flex items-center justify-center rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"
+            className="interactive press inline-flex items-center justify-center rounded-xl border border-border/60 bg-surface px-6 py-3.5 font-medium text-ink hover:border-accent/40 hover:text-accent hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             מעדיפים לדבר? תיאום שיחה
           </TrackedCtaLink>

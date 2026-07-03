@@ -19,6 +19,7 @@ import Icon from "@/components/Icon";
 import SgeSummary from "@/components/SgeSummary";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
 import { FaqAccordion, type FaqItem } from "@/components/FaqAccordion";
 import { GENERAL_FAQ, faqForCategory } from "@/lib/faq";
 import { CATEGORY_HE } from "@/lib/categories";
@@ -94,6 +95,13 @@ function buildSections(): FaqSection[] {
 export default function FaqPage() {
   const sections = buildSections();
 
+  // Real count of service-specific FAQ sections (every section except the shared
+  // "כללי" one) — drives the hero trust band, so the figure can never drift from
+  // the rendered content (no hardcoded literal).
+  const serviceCategoryCount = sections.filter(
+    (s) => s.id !== "faq-general",
+  ).length;
+
   // ONE FAQPage covering every visible answer, deduped on the question text
   // (the general set repeats some phrasing per service in the source copy).
   const seen = new Set<string>();
@@ -142,22 +150,80 @@ export default function FaqPage() {
         <span className="text-foreground">שאלות נפוצות</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Hero (flat-ink panel) ─────────────────────────────────────────────
+          Premium-2026 hero, mirroring the home: a solid deep-ink panel (#111827
+          in BOTH themes so "white on ink" always holds) with the white H1 set
+          directly on it — NO photo/video behind — an eyebrow pill, ONE green
+          primary CTA + ONE quiet secondary link, and a REAL trust band (the
+          honest visible Q&A count — no fabricated figure). The H1 keeps its role
+          for the speakable/voice schema (which targets "h1"). Entrance staggers
+          via the global `.sw-reveal` alias; a hairline border defines the panel
+          on the dark page background. */}
       <header className="mt-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
-          מרכז הידע
-        </p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          שאלות נפוצות
-        </h1>
-        <p className="mt-4 text-lg leading-relaxed text-foreground">
-          {allQA.length} שאלות ותשובות על מעבר ספק, סלולר, אינטרנט, טלוויזיה,
-          חבילות משולבות וחו״ל — מרוכזות במקום אחד, בעברית ברורה.
-        </p>
+        <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
+          <div className="mx-auto max-w-2xl">
+            <p
+              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
+              style={{ animationDelay: "0ms" }}
+            >
+              <Icon name="check" size={14} className="shrink-0 text-accent" />
+              מרכז הידע · בעברית ברורה
+            </p>
+            <h1 className="sw-reveal mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
+              שאלות נפוצות
+            </h1>
+            <p
+              className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl [text-wrap:pretty]"
+              style={{ animationDelay: "60ms" }}
+            >
+              {allQA.length} שאלות ותשובות על מעבר ספק, סלולר, אינטרנט, טלוויזיה,
+              חבילות משולבות וחו״ל — מרוכזות במקום אחד, בעברית ברורה.
+            </p>
+            {/* CTA row — exactly ONE primary (solid green, glow, press). The
+                consult path is a quiet SECONDARY white text link. */}
+            <div
+              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
+              style={{ animationDelay: "120ms" }}
+            >
+              <TrackedCtaLink
+                href="/compare"
+                location="faq-hero"
+                label="compare"
+                className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
+              >
+                בדקו כמה תחסכו
+                <Icon name="chevron" size={18} aria-hidden="true" />
+              </TrackedCtaLink>
+              <TrackedCtaLink
+                href="/book"
+                location="faq-hero"
+                label="consult"
+                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              >
+                או דברו עם יועץ
+              </TrackedCtaLink>
+            </div>
+            {/* Trust band — the honest count of visible Q&A (real, no fabricated
+                figure). tabular-nums column-aligns the digit (parity with home). */}
+            <p
+              className="nums-tabular sw-reveal mt-8 text-sm text-white/70"
+              style={{ animationDelay: "150ms" }}
+            >
+              <span className="font-display font-bold text-white">
+                {allQA.length}
+              </span>{" "}
+              שאלות ותשובות ·{" "}
+              <span className="font-display font-bold text-white">
+                {serviceCategoryCount}
+              </span>{" "}
+              קטגוריות שירות · בלי ז׳רגון
+            </p>
+          </div>
+        </section>
       </header>
 
       {/* ── §7b commission disclosure (several answers touch the paid model) ─ */}
-      <CommissionDisclosure variant="banner" className="mt-6" />
+      <CommissionDisclosure variant="banner" className="mt-8" />
 
       {/* ── SGE / AEO summary ─────────────────────────────────────────────── */}
       <div className="mt-8">

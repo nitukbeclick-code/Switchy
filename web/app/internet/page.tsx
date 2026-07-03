@@ -192,7 +192,7 @@ export default async function InternetLandingPage() {
           </div>
           {minFeatured !== undefined ? (
             <p
-              className="sw-reveal mt-8 text-sm text-white/70"
+              className="nums-tabular sw-reveal mt-8 text-sm text-white/70"
               style={{ animationDelay: "150ms" }}
             >
               {all.length} מסלולים · החל מ-
@@ -202,6 +202,16 @@ export default async function InternetLandingPage() {
               לחודש
             </p>
           ) : null}
+          {/* Quiet, truthful benefit line (parity with the home hero) — a
+              qualitative reassurance, no fabricated figure. Sits BELOW the hard
+              catalogue count so the real numbers lead the hedge. */}
+          <p
+            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
+            style={{ animationDelay: "180ms" }}
+          >
+            <Icon name="check" size={16} className="shrink-0 text-accent" />
+            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
+          </p>
         </div>
       </section>
 

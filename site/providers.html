@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=fbf20109" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -147,9 +147,16 @@
         </g>
       </svg></div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← ספקים</p>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span>ספקים</p>
+        <span class="pill pill--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> כל הספקים · השוואה חינם</span>
         <h1>כל ה<span class="hl">ספקים</span></h1>
         <p>כל חברות התקשורת במקום אחד. בחרו ספק כדי לראות את כל המסלולים שלו, מחירים ודירוגים.</p>
+        <ul class="stat-band" aria-label="נתוני הספקים — מהקטלוג">
+          <li><b data-count-to="18">18</b> ספקים</li>
+          <li><b data-count-to="120">120</b> מסלולים</li>
+          <li><b data-count-to="5">5</b> קטגוריות</li>
+        </ul>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
     <section class="section">

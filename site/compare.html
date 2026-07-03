@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=fbf20109" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -147,9 +147,20 @@
         </g>
       </svg></div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span>השוואה</p>
+        <span class="pill pill--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg> השוואה חינם · בלי התחייבות</span>
         <h1>השוואת מסלולים <span class="hl">צד לצד</span></h1>
         <p>בחרו עד 3 מסלולים והשוו ביניהם — מחיר, רשת, התחייבות, חו״ל ומפרט.</p>
+        <ul class="stat-band" aria-label="נתוני הקטלוג — מהקטלוג">
+            <li><b data-count-to="113">113</b> מסלולים</li>
+            <li><b data-count-to="18">18</b> ספקים</li>
+            <li>החל מ-<b dir="ltr">₪10.9</b> לחודש</li>
+          </ul>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#compareTable">בחרו מסלולים להשוואה<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+          <a class="hero__link hero__link--ink" href="plans.html">דפדפו בכל המסלולים</a>
+        </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
     <section class="section">

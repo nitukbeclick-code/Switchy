@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=fbf20109" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -147,11 +147,22 @@
         </g>
       </svg></div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← פלאפון</p>
-        <div style="margin-bottom:14px"><span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/pelephone.svg" alt="" width="64" height="64" loading="lazy" decoding="async"></span></div>
-        <h1>כל המסלולים של <span class="hl">פלאפון</span></h1>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="plans.html">כל החבילות</a><span class="crumbs__sep" aria-hidden="true"></span>פלאפון</p>
+        <div class="provider-hero__lockup">
+          <span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/pelephone.svg" alt="" width="64" height="64" loading="lazy" decoding="async"></span>
+          <h1>כל המסלולים של <span class="hl">פלאפון</span></h1>
+        </div>
         <p>4 מסלולים (סלולר · חבילות חו״ל) — החל מ-₪39.9. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
-        <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
+        <ul class="stat-band" aria-label="נתוני פלאפון — מהקטלוג">
+          <li><b data-count-to="4">4</b> מסלולים</li>
+          <li><b>2</b> קטגוריות</li>
+          <li>החל מ-<b dir="ltr">₪39.9</b></li>
+        </ul>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+          <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
+        </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
       <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">סלולר</span><h2>פלאפון סלולר — המסלולים הזולים</h2></header>
@@ -183,10 +194,10 @@
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span><span class="plan__after">ואז <span dir="ltr">₪49.9</span></span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%205G%201000GB%20(%E2%82%AA39.90)" aria-label="מעוניין/ת בפלאפון 5G 1000GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%205G%201000GB%20(%E2%82%AA39.90)" aria-label="מעוניין/ת בפלאפון 5G 1000GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_pelephone_5g1000" title="השוו מסלול זה" aria-label="השוו את פלאפון 5G 1000GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_pelephone_5g1000" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון 5G 1000GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_pelephone_5g1000" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון 5G 1000GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan" data-cat="cellular" data-text="פלאפון משתלמת דור 4 400gb 400gb גלישה esim מיידי מסלול travel 3,500 מסלול travel 400gb" data-price="39.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="pelephone" data-id="cel_pelephone_4g400">
         
@@ -196,10 +207,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%20%D7%9E%D7%A9%D7%AA%D7%9C%D7%9E%D7%AA%20%D7%93%D7%95%D7%A8%204%20400GB%20(%E2%82%AA39.90)" aria-label="מעוניין/ת בפלאפון משתלמת דור 4 400GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%20%D7%9E%D7%A9%D7%AA%D7%9C%D7%9E%D7%AA%20%D7%93%D7%95%D7%A8%204%20400GB%20(%E2%82%AA39.90)" aria-label="מעוניין/ת בפלאפון משתלמת דור 4 400GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_pelephone_4g400" title="השוו מסלול זה" aria-label="השוו את פלאפון משתלמת דור 4 400GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_pelephone_4g400" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון משתלמת דור 4 400GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_pelephone_4g400" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון משתלמת דור 4 400GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan" data-cat="abroad" data-text="פלאפון world 5gb חודשי 5gb גלישה 200 דקות שיחות 130+ מדינות שיתוף עד 3 מכשירים " data-price="49" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="pelephone" data-id="ab_pelephone">
         
@@ -209,10 +220,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪49</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%20World%205GB%20%D7%97%D7%95%D7%93%D7%A9%D7%99%20(%E2%82%AA49)" aria-label="מעוניין/ת בפלאפון World 5GB חודשי — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%20World%205GB%20%D7%97%D7%95%D7%93%D7%A9%D7%99%20(%E2%82%AA49)" aria-label="מעוניין/ת בפלאפון World 5GB חודשי — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=ab_pelephone" title="השוו מסלול זה" aria-label="השוו את פלאפון World 5GB חודשי"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="ab_pelephone" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון World 5GB חודשי"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="ab_pelephone" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון World 5GB חודשי"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan plan--premium" data-cat="cellular" data-text="פלאפון 5g max vip all 2000gb 5g 2000gb גלישה תיעדוף 5g מסלול travel 5,000 מסלול travel 2000gb" data-price="49.9" data-after="64.9" data-haspromo="true" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="pelephone" data-id="cel_pelephone_5gmaxvip2000">
         
@@ -222,15 +233,15 @@
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪49.90</b> <span>לחודש</span><span class="plan__after">ואז <span dir="ltr">₪64.9</span></span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%205G%20Max%20VIP%20All%202000GB%20(%E2%82%AA49.90)" aria-label="מעוניין/ת בפלאפון 5G Max VIP All 2000GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%9C%D7%90%D7%A4%D7%95%D7%9F%20-%205G%20Max%20VIP%20All%202000GB%20(%E2%82%AA49.90)" aria-label="מעוניין/ת בפלאפון 5G Max VIP All 2000GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=cel_pelephone_5gmaxvip2000" title="השוו מסלול זה" aria-label="השוו את פלאפון 5G Max VIP All 2000GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="cel_pelephone_5gmaxvip2000" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון 5G Max VIP All 2000GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="cel_pelephone_5gmaxvip2000" aria-haspopup="dialog" aria-label="כל הפרטים על פלאפון 5G Max VIP All 2000GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="השוואה לפי קטגוריה">
+    <section class="providers providers--band section--alt" aria-label="השוואה לפי קטגוריה">
       <div class="container">
         <p class="providers__title">השוו את פלאפון מול כל הספקים</p>
         <div class="providers__row">
@@ -239,7 +250,7 @@
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="ספקים דומים">
+    <section class="providers providers--band" aria-label="ספקים דומים">
       <div class="container">
         <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
         <div class="providers__row">
@@ -252,7 +263,7 @@
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="השוואות ראש בראש">
+    <section class="providers providers--band section--alt" aria-label="השוואות ראש בראש">
       <div class="container">
         <p class="providers__title">פלאפון מול ספקים אחרים</p>
         <div class="providers__row">

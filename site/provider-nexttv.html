@@ -44,7 +44,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=fbf20109" />
+  <link rel="stylesheet" href="styles.css?v=8804221f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -147,11 +147,22 @@
         </g>
       </svg></div>
       <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← NextTV</p>
-        <div style="margin-bottom:14px"><span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/nexttv.png" alt="" width="64" height="64" loading="lazy" decoding="async"></span></div>
-        <h1>כל המסלולים של <span class="hl">NextTV</span></h1>
+        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="plans.html">כל החבילות</a><span class="crumbs__sep" aria-hidden="true"></span>NextTV</p>
+        <div class="provider-hero__lockup">
+          <span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/nexttv.png" alt="" width="64" height="64" loading="lazy" decoding="async"></span>
+          <h1>כל המסלולים של <span class="hl">NextTV</span></h1>
+        </div>
         <p>3 מסלולים (טלוויזיה · חבילה משולבת) — החל מ-₪69.9. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
-        <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
+        <ul class="stat-band" aria-label="נתוני NextTV — מהקטלוג">
+          <li><b data-count-to="3">3</b> מסלולים</li>
+          <li><b>2</b> קטגוריות</li>
+          <li>החל מ-<b dir="ltr">₪69.9</b></li>
+        </ul>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+          <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
+        </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
       </div>
     </section>
       <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">חבילה משולבת</span><h2>NextTV חבילה משולבת — המסלולים הזולים</h2></header>
@@ -182,10 +193,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪69.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20NextTV%20-%20%D7%90%D7%A4%D7%9C%D7%99%D7%A7%D7%A6%D7%99%D7%99%D7%AA%20Next%20TV%20(%E2%82%AA69.90)" aria-label="מעוניין/ת בNextTV אפליקציית Next TV — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20NextTV%20-%20%D7%90%D7%A4%D7%9C%D7%99%D7%A7%D7%A6%D7%99%D7%99%D7%AA%20Next%20TV%20(%E2%82%AA69.90)" aria-label="מעוניין/ת בNextTV אפליקציית Next TV — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=tv_nexttv_app" title="השוו מסלול זה" aria-label="השוו את NextTV אפליקציית Next TV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="tv_nexttv_app" aria-haspopup="dialog" aria-label="כל הפרטים על NextTV אפליקציית Next TV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="tv_nexttv_app" aria-haspopup="dialog" aria-label="כל הפרטים על NextTV אפליקציית Next TV"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan" data-cat="triple" data-text="nexttv אינטרנט סיבים + tv 1gb hbo max סיב עד 1000mb עד 1000" data-price="119" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="nexttv" data-id="tri_nexttv_fiber-tv-1gb">
         
@@ -195,10 +206,10 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪119</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20NextTV%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20%D7%A1%D7%99%D7%91%D7%99%D7%9D%20%2B%20TV%201GB%20(%E2%82%AA119)" aria-label="מעוניין/ת בNextTV אינטרנט סיבים + TV 1GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20NextTV%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20%D7%A1%D7%99%D7%91%D7%99%D7%9D%20%2B%20TV%201GB%20(%E2%82%AA119)" aria-label="מעוניין/ת בNextTV אינטרנט סיבים + TV 1GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=tri_nexttv_fiber-tv-1gb" title="השוו מסלול זה" aria-label="השוו את NextTV אינטרנט סיבים + TV 1GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="tri_nexttv_fiber-tv-1gb" aria-haspopup="dialog" aria-label="כל הפרטים על NextTV אינטרנט סיבים + TV 1GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="tri_nexttv_fiber-tv-1gb" aria-haspopup="dialog" aria-label="כל הפרטים על NextTV אינטרנט סיבים + TV 1GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         <article class="plan" data-cat="triple" data-text="nexttv אינטרנט סיבים + tv 2gb סיב עד 2000mb עד 2000" data-price="164" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="nexttv" data-id="tri_nexttv_fiber-tv-2gb">
         
@@ -208,15 +219,15 @@
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪164</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20NextTV%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20%D7%A1%D7%99%D7%91%D7%99%D7%9D%20%2B%20TV%202GB%20(%E2%82%AA164)" aria-label="מעוניין/ת בNextTV אינטרנט סיבים + TV 2GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20NextTV%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20%D7%A1%D7%99%D7%91%D7%99%D7%9D%20%2B%20TV%202GB%20(%E2%82%AA164)" aria-label="מעוניין/ת בNextTV אינטרנט סיבים + TV 2GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="plan__compare" href="compare.html?p0=tri_nexttv_fiber-tv-2gb" title="השוו מסלול זה" aria-label="השוו את NextTV אינטרנט סיבים + TV 2GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/></svg></a>
         </div>
-        <button type="button" class="plan__more" data-plan-more="tri_nexttv_fiber-tv-2gb" aria-haspopup="dialog" aria-label="כל הפרטים על NextTV אינטרנט סיבים + TV 2GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול ←</button>
+        <button type="button" class="plan__more" data-plan-more="tri_nexttv_fiber-tv-2gb" aria-haspopup="dialog" aria-label="כל הפרטים על NextTV אינטרנט סיבים + TV 2GB"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="השוואה לפי קטגוריה">
+    <section class="providers providers--band section--alt" aria-label="השוואה לפי קטגוריה">
       <div class="container">
         <p class="providers__title">השוו את NextTV מול כל הספקים</p>
         <div class="providers__row">
@@ -225,7 +236,7 @@
         </div>
       </div>
     </section>
-    <section class="providers" aria-label="ספקים דומים">
+    <section class="providers providers--band" aria-label="ספקים דומים">
       <div class="container">
         <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
         <div class="providers__row">

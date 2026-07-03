@@ -208,14 +208,19 @@ body {
   text-align: start;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: var(--font-rubik), system-ui, sans-serif;
-  color: var(--ink);
+/* In @layer base so text-color utilities (e.g. the hero's text-white on the
+   ink panel) can override — an UNLAYERED element rule beats every Tailwind
+   utility layer and silently killed them. Default stays ink everywhere. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-rubik), system-ui, sans-serif;
+    color: var(--ink);
+  }
 }
 
 /* Tight optical tracking on Rubik display headings — matches the Flutter app's

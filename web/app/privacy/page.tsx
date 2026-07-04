@@ -19,7 +19,7 @@ import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of this policy. Bump when the policy text changes.
-const LAST_REVIEWED = "2026-06-28";
+const LAST_REVIEWED = "2026-07-04";
 
 // Consent version surfaced to the user (matches the backend consent_version
 // stamped on profiles/leads — supabase/legal-consent-2026-06.sql, default
@@ -81,6 +81,9 @@ export default function PrivacyPage() {
           "ספאם והגבלת קצב).",
         "נתוני שימוש אנונימיים/מצטברים מ-Google Analytics (ראו פירוט בהמשך), " +
           "בכפוף להסכמה לעוגיות.",
+        "אם תבחרו להשתתף בקהילה שבאפליקציה: תוכן שאתם יוצרים ומפרסמים — טקסט, " +
+          "תמונות, סרטונים והקלטות קול — נשמר אצלנו ומוצג למשתמשים אחרים בפיד " +
+          "הקהילה. תוכלו למחוק אותו בכל עת, וכן במסגרת מחיקת החשבון.",
       ],
     },
     {
@@ -147,6 +150,8 @@ export default function PrivacyPage() {
         "Resend: שליחת הודעות דוא״ל תפעוליות (כגון התראות פנייה לצוות).",
         "Telegram: התראות פנימיות לצוות בלבד (פרטי הפנייה מוצגים לנציגי הצוות) — " +
           "אינו פונה ללקוח.",
+        "Google Sheets: יומן תפעולי פנימי של פניות לצוות (שם, טלפון, אימייל " +
+          "והערות) — לשימוש פנימי בלבד, לא לפרסום ולא למכירה.",
         "Cloudflare: שירותי רשת/קצה ו-DNS; כתובת ה-IP משמשת לאבטחה והגבלת קצב.",
         "רשויות מוסמכות: אם נידרש לכך על פי דין.",
       ],

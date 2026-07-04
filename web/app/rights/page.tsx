@@ -20,7 +20,7 @@ import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of this page. Bump when the text changes.
-const LAST_REVIEWED = "2026-06-23";
+const LAST_REVIEWED = "2026-07-04";
 
 export const metadata: Metadata = pageMetadata({
   title: "מימוש זכויות (פרטיות)",
@@ -185,6 +185,96 @@ export default function RightsPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ── Account deletion (Google Play User-Data policy: the page must
+            reference the app, show HOW to request account + data deletion, what
+            is deleted vs retained, and the timeframe). Copy mirrors the approved
+            site/account-deletion.html sec-1..sec-6 — additive, not reworded. ── */}
+        <section
+          aria-labelledby="account-deletion-h"
+          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
+          style={{ animationDelay: "40ms" }}
+        >
+          <div className="sw-head flex items-center gap-2">
+            <h2
+              id="account-deletion-h"
+              className="font-display text-2xl font-bold tracking-tight text-ink"
+            >
+              מחיקת חשבון ונתונים
+            </h2>
+            <a
+              href="#account-deletion-h"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+            >
+              #
+            </a>
+          </div>
+          <p className="mt-3 max-w-prose leading-relaxed text-foreground">
+            כאן מוסבר כיצד לבקש מחיקה של חשבון באפליקציית Switchy AI (מזהה
+            il.co.chosech) ובאתר SWITCHY, ושל המידע האישי המשויך אליו. השירות
+            מופעל על-ידי אריאל תקשורת (עוסק מורשה 322253618), מרחוב ליאו בק 64,
+            נהריה.
+          </p>
+
+          <h3 className="mt-5 text-base font-semibold text-foreground">
+            איך מבקשים מחיקה
+          </h3>
+          <ul className="mt-2 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
+            <li>
+              באפליקציה: היכנסו ל״הגדרות״ ← ״מחיקת חשבון ונתונים״, ועקבו אחר
+              ההנחיות.
+            </li>
+            <li>
+              בדוא״ל: שלחו בקשה לכתובת hello@switchy-ai.com מהכתובת שאיתה נרשמתם,
+              עם הנושא ״מחיקת חשבון״.
+            </li>
+            <li>בוואטסאפ: כתבו לנו ל-050-503-7537 ובקשו מחיקת חשבון ומידע.</li>
+          </ul>
+
+          <h3 className="mt-5 text-base font-semibold text-foreground">
+            איזה מידע יימחק
+          </h3>
+          <p className="mt-2 max-w-prose leading-relaxed text-foreground">
+            לאחר אימות זהותכם נמחק את המידע האישי הקשור לחשבונכם, ובכלל זה:
+          </p>
+          <ul className="mt-2 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
+            <li>פרטי החשבון וההזדהות (Auth).</li>
+            <li>פרטי הפרופיל שמסרתם: שם, טלפון, אימייל, עיר וקטגוריה מבוקשת.</li>
+            <li>סכומי החשבונות החודשיים שהזנתם וההעדפות שבחרתם.</li>
+            <li>היסטוריית פניות ובקשות שיצרתם דרכנו.</li>
+            <li>מסלולים שצפיתם בהם, רשימת מעקב והתראות מחיר.</li>
+            <li>
+              פוסטים, תגובות ומדיה שהעליתם לקהילה — טקסט, תמונות, סרטונים והקלטות
+              קול.
+            </li>
+            <li>היסטוריית שיחות עם התמיכה ועם עוזר ה-AI ששמורה בחשבון.</li>
+            <li>קישור לחשבון טלגרם, אם חיברתם.</li>
+          </ul>
+
+          <h3 className="mt-5 text-base font-semibold text-foreground">
+            מידע שאנו עשויים לשמור (לפי דין)
+          </h3>
+          <p className="mt-2 max-w-prose leading-relaxed text-foreground">
+            חלק מהמידע נשמר גם לאחר מחיקת החשבון, רק במידה הנדרשת על פי דין ולמשך
+            התקופה הקבועה בו:
+          </p>
+          <ul className="mt-2 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
+            <li>
+              רשומות הסכמה ורישומי הסרה מדיוור (Opt-out) — כראיה משפטית לפי סעיף
+              30א לחוק התקשורת.
+            </li>
+            <li>מידע שאנו חייבים לשמור לפי חובות חשבונאיות או חוקיות אחרות.</li>
+            <li>נתונים מצרפיים ואנונימיים שאינם מזהים אתכם.</li>
+          </ul>
+
+          <p className="mt-5 max-w-prose leading-relaxed text-foreground">
+            נטפל בבקשה ונשלים את המחיקה בתוך 30 יום ממועד אימות הבקשה, ללא תשלום
+            (למעט מקרים חריגים הקבועים בדין). לצורך אבטחת המידע ייתכן שנבקש פרטים
+            לאימות זהותכם לפני ביצוע המחיקה.
+          </p>
         </section>
 
         <section

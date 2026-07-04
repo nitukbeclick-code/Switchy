@@ -6,8 +6,15 @@
 import type { Cfg, Lead, TriageResult } from "../_shared/types.ts";
 import { jlog } from "../_shared/log.ts";
 import { captureError } from "../_shared/observability.ts";
+import { fetchWithTimeout } from "../_shared/ai.ts";
 
 const EMPTY: TriageResult = { line: "", score: 0, draft: "" };
+
+// AI triage is a non-critical lead-card enrichment; a hung provider must not
+// pin the edge function (billable wall-clock) or delay the notification. This
+// was the ONE AI call in the codebase lacking the shared timeout guard — on
+// abort it throws AiTimeoutError, caught below → fail-soft EMPTY.
+const TRIAGE_TIMEOUT_MS = 10_000;
 
 const SYS =
   'אתה עוזר מכירות לחברת השוואת תקשורת ישראלית בשם "Switchy AI". החזר JSON בלבד, בלי טקסט נוסף, בפורמט: ' +
@@ -45,7 +52,7 @@ export function parseTriage(text: string): TriageResult {
 export async function aiTriage(cfg: Cfg, lead: Lead): Promise<TriageResult> {
   try {
     if (cfg.openai) {
-      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      const r = await fetchWithTimeout("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${cfg.openai}`, "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -55,7 +62,7 @@ export async function aiTriage(cfg: Cfg, lead: Lead): Promise<TriageResult> {
           response_format: { type: "json_object" },
           messages: [{ role: "system", content: SYS }, { role: "user", content: leadPrompt(lead) }],
         }),
-      });
+      }, TRIAGE_TIMEOUT_MS, "triage:openai");
       if (r.ok) {
         const j = await r.json();
         return parseTriage(String(j.choices?.[0]?.message?.content ?? ""));
@@ -63,7 +70,7 @@ export async function aiTriage(cfg: Cfg, lead: Lead): Promise<TriageResult> {
       jlog({ at: "aiTriage", provider: "openai", ok: false, status: r.status });
       captureError(`triage HTTP ${r.status}`, { fn: "notify-lead", context: "triage_failed", provider: "openai", status: r.status });
     } else if (cfg.anthropic) {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
+      const r = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "x-api-key": cfg.anthropic, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -72,7 +79,7 @@ export async function aiTriage(cfg: Cfg, lead: Lead): Promise<TriageResult> {
           system: SYS,
           messages: [{ role: "user", content: leadPrompt(lead) }],
         }),
-      });
+      }, TRIAGE_TIMEOUT_MS, "triage:anthropic");
       if (r.ok) {
         const j = await r.json();
         return parseTriage(String(j.content?.[0]?.text ?? ""));

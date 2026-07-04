@@ -16,7 +16,7 @@
 // Run from supabase/functions/:  deno task test
 
 import { assert, assertEquals, assertExists, assertFalse, assertStringIncludes } from "@std/assert";
-import { captureError, captureMessage, parseDsn } from "../_shared/observability.ts";
+import { __resetThrottle, captureError, captureMessage, parseDsn } from "../_shared/observability.ts";
 
 const realFetch = globalThis.fetch;
 
@@ -190,5 +190,28 @@ Deno.test("captureError swallows a fetch that rejects asynchronously — never r
     assert(true);
   } finally {
     s.restore();
+  }
+});
+
+// ── Burst throttle: a flood of IDENTICAL captures is capped (quota guard) ─────
+
+Deno.test("captureError caps a burst of identical captures at the per-window budget", async () => {
+  __resetThrottle();
+  const s = stubFetch([() => sentryOk()]);
+  try {
+    // 9 identical errors in one window → only the first 5 (THROTTLE_MAX_PER_WINDOW)
+    // POST; the rest are dropped so one outage can't drain the monthly quota.
+    for (let i = 0; i < 9; i++) {
+      await captureError(new Error("burst-outage"), { i }, DSN);
+    }
+    await flushMicrotasks();
+    assertEquals(s.calls.length, 5);
+    // A DISTINCT fingerprint still gets through in the SAME window.
+    await captureError(new Error("distinct-error"), undefined, DSN);
+    await flushMicrotasks();
+    assertEquals(s.calls.length, 6);
+  } finally {
+    s.restore();
+    __resetThrottle();
   }
 });

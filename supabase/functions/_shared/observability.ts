@@ -151,6 +151,46 @@ function send(target: SentryTarget, event: Record<string, unknown>): void {
   }
 }
 
+// ── Burst throttle (per warm isolate) ────────────────────────────────────────
+// Sentry's free tier is a fixed monthly EVENT budget. A provider outage or a
+// cron loop (renewal-reminders mailing a batch, sendChunkedText retrying each
+// bubble) can emit a burst of IDENTICAL captures; without a cap one bad minute
+// could drain the quota. Allow the first few per (level+message) fingerprint per
+// rolling window, then drop the rest (still jlog'd so a developer tailing the
+// function logs still sees them). Per-isolate + FAIL-SOFT: a cold start resets
+// it, DISTINCT errors are unaffected, and any bug in here defaults to ALLOW — we
+// never silently suppress by accident.
+const THROTTLE_WINDOW_MS = 60_000;
+const THROTTLE_MAX_PER_WINDOW = 5;
+const _throttleState = new Map<string, { count: number; windowStart: number }>();
+
+// Test-only: reset the per-isolate throttle between cases.
+export function __resetThrottle(): void {
+  _throttleState.clear();
+}
+
+// True when this fingerprint has EXCEEDED its budget in the current window (⇒ drop).
+function isThrottled(fingerprint: string): boolean {
+  try {
+    const now = Date.now();
+    const e = _throttleState.get(fingerprint);
+    if (!e || now - e.windowStart > THROTTLE_WINDOW_MS) {
+      _throttleState.set(fingerprint, { count: 1, windowStart: now });
+      return false;
+    }
+    e.count++;
+    // Bound memory in a long-lived isolate: sweep expired keys occasionally.
+    if (_throttleState.size > 512) {
+      for (const [k, v] of _throttleState) {
+        if (now - v.windowStart > THROTTLE_WINDOW_MS) _throttleState.delete(k);
+      }
+    }
+    return e.count > THROTTLE_MAX_PER_WINDOW;
+  } catch (_) {
+    return false; // fail-soft: never suppress on a throttle bug
+  }
+}
+
 // ── Public API ───────────────────────────────────────────────────────────────
 
 // Capture an error. Dark when no DSN: optionally jlog, no network. Configured:
@@ -171,6 +211,10 @@ export async function captureError(
     if (!target) {
       // Dark path — leave a structured breadcrumb in the function logs.
       jlog({ at: "observability.capture_error_dark", message, type, ...safeExtra(ctx) });
+      return;
+    }
+    if (isThrottled(`error:${type}:${message.slice(0, 120)}`)) {
+      jlog({ at: "observability.capture_error_throttled", message, type });
       return;
     }
     const event = buildEvent("error", message, type, message, ctx);
@@ -196,6 +240,10 @@ export async function captureMessage(
     const target = parseDsn(resolved);
     if (!target) {
       jlog({ at: "observability.capture_message_dark", message, ...safeExtra(ctx) });
+      return;
+    }
+    if (isThrottled(`info:${message.slice(0, 120)}`)) {
+      jlog({ at: "observability.capture_message_throttled", message });
       return;
     }
     const event = buildEvent("info", message, null, null, ctx);

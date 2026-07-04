@@ -102,6 +102,11 @@ export default function AiConcierge() {
   const [leadPhone, setLeadPhone] = useState("");
   const [leadConsent, setLeadConsent] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
+  // Which field the current leadError belongs to → lets us set aria-invalid +
+  // aria-describedby on that specific input (WCAG 3.3.1 field-level error id).
+  const [leadErrorField, setLeadErrorField] = useState<
+    "name" | "phone" | "consent" | null
+  >(null);
   const [leadSending, setLeadSending] = useState(false);
 
   const sessionIdRef = useRef<string>("");
@@ -266,19 +271,23 @@ export default function AiConcierge() {
   async function submitLead(e: React.FormEvent) {
     e.preventDefault();
     setLeadError(null);
+    setLeadErrorField(null);
 
     const name = leadName.trim();
     const phone = leadPhone.trim();
     if (name.length < 2) {
       setLeadError("נא להזין שם מלא");
+      setLeadErrorField("name");
       return;
     }
     if (!isValidIsraeliPhone(phone)) {
       setLeadError("מספר הטלפון אינו תקין");
+      setLeadErrorField("phone");
       return;
     }
     if (!leadConsent) {
       setLeadError("יש לאשר יצירת קשר כדי שנחזור אליכם");
+      setLeadErrorField("consent");
       return;
     }
 
@@ -443,10 +452,13 @@ export default function AiConcierge() {
           {/* Transcript */}
           <div
             ref={transcriptRef}
-            className="flex-1 space-y-3 overflow-y-auto px-4 py-3"
-            aria-live="polite"
-            aria-atomic="false"
+            className="flex-1 overflow-y-auto px-4 py-3"
           >
+            {/* Live region — ONLY the streamed chat turns are announced; the
+                interactive lead form below is a sibling (not a child), so its
+                re-renders (validation error appearing, submit-state flip) are
+                not read out as new transcript content. */}
+            <div className="space-y-3" aria-live="polite" aria-atomic="false">
             {turns.map((t, i) => (
               <div
                 key={i}
@@ -482,6 +494,7 @@ export default function AiConcierge() {
                 {error}
               </p>
             )}
+            </div>
 
             {/* Lead capture sub-flow — shown when the agent offers it. Reuses the
                 site consent contract: §7b disclosure above, MANDATORY default-OFF
@@ -489,7 +502,7 @@ export default function AiConcierge() {
             {offerLead && !leadCaptured && (
               <form
                 onSubmit={submitLead}
-                className="rounded-xl border border-border bg-background/60 p-3"
+                className="mt-3 rounded-xl border border-border bg-background/60 p-3"
                 aria-label="השארת פרטים ליצירת קשר"
               >
                 <p className="text-xs font-semibold text-foreground">
@@ -511,6 +524,12 @@ export default function AiConcierge() {
                     placeholder="שם מלא"
                     value={leadName}
                     onChange={(e) => setLeadName(e.target.value)}
+                    aria-invalid={leadErrorField === "name" || undefined}
+                    aria-describedby={
+                      leadErrorField === "name"
+                        ? `${consentId}-lead-error`
+                        : undefined
+                    }
                     className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
                   />
                   <label htmlFor={`${consentId}-phone`} className="sr-only">
@@ -525,6 +544,12 @@ export default function AiConcierge() {
                     placeholder="מספר טלפון"
                     value={leadPhone}
                     onChange={(e) => setLeadPhone(e.target.value)}
+                    aria-invalid={leadErrorField === "phone" || undefined}
+                    aria-describedby={
+                      leadErrorField === "phone"
+                        ? `${consentId}-lead-error`
+                        : undefined
+                    }
                     className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-right text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
                   />
                 </div>
@@ -536,6 +561,12 @@ export default function AiConcierge() {
                     type="checkbox"
                     checked={leadConsent}
                     onChange={(e) => setLeadConsent(e.target.checked)}
+                    aria-invalid={leadErrorField === "consent" || undefined}
+                    aria-describedby={
+                      leadErrorField === "consent"
+                        ? `${consentId}-lead-error`
+                        : undefined
+                    }
                     className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
                   />
                   <label
@@ -565,7 +596,11 @@ export default function AiConcierge() {
                 </div>
 
                 {leadError && (
-                  <p role="alert" className="mt-2 text-xs text-danger-text">
+                  <p
+                    id={`${consentId}-lead-error`}
+                    role="alert"
+                    className="mt-2 text-xs text-danger-text"
+                  >
                     {leadError}
                   </p>
                 )}

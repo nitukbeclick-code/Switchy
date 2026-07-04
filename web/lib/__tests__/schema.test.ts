@@ -128,10 +128,10 @@ describe("productSchema — price range from [price, after]", () => {
     expect((schema.offers as Record<string, unknown>)["@type"]).toBe("Offer");
   });
 
-  it("stamps additionalType: TelecomunicationsService on the Product", () => {
+  it("stamps additionalType: TelecommunicationsService on the Product", () => {
     const schema = productSchema(plan());
     expect(schema.additionalType).toBe(
-      "https://schema.org/TelecomunicationsService",
+      "https://schema.org/TelecommunicationsService",
     );
   });
 
@@ -433,7 +433,7 @@ describe("knowledgeWebSchema — provider-node @id dedupe", () => {
     // Each Product is a telecom service and its offer carries a monthly PriceSpecification.
     for (const prod of products) {
       expect(prod.additionalType).toBe(
-        "https://schema.org/TelecomunicationsService",
+        "https://schema.org/TelecommunicationsService",
       );
       const specs = (prod.offers as Record<string, unknown>)
         .priceSpecification as Array<Record<string, unknown>>;

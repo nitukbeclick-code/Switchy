@@ -63,7 +63,7 @@ type Json = Record<string, unknown>;
  * emitting a parallel TelecomService node — keeps the graph lean (one node per
  * plan) while still declaring the service nature.
  */
-const TELECOM_SERVICE_TYPE = "https://schema.org/TelecomunicationsService";
+const TELECOM_SERVICE_TYPE = "https://schema.org/TelecommunicationsService";
 
 /**
  * The one-time install / connection fee labels (Hebrew). Only these genuinely

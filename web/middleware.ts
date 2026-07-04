@@ -41,6 +41,24 @@ function isMobileUA(ua: string): boolean {
 export function middleware(request: NextRequest): NextResponse {
   const ua = request.headers.get("user-agent") ?? "";
 
+  // A ".html" URL exists ONLY on the static site — the Next app has no .html
+  // routes. Serve it from the static origin for EVERY device: desktop already
+  // did (via the passthrough below), and doing it up-front also stops mobile-
+  // first Googlebot from 404ing static-only pages (/app.html, /calc-*.html,
+  // /*-vs-*.html, /account-deletion.html) that have no clean Next twin. Assets
+  // (.css/.js/img) are NOT .html, so the device split below still serves those
+  // per-device. (offline.html is excluded from the matcher, so it never reaches
+  // here and stays served by this app.)
+  if (request.nextUrl.pathname.endsWith(".html")) {
+    const target = new URL(
+      request.nextUrl.pathname + request.nextUrl.search,
+      STATIC_ORIGIN,
+    );
+    const res = NextResponse.rewrite(target);
+    res.headers.set("Vary", "User-Agent");
+    return res;
+  }
+
   // Phone/tablet → stay on the Next.js app. No rewrite; just mark the response
   // Vary so the CDN keys this device class separately.
   if (isMobileUA(ua)) {

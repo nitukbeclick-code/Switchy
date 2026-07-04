@@ -1,5 +1,7 @@
 {
   "_comment": "Copy this file to dart_define.json (gitignored) and fill in your project's values, then run: flutter run --dart-define-from-file=dart_define.json. The anon key is the PUBLIC client key (safe to ship in the app) — never put the service_role key here.",
   "SUPABASE_URL": "https://YOUR_PROJECT_REF.supabase.co",
-  "SUPABASE_ANON_KEY": "YOUR_ANON_PUBLIC_KEY"
+  "SUPABASE_ANON_KEY": "YOUR_ANON_PUBLIC_KEY",
+  "_comment_sentry": "OPTIONAL crash reporting. Keep this EMPTY for local dev so `flutter run` stays dark (no dev-noise to Sentry) — the app runs byte-identically and SentryFlutter never initializes (see main.dart). Arm it ONLY for the RELEASE build with an extra flag: `flutter build appbundle --release --dart-define-from-file=dart_define.json --dart-define=SENTRY_DSN=<dsn>`. Get <dsn> from sentry.io (org ariel-tikshoret, project 'flutter', Settings -> Client Keys (DSN)). A DSN is a PUBLIC client-ingest key (send-only, safe to ship), NOT a secret like the service_role key. Config is crashes-only: tracesSampleRate 0, sendDefaultPii false. (The Supabase edge functions are already armed separately via the Vault secret 'sentry_dsn'.)",
+  "SENTRY_DSN": ""
 }

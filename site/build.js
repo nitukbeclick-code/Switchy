@@ -411,7 +411,7 @@ const categories = [
       ['כמה אפשר לחסוך על מסלול סלולר?', 'הרבה לקוחות משלמים ₪100–₪150 על מה שאפשר לקבל ב-₪29–₪49. ההשוואה לוקחת שניות וההמלצה מותאמת לשימוש שלכם.'],
       ['אפשר לשמור על מספר הטלפון?', 'בהחלט. ניוד המספר שומר על המספר הקיים ומתבצע תוך 1–3 ימי עסקים — אנחנו מלווים את התהליך.'],
       ['מה ההבדל בין מסלול עם וללא התחייבות?', 'מסלול ללא התחייבות ניתן לביטול בכל עת. רבים מהמסלולים הזולים היום הם ללא התחייבות בכלל.'],
-      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; העמלה לא משפיעה על הדירוג ואתם לא משלמים.'],
     ],
   },
   {
@@ -431,7 +431,7 @@ const categories = [
       ['מה זה סיב אופטי וכמה זה עולה?', 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, עם מהירויות עד גיגה. מחירי המבצע מתחילים סביב ₪49–₪99 לחודש.'],
       ['למה המחיר קופץ אחרי שנה?', 'הרבה חבילות זולות בשנה הראשונה ואז עולות. SWITCHY מציג את המחיר שאחרי המבצע ומזכיר לכם להשוות שוב לפני שהוא קופץ.'],
       ['אפשר אינטרנט בלי התחייבות?', 'כן, יש ספקים שמציעים חבילות ללא התחייבות — נסמן לכם אותן בהשוואה.'],
-      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; העמלה לא משפיעה על הדירוג ואתם לא משלמים.'],
     ],
   },
   {
@@ -451,7 +451,7 @@ const categories = [
       ['כמה עולה חבילת טלוויזיה?', 'תלוי בתוכן — חבילות בסיס מתחילות נמוך, חבילות עם ספורט ו-VOD עולות יותר. ההשוואה עוזרת לבחור בדיוק את מה שצריך.'],
       ['אפשר טלוויזיה בלי ממיר?', 'כן, רוב הספקים מציעים אפליקציות סטרימינג לצפייה בכל מסך — נסמן את החבילות הרלוונטיות.'],
       ['אפשר לשלב טלוויזיה עם אינטרנט?', 'בהחלט — חבילה משולבת לרוב זולה יותר מרכישה בנפרד. ראו את עמוד החבילות המשולבות.'],
-      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; העמלה לא משפיעה על הדירוג ואתם לא משלמים.'],
     ],
   },
   {
@@ -471,7 +471,7 @@ const categories = [
       ['כמה חוסכים בחבילה משולבת?', 'תלוי במה שאתם משלמים היום — במעבר לחבילה משולבת אפשר לחסוך עד ₪1,700 בשנה לעומת רכישת כל שירות בנפרד. ההשוואה מראה את החיסכון המדויק שלכם.'],
       ['מה כולל טריפל?', 'בדרך כלל אינטרנט (תשתית+ספק), טלוויזיה וקו סלולר אחד או יותר — בחשבון אחד ובמחיר אחד.'],
       ['אפשר להתאים את החבילה?', 'כן — אפשר להוסיף קווים, ערוצי ספורט או מהירות גבוהה יותר. ההמלצה שלנו מותאמת לצרכים שלכם.'],
-      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; העמלה לא משפיעה על הדירוג ואתם לא משלמים.'],
     ],
   },
   {
@@ -491,7 +491,7 @@ const categories = [
       ['מה זה eSIM וזה עובד בטלפון שלי?', 'eSIM הוא כרטיס SIM דיגיטלי. רוב הטלפונים החדשים תומכים — מפעילים בסריקת קוד, בלי כרטיס פיזי.'],
       ['כמה גלישה צריך לטיול?', 'תלוי בשימוש — לניווט ורשתות חברתיות כמה ג״ב לרוב מספיקים. ההשוואה עוזרת לבחור לפי משך הטיול.'],
       ['אפשר לשמור על המספר הישראלי?', 'כן — חבילת eSIM נפרדת לגלישה מאפשרת לשמור על הקו הישראלי לשיחות ו-SMS.'],
-      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; העמלה לא משפיעה על הדירוג ואתם לא משלמים.'],
     ],
   },
 ];
@@ -600,7 +600,7 @@ const crumbsHtml = (trail) =>
 // derived (count / provider count / honest monthly entry price) — nothing is
 // invented, and the band is omitted when a plan set is too thin to carry weight.
 const heroTrustLine = () =>
-  `<p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>`;
+  `<p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>`;
 
 // Real stat band from a plan set. Prices come from the MONTHLY subset (so a
 // mixed-unit set never pairs a /חודש price with a per-day figure); the count is
@@ -963,7 +963,7 @@ const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" nov
 // promise can never drift. `ico` keys map to the existing svgIcon() set.
 const CTA_OBJECTIONS = [
   ['shield', 'חינם לכם — הספק משלם, לא אתם'],
-  ['scale', 'המלצה ניטרלית — לפי ההתאמה, לא לפי מי שמשלם'],
+  ['scale', 'המלצה מוסברת — לפי ההתאמה, לא לפי מי שמשלם'],
   ['check', 'בלי התחייבות · המספר שלכם נשמר בניוד'],
   ['lock', 'לא נשתף את המספר עם ספקים · נתונים מוצפנים'],
 ];
@@ -1183,7 +1183,7 @@ function datasetNode({ name, description, url, measures }) {
 // schema.org subtype stamped onto every plan Product (via `additionalType`) so
 // engines read each offer as a telecommunications service, not a generic product.
 // Mirrors web/lib/schema.ts TELECOM_SERVICE_TYPE.
-const TELECOM_SERVICE_TYPE = 'https://schema.org/TelecomunicationsService';
+const TELECOM_SERVICE_TYPE = 'https://schema.org/TelecommunicationsService';
 
 // The fee keys that name a genuinely ONE-OFF install/connection charge. Recurring
 // equipment rentals (נתב/ממיר/מגדיל טווח) are deliberately excluded so we never
@@ -1596,7 +1596,7 @@ ${nav}
             <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
             ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="hero__link hero__link--ink" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="hero__link hero__link--ink" href="how-it-works.html">איך זה עובד?</a>'}
           </div>
-          <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
+          <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
           ${heroStats}
         </div>
         <div class="lead-hero__media" aria-hidden="false">
@@ -2368,7 +2368,7 @@ function howItWorksPage() {
   }).join('\n');
   // "Why trust us" — reuse the honest about-page points (same copy, no new claims).
   const trust = [
-    ['💰', 'חינם לחלוטין', 'אנחנו מקבלים עמלה מהספק כשעוברים — לא מכם. המחיר שאתם משלמים זהה, וההמלצה ניטרלית.'],
+    ['💰', 'חינם לחלוטין', 'אנחנו מקבלים עמלה מהספק כשעוברים — לא מכם. המחיר שאתם משלמים זהה, והעמלה לא משפיעה על הדירוג.'],
     ['📊', 'המלצה מוסברת', 'רואים בדיוק למה כל מסלול דורג — ציון ערך לפי מחיר וגמישות, לא רשימה גנרית.'],
     ['⏰', 'התראת חידוש', 'מזכירים לכם לבדוק שוב לפני שהמבצע נגמר — כדי שלא תשלמו את המחיר המלא בשקט.'],
     ['🛡️', 'בלי הפתעות', 'מציגים גם את המחיר שאחרי המבצע ומלווים את כל המעבר, כולל ניוד מספר.'],
@@ -2843,7 +2843,7 @@ ${nav}
           <li><b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים</li>
           <li><b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות</li>
         </ul>
-        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
       </div>
     </section>
     <section class="section">
@@ -2996,7 +2996,7 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם${chev()}</a>
           <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
         </div>
-        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
       </div>
     </section>
 ${provTables}
@@ -3120,7 +3120,7 @@ ${navNoCta}
           <li><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים</li>
           <li><b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות</li>
         </ul>
-        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
       </div>
     </section>
     <section class="section">

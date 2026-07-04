@@ -457,8 +457,17 @@ export interface PriceStat {
 export function priceStats(): Record<string, PriceStat> {
   const out: Record<string, PriceStat> = {};
   for (const cat of getCategories()) {
+    // Only count plans whose price is in a COMPARABLE unit: monthly (or
+    // unit-less, which defaults to monthly). Abroad mixes per-minute/day/
+    // package/month plans, so summing them blends incompatible units and would
+    // surface a per-minute ₪1 as the category "cheapest" (and a meaningless
+    // blended average). Mirror the static site's `!priceUnit || priceUnit ===
+    // 'month'` guard (site/build.js) so both surfaces report the same figure.
     const priced = plansByCategory(cat).filter(
-      (p) => typeof p.price === "number" && Number.isFinite(p.price),
+      (p) =>
+        typeof p.price === "number" &&
+        Number.isFinite(p.price) &&
+        (!p.priceUnit || p.priceUnit === "month"),
     );
     if (!priced.length) continue;
     let min = Infinity;

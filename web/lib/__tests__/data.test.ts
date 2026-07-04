@@ -146,8 +146,12 @@ describe("priceStats", () => {
 
   it("omits categories with no priced plans, includes those that have them", () => {
     for (const cat of getCategories()) {
+      // Mirror priceStats' comparable-unit guard (monthly / unit-less only).
       const priced = plansByCategory(cat).filter(
-        (p) => typeof p.price === "number" && Number.isFinite(p.price),
+        (p) =>
+          typeof p.price === "number" &&
+          Number.isFinite(p.price) &&
+          (!p.priceUnit || p.priceUnit === "month"),
       );
       if (priced.length === 0) {
         expect(stats[cat]).toBeUndefined();
@@ -159,8 +163,13 @@ describe("priceStats", () => {
 
   it("cheapest plan equals the category min and avg is rounded to 1 dp", () => {
     for (const [cat, s] of Object.entries(stats)) {
+      // Mirror priceStats' comparable-unit guard so min/max/avg/count match:
+      // abroad mixes per-minute/day/package/month, and only monthly counts.
       const priced = plansByCategory(cat).filter(
-        (p) => typeof p.price === "number",
+        (p) =>
+          typeof p.price === "number" &&
+          Number.isFinite(p.price) &&
+          (!p.priceUnit || p.priceUnit === "month"),
       );
       const min = Math.min(...priced.map((p) => p.price));
       const max = Math.max(...priced.map((p) => p.price));

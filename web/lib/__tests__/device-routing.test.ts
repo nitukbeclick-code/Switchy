@@ -65,6 +65,10 @@ describe("staticDesktopPath — desktop device-split routing", () => {
         "/plans/some-plan-id",
         "/vs/cellcom-vs-partner",
         "/guides/how-to-switch",
+        // /community is the authenticated React community — served by the Next app
+        // on EVERY device (no static twin), incl. its sub-routes.
+        "/community",
+        "/community/profile/abc-123",
       ]
     ) {
       expect(staticDesktopPath(p), `expected null for Next-only ${p}`).toBeNull();

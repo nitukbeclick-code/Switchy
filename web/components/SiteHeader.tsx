@@ -29,6 +29,7 @@ import Icon from "./Icon";
 import AiConcierge from "./AiConcierge";
 import AccessibilityWidget from "./AccessibilityWidget";
 import LanguageSwitcher from "./LanguageSwitcher";
+import AccountMenu from "./AccountMenu";
 
 /** A primary nav link. */
 interface NavLink {
@@ -44,6 +45,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/providers", label: "ספקים" },
   { href: "/market-pulse", label: "דופק השוק" },
   { href: "/switch", label: "מעבר ספק" },
+  { href: "/community", label: "קהילה" },
 ];
 
 /** Category landings — surfaced behind a "categories" affordance on desktop and
@@ -167,6 +169,10 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           </TrackedCtaLink>
           {/* Light/dark toggle. 40px tap target (compact — 5 controls share the row). */}
           <ThemeToggle className="min-h-10 min-w-10" />
+          {/* Community account — login button / avatar menu. Desktop only (md+) so
+              it never crowds the tight mobile cluster; on a phone the community page
+              carries its own login prompts. */}
+          <AccountMenu />
 
         {/* CTA — the single green ACTION in the masthead → the Zoom consultation
             scheduler (/book), labelled so it's clearly a Zoom video meeting (not

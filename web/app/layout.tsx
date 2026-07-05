@@ -8,6 +8,7 @@ import SiteFooter from "@/components/SiteFooter";
 import ConsentBanner from "@/components/ConsentBanner";
 import PwaInstaller from "@/components/PwaInstaller";
 import CatalogueLiveRefresh from "@/components/CatalogueLiveRefresh";
+import { AuthProvider } from "@/lib/auth-context";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
@@ -165,10 +166,15 @@ export default function RootLayout({
           דלג לתוכן
         </a>
 
-        {/* Site-wide sticky masthead — brand + primary nav + CTA, on every route. */}
-        <SiteHeader />
+        {/* Auth/session/profile context — wraps the header (account menu) and every
+            page (the community reads useAuth()). Client provider; the server-rendered
+            header + children pass through unchanged. Fail-soft with no Supabase env. */}
+        <AuthProvider>
+          {/* Site-wide sticky masthead — brand + primary nav + CTA, on every route. */}
+          <SiteHeader />
 
-        {children}
+          {children}
+        </AuthProvider>
 
         {/* Site-wide footer — links to /transparency (and glossary etc.) on every route. */}
         <SiteFooter />

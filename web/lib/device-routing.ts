@@ -34,7 +34,9 @@ const STATIC_HTML_MAP: ReadonlyMap<string, string> = new Map([
   ["/faq", "/faq.html"],
   ["/about", "/about.html"],
   ["/how-it-works", "/how-it-works.html"],
-  ["/community", "/community.html"],
+  // NOTE: /community is intentionally NOT mapped. It is the authenticated React
+  // community (Next app) served on EVERY device — staticDesktopPath returns null
+  // for it so desktop renders the Next app instead of the read-only static twin.
   ["/accessibility", "/accessibility.html"],
   ["/privacy", "/privacy.html"],
   ["/terms", "/terms.html"],

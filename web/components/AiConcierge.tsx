@@ -352,9 +352,9 @@ export default function AiConcierge() {
         aria-label={open ? "סגירת הצ׳אט עם Switchy AI" : "פתיחת צ׳אט עם Switchy AI"}
         className={[
           // Inline HEADER button (moved out of the bottom-corner FAB, per owner —
-          // grouped with the theme toggle + a11y trigger so it no longer overlaps
-          // page content). A compact 44px round brand-green launcher.
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+          // grouped with the theme toggle + a11y + Zoom triggers so it no longer
+          // overlaps page content). A compact 40px round brand-green launcher.
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
           "bg-accent text-accent-contrast shadow-sm",
           "interactive press hover:bg-accent-hover",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",

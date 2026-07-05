@@ -297,9 +297,9 @@ export default function AccessibilityWidget() {
         className={[
           // Inline HEADER button (moved out of the bottom-corner FAB, per owner —
           // grouped with the theme toggle so it no longer overlaps page content).
-          // A compact 44px round carrying the self-contained ISA graphic (blue disk
+          // A compact 40px round carrying the self-contained ISA graphic (blue disk
           // + white ring + white wheelchair — see the glyph), so no bg token.
-          "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm",
+          "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm",
           "interactive press",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         ].join(" ")}

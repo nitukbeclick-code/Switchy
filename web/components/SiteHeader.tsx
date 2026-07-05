@@ -75,7 +75,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         .join(" ")
         .trim()}
     >
-      <div className="mx-auto flex w-full max-w-5xl items-center gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-5xl items-center gap-2 px-3 py-3 sm:gap-4 sm:px-6">
         {/* Brand wordmark → home (RTL start = right edge). */}
         <Link
           href="/"
@@ -140,13 +140,25 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             theme toggle and never overlap page content; the header is sticky, so
             they stay reachable on scroll. Their panels open as fixed overlays
             just below the header. */}
-        <div className="ms-auto flex items-center gap-1.5">
+        <div className="ms-auto flex items-center gap-1 sm:gap-1.5">
           {/* AI concierge launcher (opens the grounded chat panel). */}
           <AiConcierge />
           {/* Persistent accessibility menu (ISA wheelchair button). */}
           <AccessibilityWidget />
-          {/* Light/dark toggle. min-h-11/min-w-11 = ≥44×44px tap target. */}
-          <ThemeToggle className="min-h-11 min-w-11" />
+          {/* Zoom shortcut — one-tap to the Zoom consultation scheduler (/book).
+              Same route + header/consult analytics as the labeled CTA below; the
+              Zoom mark signals the meeting is a Zoom video call. */}
+          <TrackedCtaLink
+            href="/book"
+            location="header"
+            label="consult"
+            aria-label="קביעת שיחת ייעוץ בזום"
+            className="interactive press flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <ZoomGlyph />
+          </TrackedCtaLink>
+          {/* Light/dark toggle. 40px tap target (compact — 5 controls share the row). */}
+          <ThemeToggle className="min-h-10 min-w-10" />
 
         {/* CTA — the single green ACTION in the masthead → the Zoom consultation
             scheduler (/book), labelled so it's clearly a Zoom video meeting (not
@@ -174,7 +186,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         >
           <summary
             aria-label="תפריט ניווט"
-            className="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+            className="flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
           >
             <Icon
               name="chevron"
@@ -248,5 +260,17 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         </div>
       </div>
     </header>
+  );
+}
+
+// The Zoom mark (blue disk + white video camera) as a self-contained graphic that
+// fills the shortcut button — identical in light + dark, like a brand logo.
+function ZoomGlyph() {
+  return (
+    <svg viewBox="0 0 64 64" className="h-full w-full" role="img" aria-hidden="true">
+      <circle cx="32" cy="32" r="32" fill="#2D8CFF" />
+      <rect x="13" y="24" width="23" height="17" rx="4.5" fill="#ffffff" />
+      <path d="M36 29.5 L51 24.5 V40.5 L36 35.5 Z" fill="#ffffff" />
+    </svg>
   );
 }

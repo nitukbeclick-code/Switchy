@@ -37,6 +37,7 @@ on:
           - account-delete
           - analytics-track
           - admin-metrics
+          - translate
           - all
   push:
     branches:

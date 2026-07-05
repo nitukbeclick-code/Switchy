@@ -532,6 +532,80 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .hero--ink .btn--ghost:hover { background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); }
 
+/* ── Light "category launcher" hero (2026) — replaces the ink slab on the
+   homepage. A bright, airy panel (NEVER black): a soft green/mint wash over the
+   --white surface (which flips to a dark #161C24 panel in dark mode), a deep-
+   forest-green headline, and a grid of colour-coded category tiles that ARE the
+   primary navigation. Owner ask: "like kamaze, improved, beautiful colours, no
+   black". The tile gradients are theme-independent (like carrier brand colours);
+   white tile text sits over the deep gradient stop for WCAG AA. */
+.hero--light { padding: 28px 0 44px; }
+.hero--light::before, .hero--light::after { display: none; } /* no dot-grid/ambient under the panel */
+.hero--light .hero__panel {
+  background:
+    radial-gradient(760px 420px at 50% -14%, rgba(22,163,74,.10), transparent 62%),
+    var(--white);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+.hero--light .hero__panel .hero__copy { max-width: 960px; }
+.hero--light h1 { background: none; -webkit-text-fill-color: #123D2E; color: #123D2E; }
+.hero--light .hl { color: var(--accent-ink); -webkit-text-fill-color: var(--accent-ink); }
+.hero--light .hl::after { display: none; }
+.hero--light .pill { background: var(--accent-t); color: var(--accent-ink); box-shadow: inset 0 0 0 1px rgba(22,163,74,.22); }
+:root[data-theme="dark"] .hero--light h1 { color: #EAF7EF; -webkit-text-fill-color: #EAF7EF; }
+:root.a11y-contrast .hero--light h1,
+:root.a11y-contrast .hero__launch-prompt { color: var(--ink); -webkit-text-fill-color: var(--ink); }
+
+.hero__launch-prompt {
+  font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 19px;
+  letter-spacing: -.4px; color: #123D2E; margin: 30px 0 0;
+}
+:root[data-theme="dark"] .hero__launch-prompt { color: #EAF7EF; }
+
+/* Launcher tile grid — 4-across on desktop, 2-up on tablet/phone. */
+.hero__launch {
+  list-style: none; margin: 14px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+.launch-tile {
+  --tf: var(--accent); --tt: var(--accent-d); --td: #0B5E2C;
+  display: flex; flex-direction: column; min-height: 160px;
+  border-radius: var(--radius-lg); padding: 18px; color: #fff; text-decoration: none;
+  background: linear-gradient(160deg, var(--tf) 0%, var(--tt) 82%);
+  box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--tt) 55%, transparent);
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+}
+.launch-tile:hover { transform: translateY(-3px); box-shadow: 0 18px 42px -12px color-mix(in srgb, var(--tt) 62%, transparent); }
+.launch-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.launch-tile__ico {
+  width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+  background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: #fff; }
+.launch-tile__body { margin-top: auto; padding-top: 14px; }
+.launch-tile__name { display: block; font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: #fff; }
+.launch-tile__count { display: block; margin-top: 2px; font-size: 14px; color: #fff; }
+.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.94); color: var(--td); font-weight: 800; font-size: 12.5px; }
+
+/* "קטגוריות נוספות" chip row. */
+.hero__more { margin-top: 16px; }
+.hero__more-label { display: block; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.hero__chips { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 0; padding: 0; }
+.hero__chips a {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 44px;
+  padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--white); color: var(--ink); font-weight: 600; font-size: 14px; text-decoration: none;
+  transition: border-color .18s var(--ease), color .18s var(--ease);
+}
+.hero__chips a:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); color: var(--accent-ink); }
+.hero__chips svg { width: 15px; height: 15px; fill: none; stroke: currentColor; }
+
+@media (max-width: 860px) { .hero__launch { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 460px) { .hero__launch { gap: 12px; } .launch-tile { min-height: 146px; padding: 15px; } }
+@media (prefers-reduced-motion: reduce) { .launch-tile, .launch-tile:hover { transform: none; } }
+
 /* Phone mockup */
 .hero__visual { display: grid; place-items: center; }
 .phone {

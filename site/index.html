@@ -56,7 +56,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <link rel="stylesheet" href="styles.css?v=6ae13a1d" />
+  <link rel="stylesheet" href="styles.css?v=f8015eb2" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -231,10 +231,13 @@
   </header>
 
   <main id="top"><span id="main"></span>
-    <!-- ── Hero ─────────────────────────────────────────────────────────── -->
-    <!-- Calm INK hero — flat near-black panel (like the app hero), copy in
-         white/off-white on the solid surface. No photo/video art. -->
-    <section class="hero hero--ink">
+    <!-- ── Hero — light "category launcher" (kamaze-style, improved, no black) ──
+         A bright, airy panel (NOT the old ink slab): a deep-forest-green headline
+         and a grid of colour-coded category tiles that ARE the primary nav — each
+         with its real catalogue count + truthful "מ-₪X לחודש" (numbers mirror the
+         generated category pages). חו״ל (mixed units) → a chip, no monthly anchor.
+         Colours are AA-tuned + dark-parity-safe (see .hero--light in styles.css). -->
+    <section class="hero hero--light">
       <div class="container">
         <div class="hero__panel reveal">
         <div class="hero__copy">
@@ -246,6 +249,33 @@
             <strong>בדיוק לפי השימוש שלכם</strong>. השוואה חינם, בלי התחייבות,
             עם <strong>ליווי אנושי במעבר</strong>.
           </p>
+
+          <p class="hero__launch-prompt">איזה שירות בא לכם להוזיל?</p>
+          <ul class="hero__launch" aria-label="קטגוריות להשוואה">
+            <li><a class="launch-tile" href="cellular.html" style="--tf:#22C55E;--tt:#0B7A38;--td:#0B5E2C" aria-label="סלולר — 59 מסלולים, מ-₪11 לחודש">
+              <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span>
+              <span class="launch-tile__body"><span class="launch-tile__name">סלולר</span><span class="launch-tile__count">59 מסלולים</span><span class="launch-tile__price">מ-<span dir="ltr">₪11</span> לחודש</span></span>
+            </a></li>
+            <li><a class="launch-tile" href="internet.html" style="--tf:#38BDF8;--tt:#0369A1;--td:#075985" aria-label="אינטרנט — 30 מסלולים, מ-₪39 לחודש">
+              <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18"/></svg></span>
+              <span class="launch-tile__body"><span class="launch-tile__name">אינטרנט</span><span class="launch-tile__count">30 מסלולים</span><span class="launch-tile__price">מ-<span dir="ltr">₪39</span> לחודש</span></span>
+            </a></li>
+            <li><a class="launch-tile" href="tv.html" style="--tf:#818CF8;--tt:#4338CA;--td:#3730A3" aria-label="טלוויזיה — 9 מסלולים, מ-₪49 לחודש">
+              <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="m7.5 3.5 4.5 3 4.5-3"/></svg></span>
+              <span class="launch-tile__body"><span class="launch-tile__name">טלוויזיה</span><span class="launch-tile__count">9 מסלולים</span><span class="launch-tile__price">מ-<span dir="ltr">₪49</span> לחודש</span></span>
+            </a></li>
+            <li><a class="launch-tile" href="triple.html" style="--tf:#FBBF24;--tt:#B45309;--td:#92400E" aria-label="חבילה משולבת — 11 מסלולים, מ-₪119 לחודש">
+              <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.5 9 4.5-9 4.5-9-4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg></span>
+              <span class="launch-tile__body"><span class="launch-tile__name">חבילה משולבת</span><span class="launch-tile__count">11 מסלולים</span><span class="launch-tile__price">מ-<span dir="ltr">₪119</span> לחודש</span></span>
+            </a></li>
+          </ul>
+          <div class="hero__more">
+            <span class="hero__more-label">קטגוריות נוספות</span>
+            <ul class="hero__chips">
+              <li><a href="abroad.html"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2.5 3 10l6.5 2.5L12 19l2.5-6.5 7-10z"/><path d="m9.5 12.5 3-3"/></svg>חבילות חו״ל</a></li>
+            </ul>
+          </div>
+
           <div class="hero__cta">
             <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
             <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
@@ -257,7 +287,7 @@
             <li><b>120+</b><span>מסלולים בהשוואה</span></li>
             <li><b>18</b><span>ספקים</span></li>
             <li><b>5</b><span>קטגוריות</span></li>
-            <li><b>מ-<span dir="ltr">₪15</span></b><span>מחיר התחלתי</span></li>
+            <li><b>מ-<span dir="ltr">₪11</span></b><span>מחיר התחלתי</span></li>
           </ul>
           <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
         </div>
@@ -860,6 +890,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <script src="script.js?v=65055173" defer></script>
+  <script src="script.js?v=fa8698ad" defer></script>
 </body>
 </html>

@@ -803,6 +803,7 @@ const navHtml = (ctaHref) => `  ${iconSprite()}
 ${megaMenuColumns()}
           </div>
         </div>
+        <a href="/community">קהילה</a>
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>

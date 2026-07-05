@@ -17,10 +17,11 @@
 //     here AND by a synchronous pre-hydration <head> script in layout.tsx, so a
 //     returning user sees their adjustments before first paint (no flash).
 //
-// PLACEMENT: the FAB pins to the inline-END bottom corner (opposite the
-// <AiConcierge> FAB at inline-start), so the two never collide. When the mobile
-// <StickyLeadCta> bar shows (it publishes document.body.dataset.leadCta =
-// "visible"), this FAB LIFTS above it — the same pattern the concierge FAB uses.
+// PLACEMENT: the trigger is an inline button in the STICKY <SiteHeader>'s end
+// cluster (beside the theme toggle + the AiConcierge trigger), per the owner — so
+// it stays persistent (the header is sticky top-0) yet never overlaps page content
+// the way a bottom-corner FAB did. The panel opens as a fixed overlay just BELOW
+// the header. (Mounted inside SiteHeader, not app/layout.tsx.)
 //
 // a11y of the widget itself: labelled trigger (aria-haspopup="dialog",
 // aria-expanded), a real role="dialog" aria-modal panel with a heading + close (X),
@@ -119,9 +120,6 @@ export default function AccessibilityWidget() {
   // them from localStorage. (The pre-hydration <head> guard already applied the
   // visual classes, so there is no flash regardless.)
   const [settings, setSettings] = useState<A11ySettings>(DEFAULTS);
-  // Mirrors document.body.dataset.leadCta so the FAB steps above the sticky lead
-  // bar — same signal + pattern the <AiConcierge> FAB watches.
-  const [leadBarVisible, setLeadBarVisible] = useState(false);
 
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -138,19 +136,15 @@ export default function AccessibilityWidget() {
     applySettings(loaded);
   }, []);
 
-  // Watch the sticky-lead-bar signal on <body> so the FAB lifts out of the bottom
-  // thumb-zone while that bar shows. The bar toggles document.body.dataset.leadCta
-  // in its own IntersectionObserver; sync via a MutationObserver + read once.
+  // One header popover open at a time: close when a sibling (the AI chat) opens.
+  // Plain setOpen(false) — no trigger-refocus (the sibling now owns focus).
   useEffect(() => {
-    const sync = () =>
-      setLeadBarVisible(document.body.dataset.leadCta === "visible");
-    sync();
-    const mo = new MutationObserver(sync);
-    mo.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["data-lead-cta"],
-    });
-    return () => mo.disconnect();
+    function onSiblingOpen(e: Event) {
+      if ((e as CustomEvent<string>).detail !== "a11y") setOpen(false);
+    }
+    window.addEventListener("switchy:popover-open", onSiblingOpen as EventListener);
+    return () =>
+      window.removeEventListener("switchy:popover-open", onSiblingOpen as EventListener);
   }, []);
 
   // Persist + apply whenever settings change (after the initial hydrate).
@@ -280,32 +274,32 @@ export default function AccessibilityWidget() {
 
   return (
     <>
-      {/* Trigger — floating bottom-END button (opposite the concierge FAB). */}
+      {/* Trigger — inline 44px round in the SiteHeader end cluster (the ISA mark). */}
       <button
         ref={triggerRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (open) {
+            closePanel();
+            return;
+          }
+          // Announce the open so a sibling header popover (the chat) closes — only
+          // one is open at a time.
+          window.dispatchEvent(
+            new CustomEvent("switchy:popover-open", { detail: "a11y" }),
+          );
+          setOpen(true);
+        }}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? dialogId : undefined}
         aria-label="תפריט נגישות"
         className={[
-          // 56px round (h-14 ≥ 44px min-target). z-30 = below the sticky header
-          // (z-50) and bottom bars (z-40), matching the concierge FAB tier.
-          "fixed z-30 flex h-14 w-14 items-center justify-center rounded-full",
-          // Inline-END corner (RTL → physically bottom-left; opposite the
-          // concierge's `start-4`) so the two FABs never collide.
-          "end-4",
-          // Lift above the mobile sticky lead bar while it occupies the bottom
-          // (the calc folds in the safe-area inset); otherwise rest at bottom-4.
-          leadBarVisible && !open
-            ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]"
-            : "bottom-4 mb-[env(safe-area-inset-bottom)]",
-          "transition-[bottom] duration-300 ease-[var(--ease-drawer)] motion-reduce:transition-none",
-          // The International Symbol of Access (ISA) — a self-contained blue disk +
-          // white ring + white wheelchair SVG fills the button, so no bg token; just
-          // the float + press feedback. The standard, universally-recognized a11y mark.
-          "overflow-hidden shadow-float",
+          // Inline HEADER button (moved out of the bottom-corner FAB, per owner —
+          // grouped with the theme toggle so it no longer overlaps page content).
+          // A compact 44px round carrying the self-contained ISA graphic (blue disk
+          // + white ring + white wheelchair — see the glyph), so no bg token.
+          "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm",
           "interactive press",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         ].join(" ")}
@@ -320,12 +314,15 @@ export default function AccessibilityWidget() {
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          style={{ ["--popover-origin" as string]: "bottom left" }}
+          style={{ ["--popover-origin" as string]: "top left" }}
           className={[
             "popover",
-            // Pin to the same bottom-END corner as the trigger, above it.
-            "fixed bottom-20 end-4 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col",
-            "max-h-[min(34rem,calc(100vh-7rem))] overflow-y-auto rounded-2xl",
+            // Opens BELOW the sticky header, pinned to the inline-END (RTL: left)
+            // corner UNDER the trigger. The inline-end tracks the centered header's
+            // gutter (max-w-5xl = 64rem) so on wide screens it descends from the
+            // button, not the far viewport edge; folds to 1rem on phones.
+            "fixed top-16 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
+            "max-h-[min(34rem,calc(100dvh-6rem))] overflow-y-auto rounded-2xl",
             "border border-border bg-surface text-foreground shadow-float",
           ].join(" ")}
         >

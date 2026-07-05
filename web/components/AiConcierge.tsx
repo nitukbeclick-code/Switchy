@@ -3,7 +3,9 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <AiConcierge> — floating AI chat widget ("Switchy AI").
 //
-// A bottom-corner launcher that opens a chat panel calling /api/ai-chat ->
+// A launcher button (inline in the STICKY <SiteHeader>, beside the theme toggle,
+// per the owner — no longer a bottom-corner FAB) that opens a chat panel BELOW the
+// header, calling /api/ai-chat ->
 // site-ai-chat (the grounded agent: answers ONLY from the real catalogue, cites
 // [Sn], refuses/omits when data is missing). When the agent detects a genuine
 // switch/contact intent it returns `offerLead:true`; we then show an INLINE lead
@@ -83,12 +85,6 @@ export default function AiConcierge() {
   // reduced-motion / no-layout). Re-opening mid-exit cancels `closing` and the
   // enter transition replays from the launcher corner.
   const [closing, setClosing] = useState(false);
-  // True while the sticky lead bar (<StickyLeadCta>) occupies the bottom-start
-  // thumb-zone. It publishes `document.body.dataset.leadCta = 'visible'`; we mirror
-  // that here and LIFT the FAB above the bar so only ONE floating affordance ever
-  // sits in that corner. (While the chat panel is open we ignore it — the open
-  // panel already owns the corner.)
-  const [leadBarVisible, setLeadBarVisible] = useState(false);
   const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [turns, setTurns] = useState<Turn[]>([{ role: "bot", text: GREETING }]);
   const [input, setInput] = useState("");
@@ -123,50 +119,49 @@ export default function AiConcierge() {
     sessionIdRef.current = loadSessionId();
   }, []);
 
-  // Watch the sticky-lead-bar signal on <body> so the FAB can step out of the
-  // bottom-start thumb-zone while that bar shows. The bar toggles
-  // `document.body.dataset.leadCta` in its own IntersectionObserver; we sync it via
-  // a MutationObserver (attribute filter) + read the current value once on mount.
-  useEffect(() => {
-    const sync = () =>
-      setLeadBarVisible(document.body.dataset.leadCta === "visible");
-    sync();
-    const mo = new MutationObserver(sync);
-    mo.observe(document.body, {
-      attributes: true,
-      attributeFilter: ["data-lead-cta"],
-    });
-    return () => mo.disconnect();
-  }, []);
-
   // Auto-scroll the transcript to the newest message.
   useEffect(() => {
     const el = transcriptRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [turns, offerLead, leadCaptured, sending]);
 
-  // Focus the input when the panel opens; restore focus to the launcher on close.
+  // Focus the input when the panel OPENS. (Focus restoration to the launcher is
+  // handled by closePanel, NOT here — an else-branch focus would steal focus to
+  // the header button on the initial mount / every close, including sibling-close.)
   useEffect(() => {
-    if (open) {
-      // Defer so the element exists + the open animation doesn't eat the focus.
-      const t = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
-    }
-    launcherRef.current?.focus();
+    if (!open) return;
+    // Defer so the element exists + the open animation doesn't eat the focus.
+    const t = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(t);
   }, [open]);
 
   // Begin the graceful exit: flip closed but keep the panel MOUNTED via `closing`
   // so the reverse origin-aware transition can collapse it back into the launcher
-  // corner; finalize on transitionend, with a timeout fallback.
-  const closePanel = useCallback(() => {
+  // corner; finalize on transitionend, with a timeout fallback. `restoreFocus`
+  // returns focus to the launcher on a USER close (ESC / X / toggle) but NOT when
+  // a sibling header popover force-closes this one (the sibling now owns focus).
+  const closePanel = useCallback((restoreFocus = true) => {
     setOpen(false);
     setClosing(true);
+    if (restoreFocus) launcherRef.current?.focus();
     if (exitTimer.current) clearTimeout(exitTimer.current);
     exitTimer.current = setTimeout(() => {
       setClosing(false);
       exitTimer.current = null;
     }, 280);
   }, []);
+
+  // One header popover open at a time: when a sibling (the accessibility menu)
+  // announces it opened, close this one — without restoring focus (the sibling
+  // has it). Covers the keyboard-open case a pointerdown-outside handler misses.
+  useEffect(() => {
+    function onSiblingOpen(e: Event) {
+      if ((e as CustomEvent<string>).detail !== "concierge") closePanel(false);
+    }
+    window.addEventListener("switchy:popover-open", onSiblingOpen as EventListener);
+    return () =>
+      window.removeEventListener("switchy:popover-open", onSiblingOpen as EventListener);
+  }, [closePanel]);
 
   // ESC closes the panel (through the graceful exit).
   useEffect(() => {
@@ -198,6 +193,10 @@ export default function AiConcierge() {
       exitTimer.current = null;
     }
     setOpen(true);
+    // Tell the sibling header popover(s) to close so only one is open at a time.
+    window.dispatchEvent(
+      new CustomEvent("switchy:popover-open", { detail: "concierge" }),
+    );
     trackEvent("ai_chat_open", { source: "concierge" });
   }
 
@@ -343,7 +342,7 @@ export default function AiConcierge() {
 
   return (
     <>
-      {/* Launcher — floating bottom-corner button. */}
+      {/* Launcher — inline header button (rendered inside SiteHeader's end cluster). */}
       <button
         ref={launcherRef}
         type="button"
@@ -352,29 +351,16 @@ export default function AiConcierge() {
         aria-controls={open ? titleId : undefined}
         aria-label={open ? "סגירת הצ׳אט עם Switchy AI" : "פתיחת צ׳אט עם Switchy AI"}
         className={[
-          // Compact 56px (h-14 ≥ 44px min-target) single-ring brand-green launcher;
-          // z-30 keeps it BELOW the sticky site header (z-50) and the bottom bars
-          // (z-40).
-          "fixed z-30 flex h-14 w-14 items-center justify-center rounded-full",
-          // Bottom-START (RTL → right side of the screen visually mirrors LTR's
-          // left; we pin to the inline-start corner via `start-4`).
-          "start-4",
-          // Only ONE floating affordance in the thumb-zone at a time: when the
-          // sticky lead bar occupies the bottom-start corner (and the chat isn't
-          // already open), LIFT the FAB above it — the calc already folds in the
-          // safe-area inset, so we drop the separate `mb-` in that state. Otherwise
-          // sit at `bottom-4` and clear the home-indicator via `mb-`.
-          leadBarVisible && !open
-            ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]"
-            : "bottom-4 mb-[env(safe-area-inset-bottom)]",
-          // Move smoothly between the two resting spots (reduced-motion-safe).
-          "transition-[bottom] duration-300 ease-[var(--ease-drawer)] motion-reduce:transition-none",
-          "bg-accent text-accent-contrast shadow-float",
+          // Inline HEADER button (moved out of the bottom-corner FAB, per owner —
+          // grouped with the theme toggle + a11y trigger so it no longer overlaps
+          // page content). A compact 44px round brand-green launcher.
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+          "bg-accent text-accent-contrast shadow-sm",
           "interactive press hover:bg-accent-hover",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         ].join(" ")}
       >
-        <Icon name={open ? "close" : "chat"} size={24} strokeWidth={2} />
+        <Icon name={open ? "close" : "chat"} size={22} strokeWidth={2} />
       </button>
 
       {/* Panel — mounted while open OR exiting (kept alive to collapse back into
@@ -407,14 +393,20 @@ export default function AiConcierge() {
           // back through `.popover`'s own transition — same curve, same
           // `--popover-origin` corner — so the panel collapses INTO the launcher.
           // `pointer-events-none` keeps the closing panel inert (never blocks input).
-          style={{ ["--popover-origin" as string]: "bottom right" }}
+          // Origin-aware popover: grows from / collapses into the header trigger's
+          // corner (now the top-inline-end of the sticky masthead, not a bottom FAB).
+          style={{ ["--popover-origin" as string]: "top left" }}
           className={[
             "popover",
             closing
               ? "pointer-events-none scale-[0.96] opacity-0 motion-reduce:scale-100"
               : "",
-            "fixed bottom-20 start-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col",
-            "max-h-[min(34rem,calc(100vh-7rem))] overflow-hidden rounded-2xl",
+            // Opens BELOW the sticky header, pinned to the inline-END (RTL: left)
+            // corner UNDER the trigger. The inline-end tracks the centered header's
+            // gutter (max-w-5xl = 64rem) so on wide screens the panel descends from
+            // the button, not the far viewport edge; folds to 1rem on phones.
+            "fixed top-16 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
+            "max-h-[min(34rem,calc(100dvh-6rem))] overflow-hidden rounded-2xl",
             "border border-border bg-surface shadow-float",
           ].join(" ")}
         >
@@ -441,7 +433,7 @@ export default function AiConcierge() {
             </div>
             <button
               type="button"
-              onClick={closePanel}
+              onClick={() => closePanel()}
               aria-label="סגירת הצ׳אט"
               className="interactive press -me-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >

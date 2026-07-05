@@ -6,8 +6,6 @@ import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ConsentBanner from "@/components/ConsentBanner";
-import AiConcierge from "@/components/AiConcierge";
-import AccessibilityWidget from "@/components/AccessibilityWidget";
 import PwaInstaller from "@/components/PwaInstaller";
 import CatalogueLiveRefresh from "@/components/CatalogueLiveRefresh";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
@@ -205,20 +203,11 @@ export default function RootLayout({
             push. Fail-soft — renders nothing when push is unsupported/unconfigured. */}
         <PwaInstaller />
 
-        {/* AI concierge — floating grounded chat ("Switchy AI"). Answers only from
-            the real catalogue; offers consented lead capture (§7b disclosure +
-            mandatory consent) when a switch/contact intent is detected. */}
-        <AiConcierge />
-
-        {/* Persistent accessibility widget (Israel: תקנות שוויון זכויות (התאמות
-            נגישות לשירות) התשע"ג-2013 + ת"י 5568 / WCAG 2.0 AA). A floating,
-            keyboard-operable menu on every page — text sizing, high contrast, link
-            emphasis, readable font, motion off, strong focus, reset — that toggles
-            classes/CSS vars on <html> and persists in localStorage (re-applied by
-            the pre-hydration <head> guard above). Pinned to the inline-END corner,
-            opposite the concierge FAB, and lifts above the sticky lead bar. Links
-            to the existing /accessibility statement (never reworded). */}
-        <AccessibilityWidget />
+        {/* NOTE: the AI concierge + the persistent accessibility menu were moved
+            into <SiteHeader> (owner request) — they now render as inline buttons in
+            the sticky masthead's end cluster (beside the theme toggle) instead of
+            bottom-corner FABs, so they never overlap page content. Mounted there,
+            not here (a single mount site-wide via the header). */}
 
         {/* Realtime catalogue freshness ON TOP of the server-rendered ISR HTML.
             A SINGLE Supabase Realtime channel (site-wide) listens for owner edits

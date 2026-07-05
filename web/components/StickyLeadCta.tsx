@@ -50,12 +50,8 @@ export default function StickyLeadCta({
     // user reaches the form (avoids two competing CTAs stacking up).
     const io = new IntersectionObserver(
       ([entry]) => {
-        const isVisible = !entry.isIntersecting;
-        setVisible(isVisible);
-        // Publish a global signal so the single floating affordance in the
-        // thumb-zone (the <AiConcierge> FAB) can LIFT above this bar — or hide —
-        // while it shows, so the two never collide in the bottom-start corner.
-        document.body.dataset.leadCta = isVisible ? "visible" : "";
+        // Show the bar only while the lead form is OUT of view.
+        setVisible(!entry.isIntersecting);
       },
       { rootMargin: "0px 0px -10% 0px", threshold: 0 },
     );
@@ -63,8 +59,6 @@ export default function StickyLeadCta({
     observerRef.current = io;
     return () => {
       io.disconnect();
-      // Clear the signal on unmount so a stale "visible" never strands the FAB.
-      document.body.dataset.leadCta = "";
     };
   }, [targetId]);
 

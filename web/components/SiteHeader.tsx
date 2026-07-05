@@ -26,6 +26,8 @@ import Link from "next/link";
 import TrackedCtaLink from "./TrackedCtaLink";
 import ThemeToggle from "./ThemeToggle";
 import Icon from "./Icon";
+import AiConcierge from "./AiConcierge";
+import AccessibilityWidget from "./AccessibilityWidget";
 
 /** A primary nav link. */
 interface NavLink {
@@ -132,11 +134,19 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           </details>
         </nav>
 
-        {/* Light/dark toggle — pushed to the far end (RTL: left edge), with the
-            CTA. Stays visible on every breakpoint (unlike the primary nav).
-            min-h-11/min-w-11 lifts the tap target to ≥44×44px (its own h-9/w-9
-            glyph box stays centred inside the larger hit area). */}
-        <ThemeToggle className="ms-auto min-h-11 min-w-11" />
+        {/* End cluster — the always-visible controls, pushed to the inline-end
+            (RTL: left) edge. The AI concierge + accessibility triggers were moved
+            here from bottom-corner FABs (owner request) so they sit beside the
+            theme toggle and never overlap page content; the header is sticky, so
+            they stay reachable on scroll. Their panels open as fixed overlays
+            just below the header. */}
+        <div className="ms-auto flex items-center gap-1.5">
+          {/* AI concierge launcher (opens the grounded chat panel). */}
+          <AiConcierge />
+          {/* Persistent accessibility menu (ISA wheelchair button). */}
+          <AccessibilityWidget />
+          {/* Light/dark toggle. min-h-11/min-w-11 = ≥44×44px tap target. */}
+          <ThemeToggle className="min-h-11 min-w-11" />
 
         {/* CTA — the single green ACTION in the masthead → the Zoom consultation
             scheduler (/book), labelled so it's clearly a Zoom video meeting (not
@@ -235,6 +245,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             </ul>
           </nav>
         </details>
+        </div>
       </div>
     </header>
   );

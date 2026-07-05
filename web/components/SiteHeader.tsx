@@ -28,6 +28,7 @@ import ThemeToggle from "./ThemeToggle";
 import Icon from "./Icon";
 import AiConcierge from "./AiConcierge";
 import AccessibilityWidget from "./AccessibilityWidget";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 /** A primary nav link. */
 interface NavLink {
@@ -88,7 +89,10 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             size={18}
             className="shrink-0 text-accent"
           />
-          <span dir="ltr" className="whitespace-nowrap">
+          {/* Wordmark text is hidden on the smallest screens (spark logomark
+              stays) so the end-cluster's controls — now including the language
+              globe — never overflow a 360px phone header. Returns at sm+. */}
+          <span dir="ltr" className="hidden whitespace-nowrap sm:inline">
             Switchy AI
           </span>
         </Link>
@@ -141,6 +145,10 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             they stay reachable on scroll. Their panels open as fixed overlays
             just below the header. */}
         <div className="ms-auto flex items-center gap-1 sm:gap-1.5">
+          {/* Language switcher (globe) — opens the site-translation menu. Placed
+              first in the cluster so it's the most discoverable control for
+              non-Hebrew visitors. Powered by the shared /translate-runtime.js. */}
+          <LanguageSwitcher />
           {/* AI concierge launcher (opens the grounded chat panel). */}
           <AiConcierge />
           {/* Persistent accessibility menu (ISA wheelchair button). */}

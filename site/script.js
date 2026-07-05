@@ -2988,4 +2988,17 @@
       apply(state);
     });
   })();
+
+  // ── (7) LANGUAGE / TRANSLATION — wire the shared SwitchyI18n runtime ─────────
+  // translate-runtime.js loads just before this file and exposes window.SwitchyI18n.
+  // It reads window.CHOSECH_SUPABASE for the edge endpoint + anon key, re-applies a
+  // previously-chosen language across navigation, and mounts the language menu on
+  // the header #langBtn. Fail-soft: if the runtime didn't load, the header simply
+  // stays Hebrew-only — nothing else is affected.
+  (function () {
+    if (!window.SwitchyI18n) return;
+    try { window.SwitchyI18n.init(); } catch (_) { /* ignore */ }
+    const btn = document.getElementById('langBtn');
+    if (btn) { try { window.SwitchyI18n.mountMenu(btn); } catch (_) { /* ignore */ } }
+  })();
 })();

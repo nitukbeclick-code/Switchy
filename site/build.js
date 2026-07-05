@@ -22,6 +22,10 @@ const CSS_V = assetHash('styles.css');
 const JS_V = assetHash('script.js');
 const CSS_HREF = `styles.css?v=${CSS_V}`;
 const JS_SRC = `script.js?v=${JS_V}`;
+// The shared translation runtime (window.SwitchyI18n) — loaded before script.js on
+// every page so the language menu + persisted-language re-apply are wired at load.
+const RT_V = assetHash('translate-runtime.js');
+const RT_SRC = `translate-runtime.js?v=${RT_V}`;
 
 // ── Analytics — Google Analytics 4 (free) ───────────────────────────────────
 // Live Measurement ID below (mirror it in index.html if you ever change it, then
@@ -808,6 +812,9 @@ ${megaMenuColumns()}
       <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
         <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#2D8CFF"/><rect x="13" y="24" width="23" height="17" rx="4.5" fill="#fff"/><path d="M36 29.5 L51 24.5 V40.5 L36 35.5 Z" fill="#fff"/></svg>
       </a>
+      <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
+      </button>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true">${svgIcon('sun')}</span><span class="theme-toggle__moon" aria-hidden="true">${svgIcon('moon')}</span>
       </button>
@@ -1690,6 +1697,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2145,6 +2153,7 @@ ${relatedCards}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2244,6 +2253,7 @@ ${sections}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2375,6 +2385,7 @@ ${sectionsHtmlOut}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2577,6 +2588,7 @@ ${faqSection}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2790,6 +2802,7 @@ ${cta}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2830,6 +2843,7 @@ ${navNoCta}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -2951,6 +2965,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -3116,6 +3131,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -3201,6 +3217,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -3358,6 +3375,7 @@ ${trustBlock()}
 ${footer}
   <script>window.__PLANS__ = ${jsonForScript(data)};</script>
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -3522,6 +3540,7 @@ ${groups}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -3768,6 +3787,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -3850,6 +3870,7 @@ ${navNoCta}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4004,6 +4025,7 @@ ${navNoCta}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4115,6 +4137,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4242,6 +4265,7 @@ ${guideCards}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4384,6 +4408,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4629,6 +4654,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4709,6 +4735,7 @@ ${trustBlock()}
   </main>
 ${footer}
   ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -4987,10 +5014,13 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
   //    script.js refs to the current fingerprints (idempotent; a no-op when equal).
   const cssMatched = /href="styles\.css\?v=[0-9a-f]+"/.test(html);
   const jsMatched = /src="script\.js\?v=[0-9a-f]+"/.test(html);
+  const rtMatched = /src="translate-runtime\.js\?v=[0-9a-f]+"/.test(html);
   html = html.replace(/href="styles\.css\?v=[0-9a-f]+"/g, `href="${CSS_HREF}"`);
   html = html.replace(/src="script\.js\?v=[0-9a-f]+"/g, `src="${JS_SRC}"`);
+  html = html.replace(/src="translate-runtime\.js\?v=[0-9a-f]+"/g, `src="${RT_SRC}"`);
   if (!cssMatched) notes.push('WARN: no styles.css?v= ref found to update');
   if (!jsMatched) notes.push('WARN: no script.js?v= ref found to update');
+  if (!rtMatched) notes.push('WARN: no translate-runtime.js?v= ref found to update');
 
   // 2) Provenance meta — <meta name="build:catalogue-source" content="live|bundled">.
   //    Update it in place if present, else inject after <meta charset> (falling

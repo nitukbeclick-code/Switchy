@@ -37,7 +37,15 @@ export type IconName =
   | "spark"
   | "sun"
   | "moon"
-  | "chat";
+  | "chat"
+  // Category glyphs — used by the homepage category launcher tiles. Decorative
+  // (the tile's Hebrew label carries the meaning), so they stay aria-hidden.
+  | "cellular"
+  | "internet"
+  | "tv"
+  | "triple"
+  | "abroad"
+  | "bolt";
 
 // Each entry is the inner path markup for the glyph, drawn in a 24×24 box on a
 // 1.5–2px stroke grid. Kept as JSX fragments so the shared <svg> wrapper owns the
@@ -100,6 +108,44 @@ const PATHS: Record<IconName, ReactNode> = {
   chat: (
     <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
   ),
+  // 📱 — סלולר (cellular): a smartphone with a speaker dot.
+  cellular: (
+    <>
+      <rect x="6" y="2" width="12" height="20" rx="2.5" />
+      <path d="M11 18h2" />
+    </>
+  ),
+  // 🌐 — אינטרנט (internet): a globe with meridians.
+  internet: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18" />
+    </>
+  ),
+  // 📺 — טלוויזיה (tv): a screen with a small antenna.
+  tv: (
+    <>
+      <rect x="2.5" y="7" width="19" height="13" rx="2" />
+      <path d="m7.5 3.5 4.5 3 4.5-3" />
+    </>
+  ),
+  // 🧩 — חבילה משולבת (triple): stacked layers = a bundled package.
+  triple: (
+    <>
+      <path d="m12 2.5 9 4.5-9 4.5-9-4.5 9-4.5z" />
+      <path d="m3 12 9 4.5 9-4.5" />
+      <path d="m3 16.5 9 4.5 9-4.5" />
+    </>
+  ),
+  // ✈ — חבילות חו״ל (abroad): a paper plane.
+  abroad: (
+    <>
+      <path d="M21.5 2.5 3 10l6.5 2.5L12 19l2.5-6.5 7-10z" />
+      <path d="m9.5 12.5 3-3" />
+    </>
+  ),
+  // ⚡ — חשמל (electricity): a lightning bolt.
+  bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />,
 };
 
 export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "ref"> {

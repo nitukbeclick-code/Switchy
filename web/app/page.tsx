@@ -10,7 +10,7 @@ import StickyLeadCta from "@/components/StickyLeadCta";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
-import Icon from "@/components/Icon";
+import Icon, { type IconName } from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { AiToolsShowcase } from "@/components/AiToolsShowcase";
 import { HowItWorks } from "@/components/HowItWorks";
@@ -77,6 +77,37 @@ function categoryEntryLabel(cat: string): string {
   return entry != null ? `מ-${ils(entry)} לחודש` : "";
 }
 
+// ── Category launcher visual identity ────────────────────────────────────────
+// A distinct, AA-tuned hue per category for the light hero's launcher tiles. This
+// is a DELIBERATE, owner-approved departure from the site's mono-green discipline,
+// SCOPED to the homepage launcher only (the rest of the site stays mono-green).
+// Each gradient runs light→deep top-to-bottom so the white tile label/counts sit
+// over the DEEP stop (`to`) and always clear WCAG AA; `deep` is the darkest shade,
+// used as the price-pill text color on its white chip. Unknown/data-driven
+// categories fall back to the brand green, so a new category is never un-styled.
+type CategoryVis = { icon: IconName; from: string; to: string; deep: string };
+const CATEGORY_VIS: Record<string, CategoryVis> = {
+  cellular: { icon: "cellular", from: "#22C55E", to: "#0B7A38", deep: "#0B5E2C" },
+  internet: { icon: "internet", from: "#38BDF8", to: "#0369A1", deep: "#075985" },
+  tv: { icon: "tv", from: "#818CF8", to: "#4338CA", deep: "#3730A3" },
+  triple: { icon: "triple", from: "#FBBF24", to: "#B45309", deep: "#92400E" },
+  abroad: { icon: "abroad", from: "#F472B6", to: "#BE185D", deep: "#9D174D" },
+  electricity: { icon: "bolt", from: "#2DD4BF", to: "#0F766E", deep: "#115E59" },
+};
+const CATEGORY_VIS_FALLBACK: CategoryVis = {
+  icon: "spark",
+  from: "#22C55E",
+  to: "#0B7A38",
+  deep: "#0B5E2C",
+};
+const categoryVis = (cat: string): CategoryVis =>
+  CATEGORY_VIS[cat] ?? CATEGORY_VIS_FALLBACK;
+
+// The four monthly-priced categories lead as big launcher tiles (each shows a
+// truthful "מ-₪X לחודש"); any remaining category (חו״ל — mixed units, no monthly
+// anchor — plus any future one) becomes a "קטגוריות נוספות" chip. Order-stable.
+const PRIMARY_LAUNCHER_CATS = ["cellular", "internet", "tv", "triple"];
+
 export default function Home() {
   const categories = getCategories();
   const providers = getProviders();
@@ -104,6 +135,17 @@ export default function Home() {
   // Real guide count for the guides feature CTA (no fabricated figure).
   const guideCount = getGuides().length;
 
+  // Category launcher split — the monthly-priced categories that actually exist
+  // in the catalogue lead as big tiles (in the canonical order), everything else
+  // (חו״ל, any future category) falls to the "קטגוריות נוספות" chip row. Both are
+  // data-driven, so the launcher can never render a category the catalogue lacks.
+  const primaryCats = categories
+    .filter((c) => PRIMARY_LAUNCHER_CATS.includes(c))
+    .sort(
+      (a, b) => PRIMARY_LAUNCHER_CATS.indexOf(a) - PRIMARY_LAUNCHER_CATS.indexOf(b),
+    );
+  const extraCats = categories.filter((c) => !PRIMARY_LAUNCHER_CATS.includes(c));
+
   const summaryText =
     `Switchy AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
     `אנו משווים ${planCount} מסלולים מ-${providers.length} ספקים בחמש קטגוריות — ` +
@@ -129,15 +171,38 @@ export default function Home() {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        /* Light "category launcher" hero — a bright airy panel (NEVER a dark/black
+           slab): a soft mint radial wash over the white --surface. In dark mode the
+           panel becomes the dark --surface (still not black) with a faint green glow.
+           The headline uses a deep FOREST-GREEN ink (not near-black) that inverts to
+           a soft near-white green on dark; high-contrast a11y mode restores pure ink. */
+        .hero-panel {
+          background:
+            radial-gradient(115% 90% at 50% -10%, #e6faf0 0%, rgba(230, 250, 240, 0) 60%),
+            var(--surface);
+        }
+        .hero-ink { color: #123d2e; }
+        :root[data-theme="dark"] .hero-panel {
+          background:
+            radial-gradient(115% 90% at 50% -10%, rgba(74, 222, 128, 0.10) 0%, rgba(74, 222, 128, 0) 60%),
+            var(--surface);
+        }
+        :root[data-theme="dark"] .hero-ink { color: #eaf7ef; }
+        :root.a11y-contrast .hero-ink { color: var(--ink); }
         @media (hover: hover) and (pointer: fine) {
           .sw-lift { transition: transform 180ms var(--ease-out); }
           /* Lift on hover, but yield to the .press scale(0.98) while active so the
              tactile press feedback stays crisp (no transform tug-of-war). */
           .sw-lift:hover:not(:active) { transform: translateY(-2px); }
+          .hero-tile {
+            transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+          }
+          .hero-tile:hover:not(:active) { transform: translateY(-3px); }
         }
         @media (prefers-reduced-motion: reduce) {
           .sw-reveal { animation: none; }
           .sw-lift:hover { transform: none; }
+          .hero-tile:hover { transform: none; }
         }
       `,
         }}
@@ -148,49 +213,133 @@ export default function Home() {
       <JsonLd data={itemListSchema(featured)} />
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 
-      {/* ── Hero ──────────────────────────────────────────────────────────────
-          Calm, flat-ink editorial hero (bank-grade): a solid ink panel with the
-          white headline/subtext set directly on it — NO photo/video behind the
-          text — and ONE green CTA. The panel is a fixed deep ink (#111827, the
-          light-theme --ink) in BOTH themes so "white text on ink" always holds;
-          a hairline border keeps it defined on the dark page background. */}
-      <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
-        <div className="mx-auto max-w-2xl">
-          {/* Eyebrow pill — the honest positioning kicker (free · no-commitment),
-              with a small green tick. Green-tinted outline so it reads as the
-              section opener without competing with the ONE green CTA below. */}
+      {/* ── Hero — light "category launcher" ──────────────────────────────────
+          A bright, airy panel (NO dark/black slab): a soft mint radial wash over
+          the white --surface, a deep-FOREST-GREEN headline (not near-black ink),
+          and the star of the fold — a grid of big, colour-coded category tiles
+          (סלולר/אינטרנט/טלוויזיה/משולב) that ARE the primary navigation, each with
+          its real catalogue count + truthful "מ-₪X לחודש". חו״ל (mixed units) and
+          any future category drop to a quiet chip row (no false monthly anchor).
+          One green CTA closes the fold. Colours are AA-tuned and dark-parity-safe
+          (see the `.hero-*` rules in the page <style>). */}
+      <section className="hero-panel relative isolate overflow-hidden rounded-3xl border border-border/60 px-5 py-10 sm:px-10 sm:py-14">
+        <div className="mx-auto max-w-3xl">
+          {/* Eyebrow pill — honest positioning kicker (free · no-commitment). */}
           <p
-            className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
+            className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text"
             style={{ animationDelay: "0ms" }}
           >
-            <Icon name="check" size={14} className="shrink-0 text-accent" />
+            <Icon name="check" size={14} className="shrink-0" />
             השוואה חינמית · ללא התחייבות
           </p>
-          {/* H1 — the promise is a CHECK ("בודקים כמה תוכלו לחסוך"), never a
-              promised amount. Green is applied ONLY to the price clause (VALUE),
-              bound to the real catalogue entry price (minFeatured). A second
-              honest category anchor (internet) surfaces when priced plans exist. */}
-          <h1 className="sw-reveal mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
-            בודקים כמה תוכלו לחסוך על התקשורת.{" "}
-            <span className="text-accent">
+          {/* H1 — deep forest-green ink (NOT black); the price clause keeps the
+              green VALUE emphasis, bound to the real catalogue entry prices. */}
+          <h1 className="hero-ink sw-reveal mt-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
+            משווים תקשורת, משלמים פחות.{" "}
+            <span className="text-accent-text">
               סלולר מ-{ils(minFeatured)}
               {internetEntry != null ? ` · אינטרנט מ-${ils(internetEntry)}` : ""}{" "}
               לחודש.
             </span>
           </h1>
           <p
-            className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl [text-wrap:pretty]"
+            className="sw-reveal mt-4 max-w-2xl text-base font-medium leading-relaxed text-muted sm:text-lg [text-wrap:pretty]"
             style={{ animationDelay: "60ms" }}
           >
             השוואה חינמית של כל {providers.length} ספקי התקשורת בישראל — כולל
             המחיר שאחרי המבצע. בלי התחייבות.
           </p>
-          {/* CTA row — exactly ONE primary (three-tier PRIMARY: solid green,
-              glow, press). The Zoom /book path is demoted to a SECONDARY quiet
-              white text link, so only one action reads as primary per viewport. */}
+
+          {/* Launcher prompt + tiles — the kama-ze-style "pick a service" grid,
+              improved: colour-coded, real counts + truthful monthly entry price. */}
+          <h2
+            className="hero-ink sw-reveal mt-8 font-display text-lg font-bold tracking-tight"
+            style={{ animationDelay: "90ms" }}
+          >
+            איזה שירות בא לכם להוזיל?
+          </h2>
+          <ul className="nums-tabular mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {primaryCats.map((cat, i) => {
+              const vis = categoryVis(cat);
+              const count = plansByCategory(cat).length;
+              const entryLabel = categoryEntryLabel(cat);
+              return (
+                <li key={cat}>
+                  <Link
+                    href={`/compare/${cat}`}
+                    aria-label={`${CATEGORY_HE[cat] ?? cat} — ${count} מסלולים${entryLabel ? `, ${entryLabel}` : ""}`}
+                    className="sw-reveal press hero-tile relative flex h-full min-h-[9rem] flex-col overflow-hidden rounded-3xl p-4"
+                    style={{
+                      // Inline color beats the unlayered global `a{color:var(--accent-text)}`
+                      // rule (which otherwise tints the tile label + currentColor icon green,
+                      // since a Tailwind text-white utility is a LAYERED rule it can't win).
+                      color: "#ffffff",
+                      backgroundImage: `linear-gradient(160deg, ${vis.from} 0%, ${vis.to} 82%)`,
+                      boxShadow: `0 10px 26px -8px ${vis.to}80`,
+                      animationDelay: `${100 + Math.min(i * 50, 250)}ms`,
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-inset ring-white/25"
+                    >
+                      <Icon name={vis.icon} size={24} strokeWidth={2} />
+                    </span>
+                    <span className="mt-auto pt-4">
+                      <span className="block font-display text-lg font-bold leading-tight">
+                        {CATEGORY_HE[cat] ?? cat}
+                      </span>
+                      <span className="mt-0.5 block text-sm font-medium text-white">
+                        {count} מסלולים
+                      </span>
+                      {entryLabel ? (
+                        <span
+                          className="mt-2 inline-flex w-fit rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold"
+                          style={{ color: vis.deep }}
+                        >
+                          {entryLabel}
+                        </span>
+                      ) : null}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* "קטגוריות נוספות" chip row — the categories that have no truthful
+              monthly anchor (חו״ל) or are new, as quiet outline chips. */}
+          {extraCats.length > 0 && (
+            <div
+              className="sw-reveal mt-4"
+              style={{ animationDelay: "160ms" }}
+            >
+              <p className="text-xs font-semibold text-muted">קטגוריות נוספות</p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {extraCats.map((cat) => (
+                  <li key={cat}>
+                    <Link
+                      href={`/compare/${cat}`}
+                      className="interactive press inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground hover:border-accent/50 hover:text-accent-text"
+                    >
+                      <Icon
+                        name={categoryVis(cat).icon}
+                        size={15}
+                        aria-hidden="true"
+                      />
+                      {CATEGORY_HE[cat] ?? cat}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* CTA row — exactly ONE primary (solid green, glow, press). The Zoom
+              /book path is a SECONDARY quiet text link. */}
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="sw-reveal mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center"
+            style={{ animationDelay: "200ms" }}
           >
             <TrackedCtaLink
               href={`/compare/${featuredCat}`}
@@ -205,35 +354,30 @@ export default function Home() {
               href="/book"
               location="hero"
               label="consult"
-              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              className="interactive text-sm font-medium text-muted underline-offset-4 hover:text-accent-text hover:underline"
             >
               או דברו עם יועץ
             </TrackedCtaLink>
           </div>
-          {/* Trust band — REAL catalogue counts, placed ABOVE the soft hedge
-              line. Mirrors the static counts bar (plans · providers · categories
-              · entry). The entry price is the hook so it carries the green VALUE
-              emphasis (text-accent), NOT a button. tabular-nums column-aligns the
-              digits (parity with the static `.cmp__num`). */}
+          {/* Trust band — REAL catalogue counts; the entry price carries the
+              green VALUE emphasis (text, not a button). */}
           <p
-            className="nums-tabular sw-reveal mt-8 text-sm text-white/70"
-            style={{ animationDelay: "150ms" }}
+            className="nums-tabular sw-reveal mt-6 text-sm text-muted"
+            style={{ animationDelay: "230ms" }}
           >
             {planCount} מסלולים · {providers.length} ספקים ·{" "}
             {categories.length} קטגוריות · החל מ-
-            <span className="font-display font-bold text-accent">
+            <span className="font-display font-bold text-accent-text">
               {ils(minFeatured)}
             </span>{" "}
             לחודש
           </p>
-          {/* Quiet value line — honest, qualitative framing (no fabricated
-              figure), a muted single line with a small green tick. Sits BELOW
-              the hard counts band so the real numbers lead the hedge. */}
+          {/* Quiet honest value line — qualitative, no fabricated figure. */}
           <p
-            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
-            style={{ animationDelay: "180ms" }}
+            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-muted"
+            style={{ animationDelay: "260ms" }}
           >
-            <Icon name="check" size={16} className="shrink-0 text-accent" />
+            <Icon name="check" size={16} className="shrink-0 text-accent-text" />
             מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
           </p>
         </div>
@@ -389,55 +533,7 @@ export default function Home() {
           truth-only (no figures, just the service's real promises). ────────── */}
       <HowItWorks className="mt-16" />
 
-      {/* ── Category cards (self-segment) ─────────────────────────────────────
-          Faint accent-tinted band (bg-accent/[0.03] — an alternating ground vs
-          the plain-background sections around it, composed from the accent token
-          so dark parity is automatic and the white .card children still pop on
-          top). Each card carries the REAL per-category count AND the honest entry
-          price (monthly anchor for סלולר/אינטרנט/טלוויזיה/משולב; חו״ל stays
-          qualitative — mixed units, no false monthly figure). ──────────────── */}
-      <section
-        aria-labelledby="cats-h"
-        className="mt-16 rounded-3xl border border-border/50 bg-accent/[0.03] p-6 sm:p-8"
-      >
-        <h2
-          id="cats-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
-          קטגוריות להשוואה
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          בחרו את מה שאתם משווים — כל קטגוריה עם מספר המסלולים ונקודת הכניסה
-          האמיתית מהקטלוג.
-        </p>
-        <ul className="nums-tabular mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {categories.map((cat, i) => {
-            const count = plansByCategory(cat).length;
-            const entryLabel = categoryEntryLabel(cat);
-            return (
-              <li key={cat}>
-                <Link
-                  href={`/compare/${cat}`}
-                  className="sw-reveal card card-interactive block h-full p-4"
-                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
-                >
-                  <span className="block font-display font-semibold tracking-tight text-ink">
-                    {CATEGORY_HE[cat] ?? cat}
-                  </span>
-                  <span className="mt-1 block text-sm text-muted">
-                    {count} מסלולים
-                  </span>
-                  {entryLabel ? (
-                    <span className="mt-1 block text-sm font-medium text-accent-text">
-                      {entryLabel}
-                    </span>
-                  ) : null}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      {/* ── (Category cards moved UP into the light hero launcher) ──────────── */}
 
       {/* ── AI tools showcase ─────────────────────────────────────────────────
           A mobile-first card grid into the app's REAL first-party tools (bill

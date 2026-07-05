@@ -732,6 +732,17 @@
     if (!aiChat.getAttribute('role')) aiChat.setAttribute('role', 'log');
     aiChat.setAttribute('aria-live', 'polite');
     aiChat.setAttribute('aria-atomic', 'false');
+    // The header "SWITCHY AI" shortcut (and any deep link to #switchy-ai) should
+    // land the user IN the chat with the input focused — so the desktop nav icon
+    // opens the agent, not just scrolls near it. Fires on load and on in-page
+    // hash clicks from the homepage header.
+    const focusAiChat = () => {
+      if (location.hash !== '#switchy-ai' || !aiInput) return;
+      aiChat.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      aiInput.focus({ preventScroll: true });
+    };
+    focusAiChat();
+    window.addEventListener('hashchange', focusAiChat);
     const addBubble = (cls, text) => {
       const b = document.createElement('div');
       b.className = 'ai-bubble ' + cls;

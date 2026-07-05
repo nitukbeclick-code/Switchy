@@ -443,6 +443,20 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .theme-toggle__sun { display: none; }
 :root[data-theme="dark"] .theme-toggle__moon { display: none; }
 :root[data-theme="dark"] .theme-toggle__sun { display: grid; }
+/* ── Header shortcut icons (Zoom scheduler · SWITCHY AI) ─────────────────────
+   Two quick-access controls that sit beside the theme toggle, sharing its 44px
+   hit area, quiet mint hover and focus ring. The AI mark inherits currentColor
+   (so it tints on hover like the toggle); the Zoom mark is a self-contained
+   brand disk that keeps its blue in both themes. */
+.nav__ico {
+  flex: none; width: 44px; height: 44px; display: grid; place-items: center;
+  background: none; border: 0; cursor: pointer; color: var(--green-d);
+  border-radius: 12px; transition: background .15s, color .15s;
+}
+.nav__ico:hover { background: var(--mint); color: var(--accent-ink); }
+.nav__ico:focus-visible { box-shadow: var(--ring-flush); outline: none; }
+.nav__ico--ai svg { width: 22px; height: 22px; }
+.nav__ico--zoom svg { width: 28px; height: 28px; display: block; }
 .nav__toggle { display: none; background: none; border: 0; width: 44px; height: 44px; cursor: pointer; padding: 10px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }

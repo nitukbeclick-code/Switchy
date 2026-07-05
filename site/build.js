@@ -802,6 +802,12 @@ ${megaMenuColumns()}
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>
+      <a class="nav__ico nav__ico--ai" href="index.html#switchy-ai" aria-label="SWITCHY AI — היועץ החכם">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>
+      </a>
+      <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#2D8CFF"/><rect x="13" y="24" width="23" height="17" rx="4.5" fill="#fff"/><path d="M36 29.5 L51 24.5 V40.5 L36 35.5 Z" fill="#fff"/></svg>
+      </a>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true">${svgIcon('sun')}</span><span class="theme-toggle__moon" aria-hidden="true">${svgIcon('moon')}</span>
       </button>
@@ -3487,7 +3493,7 @@ ${groups}
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="switchy-ai">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow eyebrow--ico">${iconFor('🤖')} SWITCHY AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
         <div class="ai-demo reveal">

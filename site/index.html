@@ -56,7 +56,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <link rel="stylesheet" href="styles.css?v=b37af12c" />
+  <link rel="stylesheet" href="styles.css?v=e3073259" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -207,6 +207,12 @@
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>
+      <a class="nav__ico nav__ico--ai" href="#switchy-ai" aria-label="SWITCHY AI — היועץ החכם">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>
+      </a>
+      <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#2D8CFF"/><rect x="13" y="24" width="23" height="17" rx="4.5" fill="#fff"/><path d="M36 29.5 L51 24.5 V40.5 L36 35.5 Z" fill="#fff"/></svg>
+      </a>
       <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
       </button>
@@ -731,7 +737,7 @@
     </section>
 
     <!-- ── SWITCHY AI (live advisor) ────────────────────────────────────── -->
-    <section class="section">
+    <section class="section" id="switchy-ai">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">SWITCHY AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת לפי הנתונים האמיתיים שלנו.</p></header>
         <div class="ai-demo reveal">
@@ -890,6 +896,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <script src="script.js?v=65055173" defer></script>
+  <script src="script.js?v=7985d19c" defer></script>
 </body>
 </html>

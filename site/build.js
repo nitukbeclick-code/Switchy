@@ -1940,14 +1940,28 @@ const CANONICAL_STATIC_ONLY = new Set([
   '404', 'app', 'comparisons', 'account-deletion',
   'calc-cellular', 'calc-internet', 'calc-triple', 'calc-tv',
 ]);
+// Different-path static pages whose clean Next twin does NOT exist in the SSG
+// output (verified 2026-07-05 against web/.next/prerender-manifest.json) — these
+// stay .html-self-canonical (rewriting them would point at a 404).
+const CANONICAL_NO_TWIN = new Set([
+  'provider-airalo',
+  'fiber-vs-cable', 'triple-vs-separate',
+  'golan-vs-019mobile-cellular', 'hot-mobile-vs-golan-cellular',
+  'partner-vs-hot-mobile-cellular', 'rami-levy-vs-019mobile-cellular',
+  'xphone-vs-rami-levy-cellular', 'yes-vs-hot-triple',
+]);
 function canonicalUrl(url) {
   const m = url.match(/^(https?:\/\/[^/]+\/)([^/?#]+)\.html$/);
   if (!m) return url; // not a top-level .html url → unchanged
   const base = m[1], slug = m[2];
-  if (CANONICAL_STATIC_ONLY.has(slug)) return url;                          // no clean twin
-  if (slug.startsWith('provider-') || slug.startsWith('guide-')) return url; // different path (deferred)
-  if (slug.includes('-vs-') && slug !== '5g-vs-4g') return url;             // /vs/* (deferred)
-  return base + slug;                                                       // same-slug clean twin → drop .html
+  if (CANONICAL_STATIC_ONLY.has(slug) || CANONICAL_NO_TWIN.has(slug)) return url; // no clean twin → keep .html
+  // Different-PATH clean twins, EACH verified to exist in the Next SSG output
+  // (guides keep the 'guide-' prefix; providers drop 'provider-'; vs use the
+  // full basename). Exclusions live in CANONICAL_NO_TWIN above.
+  if (slug.startsWith('guide-')) return base + 'guides/' + slug;                // guide-X → /guides/guide-X
+  if (slug.startsWith('provider-')) return base + 'providers/' + slug.slice(9); // provider-X → /providers/X
+  if (slug.includes('-vs-') && slug !== '5g-vs-4g') return base + 'vs/' + slug; // X-vs-Y → /vs/X-vs-Y
+  return base + slug;                                                           // same-slug clean twin → drop .html
 }
 
 function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {

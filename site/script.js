@@ -1865,7 +1865,7 @@
               return '<div class="rating-card">' +
                 '<strong class="rating-card__provider">' + escHtmlS(r.provider) + '</strong>' +
                 stars(r.avg_stars) +
-                '<span class="rating-card__score">' + escHtmlS(avg) + '</span>' +
+                '<span class="rating-card__score" aria-label="' + escHtmlS(avg) + ' מתוך 5 כוכבים">' + escHtmlS(avg) + '</span>' +
                 '<span class="rating-card__count">' + count + (count === 1 ? ' חוות דעת' : ' חוות דעת') + '</span>' +
                 '</div>';
             }).join('') + '</div>';

@@ -66,12 +66,69 @@ void main() async {
       options.sendDefaultPii = false; // house rule: no PII in telemetry, ever
       // Release/dist/environment come from SentryFlutter's package-info
       // defaults — nothing manual, nothing user-identifying.
+      //
+      // Per-session rate limit by a COARSE fingerprint (exception type + first
+      // message line). This app has hit per-frame overflow storms that can emit
+      // thousands of identical events; unbounded they'd burn the 5,000/month
+      // free cap in one bad session and hide everything else. We do NOT set a
+      // random sampleRate — on a low-volume app that would randomly drop real,
+      // one-off crashes. Instead the first [_sentryFingerprintCap] copies of
+      // each distinct fingerprint still report (so the bug is seen), and the
+      // flood beyond that is dropped.
+      options.beforeSend = (event, hint) {
+        final fingerprint = _sentryEventFingerprint(event);
+        return sentryEventShouldDrop(fingerprint, _sentrySeenFingerprints)
+            ? null
+            : event;
+      };
     },
     appRunner: () {
       _wireSentryErrorHandlers();
       _startApp();
     },
   );
+}
+
+/// Per-session tally of how many events each coarse fingerprint has already
+/// reported. Lives for the life of the isolate (reset on every app launch), so
+/// a genuinely recurring crash still reports [_sentryFingerprintCap] times per
+/// run — enough to see it, not enough to blow the free-tier quota.
+final Map<String, int> _sentrySeenFingerprints = <String, int>{};
+
+/// Max events reported per distinct fingerprint, per session. Small on purpose:
+/// the first N still capture the bug; a per-frame flood past N is dropped.
+const int _sentryFingerprintCap = 5;
+
+/// Builds the COARSE dedupe key for a Sentry event: exception type + the first
+/// line of the exception message. Deliberately lossy so a per-frame overflow
+/// (whose message often varies only in trailing pixel/constraint numbers)
+/// collapses onto one fingerprint. Falls back to the event's own type/message
+/// when no structured exception is attached.
+String _sentryEventFingerprint(SentryEvent event) {
+  final exception =
+      (event.exceptions != null && event.exceptions!.isNotEmpty)
+          ? event.exceptions!.first
+          : null;
+  final type = exception?.type ?? event.throwable?.runtimeType.toString() ?? 'event';
+  final rawMessage = exception?.value ?? event.message?.formatted ?? '';
+  final firstLine = rawMessage.split('\n').first.trim();
+  return '$type|$firstLine';
+}
+
+/// PURE decision: given a coarse [fingerprint] and the per-session [seen] tally,
+/// should this event be DROPPED? Returns true once [cap] events sharing the
+/// fingerprint have already been kept; otherwise records this one as kept and
+/// returns false. Extracted top-level so the quota guard is unit-testable
+/// without initializing Sentry.
+bool sentryEventShouldDrop(
+  String fingerprint,
+  Map<String, int> seen, {
+  int cap = _sentryFingerprintCap,
+}) {
+  final already = seen[fingerprint] ?? 0;
+  if (already >= cap) return true; // flood past the cap — drop
+  seen[fingerprint] = already + 1; // first N of this fingerprint — keep
+  return false;
 }
 
 /// Brings the UI up and kicks off every app-scope background sync. Split out

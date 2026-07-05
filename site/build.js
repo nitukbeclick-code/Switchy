@@ -356,8 +356,19 @@ const EMOJI_TO_ICON = {
   '💡': 'bulb', '🛈': 'info', 'ℹ': 'info', '⭐': 'star', '🌟': 'star', '⚖': 'scale', '🏢': 'building',
   '📚': 'book', '📖': 'book', '☀': 'sun', '🌙': 'moon',
 };
+// Icon SPRITE — each distinct icon is defined ONCE as a <symbol> in a single
+// hidden <svg> block emitted near the start of <body> on every generated page
+// (via navHtml, which prefixes every page). svgIcon() then emits a tiny <use>
+// reference instead of repeating the full path data on every call — the same
+// glyph rendered 240× on a plans page collapses from ~137KB of duplicated paths
+// to one shared symbol + N ~60-byte references. ZERO visual change: the symbol
+// carries the exact viewBox + presentation attributes the old inline svg used,
+// currentColor still resolves at each <use> site, and class="ico" + aria-hidden
+// are preserved so CSS sizing and a11y semantics are identical.
+const iconSprite = () =>
+  `<svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">${Object.keys(ICONS).map((name) => `<symbol id="ico-${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</symbol>`).join('')}</svg>`;
 const svgIcon = (name) =>
-  `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.sparkle}</svg>`;
+  `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-${ICONS[name] ? name : 'sparkle'}"/></svg>`;
 // Map an emoji (or icon name) token to inline SVG. Variation selectors stripped.
 const iconFor = (token) => {
   if (!token) return '';
@@ -771,7 +782,8 @@ function mobileGuideLinks() {
     .join('\n');
 }
 
-const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</a>
+const navHtml = (ctaHref) => `  ${iconSprite()}
+  <a class="skip" href="#main">דלג לתוכן</a>
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="SWITCHY — דף הבית">
@@ -3219,14 +3231,23 @@ function comparePage() {
     `<select class="compare-pick filter-search" id="cmp${i}" aria-label="מסלול ${i + 1}"><option value="">— בחרו מסלול —</option>${optionsFor(preId)}</select>`;
   // The comparison tool is an interactive WebApplication; pair it with a
   // breadcrumb so the page is well-typed for search. The page lets the visitor
-  // compare EVERY catalogue plan (window.__PLANS__ below), so the AI-facing graph
-  // also carries, de-duplicated, ONE Product per plan (additionalType TelecomService,
-  // provider referenced by @id) + its Offer (monthly base + real one-time install/
-  // connection fee) + ONE Organization per provider, plus a single page-level
-  // AggregateOffer (real min/max/count). This mirrors the rich web/lib/schema.ts
-  // structured data onto the static page AI engines actually crawl — same prices/
-  // providers as the visible tool, so HTML and JSON-LD agree.
+  // compare EVERY catalogue plan (window.__PLANS__ below), but serialising a
+  // Product+Offer+Organization for all ~120 plans into <head> ballooned this ONE
+  // JSON-LD block to ~100KB. Answer engines only need a REPRESENTATIVE sample, so
+  // the graph carries a de-duplicated Product per plan (additionalType
+  // TelecomService, provider referenced by @id) + its Offer + ONE Organization per
+  // provider for just the cheapest handful of plans, PLUS a single page-level
+  // AggregateOffer whose real min/max/count still spans the FULL catalogue (the
+  // honest "prices range from ₪low to ₪high across N plans" summary of the whole
+  // tool). Same prices/providers as the visible tool, so HTML and JSON-LD agree.
   const comparePlans = catalogue.plans;
+  // Representative subset for the per-plan Product/Offer nodes: the cheapest priced
+  // plans across the catalogue (finite positive price), capped so the block stays
+  // lean (< 10KB). Prices are the real offerPrice — never fabricated or altered.
+  const compareSample = [...comparePlans]
+    .filter((p) => { const n = offerPrice(p); return typeof n === 'number' && Number.isFinite(n) && n > 0; })
+    .sort((a, b) => offerPrice(a) - offerPrice(b))
+    .slice(0, 8);
   const compareGraph = [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
@@ -3236,8 +3257,10 @@ function comparePage() {
       applicationCategory: 'BusinessApplication', browserRequirements: 'requires JavaScript',
       isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS' } },
-    ...planGraphNodes(comparePlans, url),
+    ...planGraphNodes(compareSample, url),
   ];
+  // AggregateOffer summarises the WHOLE catalogue (real min/max/count), not just
+  // the sample — it stays a single compact node, so honesty costs no size here.
   const compareAggOffer = categoryAggregateOfferNode(comparePlans);
   if (compareAggOffer) compareGraph.push(compareAggOffer);
   const compareJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': compareGraph });

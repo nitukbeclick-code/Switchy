@@ -391,13 +391,17 @@ export default function QuizWizard() {
           />
           {/* ── Step bodies — each a native radiogroup (arrow-key navigable) ── */}
           <fieldset key={step} className="sw-step">
-            <legend className="mb-3 font-display text-lg font-bold tracking-tight text-ink">
+            <legend
+              id={`${groupId}-legend`}
+              className="mb-3 font-display text-lg font-bold tracking-tight text-ink"
+            >
               {STEP_TITLES[step]}
             </legend>
 
             {step === 0 && (
               <OptionGrid
                 name={`${groupId}-category`}
+                labelledById={`${groupId}-legend`}
                 options={CATEGORIES.map((c) => ({
                   value: c.value,
                   label: c.label,
@@ -410,6 +414,7 @@ export default function QuizWizard() {
             {step === 1 && (
               <OptionGrid
                 name={`${groupId}-budget`}
+                labelledById={`${groupId}-legend`}
                 options={BUDGETS.map((b) => ({ value: b.value, label: b.label }))}
                 selected={answers.budget}
                 onSelect={(v) => setAnswer("budget", v)}
@@ -418,6 +423,7 @@ export default function QuizWizard() {
             {step === 2 && (
               <OptionGrid
                 name={`${groupId}-priority`}
+                labelledById={`${groupId}-legend`}
                 options={PRIORITIES.map((p) => ({
                   value: p.value,
                   label: p.label,
@@ -430,6 +436,7 @@ export default function QuizWizard() {
             {step === 3 && (
               <OptionGrid
                 name={`${groupId}-lines`}
+                labelledById={`${groupId}-legend`}
                 options={LINES.map((l) => ({ value: l.value, label: l.label }))}
                 selected={answers.lines}
                 onSelect={(v) => setAnswer("lines", v)}
@@ -438,6 +445,7 @@ export default function QuizWizard() {
             {step === 4 && (
               <OptionGrid
                 name={`${groupId}-abroad`}
+                labelledById={`${groupId}-legend`}
                 options={ABROAD.map((a) => ({ value: a.value, label: a.label }))}
                 selected={answers.abroad}
                 onSelect={(v) => setAnswer("abroad", v)}
@@ -503,11 +511,13 @@ interface Option {
 
 function OptionGrid({
   name,
+  labelledById,
   options,
   selected,
   onSelect,
 }: {
   name: string;
+  labelledById: string;
   options: Option[];
   selected: string;
   onSelect: (value: string) => void;
@@ -515,6 +525,7 @@ function OptionGrid({
   return (
     <div
       role="radiogroup"
+      aria-labelledby={labelledById}
       className="grid grid-cols-1 gap-3 sm:grid-cols-2"
     >
       {options.map((opt) => {

@@ -302,9 +302,11 @@ export default function AccessibilityWidget() {
             ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))]"
             : "bottom-4 mb-[env(safe-area-inset-bottom)]",
           "transition-[bottom] duration-300 ease-[var(--ease-drawer)] motion-reduce:transition-none",
-          // Brand-green chrome (visible in light AND dark via tokens).
-          "bg-accent text-accent-contrast shadow-float",
-          "interactive press hover:bg-accent-hover",
+          // The International Symbol of Access (ISA) — a self-contained blue disk +
+          // white ring + white wheelchair SVG fills the button, so no bg token; just
+          // the float + press feedback. The standard, universally-recognized a11y mark.
+          "overflow-hidden shadow-float",
+          "interactive press",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         ].join(" ")}
       >
@@ -476,31 +478,42 @@ function ToggleRow({
   );
 }
 
-// Universal accessibility symbol (♿-style figure) drawn inline — head + arms +
-// seated legs. Uses currentColor so it inherits the FAB's on-accent ink and stays
-// visible in light + dark. Decorative (the button carries aria-label="תפריט נגישות").
+// The International Symbol of Access (ISA) — the standard blue disk + white ring +
+// white wheelchair, drawn inline as ONE self-contained graphic that fills the FAB
+// (so it looks identical in light + dark, like a logo). Decorative (the button
+// carries aria-label="תפריט נגישות"). Faithful to the owner-supplied ISA image.
 function AccessibilityGlyph() {
   return (
     <svg
-      width={26}
-      height={26}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 64 64"
+      className="h-full w-full"
+      role="img"
       aria-hidden="true"
     >
+      {/* blue disk */}
+      <circle cx="32" cy="32" r="32" fill="#1b1c8f" />
+      {/* thin white inner ring (matches the ISA) */}
+      <circle cx="32" cy="32" r="28.5" fill="none" stroke="#ffffff" strokeWidth="1.7" />
       {/* head */}
-      <circle cx="12" cy="4" r="1.6" fill="currentColor" stroke="none" />
-      {/* arms spread from the shoulders */}
-      <path d="M6.5 8.5h11" />
-      {/* torso down to the hip/seat */}
-      <path d="M12 7v6" />
-      {/* seated legs: thigh forward, then shin down */}
-      <path d="M12 13h4l1.5 5" />
-      <path d="M12 13l-2.2 5" />
+      <circle cx="26.5" cy="16.5" r="4.7" fill="#ffffff" />
+      {/* body: back → seat → thigh forward → shin down to the footrest, + push arm */}
+      <path
+        d="M26.5 22 L28.6 38 L44 38 L49.5 49"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="4.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M27 27.5 L41 27.5"
+        fill="none"
+        stroke="#ffffff"
+        strokeWidth="4.2"
+        strokeLinecap="round"
+      />
+      {/* the wheel */}
+      <circle cx="29.5" cy="42.5" r="13.5" fill="none" stroke="#ffffff" strokeWidth="3" />
     </svg>
   );
 }

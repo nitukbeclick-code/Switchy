@@ -849,7 +849,10 @@ const footerSocial = FOOTER_SOCIAL.map(([href, icon, label, ext]) =>
 // owns the look (dark-mode + RTL aware). The statement link points at the
 // EXISTING accessibility.html — its copy is never reworded here. This markup is
 // mirrored verbatim in the hand-written index.html (like the WhatsApp FAB).
-const A11Y_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="4" r="2" fill="currentColor"/><path d="M4 8.5c2.5 1 5 1.5 8 1.5s5.5-.5 8-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 9.5V15m0 0l-3.2 6M12 15l3.2 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// The International Symbol of Access (ISA) — the standard blue disk + white ring +
+// white wheelchair, drawn as ONE self-contained graphic that fills the .a11y-fab
+// (identical in light + dark, like a logo). Matches the owner-supplied ISA image.
+const A11Y_ICON = '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="#1b1c8f"/><circle cx="32" cy="32" r="28.5" fill="none" stroke="#fff" stroke-width="1.7"/><circle cx="26.5" cy="16.5" r="4.7" fill="#fff"/><path d="M26.5 22 L28.6 38 L44 38 L49.5 49" fill="none" stroke="#fff" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M27 27.5 L41 27.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round"/><circle cx="29.5" cy="42.5" r="13.5" fill="none" stroke="#fff" stroke-width="3"/></svg>';
 const a11yWidget = `  <button type="button" class="a11y-fab" id="a11yFab" aria-label="תפריט נגישות" aria-haspopup="dialog" aria-expanded="false" aria-controls="a11yPanel">${A11Y_ICON}</button>
   <div class="a11y-panel" id="a11yPanel" role="dialog" aria-modal="true" aria-labelledby="a11yTitle" hidden>
     <div class="a11y-panel__backdrop" data-a11y-close></div>

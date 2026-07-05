@@ -341,8 +341,12 @@ export interface PublicProfile {
 }
 
 export async function fetchPublicProfile(userId: string): Promise<PublicProfile | null> {
+  // Reads the public_profiles VIEW, not the profiles table: profiles RLS is own-row-only
+  // (auth.uid()=id) so members can't read each other's rows, and a blanket profiles grant
+  // would expose phone/email/consent. The view exposes only public-safe columns and is
+  // granted to anon + authenticated, so any visitor can see another member's public profile.
   const { data } = await getBrowserSupabase()
-    .from("profiles")
+    .from("public_profiles")
     .select("id,name,avatar_url,is_verified_customer,is_admin")
     .eq("id", userId)
     .maybeSingle();

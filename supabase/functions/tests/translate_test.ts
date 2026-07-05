@@ -63,6 +63,16 @@ Deno.test("restoredMatchesTokens catches reorder, duplication and glued digits",
   assert(!restoredMatchesTokens("10%0", pct.tokens));
 });
 
+Deno.test("CJK full-width bracket sentinels are still recognized + restored", () => {
+  const { tokens } = protectText("מסלול מ-₪11"); // 1 token: ₪11
+  // A Chinese model re-emitted ⟦0⟧ as full-width 【0】 — must still verify + restore.
+  assert(tokensPreserved("每月从【0】开始", 1));
+  assertEquals(restoreText("每月从【0】开始", tokens), "每月从₪11开始");
+  assert(restoredMatchesTokens(restoreText("每月从【0】开始", tokens), tokens));
+  // full-width parens variant （0） (some JP/KR outputs)
+  assertEquals(restoreText("プラン（0）から", tokens), "プラン₪11から");
+});
+
 Deno.test("protect masks number + Hebrew unit WORD as one span", () => {
   for (const s of ["מסלול ב-11 שקל לחודש", "אינטרנט 300 מגה", "כולל 50 דקות", "עד 5 ג׳יגה"]) {
     const { masked, tokens } = protectText(s);

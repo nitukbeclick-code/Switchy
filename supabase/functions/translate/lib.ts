@@ -91,8 +91,14 @@ export const PROTECTED_TERMS: string[] = [
   "Disney+", "YouTube", "Spotify", "Apple TV", "Zoom", "WhatsApp",
 ];
 
-const SENTINEL_OPEN = "⟦"; // ⟦
+const SENTINEL_OPEN = "⟦"; // ⟦  (what protectText EMITS)
 const SENTINEL_CLOSE = "⟧"; // ⟧
+// …but MATCHING (restore + verify) accepts any of the common full-width / CJK
+// bracket variants a model might substitute (【n】,（n）,〔n〕,〖n〗,｟n｠,⦅n⦆). Without
+// this, Chinese/Japanese/Korean replies routinely re-bracket the sentinel and get
+// (correctly, but needlessly) rejected → dropped to Hebrew. Digits inside are ASCII.
+const SENT_OPEN = "[\\u27E6\\u3010\\u3014\\u3016\\uFF08\\uFF5F\\u2985]";
+const SENT_CLOSE = "[\\u27E7\\u3011\\u3015\\u3017\\uFF09\\uFF60\\u2986]";
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -144,7 +150,7 @@ export function protectText(input: string): Protected {
 export function restoreText(translated: string, tokens: string[]): string {
   let out = translated;
   for (let i = 0; i < tokens.length; i++) {
-    const re = new RegExp(`${SENTINEL_OPEN}\\s*${i}\\s*${SENTINEL_CLOSE}`, "g");
+    const re = new RegExp(`${SENT_OPEN}\\s*${i}\\s*${SENT_CLOSE}`, "g");
     out = out.replace(re, tokens[i]);
   }
   return out;
@@ -152,7 +158,7 @@ export function restoreText(translated: string, tokens: string[]): string {
 
 // The ordered list of sentinel indices actually present in a string, left→right.
 export function sentinelSequence(s: string): number[] {
-  const re = new RegExp(`${SENTINEL_OPEN}\\s*(\\d+)\\s*${SENTINEL_CLOSE}`, "g");
+  const re = new RegExp(`${SENT_OPEN}\\s*(\\d+)\\s*${SENT_CLOSE}`, "g");
   return Array.from(s.matchAll(re), (m) => Number(m[1]));
 }
 

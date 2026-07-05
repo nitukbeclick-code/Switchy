@@ -1927,6 +1927,29 @@ const siteJsonLdTag = () =>
 // `ogType` controls og:type (default 'article' preserves prior behaviour for
 // guides/legal; non-article pages pass 'website'). `noindex` adds robots noindex
 // (404) — indexable pages get an explicit index,follow so the intent is clear.
+// Canonical resolver for the device-split apex (switchy-ai.com serves the static
+// .html to desktop and the clean Next twin to mobile — SAME content, so a split
+// canonical dilutes ranking). A static page that HAS a confirmed same-slug clean
+// Next route self-canonicals to the CLEAN url (drop .html). CONSERVATIVE: pages
+// with NO clean twin (app/comparisons/account-deletion/calc-*) and the
+// different-PATH classes (provider-*→/providers/*, guide-*→/guides/*, *-vs-*→
+// /vs/*) KEEP their .html self-canonical here — those need per-slug verification
+// against the Next SSG output before rewriting (a wrong clean url would 404 and
+// hurt SEO). Non-.html urls (the homepage "/") pass through unchanged.
+const CANONICAL_STATIC_ONLY = new Set([
+  '404', 'app', 'comparisons', 'account-deletion',
+  'calc-cellular', 'calc-internet', 'calc-triple', 'calc-tv',
+]);
+function canonicalUrl(url) {
+  const m = url.match(/^(https?:\/\/[^/]+\/)([^/?#]+)\.html$/);
+  if (!m) return url; // not a top-level .html url → unchanged
+  const base = m[1], slug = m[2];
+  if (CANONICAL_STATIC_ONLY.has(slug)) return url;                          // no clean twin
+  if (slug.startsWith('provider-') || slug.startsWith('guide-')) return url; // different path (deferred)
+  if (slug.includes('-vs-') && slug !== '5g-vs-4g') return url;             // /vs/* (deferred)
+  return base + slug;                                                       // same-slug clean twin → drop .html
+}
+
 function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   return `<head>
   <meta charset="UTF-8" />
@@ -1941,15 +1964,15 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />
   <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#111827" />
-  <link rel="canonical" href="${url}" />
-  <link rel="alternate" hreflang="he-IL" href="${url}" />
-  <link rel="alternate" hreflang="x-default" href="${url}" />
+  <link rel="canonical" href="${canonicalUrl(url)}" />
+  <link rel="alternate" hreflang="he-IL" href="${canonicalUrl(url)}" />
+  <link rel="alternate" hreflang="x-default" href="${canonicalUrl(url)}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="manifest" href="site.webmanifest" />
   <meta property="og:type" content="${ogType}" />
   <meta property="og:locale" content="he_IL" />
-  <meta property="og:url" content="${url}" />
+  <meta property="og:url" content="${canonicalUrl(url)}" />
   <meta property="og:site_name" content="SWITCHY" />
   <meta property="og:title" content="${esc(title)}" />
   <meta property="og:description" content="${esc(desc)}" />

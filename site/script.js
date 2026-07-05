@@ -2073,10 +2073,15 @@
       }
     };
 
-    // ── Slots for the chosen date (30-min grid, ≥4h from now) ────────────────
+    // ── Slots for the chosen date — grouped by part of day for easy scanning ──
+    // Same 30-min grid + ≥4h lead as before, but rendered under בוקר/צהריים/ערב
+    // headings in a full-width multi-column grid so it reads at a glance instead
+    // of one tall, narrow 2-column list. The container becomes .slot-groups (a
+    // column of sections); each section holds its own .slot-grid of chips.
     const buildSlots = () => {
       if (!slotHost) return;
       chosenSlot = '';
+      slotHost.className = 'slot-groups';
       slotHost.innerHTML = '';
       const val = dateSel && dateSel.value;
       if (!val) { slotHost.innerHTML = '<p class="booking__note">בחרו תאריך כדי לראות שעות פנויות.</p>'; return; }
@@ -2088,6 +2093,30 @@
       const endMin = wd === 5 ? 12 * 60 + 30 : 20 * 60 + 30;
       const minLead = Date.now() + 4 * 60 * 60 * 1000; // ≥4h from now
       const maxAhead = Date.now() + 30 * 86400000;
+      // Parts of day (morning < 12:00, noon < 17:00, evening otherwise). A section
+      // + its grid are created lazily the first time a slot lands in that part.
+      const groups = [
+        { label: 'בוקר', to: 12 * 60, grid: null },
+        { label: 'צהריים', to: 17 * 60, grid: null },
+        { label: 'ערב', to: 24 * 60, grid: null },
+      ];
+      const gridFor = (m) => {
+        const g = groups.find((gr) => m < gr.to) || groups[groups.length - 1];
+        if (!g.grid) {
+          const sec = document.createElement('div');
+          sec.className = 'slot-group';
+          const head = document.createElement('p');
+          head.className = 'slot-group__label';
+          head.textContent = g.label;
+          const grid = document.createElement('div');
+          grid.className = 'slot-grid';
+          sec.appendChild(head);
+          sec.appendChild(grid);
+          slotHost.appendChild(sec);
+          g.grid = grid;
+        }
+        return g.grid;
+      };
       let any = false;
       for (let m = startMin; m <= endMin; m += 30) {
         const h = Math.floor(m / 60);
@@ -2110,7 +2139,7 @@
           });
           setNote('', false);
         });
-        slotHost.appendChild(b);
+        gridFor(m).appendChild(b);
         any = true;
       }
       if (!any) slotHost.innerHTML = '<p class="booking__note">אין שעות פנויות בתאריך זה — נסו תאריך אחר.</p>';
@@ -2255,7 +2284,7 @@
           email: vals.email,
           meeting_date: dateSel.value,
           slot: chosenSlot,
-          category: chosenProvider,
+          provider: chosenProvider,
           consent: !!(termsEl && termsEl.checked && privacyEl && privacyEl.checked),
         });
         if (!data || !data.ok) {

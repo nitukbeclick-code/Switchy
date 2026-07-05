@@ -2230,6 +2230,22 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 6px 16px rgba(22,163,74,.30); transform: translateY(-1px);
 }
 
+/* Day + time stack so the time grid spans the FULL width (a comfortable
+   multi-column grid grouped by part of day) instead of a cramped 2-wide column
+   squeezed next to the date select. */
+.booking__row--daytime { grid-template-columns: 1fr; gap: 16px; }
+.booking__field--day select { max-width: 340px; }
+
+/* Time slots grouped into בוקר / צהריים / ערב so a visitor jumps straight to when
+   they're free. .slot-groups is the column of sections; each section has a small
+   label + its own responsive .slot-grid of chips. */
+.slot-groups { display: flex; flex-direction: column; gap: 14px; }
+.slot-group__label {
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 12.5px;
+  color: var(--muted); margin: 0 0 8px; letter-spacing: .02em;
+}
+.slot-groups > .booking__note { color: var(--muted); font-size: 13.5px; margin: 0; padding: 10px 2px; text-align: start; }
+
 /* Slot grid — responsive grid of 30-min time buttons. Chosen = green; taken or
    out-of-window slots render disabled. */
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }

@@ -3973,14 +3973,14 @@ ${navNoCta}
             <input type="hidden" id="bookProvider" name="provider" value="" required />
           </fieldset>
 
-          <div class="booking__row">
-            <label class="booking__field" for="bookDate">יום
+          <div class="booking__row booking__row--daytime">
+            <label class="booking__field booking__field--day" for="bookDate">יום
               <select id="bookDate" name="meeting_date" required>
                 <option value="">בחרו יום</option>
             ${bookDateOptions()}
               </select>
             </label>
-            <div class="booking__field">
+            <div class="booking__field booking__field--slots">
               <span class="booking__field-label">שעה</span>
               <div id="slotGrid" class="slot-grid" role="group" aria-label="בחירת שעה" aria-live="polite">
                 <p class="booking__note">בחרו יום כדי לראות שעות פנויות.</p>

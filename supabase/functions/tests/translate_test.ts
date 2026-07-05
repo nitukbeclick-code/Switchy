@@ -139,14 +139,20 @@ Deno.test("batchStrings respects the char cap", () => {
   assertEquals(batches.length, 2);
 });
 
-Deno.test("language table is consistent (ar is rtl, others ltr)", () => {
+Deno.test("language table is consistent (rtl=ar/fa/ur, rest ltr; unique codes)", () => {
   assert(isSupportedLang("ar"));
-  assert(isSupportedLang("en"));
+  assert(isSupportedLang("th")); // a newly-added language
+  assert(isSupportedLang("zh"));
   assert(!isSupportedLang("he")); // source is never a target
   assert(!isSupportedLang("zz"));
   assertEquals(langEnglishName("am"), "Amharic");
-  assertEquals(SUPPORTED_LANGS.find((l) => l.code === "ar")?.dir, "rtl");
-  assert(SUPPORTED_LANGS.filter((l) => l.code !== "ar").every((l) => l.dir === "ltr"));
+  const rtl = new Set(["ar", "fa", "ur"]);
+  for (const l of SUPPORTED_LANGS) {
+    assertEquals(l.dir, rtl.has(l.code) ? "rtl" : "ltr", l.code);
+    assert(l.label.length > 0 && l.english.length > 0, l.code);
+  }
+  assertEquals(new Set(SUPPORTED_LANGS.map((l) => l.code)).size, SUPPORTED_LANGS.length); // unique
+  assert(SUPPORTED_LANGS.length >= 20);
 });
 
 Deno.test("buildSystemPrompt names the target language and demands the JSON envelope", () => {

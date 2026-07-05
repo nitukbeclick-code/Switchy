@@ -27,28 +27,83 @@
   var SOURCE = "he";
   var LANGS = [
     { code: "ar", label: "العربية", dir: "rtl" },
-    { code: "en", label: "English", dir: "ltr" },
     { code: "ru", label: "Русский", dir: "ltr" },
-    { code: "am", label: "አማርኛ", dir: "ltr" },
+    { code: "en", label: "English", dir: "ltr" },
+    { code: "fr", label: "Français", dir: "ltr" },
     { code: "es", label: "Español", dir: "ltr" },
-    { code: "fr", label: "Français", dir: "ltr" }
+    { code: "am", label: "አማርኛ", dir: "ltr" },
+    { code: "ti", label: "ትግርኛ", dir: "ltr" },
+    { code: "uk", label: "Українська", dir: "ltr" },
+    { code: "ro", label: "Română", dir: "ltr" },
+    { code: "th", label: "ไทย", dir: "ltr" },
+    { code: "tl", label: "Filipino", dir: "ltr" },
+    { code: "hi", label: "हिन्दी", dir: "ltr" },
+    { code: "ne", label: "नेपाली", dir: "ltr" },
+    { code: "zh", label: "中文", dir: "ltr" },
+    { code: "fa", label: "فارسی", dir: "rtl" },
+    { code: "ur", label: "اردو", dir: "rtl" },
+    { code: "tr", label: "Türkçe", dir: "ltr" },
+    { code: "ka", label: "ქართული", dir: "ltr" },
+    { code: "de", label: "Deutsch", dir: "ltr" },
+    { code: "it", label: "Italiano", dir: "ltr" },
+    { code: "pt", label: "Português", dir: "ltr" },
+    { code: "pl", label: "Polski", dir: "ltr" },
+    { code: "nl", label: "Nederlands", dir: "ltr" },
+    { code: "hu", label: "Magyar", dir: "ltr" },
+    { code: "el", label: "Ελληνικά", dir: "ltr" },
+    { code: "ja", label: "日本語", dir: "ltr" },
+    { code: "ko", label: "한국어", dir: "ltr" }
   ];
-  var RTL = { ar: 1, he: 1 };
+  var RTL = { ar: 1, he: 1, fa: 1, ur: 1 };
   // Hebrew names, used in the trigger's aria-label so a Hebrew screen reader reads
   // a real word ("אנגלית") rather than the raw 2-letter code ("en").
-  var HE_NAMES = { he: "עברית", ar: "ערבית", en: "אנגלית", ru: "רוסית", am: "אמהרית", es: "ספרדית", fr: "צרפתית" };
+  var HE_NAMES = {
+    he: "עברית", ar: "ערבית", ru: "רוסית", en: "אנגלית", fr: "צרפתית", es: "ספרדית",
+    am: "אמהרית", ti: "תיגרינית", uk: "אוקראינית", ro: "רומנית", th: "תאית",
+    tl: "פיליפינית", hi: "הינדי", ne: "נפאלית", zh: "סינית", fa: "פרסית", ur: "אורדו",
+    tr: "טורקית", ka: "גאורגית", de: "גרמנית", it: "איטלקית", pt: "פורטוגזית",
+    pl: "פולנית", nl: "הולנדית", hu: "הונגרית", el: "יוונית", ja: "יפנית", ko: "קוריאנית"
+  };
 
   // Compliance banner — reviewed, static per language so it is ALWAYS correct and
-  // instant (never depends on the model). "The Hebrew version is the binding one."
+  // instant (never depends on the model). Any language WITHOUT an entry falls back
+  // to English (BANNER[lang] || BANNER.en); the legal position (Hebrew is
+  // authoritative) holds regardless of the wording.
   var BANNER = {
     ar: "ترجمة آلية لتيسير الاطّلاع — النسخة العبرية هي الملزِمة قانونيًا.",
     en: "Automatic translation for convenience — the Hebrew version is the legally binding one.",
     ru: "Автоматический перевод для удобства — юридически обязательна версия на иврите.",
-    am: "ለምቾት በራስ-ሰር የተተረጎመ — ሕጋዊ ተቀባይነት ያለው የዕብራይስጥ ቅጂ ነው።",
+    fr: "Traduction automatique pour votre confort — la version hébraïque fait foi.",
     es: "Traducción automática para su comodidad: la versión en hebreo es la vinculante.",
-    fr: "Traduction automatique pour votre confort — la version hébraïque fait foi."
+    am: "ለምቾት በራስ-ሰር የተተረጎመ — ሕጋዊ ተቀባይነት ያለው የዕብራይስጥ ቅጂ ነው።",
+    uk: "Автоматичний переклад для зручності — юридично чинною є версія івритом.",
+    ro: "Traducere automată pentru comoditate — versiunea în ebraică este cea obligatorie din punct de vedere juridic.",
+    th: "การแปลอัตโนมัติเพื่อความสะดวก — ฉบับภาษาฮีบรูเป็นฉบับที่มีผลผูกพันทางกฎหมาย",
+    tl: "Awtomatikong pagsasalin para sa kaginhawaan — ang bersyong Hebreo ang legal na may bisa.",
+    hi: "सुविधा के लिए स्वचालित अनुवाद — कानूनी रूप से मान्य हिब्रू संस्करण है।",
+    ne: "सुविधाका लागि स्वचालित अनुवाद — कानुनी रूपमा हिब्रू संस्करण मान्य हुन्छ।",
+    zh: "为方便阅读的自动翻译——具法律约束力的是希伯来语版本。",
+    fa: "ترجمهٔ خودکار برای سهولت — نسخهٔ عبری از نظر قانونی معتبر است.",
+    ur: "سہولت کے لیے خودکار ترجمہ — قانونی طور پر عبرانی نسخہ ہی معتبر ہے۔",
+    tr: "Kolaylık için otomatik çeviri — yasal olarak bağlayıcı olan İbranice sürümdür.",
+    ka: "ავტომატური თარგმანი მოხერხებულობისთვის — იურიდიულად სავალდებულოა ებრაული ვერსია.",
+    de: "Automatische Übersetzung zur Vereinfachung — rechtsverbindlich ist die hebräische Fassung.",
+    it: "Traduzione automatica per comodità — la versione in ebraico è quella giuridicamente vincolante.",
+    pt: "Tradução automática para sua comodidade — a versão em hebraico é a juridicamente vinculativa.",
+    pl: "Tłumaczenie automatyczne dla wygody — prawnie wiążąca jest wersja hebrajska.",
+    nl: "Automatische vertaling voor het gemak — de Hebreeuwse versie is juridisch bindend.",
+    hu: "Automatikus fordítás a kényelem érdekében — jogilag a héber változat az irányadó.",
+    el: "Αυτόματη μετάφραση για διευκόλυνση — νομικά δεσμευτική είναι η εβραϊκή έκδοση.",
+    ja: "便宜上の自動翻訳です。法的に有効なのはヘブライ語版です。",
+    ko: "편의를 위한 자동 번역입니다. 법적 효력은 히브리어 버전에 있습니다."
   };
-  var DISMISS = { ar: "إغلاق", en: "Dismiss", ru: "Закрыть", am: "ዝጋ", es: "Cerrar", fr: "Fermer" };
+  var DISMISS = {
+    ar: "إغلاق", en: "Dismiss", ru: "Закрыть", fr: "Fermer", es: "Cerrar", am: "ዝጋ",
+    uk: "Закрити", ro: "Închide", th: "ปิด", tl: "Isara", hi: "बंद करें", ne: "बन्द गर्नुहोस्",
+    zh: "关闭", fa: "بستن", ur: "بند کریں", tr: "Kapat", ka: "დახურვა", de: "Schließen",
+    it: "Chiudi", pt: "Fechar", pl: "Zamknij", nl: "Sluiten", hu: "Bezárás", el: "Κλείσιμο",
+    ja: "閉じる", ko: "닫기"
+  };
 
   // Attributes worth translating (visible to the user), never element VALUES.
   var ATTRS = ["placeholder", "aria-label", "title", "alt"];

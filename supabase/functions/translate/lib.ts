@@ -26,13 +26,39 @@ export type LangMeta = { code: string; label: string; english: string; dir: Lang
 // translation target. Adding a language later is just another row here + the same
 // entry in the two client runtimes — the engine itself is fully generic.
 export const SOURCE_LANG = "he";
+// A broad world set covering Israel's communities (Arabic, Russian, Amharic,
+// Tigrinya, Ukrainian, Romanian, Thai, Filipino, Hindi, Nepali, Chinese, Persian,
+// Georgian …) plus the major world languages. `english` is what the model prompt
+// names as the target; `dir` drives the <html dir> flip. Add a language = one row
+// here + one in translate-runtime.js (LANGS/HE_NAMES/BANNER) — the engine is generic.
 export const SUPPORTED_LANGS: LangMeta[] = [
   { code: "ar", label: "العربية", english: "Arabic", dir: "rtl" },
-  { code: "en", label: "English", english: "English", dir: "ltr" },
   { code: "ru", label: "Русский", english: "Russian", dir: "ltr" },
-  { code: "am", label: "አማርኛ", english: "Amharic", dir: "ltr" },
-  { code: "es", label: "Español", english: "Spanish", dir: "ltr" },
+  { code: "en", label: "English", english: "English", dir: "ltr" },
   { code: "fr", label: "Français", english: "French", dir: "ltr" },
+  { code: "es", label: "Español", english: "Spanish", dir: "ltr" },
+  { code: "am", label: "አማርኛ", english: "Amharic", dir: "ltr" },
+  { code: "ti", label: "ትግርኛ", english: "Tigrinya", dir: "ltr" },
+  { code: "uk", label: "Українська", english: "Ukrainian", dir: "ltr" },
+  { code: "ro", label: "Română", english: "Romanian", dir: "ltr" },
+  { code: "th", label: "ไทย", english: "Thai", dir: "ltr" },
+  { code: "tl", label: "Filipino", english: "Filipino (Tagalog)", dir: "ltr" },
+  { code: "hi", label: "हिन्दी", english: "Hindi", dir: "ltr" },
+  { code: "ne", label: "नेपाली", english: "Nepali", dir: "ltr" },
+  { code: "zh", label: "中文", english: "Chinese (Simplified)", dir: "ltr" },
+  { code: "fa", label: "فارسی", english: "Persian", dir: "rtl" },
+  { code: "ur", label: "اردو", english: "Urdu", dir: "rtl" },
+  { code: "tr", label: "Türkçe", english: "Turkish", dir: "ltr" },
+  { code: "ka", label: "ქართული", english: "Georgian", dir: "ltr" },
+  { code: "de", label: "Deutsch", english: "German", dir: "ltr" },
+  { code: "it", label: "Italiano", english: "Italian", dir: "ltr" },
+  { code: "pt", label: "Português", english: "Portuguese", dir: "ltr" },
+  { code: "pl", label: "Polski", english: "Polish", dir: "ltr" },
+  { code: "nl", label: "Nederlands", english: "Dutch", dir: "ltr" },
+  { code: "hu", label: "Magyar", english: "Hungarian", dir: "ltr" },
+  { code: "el", label: "Ελληνικά", english: "Greek", dir: "ltr" },
+  { code: "ja", label: "日本語", english: "Japanese", dir: "ltr" },
+  { code: "ko", label: "한국어", english: "Korean", dir: "ltr" },
 ];
 
 export function isSupportedLang(code: string): boolean {

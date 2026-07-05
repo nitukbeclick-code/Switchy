@@ -67,6 +67,32 @@ export async function insertRow(table: string, body: Record<string, unknown>): P
   }
 }
 
+// Like insertRow, but on failure returns the PostgREST error MESSAGE so the
+// caller can translate a table trigger's `raise exception` into a friendly reply
+// (insertRow swallows the body and only signals false). PostgREST returns
+// {"message": "..."} for a raised exception. `error` is "" when no message is
+// available (e.g. a network null), so the caller's mapper can fall back cleanly.
+export async function insertRowResult(
+  table: string,
+  body: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  try {
+    const r = await serviceFetch(`/rest/v1/${table}`, { method: "POST", body: JSON.stringify(body) });
+    if (!r) return { ok: false, error: "", status: 0 };
+    if (r.ok) return { ok: true };
+    let message = "";
+    try {
+      const j = await r.json();
+      if (j && typeof j.message === "string") message = j.message;
+    } catch (_) { /* non-JSON error body — leave message empty */ }
+    jlog({ at: "insertRowResult", table, ok: false, status: r.status, message });
+    return { ok: false, error: message, status: r.status };
+  } catch (e) {
+    jlog({ at: "insertRowResult", table, ok: false, error: String(e) });
+    return { ok: false, error: "", status: 0 };
+  }
+}
+
 // Same null-vs-empty contract as fetchRows.
 // ⚠️ ROWS ONLY: use this only for set/table-returning RPCs. A scalar-returning
 // RPC (`returns boolean` etc.) comes back from PostgREST as a BARE JSON value

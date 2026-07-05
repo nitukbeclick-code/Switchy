@@ -32,7 +32,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { resolveCfgCached } from "../_shared/config.ts";
 import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
-import { fetchRows, insertRow, patchCount, rpcScalar } from "../_shared/db.ts";
+import { fetchRows, insertRowResult, patchCount, rpcScalar } from "../_shared/db.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
 import { buildOtpEmailHtml } from "../_shared/meetings.ts";
 import { jlog } from "../_shared/log.ts";
@@ -319,6 +319,7 @@ function mapGuardError(raw: string): { error: string; status: number } {
   }
   if (m.includes("saturday")) return { error: "לא ניתן לקבוע פגישה בשבת.", status: 400 };
   if (m.includes("one day ahead")) return { error: "יש לקבוע פגישה ליום אחד מראש לפחות.", status: 400 };
+  if (m.includes("hours ahead")) return { error: "יש לקבוע את הפגישה לפחות 4 שעות מראש.", status: 400 };
   if (m.includes("too far ahead")) return { error: "ניתן לקבוע פגישה עד 30 יום מראש.", status: 400 };
   if (m.includes("invalid slot")) return { error: "המועד שנבחר אינו זמין.", status: 400 };
   if (m.includes("invalid name")) return { error: "שם לא תקין.", status: 400 };
@@ -386,7 +387,7 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
   // Insert via service-role. status is OMITTED (the guard forces 'pending');
   // consent timestamps are non-null sentinels the guard re-stamps with now().
   const nowIso = new Date().toISOString();
-  const ok = await insertRow("meetings", {
+  const res = await insertRowResult("meetings", {
     name,
     phone,
     email,
@@ -400,13 +401,15 @@ async function handleBook(body: Record<string, unknown>, origin: string | null):
     privacy_accepted_at: nowIso,
   });
 
-  if (!ok) {
-    // insertRow swallows the PostgREST error body (returns false), so we can't
-    // read the guard's exact message here — surface the generic guard mapping.
-    // The most common rejections (rate limit / already pending) are still safe
-    // generic messages; the slot pre-check above catches the schedule cases.
-    jlog({ at: "book", ok: false });
-    return json({ ok: false, error: "אירעה שגיאה בקביעת הפגישה. נסו שוב." }, 500, origin);
+  if (!res.ok) {
+    // Surface the guard's REAL reason via the friendly mapping. The most common
+    // rejection here is "already pending" (the caller already has an open meeting
+    // for this phone) — the old generic "נסו שוב" masked it, so users retried in
+    // vain. mapGuardError falls back to the generic 500 only when no message is
+    // available (e.g. a network null).
+    const mapped = mapGuardError(res.error);
+    jlog({ at: "book", ok: false, guard: res.error });
+    return json({ ok: false, error: mapped.error }, mapped.status, origin);
   }
 
   // Single-use: consume the verified OTP so it can't be replayed for another booking.

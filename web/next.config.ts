@@ -57,6 +57,11 @@ const SUPABASE_ORIGIN = (
   "https://orzitfqmlvopujsoyigr.supabase.co"
 ).replace(/\/+$/, "");
 
+// Supabase Realtime (the community live-feed) opens a WebSocket to the same host.
+// connect-src governs WS connections too, and an https:// source does NOT cover the
+// wss:// scheme — without this the live subscription is blocked by CSP.
+const SUPABASE_WS_ORIGIN = SUPABASE_ORIGIN.replace(/^https:/, "wss:");
+
 // Google Analytics 4 (gtag.js) + Meta Pixel — script host, beacon (connect) and
 // pixel (img) origins. These are the ONLY third parties the site talks to from
 // the browser; everything else is same-origin (/api/* relative fetches).
@@ -72,8 +77,9 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://www.google-analytics.com https://www.googletagmanager.com https://www.facebook.com",
   "font-src 'self'",
-  // XHR/fetch/beacon targets: GA4, Meta pixel, and the Supabase project.
-  `connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.analytics.google.com https://connect.facebook.net https://www.facebook.com ${SUPABASE_ORIGIN}`,
+  // XHR/fetch/beacon targets: GA4, Meta pixel, and the Supabase project (REST over
+  // https + Realtime over wss for the community live-feed).
+  `connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.analytics.google.com https://connect.facebook.net https://www.facebook.com ${SUPABASE_ORIGIN} ${SUPABASE_WS_ORIGIN}`,
   "manifest-src 'self'",
   "worker-src 'self'",
   "frame-src 'none'",

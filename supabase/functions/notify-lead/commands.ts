@@ -337,9 +337,10 @@ export interface BookResult {
 }
 
 // A guard-valid, per-booking-unique placeholder phone. meetings_guard REQUIRES a
-// phone matching ^[+0-9][0-9\-\s]{7,14}$ and enforces "one open meeting per phone",
-// so a rep booking (which has no customer phone yet) needs a unique valid token to
-// pass the gate and never collide with another rep booking. Derived from the
+// phone matching ^[+0-9][0-9\-\s]{7,14}$ and blocks exact-duplicate meetings
+// (same phone+provider+date+slot), so a rep booking (which has no customer phone
+// yet) needs a unique valid token to pass the gate and never collide with another
+// rep booking. Derived from the
 // epoch-ms tail → a 12-digit all-numeric string ("0" + the last 11 ms digits),
 // which always satisfies the guard regex and is effectively unique per second.
 function repBookingPhone(nowMs: number): string {

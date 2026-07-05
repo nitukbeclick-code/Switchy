@@ -317,6 +317,9 @@ function mapGuardError(raw: string): { error: string; status: number } {
   if (m.includes("already pending") || m.includes("meeting already")) {
     return { error: "כבר קיימת פגישה פתוחה למספר הזה.", status: 400 };
   }
+  if (m.includes("duplicate meeting")) {
+    return { error: "כבר קבעתם פגישה זהה (אותה חברה, תאריך ושעה). לחברה אחרת אפשר בהחלט.", status: 400 };
+  }
   if (m.includes("saturday")) return { error: "לא ניתן לקבוע פגישה בשבת.", status: 400 };
   if (m.includes("one day ahead")) return { error: "יש לקבוע פגישה ליום אחד מראש לפחות.", status: 400 };
   if (m.includes("hours ahead")) return { error: "יש לקבוע את הפגישה לפחות 4 שעות מראש.", status: 400 };

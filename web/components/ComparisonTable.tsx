@@ -1,37 +1,34 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <ComparisonTable> — the RICH, category-aware plan comparison for a list of
-// plans. MOBILE-FIRST: phones get one clean card per plan; lg+ screens get a
-// native semantic <table> whose columns adapt to the plans' category (mirroring
-// the static site's `comparisonTable`). Both views render from the SAME
-// per-plan {@link PlanDisplay} bundle (lib/plan-display) so they can never drift.
+// plans. MOBILE-FIRST: phones get one clean card per plan (<PlanCard>); lg+
+// screens get a native semantic <table> whose columns adapt to the plans'
+// category. Both views render from the SAME per-plan {@link PlanDisplay} bundle
+// (lib/plan-display) so they can never drift.
 //
-// DATA: price (₪ + per-unit suffix), the post-promo line (an honest "לאחר המבצע:
-// ₪X" jump or a "מחיר קבוע" marker — never a meaningless bare dash), the
-// category's rich fields (נפח / מהירות / נתב / ממיר / התקנה / חו״ל / …) and the
-// qualitative perks ("מידע נוסף"). Extra long fine-print sits behind an
-// "אותיות קטנות ▾" native <details> disclosure (no JS, server-rendered).
+// GROUPED MOBILE (opt-in): pass `groupByProvider` and the mobile view becomes a
+// per-provider carousel (<ProviderCarousels>) instead of one long vertical stack
+// — turning "scroll past 59 cards" into "~8 provider strips you swipe". The
+// desktop table is unchanged. The flat list is still used for skeleton/empty.
 //
-// NAVIGABLE: every plan — the mobile card's name + its "פרטים מלאים ←" link, and
-// the desktop row's "מסלול" cell — links to the plan's full detail page
-// (/plans/{id}) via next/link, so the comparison is a gateway to the rich detail.
-//
-// HONESTY: a featured/sponsored row is ALWAYS visibly labeled ("מקודם" /
-// "בחירת העורך") — never covert. Provider brand colors are the carrier's REAL
-// hue (providerBrandColor) and are NEVER recolored to the app accent. TRUTH-ONLY:
-// only fields that exist on a plan are shown — nothing is fabricated.
+// The single mobile card lives in <PlanCard> (shared with the carousel); the
+// desktop table stays here. Provider brand colors are the carrier's REAL hue
+// (never the app accent). TRUTH-ONLY: only fields that exist on a plan are shown.
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
 import type { Plan } from "@/lib/types";
 import { priceUnitLabel } from "@/lib/format";
-import Icon from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";
-import { planDisplay, type PlanDisplay, type PlanField } from "@/lib/plan-display";
+import { planDisplay, type PlanDisplay } from "@/lib/plan-display";
 import type { PriceDrop } from "@/lib/price-history";
-import PriceDropBadge from "@/components/PriceDropBadge";
+import PlanCard, {
+  FeatureBadges,
+  PriceDropCell,
+  type FeatureLabel,
+} from "@/components/PlanCard";
+import ProviderCarousels from "@/components/ProviderCarousels";
 
-/** What kind of editorial label, if any, a row carries. */
-export type FeatureLabel = "promoted" | "editor";
+export type { FeatureLabel };
 
 export interface ComparisonTableProps {
   /** The plans to compare, in the order to display (caller pre-ranks). */
@@ -44,26 +41,29 @@ export interface ComparisonTableProps {
    */
   featured?: Record<string, FeatureLabel>;
   /**
-   * Optional per-plan REAL price-drop summary, keyed by plan id. When an entry is
-   * a non-null {@link PriceDrop}, the row's price cell shows an honest
-   * "ירד ₪X השבוע" badge (presentation only — the drop is decided upstream from
-   * public.plan_price_history; this component renders only what it's told). A
-   * `null` entry, or a missing key, shows no badge.
+   * Optional per-plan REAL price-drop summary, keyed by plan id (from
+   * public.plan_price_history). A non-null entry shows an honest "ירד ₪X השבוע"
+   * badge; a null/missing entry shows none.
    */
   priceDrops?: Record<string, PriceDrop | null>;
   /**
-   * When true AND `priceDrops` is NOT provided, each row's badge self-fetches its
-   * own history from /api/price-history (client-side) and shows the badge only if a
-   * real drop exists. Off by default so SSR pages opt in explicitly.
+   * When true AND `priceDrops` is NOT provided, each card/row self-fetches its own
+   * history from /api/price-history and shows the badge only if a real drop exists.
    */
   autoPriceDrops?: boolean;
   /** Show the tiny trend sparkline inside any rendered drop badge. */
   priceDropSparkline?: boolean;
   /**
+   * MOBILE grouping: when true, the mobile view renders per-provider carousels
+   * (<ProviderCarousels>) instead of one flat vertical card list. Off by default
+   * (home teasers / short lists keep the simple stack). The desktop table is
+   * unaffected. Skeleton/empty states always use the flat path.
+   */
+  groupByProvider?: boolean;
+  /**
    * When the table can render before its data has arrived, set this true to show a
-   * pulsing skeleton (matching the real layout, zero layout shift) instead of a
-   * blank or premature empty state. Defaults to false. `loadingRows` sizes the
-   * placeholder; ignored once real `plans` are passed.
+   * pulsing skeleton (matching the real layout, zero layout shift). `loadingRows`
+   * sizes the placeholder; ignored once real `plans` are passed.
    */
   loading?: boolean;
   /** How many skeleton rows/cards to render while `loading`. Defaults to 4. */
@@ -72,11 +72,6 @@ export interface ComparisonTableProps {
   className?: string;
 }
 
-const LABEL_HE: Record<FeatureLabel, string> = {
-  promoted: "מקודם",
-  editor: "בחירת העורך",
-};
-
 /**
  * The DESKTOP column order shown BEFORE the category's rich fields. The price /
  * post-promo columns are always present; the rich category fields follow,
@@ -84,87 +79,6 @@ const LABEL_HE: Record<FeatureLabel, string> = {
  * shows a column that is empty for every plan (mirrors the static `keep` logic).
  */
 const BASE_COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"] as const;
-
-// The provider brand mark (real carrier logo, else a brand-colored monogram) is
-// the shared <ProviderLogo>, used here at the default 32px circle.
-
-/** An editorial "מומלץ" + precise-label pill pair — rendered ONLY when labeled. */
-function FeatureBadges({ label }: { label: FeatureLabel }) {
-  return (
-    <>
-      <span className="inline-flex items-center rounded-full bg-value px-2 py-0.5 text-[11px] font-bold text-value-contrast">
-        מומלץ
-      </span>
-      <span
-        className={[
-          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-          label === "editor"
-            ? "bg-value/15 text-value-text"
-            : "bg-accent/15 text-accent-text",
-        ].join(" ")}
-      >
-        {LABEL_HE[label]}
-      </span>
-    </>
-  );
-}
-
-/** The honest post-promo line: an "לאחר המבצע" jump, or a neutral "מחיר קבוע". */
-function AfterLine({ after }: { after: PlanDisplay["after"] }) {
-  if (after.kind === "jump") {
-    return (
-      <span className="text-foreground">
-        לאחר המבצע:{" "}
-        <span className="font-semibold text-ink">{after.text}</span>
-      </span>
-    );
-  }
-  return (
-    <span className="text-muted" title="המחיר אינו עולה לאחר תום המבצע">
-      {after.text}
-    </span>
-  );
-}
-
-/** A small labelled chip used on the mobile card for one rich field. */
-function FieldChip({ field }: { field: PlanField }) {
-  return (
-    <span className="inline-flex items-baseline gap-1 rounded-lg border border-border/70 bg-background px-2 py-1 text-[12px] leading-tight">
-      <span className="text-muted">{field.label}</span>
-      <span className="font-medium text-foreground">{field.value}</span>
-    </span>
-  );
-}
-
-/** The price-drop badge cell (pre-resolved map OR self-fetching), shared by views. */
-function PriceDrop({
-  plan,
-  priceDrops,
-  autoPriceDrops,
-  priceDropSparkline,
-}: {
-  plan: Plan;
-  priceDrops?: Record<string, PriceDrop | null>;
-  autoPriceDrops: boolean;
-  priceDropSparkline: boolean;
-}) {
-  if (priceDrops) {
-    const drop = priceDrops[plan.id];
-    return drop ? (
-      <span className="mt-1 block">
-        <PriceDropBadge planId={plan.id} drop={drop} sparkline={priceDropSparkline} />
-      </span>
-    ) : null;
-  }
-  if (autoPriceDrops) {
-    return (
-      <span className="mt-1 block">
-        <PriceDropBadge planId={plan.id} sparkline={priceDropSparkline} />
-      </span>
-    );
-  }
-  return null;
-}
 
 /** A single pulsing skeleton bar — neutral `--border` fill, theme-aware. */
 function SkelBar({ className }: { className?: string }) {
@@ -182,6 +96,7 @@ export default function ComparisonTable({
   priceDrops,
   autoPriceDrops = false,
   priceDropSparkline = false,
+  groupByProvider = false,
   loading = false,
   loadingRows = 4,
   className,
@@ -196,9 +111,7 @@ export default function ComparisonTable({
   const displays: PlanDisplay[] = plans.map(planDisplay);
 
   // Desktop rich columns: the UNION of the category field labels actually present
-  // across the visible plans, in first-seen order. This mirrors the static
-  // `keep` rule — a column appears only if at least one plan has a value for it,
-  // so a category never renders a column of dashes.
+  // across the visible plans, in first-seen order (mirrors the static `keep` rule).
   const richColumns: string[] = [];
   const seenCol = new Set<string>();
   for (const d of displays) {
@@ -209,7 +122,6 @@ export default function ComparisonTable({
       }
     }
   }
-  // Whether any visible plan has perks → only then add the "מידע נוסף" column.
   const hasPerksColumn = displays.some((d) => d.perks.length > 0);
   const desktopColumns = [
     ...BASE_COLUMNS,
@@ -219,6 +131,9 @@ export default function ComparisonTable({
   const totalCols = desktopColumns.length;
 
   const sharedDropProps = { priceDrops, autoPriceDrops, priceDropSparkline };
+  // Grouped carousels only when explicitly enabled AND there's real data to group
+  // (skeleton/empty keep the flat path, which renders those states).
+  const useCarousels = groupByProvider && !showSkeleton && !isEmpty;
 
   return (
     <div
@@ -231,141 +146,55 @@ export default function ComparisonTable({
         {caption}
       </p>
 
-      {/* ══ MOBILE / TABLET (default) — one card per plan ════════════════════ */}
-      <ul className="flex flex-col gap-3 lg:hidden">
-        {showSkeleton
-          ? Array.from({ length: Math.max(1, loadingRows) }).map((_, i) => (
-              <li
-                key={`m-skel-${i}`}
-                aria-hidden="true"
-                className="rounded-2xl border border-border/60 bg-surface p-4 elevate-card"
-              >
-                <span className="flex animate-pulse items-center gap-2 motion-reduce:animate-none">
-                  <span className="block h-8 w-8 shrink-0 rounded-full bg-border" />
-                  <SkelBar className="w-24" />
-                </span>
-                <SkelBar className="mt-3 h-6 w-20" />
-                <span className="mt-3 flex gap-1.5">
-                  <SkelBar className="w-16" />
-                  <SkelBar className="w-12" />
-                </span>
-              </li>
-            ))
-          : null}
-
-        {isEmpty ? (
-          <li>
-            <EmptyCard />
-          </li>
-        ) : null}
-
-        {displays.map((d) => {
-          const plan = d.plan;
-          const label = featured?.[plan.id];
-          return (
-            <li
-              key={plan.id}
-              className={[
-                // overflow-hidden + the break-words on text below keep long
-                // benefit lists / fine-print from blowing out the card width (RTL-safe).
-                "overflow-hidden rounded-2xl border bg-surface p-4 elevate-card",
-                label
-                  ? "border-accent/30 bg-accent/[0.06] ring-1 ring-inset ring-accent/25"
-                  : "border-border/60",
-              ]
-                .join(" ")
-                .trim()}
-            >
-              {/* Header: provider badge + name, optional editorial label. */}
-              <div className="flex flex-wrap items-center gap-2">
-                <ProviderLogo provider={plan.provider} />
-                <span className="min-w-0 break-words font-medium text-foreground">
-                  {plan.provider}
-                </span>
-                {label ? <FeatureBadges label={label} /> : null}
-              </div>
-
-              {/* Plan name — links to the plan's full detail page. */}
-              <p className="mt-2">
-                <Link
-                  href={`/plans/${plan.id}`}
-                  aria-label={`לפרטים מלאים על ${plan.plan} מ${plan.provider}`}
-                  className="interactive inline-block rounded-sm font-display text-base font-semibold tracking-tight text-ink underline-offset-4 transition-colors hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      {/* ══ MOBILE / TABLET (default) ════════════════════════════════════════
+          Grouped per-provider carousels when opted-in with real data; otherwise
+          one card per plan (also the skeleton / empty path). */}
+      {useCarousels ? (
+        <ProviderCarousels
+          plans={plans}
+          featured={featured}
+          {...sharedDropProps}
+          className="lg:hidden"
+        />
+      ) : (
+        <ul className="flex flex-col gap-3 lg:hidden">
+          {showSkeleton
+            ? Array.from({ length: Math.max(1, loadingRows) }).map((_, i) => (
+                <li
+                  key={`m-skel-${i}`}
+                  aria-hidden="true"
+                  className="rounded-2xl border border-border/60 bg-surface p-4 elevate-card"
                 >
-                  {plan.plan}
-                </Link>
-              </p>
+                  <span className="flex animate-pulse items-center gap-2 motion-reduce:animate-none">
+                    <span className="block h-8 w-8 shrink-0 rounded-full bg-border" />
+                    <SkelBar className="w-24" />
+                  </span>
+                  <SkelBar className="mt-3 h-6 w-20" />
+                  <span className="mt-3 flex gap-1.5">
+                    <SkelBar className="w-16" />
+                    <SkelBar className="w-12" />
+                  </span>
+                </li>
+              ))
+            : null}
 
-              {/* Price big + unit, then the honest post-promo line. tabular-nums
-                  column-aligns the ₪ digits so the price reads as an even ledger
-                  even where no .nums-tabular ancestor wraps this table (parity
-                  with the home tables, which do wrap it). */}
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-display text-2xl font-bold tracking-tight text-ink tabular-nums">
-                  ₪{d.price}
-                </span>
-                <span className="text-sm text-muted">{priceUnitLabel(plan)}</span>
-              </div>
-              <div className="mt-0.5 text-[13px] tabular-nums">
-                <AfterLine after={d.after} />
-              </div>
-              <PriceDrop plan={plan} {...sharedDropProps} />
-
-              {/* Category-relevant rich fields as compact labelled chips. */}
-              {d.fields.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {d.fields.map((f) => (
-                    <FieldChip key={f.label} field={f} />
-                  ))}
-                </div>
-              ) : null}
-
-              {/* Perks line ("מידע נוסף"). break-words so a long benefit list wraps
-                  inside the card instead of forcing horizontal overflow. */}
-              {d.perks.length > 0 ? (
-                <p className="mt-3 break-words text-[13px] leading-relaxed text-muted">
-                  {d.perks.join(" · ")}
-                </p>
-              ) : null}
-
-              {/* Extra fine-print behind a native, no-JS disclosure — only when the
-                  plan carries fine-lines NOT already shown as perks. (The full
-                  detail page, linked below, is the canonical "פרטים מלאים".) */}
-              {extraFineLines(d).length > 0 ? (
-                <details className="group mt-3">
-                  <summary className="interactive flex cursor-pointer list-none items-center gap-1 rounded-md text-[13px] font-semibold text-accent-text marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                    אותיות קטנות
-                    <Icon
-                      name="chevron"
-                      size={14}
-                      aria-hidden="true"
-                      className="rotate-90 transition-transform group-open:-rotate-90"
-                    />
-                  </summary>
-                  <ul className="mt-2 list-disc space-y-1 ps-5 text-[13px] leading-relaxed text-foreground">
-                    {extraFineLines(d).map((line, i) => (
-                      <li key={i} className="break-words">
-                        {line}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              ) : null}
-
-              {/* Always-present navigation to the plan's full detail page, so every
-                  card is reachable regardless of whether it carries fine-print. */}
-              <Link
-                href={`/plans/${plan.id}`}
-                aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
-                className="interactive press mt-3 inline-flex items-center gap-1 rounded-lg text-[13px] font-semibold text-accent-text underline-offset-4 transition-colors hover:text-accent-hover hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                פרטים מלאים
-                <Icon name="chevron" size={14} aria-hidden="true" />
-              </Link>
+          {isEmpty ? (
+            <li>
+              <EmptyCard />
             </li>
-          );
-        })}
-      </ul>
+          ) : null}
+
+          {displays.map((d) => (
+            <li key={d.plan.id}>
+              <PlanCard
+                display={d}
+                label={featured?.[d.plan.id]}
+                {...sharedDropProps}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
 
       {/* ══ DESKTOP (lg+) — rich, category-aware semantic table ══════════════ */}
       <div
@@ -378,15 +207,8 @@ export default function ComparisonTable({
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr className="border-b border-border bg-background/60 text-[11px] font-medium uppercase tracking-wide text-muted">
-              {desktopColumns.map((col, i) => (
-                <th
-                  key={col}
-                  scope="col"
-                  className={[
-                    "px-4 py-3 font-medium",
-                    i === 2 || i === 3 ? "text-start" : "text-start",
-                  ].join(" ")}
-                >
+              {desktopColumns.map((col) => (
+                <th key={col} scope="col" className="px-4 py-3 text-start font-medium">
                   {col}
                 </th>
               ))}
@@ -422,7 +244,6 @@ export default function ComparisonTable({
             {displays.map((d) => {
               const plan = d.plan;
               const label = featured?.[plan.id];
-              // Quick lookup of this plan's value per rich column label.
               const byLabel = new Map(d.fields.map((f) => [f.label, f.value]));
               return (
                 <tr
@@ -459,19 +280,16 @@ export default function ComparisonTable({
                     </Link>
                   </td>
 
-                  {/* מחיר — tabular-nums aligns the ₪ digits down the column so
-                      the price stack reads as an even ledger even without a
-                      .nums-tabular ancestor (parity with the home tables). */}
+                  {/* מחיר — tabular-nums aligns the ₪ digits down the column. */}
                   <td className="px-4 py-3 text-start whitespace-nowrap tabular-nums">
                     <span className="font-display text-base font-bold text-ink">
                       ₪{d.price}
                     </span>{" "}
                     <span className="text-xs text-muted">{priceUnitLabel(plan)}</span>
-                    <PriceDrop plan={plan} {...sharedDropProps} />
+                    <PriceDropCell plan={plan} {...sharedDropProps} />
                   </td>
 
-                  {/* מחיר אחרי תקופה — tabular-nums keeps the post-promo ₪ jump
-                      aligned with the headline price column above. */}
+                  {/* מחיר אחרי תקופה — the honest post-promo jump / fixed marker. */}
                   <td className="px-4 py-3 text-start whitespace-nowrap text-[13px] tabular-nums">
                     {d.after.kind === "jump" ? (
                       <span className="font-medium text-foreground">{d.after.text}</span>
@@ -498,9 +316,7 @@ export default function ComparisonTable({
                     );
                   })}
 
-                  {/* מידע נוסף (perks) — only when the column exists. Capped width +
-                      break-words so a long benefit list wraps within the cell rather
-                      than stretching the whole table. */}
+                  {/* מידע נוסף (perks) — only when the column exists. */}
                   {hasPerksColumn ? (
                     <td className="max-w-[20rem] break-words px-4 py-3 text-start text-[13px] text-muted">
                       {d.perks.length > 0 ? d.perks.join(" · ") : "—"}
@@ -514,16 +330,6 @@ export default function ComparisonTable({
       </div>
     </div>
   );
-}
-
-/**
- * The fine-print to show in the "פרטים מלאים" disclosure — the plan's fineLines
- * MINUS anything already shown on the perks line (so the disclosure adds detail
- * rather than repeating it). Truth-only: real catalogue text only.
- */
-function extraFineLines(d: PlanDisplay): string[] {
-  const shown = new Set(d.perks);
-  return d.fineLines.filter((line) => !shown.has(line));
 }
 
 /**

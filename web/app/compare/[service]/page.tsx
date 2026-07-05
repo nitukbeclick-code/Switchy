@@ -574,6 +574,7 @@ export default async function ServiceHubPage({ params }: Params) {
             <ComparisonTable
               plans={plans}
               caption={`השוואת ${svc.label} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
+              groupByProvider
             />
             <PriceCaveat className="mt-3" />
           </>

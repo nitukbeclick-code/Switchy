@@ -81,6 +81,10 @@ function kindLine(kind: CommunityNotification["kind"]): string {
       return "התוכן שלך סומן לבדיקת מנהל";
     case "reaction":
       return "הגיב/ה לתוכן שלך";
+    case "like":
+      return "עשה/עשתה לייק לפוסט שלך";
+    case "pinned":
+      return "הפוסט שלך הוצמד לראש הפיד";
     default:
       return "עדכון חדש";
   }
@@ -558,6 +562,42 @@ function KindGlyph({ kind }: { kind: CommunityNotification["kind"] }) {
         aria-hidden="true"
       >
         <path d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9z" />
+      </svg>
+    );
+  }
+  if (kind === "like") {
+    // Thumbs-up — a like.
+    return (
+      <svg
+        width={18}
+        height={18}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M7 10v11M7 10l4-7a2 2 0 0 1 2.7 2.5L12 10h5.5a2 2 0 0 1 2 2.5l-1.6 6a2 2 0 0 1-2 1.5H7" />
+      </svg>
+    );
+  }
+  if (kind === "pinned") {
+    // Pin — a pinned post.
+    return (
+      <svg
+        width={18}
+        height={18}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 17v5M9 3h6l-1 6 3 3v1H7v-1l3-3-1-6z" />
       </svg>
     );
   }

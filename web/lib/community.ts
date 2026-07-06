@@ -81,7 +81,7 @@ export interface ReplyNode extends CommunityReply {
 export interface CommunityNotification {
   id: number;
   user_id: string;
-  kind: "reply" | "mention" | "flag" | "reaction";
+  kind: "reply" | "mention" | "flag" | "reaction" | "like" | "pinned";
   post_id: string | null;
   reply_id: string | null;
   actor: string | null;

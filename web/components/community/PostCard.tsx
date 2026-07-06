@@ -39,6 +39,8 @@ import {
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
+import Link from "next/link";
+import { matchProviders, providerBySlug } from "@/lib/providers.generated";
 import MediaGallery from "./MediaGallery";
 import MediaView from "./MediaView";
 import ReactionBar from "./ReactionBar";
@@ -73,23 +75,48 @@ function initial(name: string): string {
   return trimmed ? Array.from(trimmed)[0].toUpperCase() : "מ";
 }
 
-/** Split body into text + @mention segments; mentions render as bold spans.
- *  All segments are plain strings placed via JSX {}, so React escapes them. */
+/** Split body into text + @mention (bold) + catalogue-provider (link) segments.
+ *  Every segment is a plain string placed via JSX {} (React auto-escapes it) or a
+ *  next/link whose children are plain text — raw HTML is never injected. */
 function renderBody(body: string): React.ReactNode {
+  type Span = { start: number; end: number; kind: "mention" | "provider"; slug?: string };
+  const spans: Span[] = [];
+  // @mentions (bold). matchAll on the shared /g regex — no lastIndex bookkeeping.
+  for (const m of body.matchAll(MENTION_RE)) {
+    const start = m.index ?? 0;
+    spans.push({ start, end: start + m[0].length, kind: "mention" });
+  }
+  // Catalogue-provider names (link) — never inside an @mention span.
+  for (const p of matchProviders(body, spans)) {
+    spans.push({ start: p.start, end: p.end, kind: "provider", slug: p.slug });
+  }
+  spans.sort((a, b) => a.start - b.start);
+
   const nodes: React.ReactNode[] = [];
   let last = 0;
   let key = 0;
-  // MENTION_RE is a shared /g regex — reset lastIndex before each use.
-  MENTION_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = MENTION_RE.exec(body)) !== null) {
-    if (m.index > last) nodes.push(body.slice(last, m.index));
-    nodes.push(
-      <span key={`m${key++}`} className="font-semibold text-accent-text">
-        {m[0]}
-      </span>,
-    );
-    last = m.index + m[0].length;
+  for (const s of spans) {
+    if (s.start < last) continue; // safety: drop any overlap
+    if (s.start > last) nodes.push(body.slice(last, s.start));
+    const text = body.slice(s.start, s.end);
+    if (s.kind === "mention") {
+      nodes.push(
+        <span key={`s${key++}`} className="font-semibold text-accent-text">
+          {text}
+        </span>,
+      );
+    } else {
+      nodes.push(
+        <Link
+          key={`s${key++}`}
+          href={`/providers/${s.slug}`}
+          className="font-medium text-accent-text underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          {text}
+        </Link>,
+      );
+    }
+    last = s.end;
   }
   if (last < body.length) nodes.push(body.slice(last));
   return nodes;
@@ -615,6 +642,22 @@ export default function PostCard({
       ) : (
         gallery.length > 0 && <MediaGallery images={gallery} />
       )}
+
+      {/* Provider tag → catalogue page (when this post is about a known provider) */}
+      {(() => {
+        const prov = post.provider_slug ? providerBySlug(post.provider_slug) : undefined;
+        if (!prov) return null;
+        return (
+          <Link
+            href={`/providers/${prov.slug}`}
+            className="press mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-medium text-accent-text transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            aria-label={`מעבר לעמוד הספק ${prov.name}`}
+          >
+            <span aria-hidden="true">🔗</span>
+            על הספק: {prov.name}
+          </Link>
+        );
+      })()}
 
       {/* Own flagged → under-review note */}
       {isOwn && post.is_flagged && (

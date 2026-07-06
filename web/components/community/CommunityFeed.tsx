@@ -322,6 +322,7 @@ export default function CommunityFeed() {
             like_count: row.like_count ?? 0,
             reply_count: row.reply_count ?? 0,
             is_pinned: row.is_pinned ?? false,
+            provider_slug: row.provider_slug ?? null,
           };
 
           let added = false;

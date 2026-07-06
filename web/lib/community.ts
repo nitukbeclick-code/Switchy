@@ -563,7 +563,42 @@ export async function updateMyProfile(
   return !error;
 }
 
-// ── Mentions (display) ───────────────────────────────────────────────────────
+// ── Mentions (display + autocomplete) ────────────────────────────────────────
 
 /** Same @-name grammar the community-notify function resolves (Hebrew+Latin+_). */
 export const MENTION_RE = /@([A-Za-z0-9_א-׿]+)/g;
+
+/** A single-token name only — this is exactly what community-notify can resolve, so
+ *  the autocomplete never suggests a name (e.g. one with a space) whose @mention
+ *  would silently fail to notify. */
+const MENTIONABLE_NAME = /^[A-Za-z0-9_א-׿]+$/;
+
+export interface MentionCandidate {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
+/** Autocomplete candidates for an @mention: public profiles whose name starts with
+ *  `prefix` (case-insensitive) and is a single mentionable token. Read-only, public
+ *  data (public_profiles), browser JWT. Returns [] for an empty prefix. */
+export async function searchMentionCandidates(prefix: string, limit = 6): Promise<MentionCandidate[]> {
+  const q = prefix.trim().replace(/[%\\]/g, "\\$&"); // neutralize LIKE wildcards
+  if (!q) return [];
+  const { data } = await getBrowserSupabase()
+    .from("public_profiles")
+    .select("id,name,avatar_url")
+    .ilike("name", `${q}%`)
+    .not("name", "is", null)
+    .limit(20);
+  const seen = new Set<string>();
+  const out: MentionCandidate[] = [];
+  for (const r of (data ?? []) as MentionCandidate[]) {
+    const name = (r.name ?? "").trim();
+    if (!name || !MENTIONABLE_NAME.test(name) || seen.has(name)) continue;
+    seen.add(name);
+    out.push({ id: r.id, name, avatar_url: r.avatar_url ?? null });
+    if (out.length >= limit) break;
+  }
+  return out;
+}

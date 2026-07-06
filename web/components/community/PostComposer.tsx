@@ -41,6 +41,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
+import MentionTextarea from "./MentionTextarea";
 
 export interface PostComposerProps {
   /** Called with the freshly-created post so the feed can prepend it. */
@@ -321,14 +322,14 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
             <label htmlFor={bodyId} className="sr-only">
               תוכן הפוסט
             </label>
-            <textarea
+            <MentionTextarea
               id={bodyId}
               value={body}
-              onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY))}
+              onChange={(v) => setBody(v.slice(0, MAX_BODY))}
               maxLength={MAX_BODY}
               rows={3}
               dir="rtl"
-              placeholder="שתפו חוויה, שאלו שאלה או המליצו על ספק…"
+              placeholder="שתפו חוויה, שאלו שאלה או המליצו על ספק… (השתמשו ב-@ לאזכור)"
               disabled={busy || recording}
               aria-describedby={`${bodyId}-count`}
               className="interactive min-h-[5rem] w-full resize-y rounded-xl border border-border bg-background px-3 py-2.5 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-60"

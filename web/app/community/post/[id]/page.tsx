@@ -16,7 +16,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import JsonLd from "@/components/JsonLd";
 import { pageMetadata } from "@/lib/seo";
-import { MENTION_RE } from "@/lib/community";
+import { MENTION_RE, orderByAccepted } from "@/lib/community";
 import { matchProviders, providerBySlug } from "@/lib/providers.generated";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
@@ -38,6 +38,7 @@ interface PostRow {
   media_type: "image" | "video" | "audio" | null;
   media_url: string | null;
   provider_slug: string | null;
+  accepted_reply_id: string | null;
 }
 interface ReplyRow {
   id: string;
@@ -51,7 +52,7 @@ interface ReplyRow {
 async function fetchPost(id: string): Promise<PostRow | null> {
   const { data } = await sb()
     .from("community_feed")
-    .select("id,author,avatar,channel,body,created_at,media_type,media_url,provider_slug")
+    .select("id,author,avatar,channel,body,created_at,media_type,media_url,provider_slug,accepted_reply_id")
     .eq("id", id)
     .eq("is_flagged", false)
     .maybeSingle();
@@ -171,6 +172,23 @@ export default async function CommunityPostPage({ params }: Params) {
   const replies = await fetchReplies(id);
   const prov = post.provider_slug ? providerBySlug(post.provider_slug) : undefined;
 
+  // The accepted answer = the reply the post author chose as best (if it's among
+  // the visible, non-flagged replies); otherwise fall back to the earliest reply.
+  const answerOf = (r: ReplyRow) => ({
+    "@type": "Answer",
+    text: r.body,
+    author: { "@type": "Person", name: r.author },
+    dateCreated: r.created_at,
+  });
+  // Shared helper: the author's chosen answer (or null) + the display order with it
+  // floated to the top. Only an ACTUAL author choice gets the badge / float.
+  const { accepted: chosen, ordered: displayReplies } = orderByAccepted(replies, post.accepted_reply_id);
+  const hasChosenAnswer = chosen !== null;
+  // JSON-LD acceptedAnswer: the author's choice if any, else the earliest reply
+  // (SEO completeness — a genuine Q&A still declares its answer).
+  const accepted = chosen ?? replies[0];
+  const others = replies.filter((r) => r.id !== accepted?.id);
+
   // Truthful QAPage JSON-LD — real question + real answers only.
   const qaSchema: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -182,24 +200,10 @@ export default async function CommunityPostPage({ params }: Params) {
       answerCount: replies.length,
       author: { "@type": "Person", name: post.author },
       dateCreated: post.created_at,
-      ...(replies.length > 0
+      ...(replies.length > 0 && accepted
         ? {
-            acceptedAnswer: {
-              "@type": "Answer",
-              text: replies[0].body,
-              author: { "@type": "Person", name: replies[0].author },
-              dateCreated: replies[0].created_at,
-            },
-            ...(replies.length > 1
-              ? {
-                  suggestedAnswer: replies.slice(1).map((r) => ({
-                    "@type": "Answer",
-                    text: r.body,
-                    author: { "@type": "Person", name: r.author },
-                    dateCreated: r.created_at,
-                  })),
-                }
-              : {}),
+            acceptedAnswer: answerOf(accepted),
+            ...(others.length > 0 ? { suggestedAnswer: others.map(answerOf) } : {}),
           }
         : {}),
     },
@@ -254,8 +258,21 @@ export default async function CommunityPostPage({ params }: Params) {
               : `${replies.length.toLocaleString("he-IL")} תגובות`}
         </h2>
         <ul className="flex list-none flex-col gap-3 p-0">
-          {replies.map((r) => (
-            <li key={r.id} className="rounded-2xl border border-border bg-surface p-4 shadow-float">
+          {displayReplies.map((r) => {
+            const isAccepted = hasChosenAnswer && r.id === post.accepted_reply_id;
+            return (
+            <li
+              key={r.id}
+              className={`rounded-2xl border p-4 shadow-float ${
+                isAccepted ? "border-accent/50 bg-accent/5" : "border-border bg-surface"
+              }`}
+            >
+              {isAccepted && (
+                <p className="mb-1 inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[0.7rem] font-semibold text-accent-text">
+                  <span aria-hidden="true">✓</span>
+                  התשובה שנבחרה
+                </p>
+              )}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="text-sm font-semibold text-ink">{r.author}</span>
                 <time dateTime={r.created_at} className="text-xs text-muted">
@@ -269,7 +286,8 @@ export default async function CommunityPostPage({ params }: Params) {
               )}
               <Media type={r.media_type} url={r.media_url} />
             </li>
-          ))}
+            );
+          })}
         </ul>
       </section>
 

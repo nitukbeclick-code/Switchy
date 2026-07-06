@@ -80,6 +80,8 @@ export interface CommunityPost {
   edited_at: string | null;
   /** Catalogue provider this post is about (→ /providers/<slug>), or null. */
   provider_slug: string | null;
+  /** The reply the post author marked as the helpful "best answer", or null. */
+  accepted_reply_id: string | null;
 }
 
 export interface CommunityReply {
@@ -130,7 +132,7 @@ export interface NewContent {
 }
 
 const FEED_COLS =
-  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned,edited_at,provider_slug";
+  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned,edited_at,provider_slug,accepted_reply_id";
 const REPLY_COLS =
   "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged,parent_reply_id,edited_at";
 
@@ -439,6 +441,38 @@ export async function setPinned(postId: string, pinned: boolean): Promise<boolea
     .update({ is_pinned: pinned })
     .eq("id", postId);
   return !error;
+}
+
+/** Post-author only: mark (or clear, with null) the reply that best answered the
+ *  post. Authorization is enforced in the DB — RLS posts_update_own restricts the
+ *  UPDATE to the post's author, and a trigger validates the reply belongs to this
+ *  post. The client "is this my post" check only decides whether the control shows;
+ *  a non-author's update matches no row and returns without effect. */
+export async function setAcceptedReply(
+  postId: string,
+  replyId: string | null,
+): Promise<boolean> {
+  const { error } = await getBrowserSupabase()
+    .from("community_posts")
+    .update({ accepted_reply_id: replyId })
+    .eq("id", postId);
+  return !error;
+}
+
+/** Pure: given replies (any order) and the post's accepted_reply_id, return the
+ *  accepted reply — the AUTHOR's real choice if it's present among the replies,
+ *  else null — plus the display order with that reply floated to the top. Shared by
+ *  the interactive thread and the SEO permalink so both agree on "the chosen answer".
+ *  A dangling accepted_reply_id (reply deleted/flagged out) resolves to null. */
+export function orderByAccepted<T extends { id: string }>(
+  replies: T[],
+  acceptedReplyId: string | null | undefined,
+): { accepted: T | null; ordered: T[] } {
+  if (!acceptedReplyId) return { accepted: null, ordered: replies };
+  const idx = replies.findIndex((r) => r.id === acceptedReplyId);
+  if (idx < 0) return { accepted: null, ordered: replies };
+  const accepted = replies[idx];
+  return { accepted, ordered: [accepted, ...replies.filter((_, i) => i !== idx)] };
 }
 
 // ── Likes / bookmarks ────────────────────────────────────────────────────────

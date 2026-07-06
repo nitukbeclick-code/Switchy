@@ -369,6 +369,7 @@ export default function CommunityFeed() {
             reply_count: row.reply_count ?? 0,
             is_pinned: row.is_pinned ?? false,
             provider_slug: row.provider_slug ?? null,
+            accepted_reply_id: row.accepted_reply_id ?? null,
           };
 
           let added = false;

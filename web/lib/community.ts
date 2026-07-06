@@ -54,6 +54,8 @@ export interface CommunityPost {
   reply_count: number;
   /** Admin-pinned to the top of the feed (welcome / announcement). */
   is_pinned: boolean;
+  /** Set the first time the author edits the post (truthful "נערך"); null otherwise. */
+  edited_at: string | null;
 }
 
 export interface CommunityReply {
@@ -71,6 +73,8 @@ export interface CommunityReply {
   /** The reply this one answers (same post), or null for a top-level reply.
    *  Depth is capped at 1 in the DB — a reply to a child re-parents to the ancestor. */
   parent_reply_id: string | null;
+  /** Set the first time the author edits the reply (truthful "נערך"); null otherwise. */
+  edited_at: string | null;
 }
 
 /** A top-level reply with its (single level of) child replies, oldest-first. */
@@ -102,9 +106,9 @@ export interface NewContent {
 }
 
 const FEED_COLS =
-  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned";
+  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned,edited_at";
 const REPLY_COLS =
-  "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged,parent_reply_id";
+  "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged,parent_reply_id,edited_at";
 
 export const MAX_BODY = 4000;
 
@@ -203,8 +207,14 @@ export async function createPost(
     )
     .single();
   if (error || !data) return null;
-  // A freshly-created post is never pinned; fill the aggregate + pin defaults.
-  return { ...(data as unknown as CommunityPost), like_count: 0, reply_count: 0, is_pinned: false };
+  // A freshly-created post is never pinned/edited; fill the aggregate + defaults.
+  return {
+    ...(data as unknown as CommunityPost),
+    like_count: 0,
+    reply_count: 0,
+    is_pinned: false,
+    edited_at: null,
+  };
 }
 
 export async function createReply(
@@ -232,6 +242,44 @@ export async function createReply(
     .single();
   if (error || !data) return null;
   return data as unknown as CommunityReply;
+}
+
+/** Edit your OWN post's body (RLS posts_update_own; the community_posts_guard_update
+ *  trigger keeps a non-admin owner from touching pin/moderation columns, so this only
+ *  changes body + edited_at). Stamps edited_at and re-runs moderation (DB trigger →
+ *  community-moderate). Returns the updated body/edited_at, or null on failure. */
+export async function editPost(
+  id: string,
+  body: string,
+): Promise<{ body: string; edited_at: string | null } | null> {
+  const trimmed = body.trim().slice(0, MAX_BODY);
+  if (!trimmed) return null;
+  const { data, error } = await getBrowserSupabase()
+    .from("community_posts")
+    .update({ body: trimmed, edited_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("body,edited_at")
+    .single();
+  if (error || !data) return null;
+  return data as { body: string; edited_at: string | null };
+}
+
+/** Edit your OWN reply's body (RLS replies_update_own + a column-scoped grant on
+ *  body,edited_at). Same moderation re-run as editPost. */
+export async function editReply(
+  id: string,
+  body: string,
+): Promise<{ body: string; edited_at: string | null } | null> {
+  const trimmed = body.trim().slice(0, MAX_BODY);
+  if (!trimmed) return null;
+  const { data, error } = await getBrowserSupabase()
+    .from("community_replies")
+    .update({ body: trimmed, edited_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("body,edited_at")
+    .single();
+  if (error || !data) return null;
+  return data as { body: string; edited_at: string | null };
 }
 
 /** Shape a flat, oldest-first reply list into a 2-level tree: top-level replies,

@@ -369,9 +369,12 @@ async function handle(req: Request): Promise<Response> {
     return json({ error: "invalid json" }, 400);
   }
 
-  // Only act on INSERTs into the moderated community tables; everything else is a
-  // no-op 200 so the trigger never retries on rows we deliberately ignore.
-  if (body.type && body.type !== "INSERT") return json({ ok: true, skipped: "not-insert" });
+  // Act on INSERTs (new content) and UPDATEs (an edit re-opens moderation); any
+  // other event is a no-op 200 so the trigger never retries on rows we ignore.
+  const isUpdate = body.type === "UPDATE";
+  if (body.type && body.type !== "INSERT" && !isUpdate) {
+    return json({ ok: true, skipped: "unhandled-type" });
+  }
   const table = String(body.table ?? "");
   if (!MODERATED_TABLES.has(table)) return json({ ok: true, skipped: "unhandled-table" });
 
@@ -404,6 +407,17 @@ async function handle(req: Request): Promise<Response> {
   // must NOT flag content. The heuristic only ever raises a high-precision flag.
   const verdict = combineVerdicts(heuristic, llm);
   if (!verdict || !verdict.flag) {
+    // On an EDIT that is now clean, clear a stale classifier-set flag so an honest
+    // fix isn't punished forever. Scoped to a currently-flagged row (idempotent).
+    // All is_flagged holds are classifier-set today (no manual admin-hold path yet),
+    // so this never clears a human decision.
+    if (isUpdate) {
+      const cleared = await patchCount(
+        `/rest/v1/${table}?id=eq.${encodeURIComponent(rowId)}&is_flagged=eq.true`,
+        { is_flagged: false, moderation_note: null, flagged_at: null },
+      );
+      if (cleared > 0) jlog({ at: "community-moderate", ok: true, table, rowId, unflagged: true });
+    }
     return json({ ok: true, flagged: false });
   }
 

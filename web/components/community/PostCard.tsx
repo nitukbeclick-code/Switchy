@@ -23,8 +23,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   deletePost,
+  editPost,
   fetchMyBookmarks,
   fetchMyLikes,
+  MAX_BODY,
   MENTION_RE,
   reportContent,
   setBlock,
@@ -126,6 +128,7 @@ function OverflowMenu({
   pinning,
   onReport,
   onBlock,
+  onEdit,
   onDelete,
   deleting,
 }: {
@@ -136,6 +139,7 @@ function OverflowMenu({
   pinning: boolean;
   onReport: () => void;
   onBlock: () => void;
+  onEdit: () => void;
   onDelete: () => void;
   deleting: boolean;
 }) {
@@ -224,6 +228,16 @@ function OverflowMenu({
           {isOwn && (
             <button
               type="button"
+              role="menuitem"
+              onClick={() => runAndClose(onEdit)}
+              className={itemClass}
+            >
+              עריכה
+            </button>
+          )}
+          {isOwn && (
+            <button
+              type="button"
               onClick={() => runAndClose(onDelete)}
               disabled={deleting}
               className={`${itemClass} text-danger-text hover:bg-danger/10`}
@@ -258,6 +272,13 @@ export default function PostCard({
   const [likeBusy, setLikeBusy] = useState(false);
   const [bookmarkBusy, setBookmarkBusy] = useState(false);
 
+  // Body + edited marker, held locally so an inline edit updates the card in place.
+  const [body, setBody] = useState(post.body);
+  const [editedAt, setEditedAt] = useState(post.edited_at);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState(post.body);
+
   const [showReplies, setShowReplies] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pinned, setPinnedLocal] = useState(post.is_pinned);
@@ -272,6 +293,16 @@ export default function PostCard({
   useEffect(() => {
     setLikeCount(post.like_count);
   }, [post.like_count]);
+
+  // Keep the visible body + edited marker in sync if the post prop is replaced.
+  useEffect(() => {
+    setBody(post.body);
+    setDraft(post.body);
+  }, [post.body]);
+
+  useEffect(() => {
+    setEditedAt(post.edited_at);
+  }, [post.edited_at]);
 
   // Keep the pinned state in sync if the post prop is replaced.
   useEffect(() => {
@@ -377,6 +408,38 @@ export default function PostCard({
     }
   }, [user, post.user_id, onRequireAuth]);
 
+  // ── Edit (own) ───────────────────────────────────────────────────────────────
+  const handleStartEdit = useCallback(() => {
+    setDraft(body);
+    setNotice(null);
+    setNoticeError(false);
+    setEditing(true);
+  }, [body]);
+
+  const handleCancelEdit = useCallback(() => {
+    setDraft(body);
+    setEditing(false);
+  }, [body]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (saving) return;
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === body.trim()) return;
+    setSaving(true);
+    const result = await editPost(post.id, trimmed);
+    if (result) {
+      setBody(result.body);
+      setEditedAt(result.edited_at);
+      setEditing(false);
+      setNotice(null);
+      setNoticeError(false);
+    } else {
+      setNotice("עריכת הפוסט נכשלה. נסו שוב.");
+      setNoticeError(true);
+    }
+    setSaving(false);
+  }, [saving, draft, body, post.id]);
+
   // ── Delete (own) ─────────────────────────────────────────────────────────────
   const handleDelete = useCallback(async () => {
     if (!isOwn || deleting) return;
@@ -454,13 +517,20 @@ export default function PostCard({
             </span>
           </div>
 
-          <time
-            dateTime={post.created_at}
-            className="mt-0.5 block text-xs text-muted"
-            title={post.created_at}
-          >
-            {relativeTime(post.created_at)}
-          </time>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
+            <time dateTime={post.created_at} title={post.created_at}>
+              {relativeTime(post.created_at)}
+            </time>
+            {editedAt && (
+              <span
+                aria-label="נערך"
+                title={editedAt}
+                className="text-muted"
+              >
+                · נערך
+              </span>
+            )}
+          </div>
         </div>
 
         <OverflowMenu
@@ -471,16 +541,49 @@ export default function PostCard({
           pinning={pinning}
           onReport={handleReport}
           onBlock={handleBlock}
+          onEdit={handleStartEdit}
           onDelete={handleDelete}
           deleting={deleting}
         />
       </div>
 
-      {/* Body */}
-      {post.body && (
-        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-          {renderBody(post.body)}
-        </p>
+      {/* Body — inline editor for the author, plain text otherwise */}
+      {editing ? (
+        <div className="mt-3">
+          <textarea
+            dir="rtl"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={MAX_BODY}
+            rows={4}
+            aria-label="עריכת הפוסט"
+            className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm leading-relaxed text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={saving || !draft.trim() || draft.trim() === body.trim()}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            >
+              {saving ? "שומר…" : "שמירה"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              disabled={saving}
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            >
+              ביטול
+            </button>
+          </div>
+        </div>
+      ) : (
+        body && (
+          <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+            {renderBody(body)}
+          </p>
+        )
       )}
 
       {/* Media */}

@@ -11,7 +11,7 @@
 // layer + auth context — never touches Supabase directly.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { updateMyProfile } from "@/lib/community";
 import { uploadMedia, validateMedia } from "@/lib/media-upload";
@@ -36,6 +36,13 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
   const [saved, setSaved] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const errorId = useId();
+
+  // The name field is the offender when there's an error and the name is empty
+  // (the "נא להזין שם תצוגה." validation). Only then do we associate the error
+  // <p> with the input and mark it invalid.
+  const nameHasError = Boolean(error) && !name.trim();
 
   // Seed the form from the current profile once it's available, and re-seed if the
   // signed-in user changes. Local edits win until the next profile identity change.
@@ -95,6 +102,8 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
     const trimmed = name.trim().slice(0, MAX_NAME);
     if (!trimmed) {
       setError("נא להזין שם תצוגה.");
+      // Move focus to the offending field so the role="alert" is heard in context.
+      nameInputRef.current?.focus();
       return;
     }
 
@@ -205,6 +214,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
         </label>
         <input
           id="profile-name"
+          ref={nameInputRef}
           type="text"
           value={name}
           maxLength={MAX_NAME}
@@ -214,7 +224,8 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
             setSaved(false);
           }}
           aria-required="true"
-          aria-invalid={error && !name.trim() ? "true" : "false"}
+          aria-invalid={nameHasError ? "true" : "false"}
+          aria-describedby={nameHasError ? errorId : undefined}
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <p className="mt-1 text-xs text-muted">
@@ -238,7 +249,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
           htmlFor="profile-notify-opt-out"
           className="cursor-pointer text-sm leading-snug text-foreground"
         >
-          לא לקבל התראות על תגובות ואזכורים בקהילה.
+          להשתיק התראות בתוך האתר (הפעמון) על אזכורים בקהילה.
           <span className="mt-0.5 block text-xs text-muted">
             תוכלו לשנות זאת בכל עת.
           </span>
@@ -247,7 +258,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
 
       {/* Status */}
       {error && (
-        <p role="alert" className="mt-4 text-sm text-danger-text">
+        <p id={errorId} role="alert" className="mt-4 text-sm text-danger-text">
           {error}
         </p>
       )}

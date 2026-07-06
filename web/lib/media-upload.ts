@@ -75,7 +75,11 @@ function uuid(): string {
 export async function uploadMedia(userId: string, blob: Blob, durationMs?: number): Promise<Media> {
   const v = validateMedia({ type: blob.type, size: blob.size });
   if (!v.ok) throw new Error(v.error);
-  const ext = EXT[blob.type] ?? (v.kind === "image" ? "jpg" : v.kind === "audio" ? "webm" : "mp4");
+  // Normalize the MIME before the extension lookup: browsers append codec params
+  // (e.g. "audio/webm;codecs=opus"), which would miss the EXT map. Keep the real
+  // blob.type for contentType below (it correctly carries the codecs).
+  const base = (blob.type || "").split(";")[0].trim();
+  const ext = EXT[base] ?? (v.kind === "image" ? "jpg" : v.kind === "audio" ? "webm" : "mp4");
   const path = `${userId}/${uuid()}.${ext}`;
   const sb = getBrowserSupabase();
   const { error } = await sb.storage.from(BUCKET).upload(path, blob, {
@@ -110,15 +114,43 @@ export async function startRecording(): Promise<Recorder> {
   const stopTracks = () => stream.getTracks().forEach((t) => t.stop());
   return {
     stop: () =>
-      new Promise((resolve) => {
-        rec.onstop = () => {
+      new Promise((resolve, reject) => {
+        // Guard against a MediaRecorder that never fires onstop (some browsers /
+        // states), which would otherwise leave the composer stuck in busy.
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
           stopTracks();
           resolve({
             blob: new Blob(chunks, { type: rec.mimeType || "audio/webm" }),
             durationMs: Date.now() - started,
           });
         };
-        rec.stop();
+        const fail = (err: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          stopTracks();
+          reject(err);
+        };
+        const timer = setTimeout(
+          () => fail(new Error("עצירת ההקלטה נכשלה. נסו שוב.")),
+          15000,
+        );
+        rec.onstop = finish;
+        rec.onerror = () => fail(new Error("אירעה שגיאה בהקלטה. נסו שוב."));
+        // If the recorder is already inactive, onstop won't fire — resolve now.
+        if (rec.state === "inactive") {
+          finish();
+          return;
+        }
+        try {
+          rec.stop();
+        } catch {
+          fail(new Error("עצירת ההקלטה נכשלה. נסו שוב."));
+        }
       }),
     cancel: () => {
       try {

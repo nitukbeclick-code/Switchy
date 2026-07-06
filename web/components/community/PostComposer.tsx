@@ -39,6 +39,7 @@ import {
   type Recorder,
 } from "@/lib/media-upload";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
 
 export interface PostComposerProps {
@@ -47,6 +48,13 @@ export interface PostComposerProps {
   /** Called when a signed-out visitor tries to post — opens the auth modal. */
   onRequireAuth: () => void;
 }
+
+/** Hard cap on a single voice note (ms) — auto-stops before the audio size
+ *  budget is exceeded, so a long recording fails fast in-UI instead of only at
+ *  upload with a generic error. */
+const MAX_VOICE_MS = 5 * 60 * 1000;
+/** How long before the cap to surface a subtle "approaching the limit" note. */
+const VOICE_WARN_MS = 30 * 1000;
 
 /** mm:ss from a live recording length (ms). */
 function formatElapsed(ms: number): string {
@@ -186,7 +194,12 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
       setElapsed(0);
       setRecording(true);
       tickRef.current = setInterval(() => {
-        setElapsed(Date.now() - recStartRef.current);
+        const next = Date.now() - recStartRef.current;
+        setElapsed(next);
+        // Auto-stop at the cap so a recording never exceeds the size budget.
+        if (next >= MAX_VOICE_MS) {
+          void stopVoice();
+        }
       }, 250);
     } catch {
       setError("לא ניתן לגשת למיקרופון. בדקו את ההרשאות ונסו שוב.");
@@ -261,6 +274,11 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
       setBody("");
       setMedia(null);
       setChannel(CHANNELS[0]);
+      // Success signal — non-PII channel + whether media was attached.
+      trackEvent("post_created", {
+        channel: post.channel,
+        has_media: post.media_type != null,
+      });
       onPosted(post);
     } catch {
       setError("אירעה שגיאה בפרסום. נסו שוב.");
@@ -318,7 +336,6 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
             <p
               id={`${bodyId}-count`}
               className="mt-1 text-start text-xs text-muted"
-              aria-live="polite"
             >
               נותרו {remaining.toLocaleString("he-IL")} תווים
             </p>
@@ -342,19 +359,22 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
 
             {/* Recording bar */}
             {recording && (
-              <div
-                className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2"
-                role="status"
-                aria-live="polite"
-              >
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
                 <span
                   aria-hidden="true"
                   className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger motion-safe:animate-pulse"
                 />
-                <span className="text-sm text-foreground">מקליט…</span>
-                <span className="text-xs text-muted" dir="ltr">
+                {/* Only the static state is a live region; the ticking timer is
+                    hidden from AT so it is not re-announced on every update. */}
+                <span className="text-sm text-foreground" role="status" aria-live="polite">
+                  מקליט…
+                </span>
+                <span className="text-xs text-muted" dir="ltr" aria-hidden="true">
                   {formatElapsed(elapsed)}
                 </span>
+                {elapsed >= MAX_VOICE_MS - VOICE_WARN_MS && (
+                  <span className="text-xs text-muted">מתקרב למגבלת ההקלטה</span>
+                )}
                 <div className="ms-auto flex items-center gap-2">
                   <button
                     type="button"

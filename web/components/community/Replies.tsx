@@ -35,6 +35,7 @@ import {
   type Recorder,
 } from "@/lib/media-upload";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -324,6 +325,7 @@ function ReplyComposer({
           setError("שליחת התגובה נכשלה. נסו שוב.");
           return;
         }
+        trackEvent("reply_created", { has_media: created.media_type != null });
         onReplied(created);
         setBody("");
         clearAttachment();

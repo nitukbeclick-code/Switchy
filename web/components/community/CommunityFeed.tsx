@@ -29,6 +29,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import {
   ALL_CHANNEL,
   CHANNELS,
@@ -39,9 +40,12 @@ import {
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
+import { trackEvent } from "@/lib/tracking";
 import AuthModal from "@/components/auth/AuthModal";
 import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
+
+const INTRO_DISMISSED_KEY = "switchy_community_intro_dismissed";
 
 type SortMode = "recent" | "popular";
 type Tab = typeof ALL_CHANNEL | Channel;
@@ -94,12 +98,72 @@ export default function CommunityFeed() {
   const [blocksReady, setBlocksReady] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
+  // First-visit onboarding banner. Never read localStorage during render (SSR
+  // hydration safety) — start hidden, then reveal in an effect if not dismissed.
+  const [introVisible, setIntroVisible] = useState(false);
+
   // Keep the current block list in a ref so the Realtime handler (bound once)
   // always sees the freshest value without re-subscribing.
   const blockedRef = useRef<string[]>([]);
   useEffect(() => {
     blockedRef.current = blocked;
   }, [blocked]);
+
+  // Keep the freshest sort/tab in refs so the Realtime handler (subscribed ONCE)
+  // reads the current filter/order without re-subscribing on every sort/tab change.
+  const sortRef = useRef<SortMode>(sort);
+  useEffect(() => {
+    sortRef.current = sort;
+  }, [sort]);
+  const tabRef = useRef<Tab>(tab);
+  useEffect(() => {
+    tabRef.current = tab;
+  }, [tab]);
+
+  // Coalesce a burst of live INSERTs into a single sr-only announcement.
+  const liveAnnounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Guard "load older" against an infinite loop: remember the last cursor used so
+  // a page that yields no NEW ids ends the pager instead of re-fetching forever.
+  const lastOlderCursor = useRef<string | null>(null);
+
+  // ── First-visit onboarding banner: reveal only if not previously dismissed ────
+  // Read localStorage after mount (SSR-safe) and defer the reveal to a rAF so the
+  // banner state settles outside the effect's synchronous body.
+  useEffect(() => {
+    let dismissed = true;
+    try {
+      dismissed = localStorage.getItem(INTRO_DISMISSED_KEY) === "1";
+    } catch {
+      /* localStorage may be unavailable (private mode) — keep the banner hidden */
+    }
+    if (dismissed) return;
+    const raf = requestAnimationFrame(() => setIntroVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const dismissIntro = useCallback(() => {
+    setIntroVisible(false);
+    try {
+      localStorage.setItem(INTRO_DISMISSED_KEY, "1");
+    } catch {
+      /* no-op — hiding for this session is enough */
+    }
+  }, []);
+
+  // ── GA4: one "community_dau" event per browser session per calendar day ───────
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const today = new Date().toISOString().slice(0, 10); // yyyy-mm-dd (UTC)
+      const key = "swc:dau:" + today;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      trackEvent("community_dau", { authed: !!user?.id });
+    } catch {
+      /* sessionStorage may be unavailable — skip; tracking is best-effort */
+    }
+  }, [ready, user?.id]);
 
   const sortPosts = useCallback(
     (rows: CommunityPost[], mode: SortMode): CommunityPost[] => {
@@ -119,14 +183,15 @@ export default function CommunityFeed() {
   // ── Load the viewer's block list (or clear it when signed out) ────────────────
   useEffect(() => {
     if (!ready) return;
-    if (!user) {
+    const uid = user?.id ?? null;
+    if (!uid) {
       setBlocked([]);
       setBlocksReady(true);
       return;
     }
     let active = true;
     setBlocksReady(false);
-    void fetchMyBlocks(user.id).then((ids) => {
+    void fetchMyBlocks(uid).then((ids) => {
       if (active) {
         setBlocked(ids);
         setBlocksReady(true);
@@ -135,7 +200,7 @@ export default function CommunityFeed() {
     return () => {
       active = false;
     };
-  }, [ready, user]);
+  }, [ready, user?.id]);
 
   // ── Load the first page whenever the tab, sort, viewer, or blocks change ──────
   useEffect(() => {
@@ -159,10 +224,13 @@ export default function CommunityFeed() {
     };
   }, [ready, blocksReady, tab, sort, user?.id, blocked, sortPosts]);
 
-  // ── Realtime: prepend live INSERTs on community_posts ─────────────────────────
+  // ── Realtime: prepend live INSERTs + prune late-flagged posts ─────────────────
+  // Subscribed ONCE (deps are [ready] only). The handlers read the freshest
+  // sort/tab/blocks from refs, so a sort or tab change never churns the channel.
   useEffect(() => {
     if (!ready) return;
     const sb = getBrowserSupabase();
+    const viewerId = user?.id ?? null;
     const channel = sb
       .channel("community_posts_feed")
       .on(
@@ -177,6 +245,10 @@ export default function CommunityFeed() {
           // Flagged rows are moderated out (moderation runs on insert); only the
           // author sees their own via the initial page load, never via Realtime.
           if (row.is_flagged) return;
+          // Respect the active channel filter (read from the ref, not closure).
+          const activeTab = tabRef.current;
+          if (activeTab !== ALL_CHANNEL && (row.channel ?? "") !== activeTab)
+            return;
 
           // Shape the untrusted payload into a typed post (data only — rendering
           // happens through <PostCard>/<MediaView>, which escape all of it).
@@ -197,23 +269,50 @@ export default function CommunityFeed() {
             reply_count: row.reply_count ?? 0,
           };
 
+          let added = false;
           setPosts((prev) => {
             // Skip if already present (e.g. our own optimistic prepend).
             if (prev.some((p) => p.id === post.id)) return prev;
-            // Respect the active channel filter.
-            if (tab !== ALL_CHANNEL && post.channel !== tab) return prev;
             // Fresh inserts belong at the top; re-apply the current sort so the
             // popular view stays ordered.
-            return sortPosts([post, ...prev], sort);
+            added = true;
+            return sortPosts([post, ...prev], sortRef.current);
           });
+
+          // Announce to screen readers only when a live post was actually added,
+          // coalescing a burst so it announces once (not once per insert).
+          if (added) {
+            if (liveAnnounceTimer.current) clearTimeout(liveAnnounceTimer.current);
+            liveAnnounceTimer.current = setTimeout(() => {
+              setStatusMsg("פוסט חדש התווסף לראש הפיד");
+            }, 300);
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "community_posts" },
+        (payload) => {
+          // A row can be flagged shortly AFTER insert (moderation runs async), so
+          // a soon-to-be-flagged post may already be on screen for everyone. When
+          // is_flagged flips to true, remove it — unless it's the viewer's own.
+          const row = payload.new as Partial<CommunityPost> | null;
+          if (!row || !row.id) return;
+          if (row.is_flagged !== true) return;
+          if (viewerId && row.user_id === viewerId) return;
+          setPosts((prev) => prev.filter((p) => p.id !== row.id));
         },
       )
       .subscribe();
 
     return () => {
+      if (liveAnnounceTimer.current) {
+        clearTimeout(liveAnnounceTimer.current);
+        liveAnnounceTimer.current = null;
+      }
       void sb.removeChannel(channel);
     };
-  }, [ready, tab, sort, sortPosts]);
+  }, [ready, user?.id, sortPosts]);
 
   // ── Prepend a freshly-composed post (from <PostComposer>) ─────────────────────
   const prepend = useCallback(
@@ -243,6 +342,10 @@ export default function CommunityFeed() {
       if (p.created_at < oldest) oldest = p.created_at;
     }
     setLoadingMore(true);
+    // fetchFeed's `before` is a strict `.lt(created_at)` (time-only API), so posts
+    // sharing the exact oldest timestamp would be skipped. We pass the same oldest
+    // cursor and rely on the id de-dupe below rather than dropping tie posts; the
+    // lastOlderCursor guard breaks the loop if a page brings back no NEW ids.
     const older = await fetchFeed({
       channel: tab,
       before: oldest,
@@ -250,12 +353,25 @@ export default function CommunityFeed() {
       blocked,
       limit: PAGE_SIZE,
     });
+    let addedCount = 0;
     setPosts((prev) => {
       const seen = new Set(prev.map((p) => p.id));
-      const merged = [...prev, ...older.filter((p) => !seen.has(p.id))];
+      const fresh = older.filter((p) => !seen.has(p.id));
+      addedCount = fresh.length;
+      const merged = [...prev, ...fresh];
       return sortPosts(merged, sort);
     });
-    setReachedEnd(older.length < PAGE_SIZE);
+    // End the pager when the page is short OR yields no new ids — and also if the
+    // cursor didn't move from last time (a same-timestamp cluster fully de-duped),
+    // so we never re-fetch the same boundary forever.
+    if (
+      older.length < PAGE_SIZE ||
+      addedCount === 0 ||
+      lastOlderCursor.current === oldest
+    ) {
+      setReachedEnd(true);
+    }
+    lastOlderCursor.current = oldest;
     setLoadingMore(false);
   }, [loadingMore, reachedEnd, posts, tab, user?.id, blocked, sort, sortPosts]);
 
@@ -284,6 +400,49 @@ export default function CommunityFeed() {
   return (
     <div className="flex flex-col gap-4">
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+
+      {/* First-visit onboarding banner (client-only, dismissible, no DB) */}
+      {introVisible && (
+        <section
+          role="region"
+          aria-label="ברוכים הבאים לקהילת חוסך"
+          className="bento motion-safe:reveal relative p-5 sm:p-6"
+        >
+          <h2 className="text-base font-semibold text-ink">
+            ברוכים הבאים לקהילת חוסך
+          </h2>
+          <ul className="mt-3 flex list-none flex-col gap-2 p-0 text-sm text-muted">
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-1 text-accent-text">•</span>
+              <span>שיתוף חוויות מעבר אמיתיות בין ספקים</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-1 text-accent-text">•</span>
+              <span>שאלות לקהילה וקבלת תשובות מחברים אחרים</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span aria-hidden="true" className="mt-1 text-accent-text">•</span>
+              <span>המלצה על ספקים שנתנו לכם שירות טוב</span>
+            </li>
+          </ul>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Link
+              href="/community-guidelines"
+              className="text-sm font-medium text-accent-text underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              כללי הקהילה
+            </Link>
+            <button
+              type="button"
+              onClick={dismissIntro}
+              aria-label="הבנתי, הסתירו את הודעת הפתיחה"
+              className="interactive press ms-auto inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              הבנתי
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Composer */}
       <PostComposer onPosted={prepend} onRequireAuth={onRequireAuth} />

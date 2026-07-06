@@ -24,6 +24,7 @@ import {
   fetchReplies,
   MAX_BODY,
   MENTION_RE,
+  toReplyTree,
   type AuthorRef,
   type CommunityReply,
   type Media,
@@ -123,12 +124,15 @@ function ReplyItem({
   userId,
   onRequireAuth,
   onDelete,
+  onReply,
 }: {
   reply: CommunityReply;
   isOwn: boolean;
   userId: string | null;
   onRequireAuth: () => void;
   onDelete: (id: string) => void;
+  /** Open an inline "reply to this reply" composer (threading). */
+  onReply?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -151,8 +155,11 @@ function ReplyItem({
     }
   }, [busy, reply.id, onDelete]);
 
+  const smallBtn =
+    "rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
+
   return (
-    <li className="flex gap-3 rounded-2xl border border-border bg-surface p-3 shadow-float">
+    <div className="flex gap-3 rounded-2xl border border-border bg-surface p-3 shadow-float">
       <Avatar src={reply.avatar} name={reply.author} />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
@@ -185,20 +192,25 @@ function ReplyItem({
             userId={userId}
             onRequireAuth={onRequireAuth}
           />
+          {onReply && (
+            <button type="button" onClick={onReply} className={smallBtn} aria-label="תגובה לתגובה זו">
+              השב
+            </button>
+          )}
           {isOwn && (
             <button
               type="button"
               onClick={handleDelete}
               disabled={busy}
               aria-label="מחיקת התגובה שלי"
-              className="ms-auto rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+              className={`ms-auto ${smallBtn}`}
             >
               {busy ? "מוחק…" : "מחיקה"}
             </button>
           )}
         </div>
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -208,10 +220,19 @@ function ReplyComposer({
   postId,
   onReplied,
   onRequireAuth,
+  parentReplyId = null,
+  replyingToName,
+  onCancel,
+  autoFocus = false,
 }: {
   postId: string;
   onReplied: (reply: CommunityReply) => void;
   onRequireAuth: () => void;
+  /** When set, this is a reply-to-reply; the DB caps depth to the top-level ancestor. */
+  parentReplyId?: string | null;
+  replyingToName?: string;
+  onCancel?: () => void;
+  autoFocus?: boolean;
 }) {
   const { user, profile } = useAuth();
 
@@ -328,10 +349,12 @@ function ReplyComposer({
           author: profile?.name || "משתמש",
           avatar: profile?.avatar_url ?? null,
         };
-        const created = await createReply(postId, authorRef, {
-          body: body.trim(),
-          media: attached,
-        });
+        const created = await createReply(
+          postId,
+          authorRef,
+          { body: body.trim(), media: attached },
+          { parentReplyId },
+        );
         if (!created) {
           setError("שליחת התגובה נכשלה. נסו שוב.");
           return;
@@ -356,6 +379,7 @@ function ReplyComposer({
       media,
       profile,
       postId,
+      parentReplyId,
       onReplied,
       onRequireAuth,
       clearAttachment,
@@ -380,13 +404,33 @@ function ReplyComposer({
 
   const remaining = MAX_BODY - body.length;
 
+  const fieldId = `reply-${postId}-${parentReplyId ?? "root"}`;
+
   return (
     <form onSubmit={handleSubmit} className="rounded-2xl border border-border bg-surface p-3">
-      <label htmlFor={`reply-${postId}`} className="sr-only">
+      {parentReplyId && replyingToName && (
+        <div className="mb-2 flex items-center gap-2 text-xs text-muted">
+          <span>
+            בתגובה ל<span className="font-medium text-ink">{replyingToName}</span>
+          </span>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="ms-auto rounded-lg px-2 py-0.5 font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              aria-label="ביטול התגובה"
+            >
+              ביטול
+            </button>
+          )}
+        </div>
+      )}
+      <label htmlFor={fieldId} className="sr-only">
         כתיבת תגובה
       </label>
       <textarea
-        id={`reply-${postId}`}
+        id={fieldId}
+        autoFocus={autoFocus}
         value={body}
         onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY))}
         maxLength={MAX_BODY}
@@ -486,6 +530,10 @@ export default function Replies({
   const { user } = useAuth();
   const [replies, setReplies] = useState<CommunityReply[]>([]);
   const [loading, setLoading] = useState(true);
+  // The reply id whose inline "reply-to-reply" composer is open (or null).
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  // Root reply ids whose extra (beyond the first 2) children are expanded.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let active = true;
@@ -504,11 +552,16 @@ export default function Replies({
 
   const handleReplied = useCallback((reply: CommunityReply) => {
     setReplies((prev) => (prev.some((r) => r.id === reply.id) ? prev : [...prev, reply]));
+    setReplyingTo(null); // close any open inline composer
   }, []);
 
   const handleDeleted = useCallback((id: string) => {
     setReplies((prev) => prev.filter((r) => r.id !== id));
   }, []);
+
+  const uid = user?.id ?? null;
+  const tree = toReplyTree(replies);
+  const CHILD_PREVIEW = 2;
 
   return (
     <section aria-label="תגובות לפוסט" className="mt-3 space-y-3">
@@ -527,20 +580,81 @@ export default function Replies({
             </li>
           ))}
         </ul>
-      ) : replies.length === 0 ? (
+      ) : tree.length === 0 ? (
         <p className="px-1 text-sm text-muted">אין עדיין תגובות. היו הראשונים להגיב.</p>
       ) : (
         <ul className="space-y-3" role="list">
-          {replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              isOwn={!!user && user.id === reply.user_id}
-              userId={user?.id ?? null}
-              onRequireAuth={onRequireAuth}
-              onDelete={handleDeleted}
-            />
-          ))}
+          {tree.map((root) => {
+            const kids = root.children;
+            const shownKids = expanded.has(root.id) ? kids : kids.slice(0, CHILD_PREVIEW);
+            const hidden = kids.length - shownKids.length;
+            return (
+              <li key={root.id} className="space-y-2">
+                <ReplyItem
+                  reply={root}
+                  isOwn={!!uid && uid === root.user_id}
+                  userId={uid}
+                  onRequireAuth={onRequireAuth}
+                  onDelete={handleDeleted}
+                  onReply={() => setReplyingTo(root.id)}
+                />
+
+                {(kids.length > 0 || replyingTo === root.id) && (
+                  <ul className="space-y-2 border-s-2 border-border ps-3 ms-4" role="list">
+                    {shownKids.map((child) => (
+                      <li key={child.id} className="space-y-2">
+                        <ReplyItem
+                          reply={child}
+                          isOwn={!!uid && uid === child.user_id}
+                          userId={uid}
+                          onRequireAuth={onRequireAuth}
+                          onDelete={handleDeleted}
+                          onReply={() => setReplyingTo(child.id)}
+                        />
+                        {replyingTo === child.id && (
+                          <ReplyComposer
+                            postId={postId}
+                            onReplied={handleReplied}
+                            onRequireAuth={onRequireAuth}
+                            parentReplyId={child.id}
+                            replyingToName={child.author}
+                            onCancel={() => setReplyingTo(null)}
+                            autoFocus
+                          />
+                        )}
+                      </li>
+                    ))}
+
+                    {hidden > 0 && (
+                      <li>
+                        <button
+                          type="button"
+                          onClick={() => setExpanded((prev) => new Set(prev).add(root.id))}
+                          className="rounded-lg px-2 py-1 text-xs font-medium text-accent-text transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        >
+                          הצגת {hidden.toLocaleString("he-IL")} תגובות נוספות
+                        </button>
+                      </li>
+                    )}
+
+                    {replyingTo === root.id && (
+                      <li>
+                        <ReplyComposer
+                          postId={postId}
+                          onReplied={handleReplied}
+                          onRequireAuth={onRequireAuth}
+                          parentReplyId={root.id}
+                          replyingToName={root.author}
+                          onCancel={() => setReplyingTo(null)}
+                          autoFocus
+                        />
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 

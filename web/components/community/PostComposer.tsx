@@ -26,6 +26,8 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   CHANNELS,
   MAX_BODY,
+  MAX_GALLERY,
+  addPostMedia,
   createPost,
   type AuthorRef,
   type Channel,
@@ -41,6 +43,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
+import MediaGallery from "./MediaGallery";
 import MentionTextarea from "./MentionTextarea";
 
 export interface PostComposerProps {
@@ -97,6 +100,8 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
   const [channel, setChannel] = useState<Channel>(CHANNELS[0]);
   const [body, setBody] = useState("");
   const [media, setMedia] = useState<Media | null>(null);
+  // Extra gallery images beyond the single primary `media` (max MAX_GALLERY).
+  const [extra, setExtra] = useState<Media[]>([]);
 
   const [busy, setBusy] = useState(false); // uploading media OR submitting
   const [uploading, setUploading] = useState(false); // media upload in flight
@@ -117,6 +122,9 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
   const remaining = MAX_BODY - body.length;
   const canSubmit =
     !!user && !busy && !recording && (body.trim().length > 0 || media !== null);
+  // Attach affordance stays open while there's room: no primary yet (any image/
+  // video) OR the extra-image gallery isn't full.
+  const canAttachMore = media === null || extra.length < MAX_GALLERY;
 
   // Cleanup any in-flight recording / timer on unmount.
   useEffect(() => {
@@ -157,25 +165,52 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
   const authorName = profile?.name || "משתמש";
   const authorAvatar = profile?.avatar_url ?? null;
 
-  // ── Media: pick a file (image / video) ───────────────────────────────────────
+  // ── Media: pick file(s) (image / video) ──────────────────────────────────────
+  // The FIRST valid file becomes the primary `media` (if none set yet). Additional
+  // IMAGE files fill the extra gallery, capped at MAX_GALLERY. Extra videos are
+  // ignored (the gallery is images only). The first invalid file surfaces an error.
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     // Reset the input so re-picking the SAME file still fires onChange.
     e.target.value = "";
-    if (!file || !user) return;
+    if (files.length === 0 || !user || recording) return;
     setError(null);
-
-    const v = validateMedia({ type: file.type, size: file.size });
-    if (!v.ok) {
-      setError(v.error);
-      return;
-    }
 
     setBusy(true);
     setUploading(true);
     try {
-      const uploaded = await uploadMedia(user.id, file);
-      setMedia(uploaded);
+      // Local copies so we can decide primary-vs-extra across the loop without
+      // waiting on async state updates.
+      let primary = media;
+      const gallery: Media[] = [...extra];
+      let sawInvalid = false;
+
+      for (const file of files) {
+        const v = validateMedia({ type: file.type, size: file.size });
+        if (!v.ok) {
+          // Surface the first invalid file's message, then skip it.
+          if (!sawInvalid) {
+            setError(v.error);
+            sawInvalid = true;
+          }
+          continue;
+        }
+
+        if (!primary) {
+          // First valid file → primary attachment.
+          const uploaded = await uploadMedia(user.id, file);
+          primary = uploaded;
+          setMedia(uploaded);
+          continue;
+        }
+
+        // Beyond the primary, only images go into the gallery, capped.
+        if (file.type.startsWith("image/") && gallery.length < MAX_GALLERY) {
+          const uploaded = await uploadMedia(user.id, file);
+          gallery.push(uploaded);
+          setExtra([...gallery]);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "העלאת המדיה נכשלה. נסו שוב.");
     } finally {
@@ -251,6 +286,11 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
     setError(null);
   }
 
+  function removeExtras() {
+    setExtra([]);
+    setError(null);
+  }
+
   // ── Submit ───────────────────────────────────────────────────────────────────
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -271,14 +311,20 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
         setError("הפרסום נכשל. נסו שוב בעוד רגע.");
         return;
       }
+      // Attach any extra gallery images BEFORE handing up, so the card's fetch
+      // sees them. Owner-only + DB-capped at MAX_GALLERY by RLS.
+      if (extra.length > 0) {
+        await addPostMedia(post.id, extra);
+      }
       // Clear the composer and hand the new post up to the feed.
       setBody("");
       setMedia(null);
+      setExtra([]);
       setChannel(CHANNELS[0]);
       // Success signal — non-PII channel + whether media was attached.
       trackEvent("post_created", {
         channel: post.channel,
-        has_media: post.media_type != null,
+        has_media: post.media_type != null || extra.length > 0,
       });
       onPosted(post);
     } catch {
@@ -358,6 +404,23 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
               </div>
             )}
 
+            {/* Extra gallery images (beyond the primary) */}
+            {extra.length > 0 && (
+              <div className="mt-3">
+                <MediaGallery images={extra} />
+                <button
+                  type="button"
+                  onClick={removeExtras}
+                  disabled={busy}
+                  className="interactive press mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                  aria-label="הסרת התמונות הנוספות שצורפו"
+                >
+                  <span aria-hidden="true">✕</span>
+                  הסרת התמונות הנוספות
+                </button>
+              </div>
+            )}
+
             {/* Recording bar */}
             {recording && (
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2">
@@ -404,13 +467,14 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
 
             {/* Action row */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              {/* Attach image / video */}
+              {/* Attach image(s) / video */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*,video/*"
+                multiple
                 onChange={onPickFile}
-                disabled={busy || recording || media !== null}
+                disabled={busy || recording || !canAttachMore}
                 className="sr-only"
                 aria-hidden="true"
                 tabIndex={-1}
@@ -418,9 +482,9 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={busy || recording || media !== null}
+                disabled={busy || recording || !canAttachMore}
                 className="interactive press inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="צירוף תמונה או וידאו"
+                aria-label="צירוף תמונות או וידאו"
               >
                 <span aria-hidden="true">🖼️</span>
                 <span>תמונה / וידאו</span>

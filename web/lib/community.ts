@@ -217,6 +217,45 @@ export async function createPost(
   };
 }
 
+// ── Post gallery (extra images beyond the primary media_url) ──────────────────
+// community_posts.media_url stays the PRIMARY attachment; post_media holds up to 4
+// EXTRA images so a post can carry a small gallery. Old single-media posts are
+// untouched (they simply have no post_media rows).
+
+export const MAX_GALLERY = 4;
+
+/** Extra gallery images for a batch of posts, keyed by post_id (ordered by `sort`). */
+export async function fetchPostMedia(postIds: string[]): Promise<Map<string, Media[]>> {
+  const out = new Map<string, Media[]>();
+  if (postIds.length === 0) return out;
+  const { data } = await getBrowserSupabase()
+    .from("post_media")
+    .select("post_id,url,media_type,sort")
+    .in("post_id", postIds)
+    .order("sort", { ascending: true });
+  for (const r of (data ?? []) as { post_id: string; url: string; media_type: MediaType; sort: number }[]) {
+    const arr = out.get(r.post_id) ?? [];
+    arr.push({ type: r.media_type, url: r.url, durationMs: null });
+    out.set(r.post_id, arr);
+  }
+  return out;
+}
+
+/** Attach extra gallery images to a post (owner only — RLS ties the write to owning
+ *  the parent post; a DB trigger caps it at 4). Best-effort; returns the count added. */
+export async function addPostMedia(postId: string, items: Media[]): Promise<number> {
+  if (items.length === 0) return 0;
+  const rows = items.slice(0, MAX_GALLERY).map((m, i) => ({
+    post_id: postId,
+    url: m.url,
+    media_type: m.type === "video" ? "video" : "image",
+    sort: i,
+  }));
+  const { data, error } = await getBrowserSupabase().from("post_media").insert(rows).select("id");
+  if (error || !data) return 0;
+  return data.length;
+}
+
 export async function createReply(
   postId: string,
   author: AuthorRef,

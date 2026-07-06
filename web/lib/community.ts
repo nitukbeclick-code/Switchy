@@ -68,6 +68,14 @@ export interface CommunityReply {
   media_duration_ms: number | null;
   created_at: string;
   is_flagged: boolean;
+  /** The reply this one answers (same post), or null for a top-level reply.
+   *  Depth is capped at 1 in the DB — a reply to a child re-parents to the ancestor. */
+  parent_reply_id: string | null;
+}
+
+/** A top-level reply with its (single level of) child replies, oldest-first. */
+export interface ReplyNode extends CommunityReply {
+  children: CommunityReply[];
 }
 
 export interface CommunityNotification {
@@ -96,7 +104,7 @@ export interface NewContent {
 const FEED_COLS =
   "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned";
 const REPLY_COLS =
-  "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged";
+  "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged,parent_reply_id";
 
 export const MAX_BODY = 4000;
 
@@ -203,6 +211,7 @@ export async function createReply(
   postId: string,
   author: AuthorRef,
   content: NewContent,
+  opts?: { parentReplyId?: string | null },
 ): Promise<CommunityReply | null> {
   const sb = getBrowserSupabase();
   const body = content.body.trim().slice(0, MAX_BODY);
@@ -215,12 +224,40 @@ export async function createReply(
       author: author.author,
       avatar: author.avatar,
       body,
+      // The DB caps depth: a reply to a child re-parents to the top-level ancestor.
+      parent_reply_id: opts?.parentReplyId ?? null,
       ...mediaFields(content.media),
     })
     .select(REPLY_COLS)
     .single();
   if (error || !data) return null;
   return data as unknown as CommunityReply;
+}
+
+/** Shape a flat, oldest-first reply list into a 2-level tree: top-level replies,
+ *  each carrying its child replies (oldest-first). Depth is DB-capped at 1, but this
+ *  is orphan-safe — a child whose parent isn't in the list is promoted to top level
+ *  so no reply ever disappears. */
+export function toReplyTree(replies: CommunityReply[]): ReplyNode[] {
+  const byId = new Map<string, CommunityReply>();
+  for (const r of replies) byId.set(r.id, r);
+  const nodes = new Map<string, ReplyNode>();
+  const roots: ReplyNode[] = [];
+  for (const r of replies) {
+    const isChild = r.parent_reply_id != null && byId.has(r.parent_reply_id);
+    if (!isChild) {
+      const node: ReplyNode = { ...r, children: [] };
+      nodes.set(r.id, node);
+      roots.push(node);
+    }
+  }
+  for (const r of replies) {
+    if (r.parent_reply_id != null) {
+      const parent = nodes.get(r.parent_reply_id);
+      if (parent) parent.children.push(r);
+    }
+  }
+  return roots;
 }
 
 export async function deletePost(id: string): Promise<boolean> {

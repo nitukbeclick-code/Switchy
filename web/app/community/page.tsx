@@ -11,6 +11,7 @@
 // index while still letting crawlers follow the outbound links.
 // ────────────────────────────────────────────────────────────────────────────
 
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommunityFeed from "@/components/community/CommunityFeed";
@@ -40,7 +41,11 @@ export default function CommunityPage() {
         </p>
       </header>
 
-      <CommunityFeed />
+      {/* Suspense: CommunityFeed reads useSearchParams for the catalogue deep-link
+          prefill (/community?channel=&provider=&draft=). */}
+      <Suspense fallback={null}>
+        <CommunityFeed />
+      </Suspense>
     </main>
   );
 }

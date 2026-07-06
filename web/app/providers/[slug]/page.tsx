@@ -11,6 +11,8 @@ import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import ComparisonTable from "@/components/ComparisonTable";
 import LeadForm from "@/components/LeadForm";
+import TalkInCommunity from "@/components/community/TalkInCommunity";
+import { channelForCategory } from "@/lib/community";
 import {
   getProviders,
   getProvider,
@@ -556,6 +558,21 @@ export default async function ProviderPage({ params }: Params) {
               planCount: provider.planCount,
               providerCount: getProviders().length,
             }}
+          />
+        </div>
+      </section>
+
+      {/* ── Talk about this provider in the community ──────────────────────── */}
+      <section className="mt-12 rounded-2xl border border-border bg-surface p-5 text-center shadow-soft sm:p-6">
+        <p className="text-sm text-foreground">
+          יש לכם חוויה עם {provider.name}? שתפו את הקהילה.
+        </p>
+        <div className="mt-3 flex justify-center">
+          <TalkInCommunity
+            channel={channelForCategory(provider.categories[0])}
+            providerSlug={slug}
+            providerName={provider.name}
+            draft={`מה החוויה שלכם עם ${provider.name}?`}
           />
         </div>
       </section>

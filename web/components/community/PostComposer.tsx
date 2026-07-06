@@ -32,6 +32,7 @@ import {
   type AuthorRef,
   type Channel,
   type CommunityPost,
+  type ComposerPrefill,
   type Media,
 } from "@/lib/community";
 import {
@@ -51,6 +52,9 @@ export interface PostComposerProps {
   onPosted: (post: CommunityPost) => void;
   /** Called when a signed-out visitor tries to post — opens the auth modal. */
   onRequireAuth: () => void;
+  /** Optional one-shot seed from a catalogue "דברו על זה בקהילה" deep-link —
+   *  prefills channel / body / tagged provider on mount only. */
+  prefill?: ComposerPrefill;
 }
 
 /** Hard cap on a single voice note (ms) — auto-stops before the audio size
@@ -94,7 +98,7 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-export default function PostComposer({ onPosted, onRequireAuth }: PostComposerProps) {
+export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostComposerProps) {
   const { user, profile } = useAuth();
 
   const [channel, setChannel] = useState<Channel>(CHANNELS[0]);
@@ -102,6 +106,9 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
   const [media, setMedia] = useState<Media | null>(null);
   // Extra gallery images beyond the single primary `media` (max MAX_GALLERY).
   const [extra, setExtra] = useState<Media[]>([]);
+  // Provider tag carried in from a catalogue deep-link (persisted via createPost).
+  const [providerSlug, setProviderSlug] = useState<string | null>(null);
+  const [providerName, setProviderName] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false); // uploading media OR submitting
   const [uploading, setUploading] = useState(false); // media upload in flight
@@ -137,6 +144,20 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
       }
     };
   }, []);
+
+  // Seed once from a catalogue deep-link prefill. Guarded so a re-render (or the
+  // parent passing a new object identity) never overwrites what the user typed.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || !prefill) return;
+    seededRef.current = true;
+    if (prefill.channel && (CHANNELS as readonly string[]).includes(prefill.channel)) {
+      setChannel(prefill.channel);
+    }
+    setBody((prefill.draft ?? "").slice(0, MAX_BODY));
+    setProviderSlug(prefill.providerSlug ?? null);
+    setProviderName(prefill.providerName ?? null);
+  }, [prefill]);
 
   // ── Signed-out prompt ──────────────────────────────────────────────────────
   if (!user) {
@@ -303,10 +324,15 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
         author: authorName,
         avatar: authorAvatar,
       };
-      const post = await createPost(author, channel, {
-        body: body.trim(),
-        media,
-      });
+      const post = await createPost(
+        author,
+        channel,
+        {
+          body: body.trim(),
+          media,
+        },
+        { providerSlug },
+      );
       if (!post) {
         setError("הפרסום נכשל. נסו שוב בעוד רגע.");
         return;
@@ -321,6 +347,8 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
       setMedia(null);
       setExtra([]);
       setChannel(CHANNELS[0]);
+      setProviderSlug(null);
+      setProviderName(null);
       // Success signal — non-PII channel + whether media was attached.
       trackEvent("post_created", {
         channel: post.channel,
@@ -363,6 +391,27 @@ export default function PostComposer({ onPosted, onRequireAuth }: PostComposerPr
                 ))}
               </select>
             </div>
+
+            {/* Provider tag (from a catalogue deep-link) */}
+            {providerSlug && (
+              <div className="mb-3 flex">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-accent/10 px-3 py-1 text-xs font-medium text-accent-text">
+                  <span>על הספק: {providerName || providerSlug}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProviderSlug(null);
+                      setProviderName(null);
+                    }}
+                    disabled={busy}
+                    className="interactive press -me-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-accent-text ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                    aria-label="הסרת תיוג הספק"
+                  >
+                    <span aria-hidden="true">✕</span>
+                  </button>
+                </span>
+              </div>
+            )}
 
             {/* Body */}
             <label htmlFor={bodyId} className="sr-only">

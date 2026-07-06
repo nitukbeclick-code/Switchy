@@ -13,7 +13,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { updateMyProfile } from "@/lib/community";
+import { MAX_BIO, updateMyProfile } from "@/lib/community";
 import { uploadMedia, validateMedia } from "@/lib/media-upload";
 
 const MAX_NAME = 40;
@@ -27,6 +27,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
   const { user, profile, refreshProfile } = useAuth();
 
   const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [optOut, setOptOut] = useState(false);
 
@@ -38,6 +39,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const nameInputRef = useRef<HTMLInputElement | null>(null);
   const errorId = useId();
+  const bioCountId = useId();
 
   // The name field is the offender when there's an error and the name is empty
   // (the "נא להזין שם תצוגה." validation). Only then do we associate the error
@@ -48,6 +50,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
   // signed-in user changes. Local edits win until the next profile identity change.
   useEffect(() => {
     setName(profile?.name ?? "");
+    setBio(profile?.bio ?? "");
     setAvatarUrl(profile?.avatar_url ?? null);
     setOptOut(profile?.community_notify_opt_out ?? false);
     setSaved(false);
@@ -113,6 +116,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
     try {
       const ok = await updateMyProfile(user.id, {
         name: trimmed,
+        bio: bio.trim().slice(0, MAX_BIO),
         avatar_url: avatarUrl ?? "",
         community_notify_opt_out: optOut,
       });
@@ -230,6 +234,33 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
         />
         <p className="mt-1 text-xs text-muted">
           {name.trim().length}/{MAX_NAME} תווים
+        </p>
+      </div>
+
+      {/* Bio */}
+      <div className="mt-6">
+        <label
+          htmlFor="profile-bio"
+          className="mb-1 block text-sm font-medium text-foreground"
+        >
+          אודות (ביו)
+        </label>
+        <textarea
+          id="profile-bio"
+          dir="rtl"
+          value={bio}
+          maxLength={MAX_BIO}
+          rows={3}
+          onChange={(e) => {
+            setBio(e.target.value);
+            setSaved(false);
+          }}
+          aria-describedby={bioCountId}
+          placeholder="כמה מילים עליכם (לא חובה)."
+          className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none placeholder:text-muted focus:border-accent focus:ring-2 focus:ring-accent/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        />
+        <p id={bioCountId} className="mt-1 text-xs text-muted">
+          {bio.trim().length}/{MAX_BIO} תווים
         </p>
       </div>
 

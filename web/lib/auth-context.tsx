@@ -30,6 +30,7 @@ export interface Profile {
   is_admin: boolean | null;
   is_verified_customer: boolean | null;
   community_notify_opt_out: boolean | null;
+  bio: string | null;
 }
 
 interface AuthState {
@@ -58,7 +59,7 @@ const DEFAULT_AUTH: AuthState = {
 const AuthContext = createContext<AuthState>(DEFAULT_AUTH);
 
 const PROFILE_COLS =
-  "id,name,avatar_url,is_admin,is_verified_customer,community_notify_opt_out";
+  "id,name,avatar_url,is_admin,is_verified_customer,community_notify_opt_out,bio";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);

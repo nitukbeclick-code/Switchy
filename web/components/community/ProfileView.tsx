@@ -25,6 +25,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  fetchMyBookmarkedPosts,
   fetchPostsByUser,
   fetchPublicProfile,
   type CommunityPost,
@@ -41,6 +42,21 @@ import ProfileEditor from "./ProfileEditor";
 function initial(name: string): string {
   const trimmed = name.trim();
   return trimmed ? Array.from(trimmed)[0].toUpperCase() : "מ";
+}
+
+/**
+ * "חבר/ה מאז <חודש> <שנה>" from a profile's created_at timestamp. Returns null
+ * for a null / empty / unparseable value so the caller can omit the line entirely
+ * rather than render an "Invalid Date".
+ */
+function memberSince(createdAt: string | null): string | null {
+  if (!createdAt) return null;
+  const when = new Date(createdAt);
+  if (Number.isNaN(when.getTime())) return null;
+  return `חבר/ה מאז ${when.toLocaleDateString("he-IL", {
+    month: "long",
+    year: "numeric",
+  })}`;
 }
 
 function HeaderAvatar({ src, name }: { src: string | null; name: string }) {
@@ -75,6 +91,12 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Tabs. "posts" is always available; "saved" is owner-only. The owner's bookmarks
+  // are private, so they load lazily on the first open of the "saved" tab.
+  const [activeTab, setActiveTab] = useState<"posts" | "saved">("posts");
+  const [saved, setSaved] = useState<CommunityPost[] | null>(null);
+  const [savedLoading, setSavedLoading] = useState(false);
 
   // The view owns its own auth modal so a gated PostCard action (a guest liking /
   // replying to a post on someone's profile) can prompt sign-in without a parent.
@@ -114,10 +136,23 @@ export default function ProfileView({ userId }: { userId: string }) {
     };
   }, [ready, userId, user?.id]);
 
-  // Remove a post from the list when its own card deletes it.
+  // Remove a post from both lists when its own card deletes it (a post can be shown
+  // under "posts" and, if the owner bookmarked their own post, under "saved").
   const handleDeleted = useCallback((id: string) => {
     setPosts((prev) => prev.filter((p) => p.id !== id));
+    setSaved((prev) => (prev ? prev.filter((p) => p.id !== id) : prev));
   }, []);
+
+  // Open a tab; lazily fetch the owner's private bookmarks the first time "saved"
+  // is opened. Guarded by isOwn at the call site (only the owner sees the tab).
+  const handleSelectSaved = useCallback(() => {
+    setActiveTab("saved");
+    if (saved !== null || savedLoading) return;
+    setSavedLoading(true);
+    void fetchMyBookmarkedPosts()
+      .then((list) => setSaved(list))
+      .finally(() => setSavedLoading(false));
+  }, [saved, savedLoading]);
 
   // After the owner saves their profile, re-fetch header + posts to reflect the new
   // name / avatar on every card.
@@ -127,6 +162,13 @@ export default function ProfileView({ userId }: { userId: string }) {
 
   const displayName = (profile?.name ?? "").trim() || "משתמש";
   const verified = !!profile?.is_verified_customer;
+  const bio = (profile?.bio ?? "").trim();
+  const memberSinceLine = memberSince(profile?.created_at ?? null);
+
+  // Truthful stats derived only from the posts we actually loaded — no server
+  // aggregate is fetched, so these never claim more than what is on screen.
+  const postCount = posts.length;
+  const likesReceived = posts.reduce((sum, p) => sum + p.like_count, 0);
 
   // A finished load with no profile means this id doesn't map to a real member
   // (bad / stale / deleted). Show an explicit not-found card rather than a generic
@@ -191,17 +233,33 @@ export default function ProfileView({ userId }: { userId: string }) {
                 )}
               </div>
 
-              <p className="mt-1 text-sm text-muted">
-                {loading
-                  ? "טוען פוסטים…"
-                  : posts.length === 0
-                    ? "אין פוסטים עדיין"
-                    : posts.length === 1
-                      ? "פוסט אחד"
-                      : `${posts.length} פוסטים`}
-              </p>
+              {memberSinceLine && (
+                <p className="mt-1 text-xs text-muted">{memberSinceLine}</p>
+              )}
+
+              {/* Truthful stats — reflect the posts loaded on this page only. */}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
+                  <span className="tabular-nums">{postCount}</span>
+                  <span className="ms-1">פוסטים</span>
+                </span>
+                <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
+                  <span className="tabular-nums">{likesReceived}</span>
+                  <span className="ms-1">לייקים שהתקבלו</span>
+                </span>
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Self-written bio (escaped via JSX, whitespace preserved). */}
+        {!loading && bio && (
+          <p
+            aria-label="אודות"
+            className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-muted"
+          >
+            {bio}
+          </p>
         )}
       </header>
 
@@ -212,8 +270,55 @@ export default function ProfileView({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* Posts */}
-      <div className="mt-4">
+      {/* Tabs: "פוסטים" always; "שמורים" is owner-only (private bookmarks). */}
+      <div
+        role="tablist"
+        aria-label="תצוגות פרופיל"
+        className="mt-4 flex items-center gap-2 border-b border-border"
+      >
+        <button
+          type="button"
+          role="tab"
+          id="profile-tab-posts"
+          aria-controls="profile-panel-posts"
+          aria-selected={activeTab === "posts"}
+          onClick={() => setActiveTab("posts")}
+          className={`-mb-px inline-flex min-h-[44px] items-center rounded-t-lg border-b-2 px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            activeTab === "posts"
+              ? "border-accent text-ink"
+              : "border-transparent text-muted hover:text-ink"
+          }`}
+        >
+          פוסטים
+        </button>
+
+        {isOwn && (
+          <button
+            type="button"
+            role="tab"
+            id="profile-tab-saved"
+            aria-controls="profile-panel-saved"
+            aria-selected={activeTab === "saved"}
+            onClick={handleSelectSaved}
+            className={`-mb-px inline-flex min-h-[44px] items-center rounded-t-lg border-b-2 px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              activeTab === "saved"
+                ? "border-accent text-ink"
+                : "border-transparent text-muted hover:text-ink"
+            }`}
+          >
+            שמורים
+          </button>
+        )}
+      </div>
+
+      {/* Posts panel */}
+      <div
+        role="tabpanel"
+        id="profile-panel-posts"
+        aria-labelledby="profile-tab-posts"
+        hidden={activeTab !== "posts"}
+        className="mt-4"
+      >
         {loading ? (
           <ul className="space-y-4" aria-hidden="true">
             {[0, 1, 2].map((i) => (
@@ -260,6 +365,59 @@ export default function ProfileView({ userId }: { userId: string }) {
           </ul>
         )}
       </div>
+
+      {/* Saved panel — owner-only, lazily loaded private bookmarks. */}
+      {isOwn && (
+        <div
+          role="tabpanel"
+          id="profile-panel-saved"
+          aria-labelledby="profile-tab-saved"
+          hidden={activeTab !== "saved"}
+          className="mt-4"
+        >
+          {savedLoading || saved === null ? (
+            <ul className="space-y-4" aria-hidden="true">
+              {[0, 1, 2].map((i) => (
+                <li
+                  key={i}
+                  className="animate-pulse rounded-2xl border border-border bg-surface p-4 shadow-soft"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="h-10 w-10 shrink-0 rounded-full bg-border/60" />
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <span className="block h-3.5 w-32 rounded bg-border/60" />
+                      <span className="block h-3 w-20 rounded bg-border/50" />
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <span className="block h-3 w-full rounded bg-border/50" />
+                    <span className="block h-3 w-4/5 rounded bg-border/50" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : saved.length === 0 ? (
+            <div className="card p-8 text-center">
+              <p className="text-sm font-medium text-ink">אין פוסטים שמורים</p>
+              <p className="mt-1 text-sm text-muted">
+                פוסטים שתשמרו בקהילה יופיעו כאן — רק אתם רואים אותם.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-4">
+              {saved.map((post) => (
+                <li key={post.id} className="reveal">
+                  <PostCard
+                    post={post}
+                    onRequireAuth={onRequireAuth}
+                    onDeleted={handleDeleted}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </section>

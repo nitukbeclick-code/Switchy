@@ -174,6 +174,49 @@ export async function fetchPostsByUser(userId: string, viewerId?: string | null)
   return (data as unknown as CommunityPost[]).filter((p) => !p.is_flagged || p.user_id === viewerId);
 }
 
+// ── Search + discovery ────────────────────────────────────────────────────────
+
+export interface HighlightChannel {
+  channel: string;
+  posts: number;
+}
+export interface HighlightPost {
+  id: string;
+  channel: string;
+  body: string;
+  reply_count: number;
+}
+export interface CommunityHighlights {
+  channels: HighlightChannel[];
+  active_posts: HighlightPost[];
+}
+
+/** Hebrew search over non-flagged community posts (FTS + short-query ILIKE fallback),
+ *  ranked by relevance then recency. Empty query → []. Runs through the SECURITY
+ *  INVOKER RPC so RLS + the is_flagged filter both apply. */
+export async function searchPosts(
+  q: string,
+  channel?: Channel | typeof ALL_CHANNEL,
+): Promise<CommunityPost[]> {
+  const query = q.trim();
+  if (!query) return [];
+  const { data, error } = await getBrowserSupabase().rpc("search_community_posts", {
+    q: query,
+    p_channel: channel && channel !== ALL_CHANNEL ? channel : null,
+    p_limit: 30,
+  });
+  if (error || !data) return [];
+  return data as unknown as CommunityPost[];
+}
+
+/** Truthful 7-day highlights (most-active channels + most-replied recent posts).
+ *  Everything is empty when there is no real activity — the UI then renders nothing. */
+export async function fetchHighlights(): Promise<CommunityHighlights> {
+  const { data } = await getBrowserSupabase().rpc("community_highlights");
+  const h = (data ?? {}) as Partial<CommunityHighlights>;
+  return { channels: h.channels ?? [], active_posts: h.active_posts ?? [] };
+}
+
 // ── Create ───────────────────────────────────────────────────────────────────
 
 function mediaFields(media?: Media | null) {

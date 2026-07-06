@@ -416,6 +416,25 @@ export async function setBookmark(postId: string, userId: string, on: boolean): 
   return !error;
 }
 
+/** The viewer's OWN bookmarked posts (for the private "שמורים" profile tab). Bookmarks
+ *  are private to the owner (post_bookmarks RLS is own-row), so this is only meaningful
+ *  for the signed-in owner viewing their own profile. */
+export async function fetchMyBookmarkedPosts(): Promise<CommunityPost[]> {
+  const sb = getBrowserSupabase();
+  const { data: sess } = await sb.auth.getSession();
+  const uid = sess.session?.user.id;
+  if (!uid) return [];
+  const { data: bm } = await sb.from("post_bookmarks").select("post_id").eq("user_id", uid);
+  const ids = (bm ?? []).map((r: { post_id: string }) => r.post_id);
+  if (ids.length === 0) return [];
+  const { data } = await sb
+    .from("community_feed")
+    .select(FEED_COLS)
+    .in("id", ids)
+    .order("created_at", { ascending: false });
+  return ((data as unknown as CommunityPost[]) ?? []).filter((p) => !p.is_flagged || p.user_id === uid);
+}
+
 // ── Reactions (multi-emoji, on posts AND replies) ────────────────────────────
 // A polymorphic content_reactions table (target_type post|reply). ONE reaction per
 // user per target — switching emoji is an upsert on the PK. The binary post_likes
@@ -579,7 +598,14 @@ export interface PublicProfile {
   avatar_url: string | null;
   is_verified_customer: boolean | null;
   is_admin: boolean | null;
+  /** Account age ("member since") — public-safe. */
+  created_at: string | null;
+  /** Optional self-written community bio (public, escaped in the UI). */
+  bio: string | null;
 }
+
+/** Max length of a self-written bio (also hard-capped by a DB check). */
+export const MAX_BIO = 280;
 
 export async function fetchPublicProfile(userId: string): Promise<PublicProfile | null> {
   // Reads the public_profiles VIEW, not the profiles table: profiles RLS is own-row-only
@@ -588,7 +614,7 @@ export async function fetchPublicProfile(userId: string): Promise<PublicProfile 
   // granted to anon + authenticated, so any visitor can see another member's public profile.
   const { data } = await getBrowserSupabase()
     .from("public_profiles")
-    .select("id,name,avatar_url,is_verified_customer,is_admin")
+    .select("id,name,avatar_url,is_verified_customer,is_admin,created_at,bio")
     .eq("id", userId)
     .maybeSingle();
   return (data as PublicProfile) ?? null;
@@ -596,7 +622,7 @@ export async function fetchPublicProfile(userId: string): Promise<PublicProfile 
 
 export async function updateMyProfile(
   userId: string,
-  patch: { name?: string; avatar_url?: string; community_notify_opt_out?: boolean },
+  patch: { name?: string; avatar_url?: string; community_notify_opt_out?: boolean; bio?: string },
 ): Promise<boolean> {
   const { error } = await getBrowserSupabase().from("profiles").update(patch).eq("id", userId);
   return !error;

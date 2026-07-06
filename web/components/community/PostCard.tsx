@@ -37,6 +37,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
+import ReactionBar from "./ReactionBar";
 import Replies from "./Replies";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -501,6 +502,16 @@ export default function PostCard({
           {notice}
         </p>
       )}
+
+      {/* Reactions (multi-emoji, on top of the binary like) */}
+      <div className="mt-3">
+        <ReactionBar
+          target="post"
+          targetId={post.id}
+          userId={user?.id ?? null}
+          onRequireAuth={onRequireAuth}
+        />
+      </div>
 
       {/* Action row */}
       <div className="mt-3 flex items-center gap-1 border-t border-border pt-3">

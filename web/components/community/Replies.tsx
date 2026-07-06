@@ -37,6 +37,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
+import ReactionBar from "./ReactionBar";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,10 +120,14 @@ function Avatar({ src, name }: { src: string | null; name: string }) {
 function ReplyItem({
   reply,
   isOwn,
+  userId,
+  onRequireAuth,
   onDelete,
 }: {
   reply: CommunityReply;
   isOwn: boolean;
+  userId: string | null;
+  onRequireAuth: () => void;
   onDelete: (id: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -173,19 +178,25 @@ function ReplyItem({
           <p className="mt-2 text-xs text-muted">בבדיקת מנהל</p>
         )}
 
-        {isOwn && (
-          <div className="mt-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <ReactionBar
+            target="reply"
+            targetId={reply.id}
+            userId={userId}
+            onRequireAuth={onRequireAuth}
+          />
+          {isOwn && (
             <button
               type="button"
               onClick={handleDelete}
               disabled={busy}
               aria-label="מחיקת התגובה שלי"
-              className="rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+              className="ms-auto rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
             >
               {busy ? "מוחק…" : "מחיקה"}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </li>
   );
@@ -525,6 +536,8 @@ export default function Replies({
               key={reply.id}
               reply={reply}
               isOwn={!!user && user.id === reply.user_id}
+              userId={user?.id ?? null}
+              onRequireAuth={onRequireAuth}
               onDelete={handleDeleted}
             />
           ))}

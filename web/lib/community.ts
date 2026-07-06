@@ -694,7 +694,13 @@ export async function fetchPublicProfile(userId: string): Promise<PublicProfile 
 
 export async function updateMyProfile(
   userId: string,
-  patch: { name?: string; avatar_url?: string; community_notify_opt_out?: boolean; bio?: string },
+  patch: {
+    name?: string;
+    avatar_url?: string;
+    community_notify_opt_out?: boolean;
+    community_digest_opt_in?: boolean;
+    bio?: string;
+  },
 ): Promise<boolean> {
   const { error } = await getBrowserSupabase().from("profiles").update(patch).eq("id", userId);
   return !error;

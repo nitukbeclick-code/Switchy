@@ -30,6 +30,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [optOut, setOptOut] = useState(false);
+  const [digestOptIn, setDigestOptIn] = useState(false);
 
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,6 +54,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
     setBio(profile?.bio ?? "");
     setAvatarUrl(profile?.avatar_url ?? null);
     setOptOut(profile?.community_notify_opt_out ?? false);
+    setDigestOptIn(profile?.community_digest_opt_in ?? false);
     setSaved(false);
     setError(null);
   }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -119,6 +121,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
         bio: bio.trim().slice(0, MAX_BIO),
         avatar_url: avatarUrl ?? "",
         community_notify_opt_out: optOut,
+        community_digest_opt_in: digestOptIn,
       });
       if (!ok) {
         setError("שמירת הפרופיל נכשלה. נסו שוב בעוד רגע.");
@@ -283,6 +286,29 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
           להשתיק התראות בתוך האתר (הפעמון) על אזכורים בקהילה.
           <span className="mt-0.5 block text-xs text-muted">
             תוכלו לשנות זאת בכל עת.
+          </span>
+        </label>
+      </div>
+
+      {/* Weekly digest opt-IN (default off — §30A prior consent for email) */}
+      <div className="mt-4 flex items-start gap-3">
+        <input
+          id="profile-digest-opt-in"
+          type="checkbox"
+          checked={digestOptIn}
+          onChange={(e) => {
+            setDigestOptIn(e.target.checked);
+            setSaved(false);
+          }}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        />
+        <label
+          htmlFor="profile-digest-opt-in"
+          className="cursor-pointer text-sm leading-snug text-foreground"
+        >
+          לקבל סיכום שבועי במייל על פעילות שלא נקראה בקהילה.
+          <span className="mt-0.5 block text-xs text-muted">
+            שולחים רק כשיש עדכונים חדשים, ואפשר להסיר בכל רגע מתוך המייל.
           </span>
         </label>
       </div>

@@ -39,6 +39,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
+import MentionTextarea from "./MentionTextarea";
 import ReactionBar from "./ReactionBar";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -524,15 +525,15 @@ function ReplyComposer({
       <label htmlFor={fieldId} className="sr-only">
         כתיבת תגובה
       </label>
-      <textarea
+      <MentionTextarea
         id={fieldId}
         autoFocus={autoFocus}
         value={body}
-        onChange={(e) => setBody(e.target.value.slice(0, MAX_BODY))}
+        onChange={(v) => setBody(v.slice(0, MAX_BODY))}
         maxLength={MAX_BODY}
         rows={2}
         dir="rtl"
-        placeholder="כתבו תגובה…"
+        placeholder="כתבו תגובה… (השתמשו ב-@ לאזכור)"
         className="block w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-start text-sm text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       />
 

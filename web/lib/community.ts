@@ -52,6 +52,8 @@ export interface CommunityPost {
   moderation_note: string | null;
   like_count: number;
   reply_count: number;
+  /** Admin-pinned to the top of the feed (welcome / announcement). */
+  is_pinned: boolean;
 }
 
 export interface CommunityReply {
@@ -92,7 +94,7 @@ export interface NewContent {
 }
 
 const FEED_COLS =
-  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count";
+  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned";
 const REPLY_COLS =
   "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged";
 
@@ -193,7 +195,8 @@ export async function createPost(
     )
     .single();
   if (error || !data) return null;
-  return { ...(data as unknown as CommunityPost), like_count: 0, reply_count: 0 };
+  // A freshly-created post is never pinned; fill the aggregate + pin defaults.
+  return { ...(data as unknown as CommunityPost), like_count: 0, reply_count: 0, is_pinned: false };
 }
 
 export async function createReply(
@@ -227,6 +230,18 @@ export async function deletePost(id: string): Promise<boolean> {
 
 export async function deleteReply(id: string): Promise<boolean> {
   const { error } = await getBrowserSupabase().from("community_replies").delete().eq("id", id);
+  return !error;
+}
+
+/** Admin-only: pin / unpin a post to the top of the feed. Authorization is enforced
+ *  in the DB by the posts_admin_update RLS policy (auth.uid() is an admin) — the
+ *  client is_admin flag only decides whether the pin control is shown, never trusted
+ *  for the write. A non-admin's update matches no row and returns without effect. */
+export async function setPinned(postId: string, pinned: boolean): Promise<boolean> {
+  const { error } = await getBrowserSupabase()
+    .from("community_posts")
+    .update({ is_pinned: pinned })
+    .eq("id", postId);
   return !error;
 }
 

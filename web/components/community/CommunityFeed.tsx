@@ -92,6 +92,8 @@ export default function CommunityFeed() {
 
   const [tab, setTab] = useState<Tab>(ALL_CHANNEL);
   const [sort, setSort] = useState<SortMode>("recent");
+  // "Help answer these" view — only questions with no replies yet.
+  const [unanswered, setUnanswered] = useState(false);
 
   // ── Catalogue deep-link ("דברו על זה בקהילה") → composer prefill ──────────────
   // /community?channel=<hebrew>&provider=<slug>&draft=<text>. Safe here because the
@@ -275,6 +277,7 @@ export default function CommunityFeed() {
       viewerId: user?.id ?? null,
       blocked,
       limit: PAGE_SIZE,
+      unansweredOnly: unanswered,
     }).then((rows) => {
       if (!active) return;
       setPosts(sortPosts(rows, sort));
@@ -284,7 +287,7 @@ export default function CommunityFeed() {
     return () => {
       active = false;
     };
-  }, [ready, blocksReady, tab, sort, user?.id, blocked, sortPosts]);
+  }, [ready, blocksReady, tab, sort, unanswered, user?.id, blocked, sortPosts]);
 
   // ── Debounced community search (on `search` + `tab`) ──────────────────────────
   // An empty query restores the feed (results = null). A non-empty query runs
@@ -486,6 +489,7 @@ export default function CommunityFeed() {
       viewerId: user?.id ?? null,
       blocked,
       limit: PAGE_SIZE,
+      unansweredOnly: unanswered,
     });
     let addedCount = 0;
     setPosts((prev) => {
@@ -507,7 +511,7 @@ export default function CommunityFeed() {
     }
     lastOlderCursor.current = oldest;
     setLoadingMore(false);
-  }, [loadingMore, reachedEnd, posts, tab, user?.id, blocked, sort, sortPosts]);
+  }, [loadingMore, reachedEnd, posts, tab, user?.id, blocked, sort, unanswered, sortPosts]);
 
   // ── Infinite scroll: observe a sentinel at the end of the list ────────────────
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -646,32 +650,45 @@ export default function CommunityFeed() {
         })}
       </div>
 
-      {/* Sort control */}
-      <div className="flex items-center justify-end gap-1" role="group" aria-label="מיון הפוסטים">
+      {/* Filter + sort controls */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* "Help answer these" filter — surfaces questions with no replies yet. */}
         <button
           type="button"
-          onClick={() => setSort("recent")}
-          aria-pressed={sort === "recent"}
+          onClick={() => setUnanswered((v) => !v)}
+          aria-pressed={unanswered}
           className={`${sortBtn} ${
-            sort === "recent"
-              ? "bg-accent/10 text-accent-text"
-              : "text-muted hover:text-ink"
+            unanswered ? "bg-accent/10 text-accent-text" : "text-muted hover:text-ink"
           }`}
         >
-          החדשים ביותר
+          ללא מענה
         </button>
-        <button
-          type="button"
-          onClick={() => setSort("popular")}
-          aria-pressed={sort === "popular"}
-          className={`${sortBtn} ${
-            sort === "popular"
-              ? "bg-accent/10 text-accent-text"
-              : "text-muted hover:text-ink"
-          }`}
-        >
-          הפופולריים
-        </button>
+        <div className="flex items-center gap-1" role="group" aria-label="מיון הפוסטים">
+          <button
+            type="button"
+            onClick={() => setSort("recent")}
+            aria-pressed={sort === "recent"}
+            className={`${sortBtn} ${
+              sort === "recent"
+                ? "bg-accent/10 text-accent-text"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            החדשים ביותר
+          </button>
+          <button
+            type="button"
+            onClick={() => setSort("popular")}
+            aria-pressed={sort === "popular"}
+            className={`${sortBtn} ${
+              sort === "popular"
+                ? "bg-accent/10 text-accent-text"
+                : "text-muted hover:text-ink"
+            }`}
+          >
+            הפופולריים
+          </button>
+        </div>
       </div>
 
       {/* Trending — truthful 7-day highlights. Real counts only; renders nothing
@@ -774,12 +791,14 @@ export default function CommunityFeed() {
         ) : posts.length === 0 ? (
           <div className="bento p-8 text-center">
             <p className="text-base font-semibold text-ink">
-              עדיין אין פוסטים כאן
+              {unanswered ? "אין כרגע שאלות ללא מענה" : "עדיין אין פוסטים כאן"}
             </p>
             <p className="mt-1 text-sm text-muted">
-              {tab === ALL_CHANNEL
-                ? "היו הראשונים לשתף חוויה, לשאול שאלה או להמליץ על ספק."
-                : `אין עדיין פוסטים בערוץ "${tab}". פתחו את השיחה.`}
+              {unanswered
+                ? "כל השאלות פה כבר קיבלו תגובה 🙌 אפשר לכבות את הסינון ולראות הכול."
+                : tab === ALL_CHANNEL
+                  ? "היו הראשונים לשתף חוויה, לשאול שאלה או להמליץ על ספק."
+                  : `אין עדיין פוסטים בערוץ "${tab}". פתחו את השיחה.`}
             </p>
           </div>
         ) : (

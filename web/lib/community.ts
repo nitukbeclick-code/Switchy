@@ -147,6 +147,8 @@ export interface FeedQuery {
   blocked?: string[];
   /** the viewer, so their own flagged posts stay visible to them ("under review"). */
   viewerId?: string | null;
+  /** only questions with no replies yet — the "help answer these" view. */
+  unansweredOnly?: boolean;
 }
 
 /** A page of feed posts, newest first. Public rows are readable with the anon key;
@@ -161,6 +163,8 @@ export async function fetchFeed(q: FeedQuery = {}): Promise<CommunityPost[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
   if (q.channel && q.channel !== ALL_CHANNEL) query = query.eq("channel", q.channel);
+  // "Unanswered" = no replies yet (reply_count is the aggregate on community_feed).
+  if (q.unansweredOnly) query = query.eq("reply_count", 0);
   if (q.before) query = query.lt("created_at", q.before);
   const { data, error } = await query;
   if (error || !data) return [];

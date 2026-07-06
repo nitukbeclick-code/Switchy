@@ -21,17 +21,27 @@ alter table public.community_posts
   add column if not exists accepted_reply_id uuid
   references public.community_replies(id) on delete set null;
 
--- Integrity: the accepted reply must be a reply ON this post. SECURITY DEFINER so it
--- can read community_replies regardless of the caller; validates only when the mark
--- is set/changed to a non-null value (clearing to null is always allowed).
+-- Integrity: validates a set/changed non-null accepted_reply_id (clearing to null is
+-- always allowed). SECURITY DEFINER so it can read community_replies regardless of the
+-- caller. Enforces the full intent AT THE DB (defense-in-depth beyond the UI):
+--   (a) AUTHOR-ONLY — even an admin can't pick a "best answer" on someone else's post
+--       (admins moderate via the admin dashboard, not by choosing answers for people).
+--       auth.uid() is null (service_role/internal) is exempt from the authorship check.
+--   (b) the target must be a TOP-LEVEL reply ON this post (an answer to the question,
+--       not a nested reply-to-reply) so the thread + permalink surfaces stay in sync.
 create or replace function public.community_posts_check_accepted()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if new.accepted_reply_id is not null
      and new.accepted_reply_id is distinct from old.accepted_reply_id then
+    if auth.uid() is not null and auth.uid() <> new.user_id then
+      raise exception 'only_author_sets_accepted';
+    end if;
     if not exists (
       select 1 from public.community_replies
-       where id = new.accepted_reply_id and post_id = new.id
+       where id = new.accepted_reply_id
+         and post_id = new.id
+         and parent_reply_id is null
     ) then
       raise exception 'accepted_reply_not_on_post';
     end if;

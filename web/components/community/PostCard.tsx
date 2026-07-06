@@ -573,6 +573,14 @@ export default function PostCard({
                 · נערך
               </span>
             )}
+            <span aria-hidden="true">·</span>
+            <Link
+              href={`/community/post/${post.id}`}
+              className="text-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              aria-label="קישור לפוסט"
+            >
+              קישור
+            </Link>
           </div>
         </div>
 

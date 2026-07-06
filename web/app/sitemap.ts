@@ -245,7 +245,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/about",
     "/how-it-works",
     "/faq",
-    "/community",
+    // /community itself is noindex,follow (a UGC feed) — NOT listed here. The
+    // indexable community surface is the read-only Q&A hub.
+    "/community/questions",
   ].map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: now,

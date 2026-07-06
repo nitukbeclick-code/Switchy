@@ -73,7 +73,7 @@ export interface CommunityReply {
 export interface CommunityNotification {
   id: number;
   user_id: string;
-  kind: "reply" | "mention" | "flag";
+  kind: "reply" | "mention" | "flag" | "reaction";
   post_id: string | null;
   reply_id: string | null;
   actor: string | null;
@@ -289,6 +289,104 @@ export async function setBookmark(postId: string, userId: string, on: boolean): 
     return !error;
   }
   const { error } = await sb.from("post_bookmarks").delete().eq("post_id", postId).eq("user_id", userId);
+  return !error;
+}
+
+// ── Reactions (multi-emoji, on posts AND replies) ────────────────────────────
+// A polymorphic content_reactions table (target_type post|reply). ONE reaction per
+// user per target — switching emoji is an upsert on the PK. The binary post_likes
+// above is untouched (still drives the "popular" sort + like_count). A reply "like"
+// is just the 👍 reaction on a reply. Every write is on the browser JWT (RLS).
+
+export const REACTION_EMOJI = ["👍", "❤️", "😂", "😮"] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJI)[number];
+export type ReactionTarget = "post" | "reply";
+
+export interface ReactionSummary {
+  emoji: ReactionEmoji;
+  count: number;
+}
+
+const REACTION_SET: ReadonlySet<string> = new Set(REACTION_EMOJI);
+
+/** Per-target reaction summaries (only emoji with count>0), for a batch of ids. */
+export async function fetchReactions(
+  target: ReactionTarget,
+  targetIds: string[],
+): Promise<Map<string, ReactionSummary[]>> {
+  const out = new Map<string, ReactionSummary[]>();
+  if (targetIds.length === 0) return out;
+  const { data } = await getBrowserSupabase()
+    .from("content_reactions")
+    .select("target_id,emoji")
+    .eq("target_type", target)
+    .in("target_id", targetIds);
+  // Aggregate client-side: id -> emoji -> count.
+  const byId = new Map<string, Map<ReactionEmoji, number>>();
+  for (const r of (data ?? []) as { target_id: string; emoji: string }[]) {
+    if (!REACTION_SET.has(r.emoji)) continue;
+    const e = r.emoji as ReactionEmoji;
+    let m = byId.get(r.target_id);
+    if (!m) byId.set(r.target_id, (m = new Map()));
+    m.set(e, (m.get(e) ?? 0) + 1);
+  }
+  for (const [id, m] of byId) {
+    // Keep the canonical emoji order; drop zero counts (truthful — never shown).
+    out.set(
+      id,
+      REACTION_EMOJI.filter((e) => (m.get(e) ?? 0) > 0).map((e) => ({ emoji: e, count: m.get(e)! })),
+    );
+  }
+  return out;
+}
+
+/** The viewer's OWN emoji per target (one per target, or absent). */
+export async function fetchMyReactions(
+  target: ReactionTarget,
+  targetIds: string[],
+): Promise<Map<string, ReactionEmoji>> {
+  const out = new Map<string, ReactionEmoji>();
+  if (targetIds.length === 0) return out;
+  const sb = getBrowserSupabase();
+  const { data: sess } = await sb.auth.getSession();
+  const uid = sess.session?.user.id;
+  if (!uid) return out;
+  const { data } = await sb
+    .from("content_reactions")
+    .select("target_id,emoji")
+    .eq("target_type", target)
+    .eq("user_id", uid)
+    .in("target_id", targetIds);
+  for (const r of (data ?? []) as { target_id: string; emoji: string }[]) {
+    if (REACTION_SET.has(r.emoji)) out.set(r.target_id, r.emoji as ReactionEmoji);
+  }
+  return out;
+}
+
+/** Set (or switch) the viewer's reaction, or remove it when emoji is null.
+ *  Switching emoji is a single upsert on the PK (does NOT re-fire the notify insert). */
+export async function setReaction(
+  target: ReactionTarget,
+  targetId: string,
+  userId: string,
+  emoji: ReactionEmoji | null,
+): Promise<boolean> {
+  const sb = getBrowserSupabase();
+  if (emoji === null) {
+    const { error } = await sb
+      .from("content_reactions")
+      .delete()
+      .eq("target_type", target)
+      .eq("target_id", targetId)
+      .eq("user_id", userId);
+    return !error;
+  }
+  const { error } = await sb
+    .from("content_reactions")
+    .upsert(
+      { target_type: target, target_id: targetId, user_id: userId, emoji },
+      { onConflict: "target_type,target_id,user_id" },
+    );
   return !error;
 }
 

@@ -79,6 +79,8 @@ function kindLine(kind: CommunityNotification["kind"]): string {
       return "הזכיר/ה אותך בתגובה";
     case "flag":
       return "התוכן שלך סומן לבדיקת מנהל";
+    case "reaction":
+      return "הגיב/ה לתוכן שלך";
     default:
       return "עדכון חדש";
   }
@@ -538,6 +540,24 @@ function KindGlyph({ kind }: { kind: CommunityNotification["kind"] }) {
       >
         <circle cx="12" cy="12" r="4" />
         <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
+      </svg>
+    );
+  }
+  if (kind === "reaction") {
+    // Heart — a reaction.
+    return (
+      <svg
+        width={18}
+        height={18}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.75}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 20s-7-4.35-7-9a4 4 0 0 1 7-2.65A4 4 0 0 1 19 11c0 4.65-7 9-7 9z" />
       </svg>
     );
   }

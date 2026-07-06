@@ -56,6 +56,8 @@ export interface CommunityPost {
   is_pinned: boolean;
   /** Set the first time the author edits the post (truthful "נערך"); null otherwise. */
   edited_at: string | null;
+  /** Catalogue provider this post is about (→ /providers/<slug>), or null. */
+  provider_slug: string | null;
 }
 
 export interface CommunityReply {
@@ -106,7 +108,7 @@ export interface NewContent {
 }
 
 const FEED_COLS =
-  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned,edited_at";
+  "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned,edited_at,provider_slug";
 const REPLY_COLS =
   "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged,parent_reply_id,edited_at";
 
@@ -231,10 +233,14 @@ export async function createPost(
   author: AuthorRef,
   channel: Channel,
   content: NewContent,
+  opts?: { providerSlug?: string | null },
 ): Promise<CommunityPost | null> {
   const sb = getBrowserSupabase();
   const body = content.body.trim().slice(0, MAX_BODY);
   if (!body && !content.media) return null;
+  // Only persist a URL-safe slug (also DB-checked); anything else is dropped.
+  const providerSlug =
+    opts?.providerSlug && /^[a-z0-9-]+$/.test(opts.providerSlug) ? opts.providerSlug : null;
   const { data, error } = await sb
     .from("community_posts")
     .insert({
@@ -243,10 +249,11 @@ export async function createPost(
       avatar: author.avatar,
       channel,
       body,
+      provider_slug: providerSlug,
       ...mediaFields(content.media),
     })
     .select(
-      "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note",
+      "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,provider_slug",
     )
     .single();
   if (error || !data) return null;

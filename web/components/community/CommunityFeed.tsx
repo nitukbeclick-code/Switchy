@@ -167,15 +167,17 @@ export default function CommunityFeed() {
 
   const sortPosts = useCallback(
     (rows: CommunityPost[], mode: SortMode): CommunityPost[] => {
-      if (mode === "popular") {
-        // Stable-ish popular sort: most-liked first, newest as the tiebreaker.
-        return [...rows].sort((a, b) => {
-          if (b.like_count !== a.like_count) return b.like_count - a.like_count;
-          return b.created_at.localeCompare(a.created_at);
-        });
-      }
-      // recent — newest first (the feed query already returns this order).
-      return [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at));
+      return [...rows].sort((a, b) => {
+        // Admin-pinned posts (welcome / announcements) always sit on top, in both
+        // the recent and popular views.
+        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+        if (mode === "popular" && b.like_count !== a.like_count) {
+          // Most-liked first, newest as the tiebreaker.
+          return b.like_count - a.like_count;
+        }
+        // recent (and popular tiebreaker) — newest first.
+        return b.created_at.localeCompare(a.created_at);
+      });
     },
     [],
   );
@@ -267,6 +269,7 @@ export default function CommunityFeed() {
             moderation_note: row.moderation_note ?? null,
             like_count: row.like_count ?? 0,
             reply_count: row.reply_count ?? 0,
+            is_pinned: row.is_pinned ?? false,
           };
 
           let added = false;

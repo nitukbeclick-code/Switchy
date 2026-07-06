@@ -30,6 +30,7 @@ import {
   setBlock,
   setBookmark,
   setLike,
+  setPinned,
   type CommunityPost,
   type Media,
 } from "@/lib/community";
@@ -118,12 +119,20 @@ function Avatar({ src, name }: { src: string | null; name: string }) {
 
 function OverflowMenu({
   isOwn,
+  isAdmin,
+  isPinned,
+  onTogglePin,
+  pinning,
   onReport,
   onBlock,
   onDelete,
   deleting,
 }: {
   isOwn: boolean;
+  isAdmin: boolean;
+  isPinned: boolean;
+  onTogglePin: () => void;
+  pinning: boolean;
   onReport: () => void;
   onBlock: () => void;
   onDelete: () => void;
@@ -184,6 +193,17 @@ function OverflowMenu({
           className="popover absolute end-0 top-full z-20 mt-1 min-w-44 rounded-2xl border border-border bg-surface p-1 shadow-float"
           style={{ ["--popover-origin" as string]: "top left" }}
         >
+          {isAdmin && (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => runAndClose(onTogglePin)}
+              disabled={pinning}
+              className={itemClass}
+            >
+              {pinning ? "מעדכן…" : isPinned ? "ביטול הצמדה" : "הצמדה לראש הפיד"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => runAndClose(onReport)}
@@ -227,8 +247,9 @@ export default function PostCard({
   onRequireAuth: () => void;
   onDeleted?: (id: string) => void;
 }) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const isOwn = !!user && user.id === post.user_id;
+  const isAdmin = !!profile?.is_admin;
 
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.like_count);
@@ -238,6 +259,8 @@ export default function PostCard({
 
   const [showReplies, setShowReplies] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pinned, setPinnedLocal] = useState(post.is_pinned);
+  const [pinning, setPinning] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeError, setNoticeError] = useState(false);
@@ -248,6 +271,11 @@ export default function PostCard({
   useEffect(() => {
     setLikeCount(post.like_count);
   }, [post.like_count]);
+
+  // Keep the pinned state in sync if the post prop is replaced.
+  useEffect(() => {
+    setPinnedLocal(post.is_pinned);
+  }, [post.is_pinned]);
 
   // Hydrate the viewer's own like + bookmark state for this post on mount.
   useEffect(() => {
@@ -362,6 +390,21 @@ export default function PostCard({
     }
   }, [isOwn, deleting, post.id, onDeleted]);
 
+  // ── Pin / unpin (admin) ──────────────────────────────────────────────────────
+  const handleTogglePin = useCallback(async () => {
+    if (!isAdmin || pinning) return;
+    const next = !pinned;
+    setPinning(true);
+    setPinnedLocal(next); // optimistic
+    const ok = await setPinned(post.id, next);
+    if (!ok) {
+      setPinnedLocal(!next); // revert (RLS rejected / network)
+      setNotice("עדכון ההצמדה נכשל.");
+      setNoticeError(true);
+    }
+    setPinning(false);
+  }, [isAdmin, pinning, pinned, post.id]);
+
   // Once blocked, collapse the card to a small confirmation (the feed drops it on
   // its next load; hiding the content immediately makes the block feel instant).
   if (blocked) {
@@ -386,6 +429,15 @@ export default function PostCard({
             <span className="truncate text-sm font-semibold text-ink">
               {post.author}
             </span>
+
+            {pinned && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[0.7rem] font-semibold text-accent-text"
+                aria-label="פוסט מוצמד"
+              >
+                <span aria-hidden="true">📌</span> מוצמד
+              </span>
+            )}
 
             {isOwn && (
               <span className="inline-flex items-center rounded-full bg-accent/10 px-2 py-0.5 text-[0.7rem] font-medium text-accent-text">
@@ -412,6 +464,10 @@ export default function PostCard({
 
         <OverflowMenu
           isOwn={isOwn}
+          isAdmin={isAdmin}
+          isPinned={pinned}
+          onTogglePin={handleTogglePin}
+          pinning={pinning}
           onReport={handleReport}
           onBlock={handleBlock}
           onDelete={handleDelete}

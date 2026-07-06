@@ -34,8 +34,11 @@ import {
   ALL_CHANNEL,
   CHANNELS,
   fetchFeed,
+  fetchHighlights,
   fetchMyBlocks,
+  searchPosts,
   type Channel,
+  type CommunityHighlights,
   type CommunityPost,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
@@ -101,6 +104,17 @@ export default function CommunityFeed() {
   // First-visit onboarding banner. Never read localStorage during render (SSR
   // hydration safety) — start hidden, then reveal in an effect if not dismissed.
   const [introVisible, setIntroVisible] = useState(false);
+
+  // ── Community search ──────────────────────────────────────────────────────────
+  // `results === null` means "not searching" → render the normal feed. A non-null
+  // array (possibly empty) means "in search mode" → render the results list.
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<CommunityPost[] | null>(null);
+  const [searching, setSearching] = useState(false);
+
+  // ── Truthful trending strip ("מה חם בקהילה") ──────────────────────────────────
+  // Empty arrays when there's no real 7-day activity → the strip renders nothing.
+  const [highlights, setHighlights] = useState<CommunityHighlights | null>(null);
 
   // Keep the current block list in a ref so the Realtime handler (bound once)
   // always sees the freshest value without re-subscribing.
@@ -225,6 +239,43 @@ export default function CommunityFeed() {
       active = false;
     };
   }, [ready, blocksReady, tab, sort, user?.id, blocked, sortPosts]);
+
+  // ── Debounced community search (on `search` + `tab`) ──────────────────────────
+  // An empty query restores the feed (results = null). A non-empty query runs
+  // searchPosts scoped to the active channel; the guard drops out-of-order or
+  // post-unmount responses so a fast typist never sees stale results.
+  useEffect(() => {
+    const q = search.trim();
+    if (!q) {
+      setResults(null);
+      setSearching(false);
+      return;
+    }
+    let active = true;
+    setSearching(true);
+    const timer = setTimeout(() => {
+      void searchPosts(search, tab).then((rows) => {
+        if (!active) return;
+        setResults(rows);
+        setSearching(false);
+      });
+    }, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [search, tab]);
+
+  // ── Truthful trending: fetch 7-day highlights once, fail-soft ─────────────────
+  useEffect(() => {
+    let active = true;
+    void fetchHighlights().then((h) => {
+      if (active) setHighlights(h);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // ── Realtime: prepend live INSERTs + prune late-flagged posts ─────────────────
   // Subscribed ONCE (deps are [ready] only). The handlers read the freshest
@@ -426,6 +477,13 @@ export default function CommunityFeed() {
   const sortBtn =
     "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
+  // In search mode we show the results list instead of the feed; the trending
+  // strip is hidden so search stays the focus.
+  const searchMode = results !== null;
+  const hasHighlights =
+    !!highlights &&
+    (highlights.channels.length > 0 || highlights.active_posts.length > 0);
+
   return (
     <div className="flex flex-col gap-4">
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
@@ -475,6 +533,34 @@ export default function CommunityFeed() {
 
       {/* Composer */}
       <PostComposer onPosted={prepend} onRequireAuth={onRequireAuth} />
+
+      {/* Community search */}
+      <div className="relative">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-muted"
+        >
+          🔍
+        </span>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="חיפוש בקהילה"
+          placeholder="חיפוש בקהילה…"
+          className="min-h-[44px] w-full rounded-xl border border-border bg-surface ps-10 pe-10 py-2.5 text-sm text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+        />
+        {search.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            aria-label="ניקוי החיפוש"
+            className="interactive press absolute inset-y-0 end-1.5 my-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
+        )}
+      </div>
 
       {/* Channel tabs */}
       <div
@@ -530,13 +616,96 @@ export default function CommunityFeed() {
         </button>
       </div>
 
+      {/* Trending — truthful 7-day highlights. Real counts only; renders nothing
+          when there's no activity, and hides while searching. */}
+      {!searchMode && hasHighlights && highlights && (
+        <section
+          aria-label="מה חם בקהילה"
+          className="bento flex flex-col gap-3 p-4"
+        >
+          <h2 className="text-sm font-semibold text-ink">מה חם בקהילה</h2>
+
+          {highlights.channels.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {highlights.channels.map((c) => (
+                <button
+                  key={c.channel}
+                  type="button"
+                  onClick={() => setTab(c.channel as Tab)}
+                  aria-label={`עבור לערוץ ${c.channel} · ${c.posts} פוסטים`}
+                  className="interactive press inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span>{c.channel}</span>
+                  <span aria-hidden="true" className="text-muted">·</span>
+                  <span className="tabular-nums text-muted">{c.posts}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {highlights.active_posts.length > 0 && (
+            <ul className="flex list-none flex-col gap-2 p-0">
+              {highlights.active_posts.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
+                >
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                    {p.body}
+                  </span>
+                  <span className="shrink-0 whitespace-nowrap text-xs text-muted">
+                    <span className="tabular-nums">{p.reply_count}</span> תגובות
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {/* A small polite live region announces feed changes — the list itself is
           NOT a live region (that re-announces every post on each insert). */}
       <p className="sr-only" role="status" aria-live="polite">
         {statusMsg}
       </p>
 
+      {/* Search results — same <PostCard> list as the feed, shown instead of it
+          while a query is active. */}
+      {searchMode && results && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-sm font-semibold text-ink">תוצאות חיפוש</h2>
+            <span className="text-xs text-muted">
+              <span className="tabular-nums">{results.length}</span>
+            </span>
+          </div>
+          {searching ? (
+            <div className="flex flex-col gap-4">
+              <PostSkeleton />
+              <PostSkeleton />
+            </div>
+          ) : results.length === 0 ? (
+            <p className="bento p-8 text-center text-sm text-muted">
+              לא נמצאו תוצאות לחיפוש.
+            </p>
+          ) : (
+            <ul className="stagger flex list-none flex-col gap-4 p-0">
+              {results.map((post) => (
+                <li key={post.id}>
+                  <PostCard
+                    post={post}
+                    onRequireAuth={onRequireAuth}
+                    onDeleted={handleDeleted}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Feed */}
+      {!searchMode && (
       <div className="flex flex-col gap-4">
         {loading ? (
           <div className="flex flex-col gap-4">
@@ -592,6 +761,7 @@ export default function CommunityFeed() {
           </p>
         )}
       </div>
+      )}
     </div>
   );
 }

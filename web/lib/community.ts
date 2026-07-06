@@ -31,6 +31,28 @@ export const CHANNELS = [
 export type Channel = (typeof CHANNELS)[number];
 export const ALL_CHANNEL = "הכל";
 
+/** Catalogue category id → the community channel a "דברו על זה בקהילה" deep-link
+ *  opens. Unmapped ids (e.g. electricity) fall back to "המלצות". Note abroad's
+ *  channel is "חו״ל" (the CHANNELS label), not CATEGORY_HE's "חבילות חו״ל". */
+export const CATEGORY_TO_CHANNEL: Record<string, Channel> = {
+  cellular: "סלולר",
+  internet: "אינטרנט",
+  tv: "טלוויזיה",
+  triple: "חבילה משולבת",
+  abroad: "חו״ל",
+};
+export function channelForCategory(categoryId: string | null | undefined): Channel {
+  return (categoryId && CATEGORY_TO_CHANNEL[categoryId]) || "המלצות";
+}
+
+/** Composer prefill from a catalogue deep-link (/community?channel=&provider=&draft=). */
+export interface ComposerPrefill {
+  channel?: Channel;
+  draft?: string;
+  providerSlug?: string;
+  providerName?: string;
+}
+
 export interface Media {
   type: MediaType;
   url: string;

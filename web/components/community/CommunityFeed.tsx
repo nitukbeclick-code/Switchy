@@ -28,8 +28,9 @@
 // state.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ALL_CHANNEL,
   CHANNELS,
@@ -40,7 +41,9 @@ import {
   type Channel,
   type CommunityHighlights,
   type CommunityPost,
+  type ComposerPrefill,
 } from "@/lib/community";
+import { providerBySlug } from "@/lib/providers.generated";
 import { useAuth } from "@/lib/auth-context";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 import { trackEvent } from "@/lib/tracking";
@@ -89,6 +92,49 @@ export default function CommunityFeed() {
 
   const [tab, setTab] = useState<Tab>(ALL_CHANNEL);
   const [sort, setSort] = useState<SortMode>("recent");
+
+  // ── Catalogue deep-link ("דברו על זה בקהילה") → composer prefill ──────────────
+  // /community?channel=<hebrew>&provider=<slug>&draft=<text>. Safe here because the
+  // page wraps <CommunityFeed> in <Suspense>. Params are validated: an unknown
+  // channel or unresolvable provider slug is simply ignored (never trusted blindly).
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
+  const prefill = useMemo<ComposerPrefill | undefined>(() => {
+    const params = new URLSearchParams(searchParamsKey);
+    const rawChannel = params.get("channel");
+    const rawProvider = params.get("provider");
+    const rawDraft = params.get("draft");
+
+    const next: ComposerPrefill = {};
+    if (rawChannel && (CHANNELS as readonly string[]).includes(rawChannel)) {
+      next.channel = rawChannel as Channel;
+    }
+    if (rawProvider) {
+      const provider = providerBySlug(rawProvider);
+      if (provider) {
+        next.providerSlug = provider.slug;
+        next.providerName = provider.name;
+      }
+    }
+    if (rawDraft) next.draft = rawDraft;
+
+    // No usable params → don't seed the composer at all.
+    return next.channel === undefined &&
+      next.providerSlug === undefined &&
+      next.draft === undefined
+      ? undefined
+      : next;
+  }, [searchParamsKey]);
+
+  // Seed the active tab from the deep-link channel ONCE on mount, so a later manual
+  // tab click is never fought by this. Runs a single time regardless of re-renders.
+  const tabSeededRef = useRef(false);
+  useEffect(() => {
+    if (tabSeededRef.current) return;
+    tabSeededRef.current = true;
+    if (prefill?.channel) setTab(prefill.channel);
+  }, [prefill]);
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [blocked, setBlocked] = useState<string[]>([]);
@@ -405,8 +451,15 @@ export default function CommunityFeed() {
         return sortPosts([post, ...prev], sort);
       });
       setStatusMsg("הפוסט פורסם ונוסף לפיד.");
+      // Strip the catalogue deep-link params so a refresh doesn't re-seed the
+      // composer with the (now-published) draft. Only touch the URL if it actually
+      // carries one of them.
+      const params = new URLSearchParams(searchParamsKey);
+      if (params.has("channel") || params.has("provider") || params.has("draft")) {
+        router.replace("/community", { scroll: false });
+      }
     },
-    [tab, sort, sortPosts],
+    [tab, sort, sortPosts, router, searchParamsKey],
   );
 
   // ── Drop a deleted post (from <PostCard>) ─────────────────────────────────────
@@ -533,7 +586,11 @@ export default function CommunityFeed() {
       )}
 
       {/* Composer */}
-      <PostComposer onPosted={prepend} onRequireAuth={onRequireAuth} />
+      <PostComposer
+        onPosted={prepend}
+        onRequireAuth={onRequireAuth}
+        prefill={prefill}
+      />
 
       {/* Community search */}
       <div className="relative">

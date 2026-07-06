@@ -175,7 +175,11 @@ export default function ProfileView({ userId }: { userId: string }) {
                 </h1>
 
                 {verified && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-text">
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-text"
+                    title="אימות על סמך פגישת ייעוץ שהתקיימה או מעבר ספק שהושלם"
+                    aria-label="לקוח מאומת — אימות על סמך פגישת ייעוץ שהתקיימה או מעבר ספק שהושלם"
+                  >
                     <span aria-hidden="true">✓</span> לקוח מאומת
                   </span>
                 )}

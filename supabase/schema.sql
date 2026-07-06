@@ -1461,6 +1461,64 @@ create trigger provider_reviews_verify_customer
   before insert or update on public.provider_reviews
   for each row execute function public.set_review_verified_customer();
 
+-- ── (B5b) profiles.is_verified_customer auto-stamp → the community badge ──────
+-- Mirror of B5 for the COMMUNITY badge: stamps profiles.is_verified_customer from a
+-- completed Zoom meeting OR a won lead, server-side only (the client's UPDATE grant on
+-- this column is revoked — see community-web-hardening-2026-07.sql). Single writer =
+-- mark_verified_customer; fail-soft so it never blocks the rep/booking flow. Full
+-- migration + backfill: supabase/verified-customer-flow-2026-07.sql.
+alter table public.profiles add column if not exists verified_customer_at     timestamptz;
+alter table public.profiles add column if not exists verified_customer_source text;
+
+create or replace function public.mark_verified_customer(p_uid uuid, p_source text)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if p_uid is null then return; end if;
+  begin
+    update public.profiles
+       set is_verified_customer     = true,
+           verified_customer_at     = coalesce(verified_customer_at, now()),
+           verified_customer_source = coalesce(verified_customer_source, p_source),
+           updated_at               = now()
+     where id = p_uid and is_verified_customer = false;
+  exception when others then null;
+  end;
+end; $$;
+revoke execute on function public.mark_verified_customer(uuid, text) from public, anon, authenticated;
+
+create or replace function public.verify_customer_on_meeting_complete()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare v_uid uuid;
+begin
+  if new.event = 'status_change' and new.new_status = 'completed' then
+    begin
+      select user_id into v_uid from public.meetings where id = new.meeting_id;
+      perform public.mark_verified_customer(v_uid, 'meeting_completed');
+    exception when others then null;
+    end;
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.verify_customer_on_meeting_complete() from public, anon, authenticated;
+drop trigger if exists meeting_events_verify_customer on public.meeting_events;
+create trigger meeting_events_verify_customer
+  after insert on public.meeting_events
+  for each row execute function public.verify_customer_on_meeting_complete();
+
+create or replace function public.verify_customer_on_lead_won()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.status = 'won' and coalesce(old.status,'') <> 'won' and new.user_id is not null then
+    perform public.mark_verified_customer(new.user_id, 'lead_won');
+  end if;
+  return new;
+end; $$;
+revoke execute on function public.verify_customer_on_lead_won() from public, anon, authenticated;
+drop trigger if exists leads_verify_customer on public.leads;
+create trigger leads_verify_customer
+  after update on public.leads
+  for each row execute function public.verify_customer_on_lead_won();
+
 -- ── (B6) moderation webhook → community-moderate (SECURITY DEFINER, fail-soft) ─
 -- Mirrors notify_community_on_insert. The community-moderate function validates
 -- the shared secret, classifies the new post/reply, and PATCHes is_flagged when

@@ -26,6 +26,7 @@ import {
   editPost,
   fetchMyBookmarks,
   fetchMyLikes,
+  fetchPostMedia,
   MAX_BODY,
   MENTION_RE,
   reportContent,
@@ -38,6 +39,7 @@ import {
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
+import MediaGallery from "./MediaGallery";
 import MediaView from "./MediaView";
 import ReactionBar from "./ReactionBar";
 import Replies from "./Replies";
@@ -287,6 +289,9 @@ export default function PostCard({
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeError, setNoticeError] = useState(false);
 
+  // Extra gallery images (beyond the primary media_url attachment).
+  const [gallery, setGallery] = useState<Media[]>([]);
+
   const repliesId = useId();
 
   // Keep the visible like count in sync if the post prop is replaced (e.g. re-sort).
@@ -327,6 +332,17 @@ export default function PostCard({
       active = false;
     };
   }, [user, post.id]);
+
+  // Hydrate the extra gallery images for this post on mount.
+  useEffect(() => {
+    let active = true;
+    void fetchPostMedia([post.id]).then((map) => {
+      if (active) setGallery(map.get(post.id) ?? []);
+    });
+    return () => {
+      active = false;
+    };
+  }, [post.id]);
 
   const media: Media | null = post.media_url
     ? {
@@ -586,8 +602,19 @@ export default function PostCard({
         )
       )}
 
-      {/* Media */}
-      {media && <MediaView media={media} />}
+      {/* Media — primary attachment + any extra gallery images.
+          An image primary joins the gallery grid (primary first); a video/audio
+          primary keeps its own player with the image grid below it. */}
+      {media && media.type === "image" ? (
+        <MediaGallery images={[media, ...gallery]} />
+      ) : media ? (
+        <>
+          <MediaView media={media} />
+          {gallery.length > 0 && <MediaGallery images={gallery} />}
+        </>
+      ) : (
+        gallery.length > 0 && <MediaGallery images={gallery} />
+      )}
 
       {/* Own flagged → under-review note */}
       {isOwn && post.is_flagged && (

@@ -265,6 +265,7 @@ export default function CommunityFeed() {
             media_url: row.media_url ?? null,
             media_duration_ms: row.media_duration_ms ?? null,
             created_at: row.created_at ?? new Date().toISOString(),
+            edited_at: row.edited_at ?? null,
             is_flagged: false,
             moderation_note: row.moderation_note ?? null,
             like_count: row.like_count ?? 0,
@@ -296,14 +297,39 @@ export default function CommunityFeed() {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "community_posts" },
         (payload) => {
-          // A row can be flagged shortly AFTER insert (moderation runs async), so
-          // a soon-to-be-flagged post may already be on screen for everyone. When
-          // is_flagged flips to true, remove it — unless it's the viewer's own.
           const row = payload.new as Partial<CommunityPost> | null;
           if (!row || !row.id) return;
-          if (row.is_flagged !== true) return;
-          if (viewerId && row.user_id === viewerId) return;
-          setPosts((prev) => prev.filter((p) => p.id !== row.id));
+          const isOwnRow = !!viewerId && row.user_id === viewerId;
+
+          // A row can be flagged shortly AFTER insert (moderation runs async), so a
+          // soon-to-be-flagged post may already be on screen for everyone. When
+          // is_flagged flips to true, remove it for others (the author keeps it,
+          // shown "under review").
+          if (row.is_flagged === true && !isOwnRow) {
+            setPosts((prev) => prev.filter((p) => p.id !== row.id));
+            return;
+          }
+
+          // Otherwise merge a live edit / pin / un-flag into the on-screen post (if
+          // present). Only raw community_posts columns come through Realtime, so the
+          // view-only aggregates (like_count / reply_count) are preserved as-is.
+          setPosts((prev) => {
+            const idx = prev.findIndex((p) => p.id === row.id);
+            if (idx === -1) return prev; // never resurrect a post that isn't shown
+            const cur = prev[idx];
+            const next: CommunityPost = {
+              ...cur,
+              body: row.body ?? cur.body,
+              edited_at: row.edited_at ?? cur.edited_at,
+              moderation_note: row.moderation_note ?? cur.moderation_note,
+              is_flagged: row.is_flagged ?? cur.is_flagged,
+              is_pinned: row.is_pinned ?? cur.is_pinned,
+            };
+            const copy = [...prev];
+            copy[idx] = next;
+            // Re-sort in case is_pinned changed (pinned-first ordering).
+            return sortPosts(copy, sortRef.current);
+          });
         },
       )
       .subscribe();

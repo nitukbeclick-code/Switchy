@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createReply,
   deleteReply,
+  editReply,
   fetchReplies,
   MAX_BODY,
   MENTION_RE,
@@ -135,6 +136,13 @@ function ReplyItem({
   onReply?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // Local body/edited state so an inline edit updates in place without a refetch.
+  const [body, setBody] = useState(reply.body);
+  const [editedAt, setEditedAt] = useState<string | null>(reply.edited_at);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(reply.body);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const media: Media | null = reply.media_url
     ? {
@@ -155,6 +163,38 @@ function ReplyItem({
     }
   }, [busy, reply.id, onDelete]);
 
+  const startEditing = useCallback(() => {
+    setDraft(body);
+    setEditError(null);
+    setEditing(true);
+  }, [body]);
+
+  const cancelEditing = useCallback(() => {
+    setEditing(false);
+    setEditError(null);
+  }, []);
+
+  const trimmedDraft = draft.trim();
+  const canSaveEdit =
+    !saving && trimmedDraft.length > 0 && trimmedDraft !== body;
+
+  const handleSaveEdit = useCallback(async () => {
+    if (saving) return;
+    const next = draft.trim();
+    if (!next || next === body) return;
+    setSaving(true);
+    setEditError(null);
+    const res = await editReply(reply.id, next);
+    if (res) {
+      setBody(res.body);
+      setEditedAt(res.edited_at);
+      setEditing(false);
+    } else {
+      setEditError("עריכת התגובה נכשלה. נסו שוב.");
+    }
+    setSaving(false);
+  }, [saving, draft, body, reply.id]);
+
   const smallBtn =
     "rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
 
@@ -171,12 +211,58 @@ function ReplyItem({
           >
             {relativeTime(reply.created_at)}
           </time>
+          {editedAt && (
+            <span className="shrink-0 text-xs text-muted">נערך</span>
+          )}
         </div>
 
-        {reply.body && (
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-            {renderBody(reply.body)}
-          </p>
+        {editing ? (
+          <div className="mt-1">
+            <label htmlFor={`edit-reply-${reply.id}`} className="sr-only">
+              עריכת התגובה
+            </label>
+            <textarea
+              id={`edit-reply-${reply.id}`}
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, MAX_BODY))}
+              maxLength={MAX_BODY}
+              rows={3}
+              dir="rtl"
+              className="block w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-start text-sm text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            />
+            {editError && (
+              <p role="alert" className="mt-1 text-xs text-accent-text">
+                {editError}
+              </p>
+            )}
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!canSaveEdit}
+                aria-label="שמירת העריכה"
+                className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+              >
+                {saving ? "שומר…" : "שמירה"}
+              </button>
+              <button
+                type="button"
+                onClick={cancelEditing}
+                disabled={saving}
+                aria-label="ביטול העריכה"
+                className="inline-flex items-center justify-center rounded-xl border border-border bg-background px-4 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        ) : (
+          body && (
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+              {renderBody(body)}
+            </p>
+          )
         )}
 
         {media && <MediaView media={media} />}
@@ -197,13 +283,23 @@ function ReplyItem({
               השב
             </button>
           )}
+          {isOwn && !editing && (
+            <button
+              type="button"
+              onClick={startEditing}
+              aria-label="עריכת התגובה שלי"
+              className={`ms-auto ${smallBtn}`}
+            >
+              עריכה
+            </button>
+          )}
           {isOwn && (
             <button
               type="button"
               onClick={handleDelete}
               disabled={busy}
               aria-label="מחיקת התגובה שלי"
-              className={`ms-auto ${smallBtn}`}
+              className={isOwn && !editing ? smallBtn : `ms-auto ${smallBtn}`}
             >
               {busy ? "מוחק…" : "מחיקה"}
             </button>

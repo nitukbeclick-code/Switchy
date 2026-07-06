@@ -91,12 +91,35 @@ Deno.test("community-moderate fails closed (401) on a missing/wrong webhook secr
 
 // ── routing + short-circuits ───────────────────────────────────────────────────
 
-Deno.test("community-moderate skips non-INSERT events", async () => {
+Deno.test("community-moderate skips unhandled events (e.g. DELETE)", async () => {
   await withFetchStub(classifierRoutes("noflag"), async () => {
-    const r = await post(SECRET, { type: "UPDATE", table: "community_posts", record: { id: "1", body: "x" } });
+    const r = await post(SECRET, { type: "DELETE", table: "community_posts", record: { id: "1", body: "x" } });
     assertEquals(r.status, 200);
-    assertStringIncludes(await r.text(), "not-insert");
+    assertStringIncludes(await r.text(), "unhandled-type");
   });
+});
+
+Deno.test("community-moderate re-moderates UPDATE (edit) events instead of skipping", async () => {
+  // An edit re-opens moderation: the UPDATE is PROCESSED (a clean edited body
+  // classifies no-flag and returns flagged:false, and would clear a stale flag).
+  Deno.env.set("GROQ_API_KEY", "groq-test");
+  try {
+    await withFetchStub(classifierRoutes("noflag"), async () => {
+      const r = await post(SECRET, {
+        type: "UPDATE",
+        table: "community_posts",
+        record: { id: "1", body: "מחיר טוב, ממליץ על הספק" },
+      });
+      assertEquals(r.status, 200);
+      const text = await r.text();
+      assertStringIncludes(text, "flagged"); // e.g. {"ok":true,"flagged":false}
+      if (text.includes("unhandled-type")) {
+        throw new Error("an UPDATE edit must be re-moderated, not skipped");
+      }
+    });
+  } finally {
+    Deno.env.delete("GROQ_API_KEY");
+  }
 });
 
 Deno.test("community-moderate skips tables it does not moderate", async () => {

@@ -128,6 +128,30 @@ export default function ProfileView({ userId }: { userId: string }) {
   const displayName = (profile?.name ?? "").trim() || "משתמש";
   const verified = !!profile?.is_verified_customer;
 
+  // A finished load with no profile means this id doesn't map to a real member
+  // (bad / stale / deleted). Show an explicit not-found card rather than a generic
+  // header with the "משתמש" fallback name, which reads as a real but empty member.
+  if (ready && !loading && !profile) {
+    return (
+      <section className="mx-auto w-full max-w-2xl" aria-label="פרופיל קהילה">
+        <div className="card p-8 text-center">
+          <h1 className="font-display text-xl font-bold text-ink sm:text-2xl">
+            הפרופיל לא נמצא
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            ייתכן שהקישור שגוי או שהפרופיל כבר לא קיים.
+          </p>
+          <a
+            href="/community"
+            className="mt-5 inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            חזרה לקהילה
+          </a>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto w-full max-w-2xl" aria-label="פרופיל קהילה">
       {/* Header */}

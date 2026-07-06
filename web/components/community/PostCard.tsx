@@ -17,7 +17,7 @@
 //
 // Design: premium-2026 tokens only, rounded-2xl card, hairline border + soft
 // shadow, RTL logical properties, dark-mode via tokens, real <button>s with
-// aria-labels + visible focus rings, a proper role="menu", reduced-motion safe.
+// aria-labels + visible focus rings, an honest button-group popover, reduced-motion safe.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -34,6 +34,7 @@ import {
   type Media,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
+import { trackEvent } from "@/lib/tracking";
 import MediaView from "./MediaView";
 import Replies from "./Replies";
 
@@ -169,10 +170,9 @@ function OverflowMenu({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
         aria-expanded={open}
         aria-label="פעולות נוספות"
-        className="flex h-9 w-9 items-center justify-center rounded-full text-lg leading-none text-muted transition-colors hover:bg-accent/10 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full text-lg leading-none text-muted transition-colors hover:bg-accent/10 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <span aria-hidden="true">⋯</span>
       </button>
@@ -180,14 +180,12 @@ function OverflowMenu({
       {open && (
         <div
           id={menuId}
-          role="menu"
           aria-label="פעולות על הפוסט"
           className="popover absolute end-0 top-full z-20 mt-1 min-w-44 rounded-2xl border border-border bg-surface p-1 shadow-float"
           style={{ ["--popover-origin" as string]: "top left" }}
         >
           <button
             type="button"
-            role="menuitem"
             onClick={() => runAndClose(onReport)}
             className={itemClass}
           >
@@ -196,7 +194,6 @@ function OverflowMenu({
           {!isOwn && (
             <button
               type="button"
-              role="menuitem"
               onClick={() => runAndClose(onBlock)}
               className={itemClass}
             >
@@ -206,7 +203,6 @@ function OverflowMenu({
           {isOwn && (
             <button
               type="button"
-              role="menuitem"
               onClick={() => runAndClose(onDelete)}
               disabled={deleting}
               className={`${itemClass} text-danger-text hover:bg-danger/10`}
@@ -297,9 +293,12 @@ export default function PostCard({
       // Revert on failure.
       setLiked(!next);
       setLikeCount((c) => Math.max(0, c + (next ? -1 : 1)));
+    } else if (next) {
+      // Fire only on the like-ADD transition (never on un-like).
+      trackEvent("post_liked", { channel: post.channel });
     }
     setLikeBusy(false);
-  }, [user, likeBusy, liked, post.id, onRequireAuth]);
+  }, [user, likeBusy, liked, post.id, post.channel, onRequireAuth]);
 
   // ── Bookmark ─────────────────────────────────────────────────────────────────
   const handleBookmark = useCallback(async () => {
@@ -374,7 +373,7 @@ export default function PostCard({
   }
 
   const actionBtn =
-    "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
+    "inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
 
   return (
     <article className="rounded-2xl border border-border bg-surface p-4 shadow-card">
@@ -441,7 +440,7 @@ export default function PostCard({
       {notice && (
         <p
           role={noticeError ? "alert" : "status"}
-          className={`mt-3 text-xs ${noticeError ? "text-red-600 dark:text-red-400" : "text-accent-text"}`}
+          className={`mt-3 text-xs ${noticeError ? "text-danger-text" : "text-accent-text"}`}
         >
           {notice}
         </p>

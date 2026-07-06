@@ -256,7 +256,9 @@ export async function fetchMyBookmarks(postIds: string[]): Promise<Set<string>> 
 export async function setLike(postId: string, userId: string, liked: boolean): Promise<boolean> {
   const sb = getBrowserSupabase();
   if (liked) {
-    const { error } = await sb.from("post_likes").insert({ post_id: postId, user_id: userId });
+    const { error } = await sb
+      .from("post_likes")
+      .upsert({ post_id: postId, user_id: userId }, { onConflict: "post_id,user_id", ignoreDuplicates: true });
     return !error;
   }
   const { error } = await sb.from("post_likes").delete().eq("post_id", postId).eq("user_id", userId);
@@ -266,7 +268,9 @@ export async function setLike(postId: string, userId: string, liked: boolean): P
 export async function setBookmark(postId: string, userId: string, on: boolean): Promise<boolean> {
   const sb = getBrowserSupabase();
   if (on) {
-    const { error } = await sb.from("post_bookmarks").insert({ post_id: postId, user_id: userId });
+    const { error } = await sb
+      .from("post_bookmarks")
+      .upsert({ post_id: postId, user_id: userId }, { onConflict: "post_id,user_id", ignoreDuplicates: true });
     return !error;
   }
   const { error } = await sb.from("post_bookmarks").delete().eq("post_id", postId).eq("user_id", userId);

@@ -17,10 +17,11 @@
 // nothing at all until `useAuth()` reports a user. It never talks to Supabase
 // directly; every read/write goes through lib/community.
 //
-// a11y: a real labelled <button> (aria-haspopup="menu", aria-expanded), a
-// role="menu" dropdown of role="menuitem" buttons, focus moved in on open /
-// returned to the trigger on close, ESC + click-outside close, a Tab focus trap
-// while open, visible focus rings, and the unread count announced in the label.
+// a11y: a real labelled <button> (aria-haspopup="dialog", aria-expanded), a
+// role="dialog" aria-modal panel holding a plain <ul>/<li> list of buttons
+// (no arrow-key menu semantics), focus moved in on open / returned to the
+// trigger on close, ESC + click-outside close, a Tab focus trap while open,
+// visible focus rings, and the unread count announced in the label.
 // All text is Hebrew, RTL, token-driven; motion respects the .popover contract
 // (which is neutralized under prefers-reduced-motion / the a11y "stop motion").
 // ────────────────────────────────────────────────────────────────────────────
@@ -58,8 +59,11 @@ function relativeTime(iso: string): string {
   if (day < 30) return `לפני ${wk} שבועות`;
   const mo = Math.floor(day / 30);
   if (mo === 1) return "לפני חודש";
-  if (mo < 12) return `לפני ${mo} חודשים`;
-  const yr = Math.floor(day / 365);
+  // Bridge the 360–364-day gap: day/30 already reads ≥12 months here while
+  // day/365 is still 0, so stay on the months phrasing until a full year.
+  if (day < 365) return `לפני ${mo} חודשים`;
+  // Derive years from months so 12–23 months never rounds down to "0 שנים".
+  const yr = Math.floor(mo / 12);
   if (yr === 1) return "לפני שנה";
   return `לפני ${yr} שנים`;
 }
@@ -90,6 +94,11 @@ export default function NotificationsBell() {
   const panelRef = useRef<HTMLDivElement | null>(null);
   // Guards a load from writing state after unmount / user change.
   const mountedRef = useRef(true);
+  // Ids the user optimistically marked read this session, with the local
+  // read stamp. A poll / on-open refetch returns server rows that may still
+  // read as unread (write in-flight or just landed); we force these read when
+  // merging so a refetch never resurrects a just-read item back to unread.
+  const locallyReadRef = useRef<Map<number, string>>(new Map());
 
   const baseId = useId();
   const titleId = `${baseId}-title`;
@@ -103,7 +112,22 @@ export default function NotificationsBell() {
     setLoading(true);
     try {
       const rows = await fetchNotifications(30);
-      if (mountedRef.current) setItems(rows);
+      if (mountedRef.current) {
+        // Re-apply optimistic reads: if we marked a row read locally, keep the
+        // later (max) read_at so an in-flight/lagging server row can't flip it
+        // back to unread.
+        const localReads = locallyReadRef.current;
+        setItems(
+          rows.map((row) => {
+            const localStamp = localReads.get(row.id);
+            if (!localStamp) return row;
+            const serverStamp = row.read_at;
+            const merged =
+              serverStamp && serverStamp > localStamp ? serverStamp : localStamp;
+            return row.read_at === merged ? row : { ...row, read_at: merged };
+          }),
+        );
+      }
     } catch {
       /* fail-soft — keep whatever we last had; the bell is ambient. */
     } finally {
@@ -230,12 +254,16 @@ export default function NotificationsBell() {
   const markRead = useCallback(async (n: CommunityNotification) => {
     if (n.read_at !== null) return;
     const stamp = new Date().toISOString();
+    locallyReadRef.current.set(n.id, stamp);
     setItems((prev) =>
       prev.map((x) => (x.id === n.id ? { ...x, read_at: stamp } : x)),
     );
     try {
       await markNotificationRead(n.id);
     } catch {
+      // The write failed — forget the optimistic read so a later refetch shows
+      // the true (unread) server state and revert the row now.
+      locallyReadRef.current.delete(n.id);
       if (mountedRef.current) {
         setItems((prev) =>
           prev.map((x) => (x.id === n.id ? { ...x, read_at: null } : x)),
@@ -249,13 +277,16 @@ export default function NotificationsBell() {
     const unreadRows = items.filter((n) => n.read_at === null);
     if (unreadRows.length === 0) return;
     const stamp = new Date().toISOString();
+    for (const n of unreadRows) locallyReadRef.current.set(n.id, stamp);
     setItems((prev) =>
       prev.map((x) => (x.read_at === null ? { ...x, read_at: stamp } : x)),
     );
     await Promise.all(
       unreadRows.map((n) =>
         markNotificationRead(n.id).catch(() => {
-          /* fail-soft per row */
+          // Forget the optimistic read for the rows whose write failed so a
+          // later refetch reflects the true server state.
+          locallyReadRef.current.delete(n.id);
         }),
       ),
     );
@@ -275,7 +306,7 @@ export default function NotificationsBell() {
         ref={triggerRef}
         type="button"
         onClick={() => (open ? closeMenu() : openMenu())}
-        aria-haspopup="menu"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={label}
@@ -306,7 +337,8 @@ export default function NotificationsBell() {
         <div
           ref={panelRef}
           id={menuId}
-          role="menu"
+          role="dialog"
+          aria-modal="true"
           aria-labelledby={titleId}
           tabIndex={-1}
           style={{ ["--popover-origin" as string]: "top left" }}
@@ -366,14 +398,13 @@ export default function NotificationsBell() {
                 )}
               </div>
             ) : (
-              <ul role="none" className="flex flex-col">
+              <ul className="flex flex-col">
                 {items.map((n) => {
                   const isUnread = n.read_at === null;
                   return (
-                    <li key={n.id} role="none">
+                    <li key={n.id}>
                       <button
                         type="button"
-                        role="menuitem"
                         onClick={() => void markRead(n)}
                         className={[
                           "flex w-full items-start gap-3 border-b border-border px-4 py-3 text-start",

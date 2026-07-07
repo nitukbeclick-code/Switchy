@@ -12,6 +12,11 @@ const GROQ_MODEL = "llama-3.3-70b-versatile";
 // free fallback so the agent never goes dark when Gemini AND Groq are both busy.
 const CEREBRAS_MODEL = "llama-3.3-70b";
 const OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+// OpenAI — the paid, most-reliable fallback (also OpenAI-compatible). gpt-4o-mini
+// is fast + cheap and excellent at the mechanical translation task. Only used when
+// its key is present; appended LAST in the default order so it never changes the
+// existing free-first behaviour for callers that don't pass a providerOrder.
+const OPENAI_MODEL = "gpt-4o-mini";
 
 // ── Model ROUTING (the "tier" opt) ───────────────────────────────────────────
 // Two answer profiles, both BEHAVIOR-ADDITIVE: same grounded brain, same full
@@ -23,8 +28,16 @@ const OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 // tier prefers is tried first, then the rest of GEMINI_MODELS as the usual
 // 404-fallthrough. Every model stays reachable, so a tier never narrows the chain.
 export type ModelTier = "fast" | "smart";
-export type AiTierOpts = { tier?: ModelTier };
+// A provider name in the degradation chain. `providerOrder` lets a caller re-order
+// which providers are tried first WITHOUT narrowing the chain (unlisted providers
+// are still appended). The translate function uses this to lead with the fastest
+// providers (Cerebras/Groq) for its latency-sensitive, mechanical JSON task.
+export type AiProvider = "gemini" | "groq" | "cerebras" | "openrouter" | "openai";
+export type AiTierOpts = { tier?: ModelTier; providerOrder?: AiProvider[] };
 export const DEFAULT_TIER: ModelTier = "smart";
+// Free-first, then paid OpenAI last — preserves today's behaviour for every caller
+// that doesn't override it (OpenAI only fires if it has a key AND all else failed).
+export const DEFAULT_PROVIDER_ORDER: AiProvider[] = ["gemini", "groq", "cerebras", "openrouter", "openai"];
 
 // The Gemini model each tier leads with. "smart" keeps today's GEMINI_MODELS[0].
 export const TIER_GEMINI_MODEL: Record<ModelTier, string> = {
@@ -270,11 +283,32 @@ export function cleanReply(raw: string): string {
 // failure. Purely informational — generateReply still returns "" on total failure.
 export type ReplyMeta = { timedOut: boolean };
 
-// Orchestrated chat reply: Gemini → Groq → OpenRouter. Returns "" only if every
+// Resolve the provider order for a call: an explicit opts.providerOrder wins, then
+// any providers it omitted are appended in their canonical order (so a custom order
+// re-prioritises WITHOUT ever dropping a fallback). Default = DEFAULT_PROVIDER_ORDER.
+export function resolveProviderOrder(opts?: AiTierOpts): AiProvider[] {
+  const wanted = opts?.providerOrder;
+  if (!wanted || wanted.length === 0) return DEFAULT_PROVIDER_ORDER;
+  const seen = new Set<AiProvider>();
+  const out: AiProvider[] = [];
+  for (const p of wanted) {
+    if (!seen.has(p)) { seen.add(p); out.push(p); }
+  }
+  for (const p of DEFAULT_PROVIDER_ORDER) {
+    if (!seen.has(p)) { seen.add(p); out.push(p); }
+  }
+  return out;
+}
+
+// Orchestrated chat reply across the provider chain. Returns "" only if every
 // configured provider fails (caller supplies a friendly fallback). Each reply is
 // passed through cleanReply() to drop any leaked reasoning preamble. Each provider
 // fetch is bounded by an AbortController timeout (TEXT_TIMEOUT_MS): a hung provider
 // fails fast and we try the next one instead of pinning the function.
+//
+// Order defaults to Gemini → Groq → Cerebras → OpenRouter → OpenAI (free-first,
+// today's behaviour + OpenAI appended). A caller can pass opts.providerOrder to
+// lead with the fastest providers (the translate fn does).
 export async function generateReply(
   keys: AiKeys,
   systemContext: string,
@@ -284,50 +318,30 @@ export async function generateReply(
   meta?: ReplyMeta,
   opts?: AiTierOpts,
 ): Promise<string> {
-  // Route the Gemini model order by tier (default "smart" = today's order). The
-  // full degradation chain (Gemini → Groq → OpenRouter) below is UNCHANGED — only
-  // which Gemini model is tried first differs.
+  // Gemini model order still routes by tier (default "smart" = today's order).
   const models = modelsForTier(resolveTier(opts));
-  if (keys.gemini) {
+  const oa = (endpoint: string, model: string, key: string, label: string) =>
+    callOpenAiCompatible(endpoint, model, key, systemContext, history, message, maxTokens, label);
+
+  // One runner per provider — invoked only when its key is present. The chain is
+  // just these run in `order`; the first non-empty cleaned reply wins.
+  const runners: Record<AiProvider, (() => Promise<string>) | null> = {
+    gemini: keys.gemini ? () => callGemini(keys.gemini!, systemContext, history, message, maxTokens, models) : null,
+    groq: keys.groq ? () => oa("https://api.groq.com/openai/v1/chat/completions", GROQ_MODEL, keys.groq!, "groq") : null,
+    cerebras: keys.cerebras ? () => oa("https://api.cerebras.ai/v1/chat/completions", CEREBRAS_MODEL, keys.cerebras!, "cerebras") : null,
+    openrouter: keys.openrouter ? () => oa("https://openrouter.ai/api/v1/chat/completions", OPENROUTER_MODEL, keys.openrouter!, "openrouter") : null,
+    openai: keys.openai ? () => oa("https://api.openai.com/v1/chat/completions", OPENAI_MODEL, keys.openai!, "openai") : null,
+  };
+
+  for (const provider of resolveProviderOrder(opts)) {
+    const run = runners[provider];
+    if (!run) continue;
     try {
-      const t = cleanReply(await callGemini(keys.gemini, systemContext, history, message, maxTokens, models));
+      const t = cleanReply(await run());
       if (t) return t;
     } catch (e) {
       if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
-      jlog({ at: "ai.generateReply", provider: "gemini", ok: false, error: String(e) });
-    }
-  }
-  if (keys.groq) {
-    try {
-      const t = cleanReply(await callOpenAiCompatible(
-        "https://api.groq.com/openai/v1/chat/completions",
-        GROQ_MODEL, keys.groq, systemContext, history, message, maxTokens, "groq",
-      ));
-      if (t) return t;
-    } catch (e) {
-      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
-    }
-  }
-  if (keys.cerebras) {
-    try {
-      const t = cleanReply(await callOpenAiCompatible(
-        "https://api.cerebras.ai/v1/chat/completions",
-        CEREBRAS_MODEL, keys.cerebras, systemContext, history, message, maxTokens, "cerebras",
-      ));
-      if (t) return t;
-    } catch (e) {
-      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
-    }
-  }
-  if (keys.openrouter) {
-    try {
-      const t = cleanReply(await callOpenAiCompatible(
-        "https://openrouter.ai/api/v1/chat/completions",
-        OPENROUTER_MODEL, keys.openrouter, systemContext, history, message, maxTokens, "openrouter",
-      ));
-      if (t) return t;
-    } catch (e) {
-      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
+      jlog({ at: "ai.generateReply", provider, ok: false, error: String(e) });
     }
   }
   return "";

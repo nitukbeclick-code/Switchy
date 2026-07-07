@@ -45,6 +45,7 @@ import MediaGallery from "./MediaGallery";
 import MediaView from "./MediaView";
 import ReactionBar from "./ReactionBar";
 import Replies from "./Replies";
+import ShareBar from "./ShareBar";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -581,6 +582,8 @@ export default function PostCard({
             >
               קישור
             </Link>
+            <span aria-hidden="true">·</span>
+            <ShareBar path={`/community/post/${post.id}`} body={post.body} showCopy={false} />
           </div>
         </div>
 

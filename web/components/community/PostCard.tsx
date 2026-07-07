@@ -736,7 +736,12 @@ export default function PostCard({
       {/* Replies thread */}
       {showReplies && (
         <div id={repliesId}>
-          <Replies postId={post.id} onRequireAuth={onRequireAuth} />
+          <Replies
+            postId={post.id}
+            onRequireAuth={onRequireAuth}
+            postAuthorId={post.user_id}
+            initialAcceptedReplyId={post.accepted_reply_id}
+          />
         </div>
       )}
     </article>

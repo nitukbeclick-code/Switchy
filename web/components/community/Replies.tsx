@@ -25,6 +25,8 @@ import {
   fetchReplies,
   MAX_BODY,
   MENTION_RE,
+  orderByAccepted,
+  setAcceptedReply,
   toReplyTree,
   type AuthorRef,
   type CommunityReply,
@@ -127,6 +129,9 @@ function ReplyItem({
   onRequireAuth,
   onDelete,
   onReply,
+  isAccepted = false,
+  canAccept = false,
+  onSetAccepted,
 }: {
   reply: CommunityReply;
   isOwn: boolean;
@@ -135,6 +140,12 @@ function ReplyItem({
   onDelete: (id: string) => void;
   /** Open an inline "reply to this reply" composer (threading). */
   onReply?: () => void;
+  /** This reply is the post author's chosen "best answer". */
+  isAccepted?: boolean;
+  /** The viewer is the post author, so the "mark as answer" control is offered. */
+  canAccept?: boolean;
+  /** Toggle this reply as the accepted answer (null clears it). */
+  onSetAccepted?: (replyId: string | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
   // Local body/edited state so an inline edit updates in place without a refetch.
@@ -200,9 +211,19 @@ function ReplyItem({
     "rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
 
   return (
-    <div className="flex gap-3 rounded-2xl border border-border bg-surface p-3 shadow-float">
+    <div
+      className={`flex gap-3 rounded-2xl border p-3 shadow-float ${
+        isAccepted ? "border-accent/50 bg-accent/5" : "border-border bg-surface"
+      }`}
+    >
       <Avatar src={reply.avatar} name={reply.author} />
       <div className="min-w-0 flex-1">
+        {isAccepted && (
+          <p className="mb-1 inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-0.5 text-[0.7rem] font-semibold text-accent-text">
+            <span aria-hidden="true">✓</span>
+            התשובה שנבחרה
+          </p>
+        )}
         <div className="flex items-baseline gap-2">
           <span className="truncate text-sm font-semibold text-ink">{reply.author}</span>
           <time
@@ -282,6 +303,21 @@ function ReplyItem({
           {onReply && (
             <button type="button" onClick={onReply} className={smallBtn} aria-label="תגובה לתגובה זו">
               השב
+            </button>
+          )}
+          {canAccept && onSetAccepted && (
+            <button
+              type="button"
+              onClick={() => onSetAccepted(isAccepted ? null : reply.id)}
+              className={
+                isAccepted
+                  ? smallBtn
+                  : "rounded-lg px-2 py-1 text-xs font-semibold text-accent-text transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              }
+              aria-pressed={isAccepted}
+              aria-label={isAccepted ? "ביטול בחירת התשובה" : "בחירת התגובה כתשובה הטובה ביותר"}
+            >
+              {isAccepted ? "ביטול הבחירה" : "בחר כתשובה"}
             </button>
           )}
           {isOwn && !editing && (
@@ -620,9 +656,15 @@ function ReplyComposer({
 export default function Replies({
   postId,
   onRequireAuth,
+  postAuthorId,
+  initialAcceptedReplyId = null,
 }: {
   postId: string;
   onRequireAuth: () => void;
+  /** The post's author — only they may mark a "best answer". */
+  postAuthorId?: string | null;
+  /** The reply already marked as the accepted answer (from the feed row). */
+  initialAcceptedReplyId?: string | null;
 }) {
   const { user } = useAuth();
   const [replies, setReplies] = useState<CommunityReply[]>([]);
@@ -631,6 +673,13 @@ export default function Replies({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   // Root reply ids whose extra (beyond the first 2) children are expanded.
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  // The post author's chosen "best answer" (optimistic; seeded from the feed row).
+  const [acceptedReplyId, setAcceptedReplyId] = useState<string | null>(initialAcceptedReplyId);
+
+  // Re-seed if the post identity / its stored accepted answer changes.
+  useEffect(() => {
+    setAcceptedReplyId(initialAcceptedReplyId);
+  }, [postId, initialAcceptedReplyId]);
 
   useEffect(() => {
     let active = true;
@@ -654,10 +703,28 @@ export default function Replies({
 
   const handleDeleted = useCallback((id: string) => {
     setReplies((prev) => prev.filter((r) => r.id !== id));
+    // If the deleted reply was the accepted answer, clear it locally (the DB FK
+    // ON DELETE SET NULL already cleared it server-side).
+    setAcceptedReplyId((cur) => (cur === id ? null : cur));
   }, []);
 
   const uid = user?.id ?? null;
+  const isPostAuthor = !!uid && !!postAuthorId && uid === postAuthorId;
+
+  // Toggle a reply as the accepted answer. Optimistic; reverts on failure.
+  const handleSetAccepted = useCallback(
+    async (replyId: string | null) => {
+      const prev = acceptedReplyId;
+      setAcceptedReplyId(replyId);
+      const ok = await setAcceptedReply(postId, replyId);
+      if (!ok) setAcceptedReplyId(prev);
+    },
+    [acceptedReplyId, postId],
+  );
+
+  // Float the accepted root reply to the top of the thread (shared helper).
   const tree = toReplyTree(replies);
+  const sortedTree = orderByAccepted(tree, acceptedReplyId).ordered;
   const CHILD_PREVIEW = 2;
 
   return (
@@ -677,11 +744,11 @@ export default function Replies({
             </li>
           ))}
         </ul>
-      ) : tree.length === 0 ? (
+      ) : sortedTree.length === 0 ? (
         <p className="px-1 text-sm text-muted">אין עדיין תגובות. היו הראשונים להגיב.</p>
       ) : (
         <ul className="space-y-3" role="list">
-          {tree.map((root) => {
+          {sortedTree.map((root) => {
             const kids = root.children;
             const shownKids = expanded.has(root.id) ? kids : kids.slice(0, CHILD_PREVIEW);
             const hidden = kids.length - shownKids.length;
@@ -694,6 +761,9 @@ export default function Replies({
                   onRequireAuth={onRequireAuth}
                   onDelete={handleDeleted}
                   onReply={() => setReplyingTo(root.id)}
+                  isAccepted={root.id === acceptedReplyId}
+                  canAccept={isPostAuthor}
+                  onSetAccepted={handleSetAccepted}
                 />
 
                 {(kids.length > 0 || replyingTo === root.id) && (

@@ -11,12 +11,15 @@
 
 import { assert, assertEquals } from "@std/assert";
 import {
+  type AiProvider,
+  DEFAULT_PROVIDER_ORDER,
   DEFAULT_TIER,
   GEMINI_MODELS,
   generateReply,
   generateWithToolsStep,
   modelsForTier,
   newToolContents,
+  resolveProviderOrder,
   resolveTier,
   TIER_GEMINI_MODEL,
 } from "../_shared/ai.ts";
@@ -184,6 +187,97 @@ Deno.test("generateReply: tier 'fast' falls through to the smart model when the 
     assertEquals(seen[0], "gemini-2.0-flash");
     assert(seen.includes("gemini-2.5-flash"));
     assertEquals(out, "תשובה חמה."); // same grounded answer — never fabricated
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+// ── resolveProviderOrder (translate's fast-first re-ordering) ─────────────────
+
+Deno.test("resolveProviderOrder: default (no opts) == the canonical free-first order + OpenAI last", () => {
+  assertEquals(resolveProviderOrder(), DEFAULT_PROVIDER_ORDER);
+  assertEquals(resolveProviderOrder({}), DEFAULT_PROVIDER_ORDER);
+  assertEquals(DEFAULT_PROVIDER_ORDER, ["gemini", "groq", "cerebras", "openrouter", "openai"]);
+});
+
+Deno.test("resolveProviderOrder: a custom order leads, and omitted providers are APPENDED (never dropped)", () => {
+  const order = resolveProviderOrder({ providerOrder: ["cerebras", "groq"] });
+  assertEquals(order.slice(0, 2), ["cerebras", "groq"]); // requested leaders first
+  // every provider still present (chain never narrows), no dupes
+  assertEquals([...order].sort(), [...DEFAULT_PROVIDER_ORDER].sort());
+  assertEquals(new Set(order).size, order.length);
+});
+
+Deno.test("resolveProviderOrder: de-dupes a repeated provider in the requested order", () => {
+  const order = resolveProviderOrder({ providerOrder: ["openai", "openai", "cerebras"] as AiProvider[] });
+  assertEquals(order[0], "openai");
+  assertEquals(new Set(order).size, order.length);
+  assertEquals(order.filter((p) => p === "openai").length, 1);
+});
+
+// ── generateReply cross-provider order (the translate use case) ──────────────
+
+function providerOf(url: string): AiProvider | "unknown" {
+  if (url.includes("generativelanguage.googleapis.com")) return "gemini";
+  if (url.includes("api.groq.com")) return "groq";
+  if (url.includes("api.cerebras.ai")) return "cerebras";
+  if (url.includes("openrouter.ai")) return "openrouter";
+  if (url.includes("api.openai.com")) return "openai";
+  return "unknown";
+}
+
+// Records the provider hit for each call and lets `okProvider` answer 200 (with the
+// right body shape); everyone else 500s so the chain falls through to the next.
+function recordingProviderFetch(seen: AiProvider[], okProvider: AiProvider, text = "hi"): typeof globalThis.fetch {
+  return ((input: string | URL | Request, _init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const provider = providerOf(url);
+    if (provider !== "unknown") seen.push(provider);
+    if (provider !== okProvider) return Promise.resolve(new Response("busy", { status: 500 }));
+    const body = provider === "gemini"
+      ? JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] })
+      : JSON.stringify({ choices: [{ message: { content: text } }] });
+    return Promise.resolve(new Response(body, { status: 200 }));
+  }) as typeof globalThis.fetch;
+}
+
+Deno.test("generateReply: providerOrder leads with the fastest provider (translate → cerebras first)", async () => {
+  const seen: AiProvider[] = [];
+  globalThis.fetch = recordingProviderFetch(seen, "cerebras", "bonjour");
+  try {
+    const out = await generateReply(
+      { gemini: "g", groq: "q", cerebras: "c", openrouter: "o", openai: "a" },
+      "sys", [], "hello", 400, undefined,
+      { tier: "fast", providerOrder: ["cerebras", "groq", "gemini", "openrouter", "openai"] },
+    );
+    assertEquals(seen[0], "cerebras"); // fastest-first honored
+    assertEquals(out, "bonjour");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+Deno.test("generateReply: OpenAI is now in the chain and used when it is the only key", async () => {
+  const seen: AiProvider[] = [];
+  globalThis.fetch = recordingProviderFetch(seen, "openai", "hola");
+  try {
+    const out = await generateReply({ openai: "a" }, "sys", [], "hello", 400);
+    assertEquals(seen, ["openai"]); // only provider with a key
+    assertEquals(out, "hola");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+Deno.test("generateReply: default order is unchanged for existing callers (gemini before openai)", async () => {
+  const seen: AiProvider[] = [];
+  // Only openai answers; default order must still TRY gemini first, then fall to openai.
+  globalThis.fetch = recordingProviderFetch(seen, "openai", "ok");
+  try {
+    const out = await generateReply({ gemini: "g", openai: "a" }, "sys", [], "hello", 400);
+    assertEquals(seen[0], "gemini"); // today's free-first behaviour preserved
+    assertEquals(seen[seen.length - 1], "openai"); // openai only as the last resort
+    assertEquals(out, "ok");
   } finally {
     globalThis.fetch = realFetch;
   }

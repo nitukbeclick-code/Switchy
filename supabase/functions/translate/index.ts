@@ -31,7 +31,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { firstEnv, resolveCfgCached } from "../_shared/config.ts";
 import { fetchRows, rpcScalar, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
-import { type AiKeys, generateReply } from "../_shared/ai.ts";
+import { type AiKeys, type AiProvider, generateReply } from "../_shared/ai.ts";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { rateLimit } from "../_shared/ratelimit.ts";
 import {
@@ -64,6 +64,15 @@ const batchCapFor = (lang: string) => (VERBOSE_LANGS.has(lang) ? 24 : 40);
 // exceeded, uncached strings fail soft to Hebrew. The DB cache means legitimate
 // steady-state usage sits far under this.
 const DAILY_MODEL_BUDGET = 40_000;
+
+// Latency-first provider order for translation: lead with the FASTEST inference
+// (Cerebras wafer-scale, then Groq LPU), then Gemini + the remaining fallbacks.
+// Translation is a mechanical JSON task — it doesn't need Gemini-2.5 reasoning — so
+// fastest-first + the "fast" tier (gemini-2.0-flash) cuts per-batch latency a lot.
+// The chain never narrows: any provider omitted here is still appended by
+// generateReply, so a busy Cerebras/Groq still falls through to the rest.
+const TRANSLATE_PROVIDER_ORDER: AiProvider[] = ["cerebras", "groq", "gemini", "openrouter", "openai"];
+const TRANSLATE_AI_OPTS = { tier: "fast" as const, providerOrder: TRANSLATE_PROVIDER_ORDER };
 
 function json(req: Request, body: unknown, status = 200, extra: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
@@ -115,14 +124,25 @@ async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return preflight(req);
   if (req.method !== "POST") return json(req, { error: "method not allowed" }, 405);
 
-  const geminiKey = (await resolveCfgCached()).gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
+  // Keys: Gemini + OpenAI come from Vault (get_lead_notify_config) with an env
+  // fallback; Groq/Cerebras/OpenRouter are function env secrets. Any subset works —
+  // the chain simply skips a provider whose key is absent.
+  const cfg = await resolveCfgCached();
+  const geminiKey = cfg.gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
+  const openaiKey = cfg.openai || firstEnv(["OPENAI_API_KEY"]);
   const groqKey = firstEnv(["GROQ_API_KEY"]);
   const cerebrasKey = firstEnv(["CEREBRAS_API_KEY"]);
   const openrouterKey = firstEnv(["OPENROUTER_API_KEY"]);
-  if (!geminiKey && !groqKey && !cerebrasKey && !openrouterKey) {
+  if (!geminiKey && !groqKey && !cerebrasKey && !openrouterKey && !openaiKey) {
     return json(req, { error: "translation is not configured" }, 503);
   }
-  const keys: AiKeys = { gemini: geminiKey, groq: groqKey, cerebras: cerebrasKey, openrouter: openrouterKey };
+  const keys: AiKeys = {
+    gemini: geminiKey,
+    groq: groqKey,
+    cerebras: cerebrasKey,
+    openrouter: openrouterKey,
+    openai: openaiKey,
+  };
 
   let body: { lang?: unknown; texts?: unknown };
   try {
@@ -201,7 +221,7 @@ async function handle(req: Request): Promise<Response> {
       const maskedArr = protectedBatch.map((p) => p.masked);
       let out: string[] | null = null;
       try {
-        const reply = await generateReply(keys, system, [], JSON.stringify(maskedArr), MODEL_MAX_TOKENS, undefined, { tier: "fast" });
+        const reply = await generateReply(keys, system, [], JSON.stringify(maskedArr), MODEL_MAX_TOKENS, undefined, TRANSLATE_AI_OPTS);
         out = parseTranslations(reply, maskedArr.length);
       } catch (e) {
         jlog({ at: "translate.model", ok: false, lang, error: String(e) });
@@ -228,9 +248,14 @@ async function handle(req: Request): Promise<Response> {
     };
 
     if (budgetOk !== false) {
-      for (const batch of batchStrings(missing, batchCapFor(lang), 3500)) {
-        await translateBatch(batch);
-      }
+      // Translate every batch CONCURRENTLY (was serial). A page's misses split into
+      // a handful of batches; running them in parallel collapses N× model latency
+      // into ~1× — the single biggest speed win here. Each batch is independently
+      // fail-soft (its strings keep their Hebrew original on any error), so one slow
+      // or failing batch never blocks or breaks the others.
+      await Promise.all(
+        [...batchStrings(missing, batchCapFor(lang), 3500)].map((batch) => translateBatch(batch)),
+      );
     }
     // Cache only genuinely-translated rows (never cache a fail-soft identity).
     await saveCache(toCache.filter((r) => r.translated !== r.source_text));

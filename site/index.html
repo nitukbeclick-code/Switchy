@@ -56,7 +56,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=e3904f64" />
+  <link rel="stylesheet" href="styles.css?v=a5876d14" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -262,6 +262,11 @@
             עם <strong>ליווי אנושי במעבר</strong>.
           </p>
 
+          <div class="hero__cta">
+            <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
+            <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
+          </div>
+
           <p class="hero__launch-prompt">איזה שירות בא לכם להוזיל?</p>
           <ul class="hero__launch" aria-label="קטגוריות להשוואה">
             <li><a class="launch-tile" href="cellular.html" style="--tf:#22C55E;--tt:#0B7A38;--td:#0B5E2C" aria-label="סלולר — 59 מסלולים, מ-₪11 לחודש">
@@ -288,31 +293,25 @@
             </ul>
           </div>
 
-          <div class="hero__cta">
-            <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
-            <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
-          </div>
-          <p class="hero__trust-note">חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-          <p class="hero__social">משווים <strong><span data-count-to="120" data-count-suffix="+">120+</span> מסלולים</strong> מ-18 ספקים — מתעדכן כל יום</p>
-          <p class="hero__avail" role="status"><span class="hero__dot" aria-hidden="true"></span> הקטלוג עודכן היום · מחירים אמיתיים, כולל המחיר שאחרי המבצע</p>
-          <ul class="hero__stats" aria-label="נתונים על ההשוואה">
-            <li><b data-count-to="120" data-count-suffix="+">120+</b><span>מסלולים בהשוואה</span></li>
-            <li><b data-count-to="18">18</b><span>ספקים</span></li>
-            <li><b data-count-to="5">5</b><span>קטגוריות</span></li>
-            <li><b>מ-<span dir="ltr">₪11</span></b><span>מחיר התחלתי</span></li>
-          </ul>
-          <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
         </div>
-        <div class="hero__visual" aria-hidden="true">
-          <div class="orb">
-            <span class="orb__ring"></span>
-            <span class="orb__label">חיסכון ממוצע בשנה</span>
-            <span class="orb__num" data-count-to="1188" data-count-prefix="₪" data-count-dur="2200">₪1,188</span>
-            <span class="orb__sub">למי שעוברים דרך SWITCHY</span>
+        <div class="hero__visual">
+          <div class="hero-card reveal" aria-label="נתוני ההשוואה של SWITCHY">
+            <div class="hero-card__head">
+              <span>חיסכון ממוצע בשנה</span>
+              <b data-count-to="1188" data-count-prefix="₪" data-count-dur="2000">₪1,188</b>
+            </div>
+            <div class="hero-card__rows">
+              <div class="hero-card__row"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg> סלולר <b dir="ltr">₪11+</b></div>
+              <div class="hero-card__row"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18"/></svg> אינטרנט סיב 1000Mb <b dir="ltr">₪39+</b></div>
+              <div class="hero-card__row"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 9 4.5-9 4.5-9-4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/></svg> חבילה משולבת <b dir="ltr">₪119+</b></div>
+            </div>
+            <ul class="hero-card__stats">
+              <li><b data-count-to="120" data-count-suffix="+">120+</b><span>מסלולים</span></li>
+              <li><b data-count-to="18">18</b><span>ספקים</span></li>
+              <li><b data-count-to="5">5</b><span>קטגוריות</span></li>
+            </ul>
+            <p class="hero-card__fine">* הערכה לפי מעבר ממוצע — החיסכון המדויק מחושב אישית. <a href="terms.html">תנאי שימוש</a></p>
           </div>
-          <span class="hero__deal hero__deal--a"><svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg> סלולר מ-<b>₪11</b></span>
-          <span class="hero__deal hero__deal--b"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18"/></svg> סיב 1000Mb <b>₪39</b></span>
-          <span class="hero__deal hero__deal--c"><svg viewBox="0 0 24 24"><path d="m12 2.5 9 4.5-9 4.5-9-4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/></svg> טריפל מ-<b>₪119</b></span>
         </div>
         </div>
         </div>

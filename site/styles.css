@@ -13,7 +13,7 @@
   --mint: #F0F2F4;          /* subtle grey tint surface */
   --sage: #6B7280;          /* muted slate accent */
   --sand: #fbf3e0;          /* warm tint */
-  --cream: #F3FAF4;         /* fresh mint-white page ground */
+  --cream: #F7F9F8;         /* neutral near-white ground — green is an ACCENT, not a wash */
   --ink: #0B0F14;           /* near-black text */
   --muted: #4B5563;
   --white: #ffffff;
@@ -728,14 +728,14 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .providers__more a:hover { text-decoration: underline; }
 
 /* ── Trust strip (honest process signals, just below the hero) ─────────── */
-.trust { padding: 16px 0; background: #fff; border-block: 1px solid var(--line); }
+.trust { padding: 24px 0; background: var(--white); border-block: 1px solid var(--line); }
 .trust__row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 30px; }
-.trust__item { display: inline-flex; align-items: center; gap: 8px; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--ink-700); }
-.trust__item .ico { width: 18px; height: 18px; color: var(--accent); flex: none; }
+.trust__item { display: inline-flex; align-items: center; gap: 8px; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 15px; color: var(--ink-800); }
+.trust__item .ico { width: 20px; height: 20px; color: var(--accent); flex: none; }
 @media (max-width: 560px) { .trust__row { gap: 10px 18px; } .trust__item { font-size: 12.5px; } }
 
 /* ── Sections ────────────────────────────────────────────────────────── */
-.section { padding: 86px 0; }
+.section { padding: 64px 0; }
 .section--alt { background: #fff; }
 .section__head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
 .section__head h2 { font-size: var(--fs-h2); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
@@ -1518,7 +1518,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .hero__inner { grid-template-columns: 1fr; gap: 36px; }
-  .hero__visual { order: -1; }
+  /* Copy leads on phones — headline, sub and CTA before the data card. */
   .steps, .features, .quotes { grid-template-columns: 1fr; }
   .cats { grid-template-columns: repeat(2, 1fr); }
   .calc { grid-template-columns: 1fr; gap: 28px; }
@@ -1532,7 +1532,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   .nav__ico--zoom, .nav__ico--ai { display: none; }
   .nav__toggle { display: block; }
   .nav__mobile.open { display: flex; }
-  .section { padding: 56px 0; }
+  .section { padding: 48px 0; }
   .section__head { margin-bottom: 36px; }
   .hero { padding: 36px 0 28px; }
   .hero__stats { gap: 22px; }
@@ -3436,56 +3436,37 @@ a.chip:active { transform: translateY(0) scale(.97); }
    headline on two lines. */
 .hero__split .hero__launch { grid-template-columns: repeat(2, 1fr); }
 .hero__split h1 { font-size: clamp(38px, 4.7vw, 64px); }
-.hero__visual { position: relative; display: grid; place-items: center; min-height: 460px; }
-/* Savings ORB — the hero's wow: a breathing brand-green disc with a live
-   counter, ringed by floating glass deal chips. Pure CSS/SVG, no imagery. */
-.orb {
-  position: relative; z-index: 1;
-  width: min(400px, 78vw); aspect-ratio: 1; border-radius: 50%;
-  display: grid; place-content: center; text-align: center; gap: 6px;
-  background:
-    radial-gradient(circle at 32% 24%, rgba(255,255,255,.34), transparent 42%),
-    linear-gradient(155deg, #22C55E 0%, #16A34A 44%, #0C6B30 100%);
-  box-shadow:
-    inset 0 2px 6px rgba(255,255,255,.25),
-    inset 0 -18px 44px rgba(6,50,24,.35),
-    0 30px 80px -20px rgba(21,128,61,.55);
-  animation: orb-breathe 6s ease-in-out infinite;
+.hero__visual { display: grid; place-items: center; }
+/* Hero DATA CARD — one clean, grid-aligned surface (replaces the orb and the
+   absolutely-positioned floating chips, which overlapped at odd viewports).
+   THE single home of the catalogue stats — no duplication elsewhere in the hero. */
+.hero-card {
+  width: min(430px, 100%);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glint), var(--elev-3);
+  padding: 24px;
+  display: grid; gap: 16px;
 }
-@keyframes orb-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
-.orb__ring {
-  position: absolute; inset: -14px; border-radius: 50%;
-  border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent);
-  animation: orb-spin 40s linear infinite;
-}
-@keyframes orb-spin { to { transform: rotate(360deg); } }
-.orb__label { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 15px; color: rgba(255,255,255,.9); }
-.orb__num {
+.hero-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.hero-card__head span { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--muted); }
+.hero-card__head b {
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900;
-  font-size: clamp(52px, 5.4vw, 74px); letter-spacing: -2px; color: #fff; line-height: 1;
+  font-size: 40px; letter-spacing: -1.5px; color: var(--value-ink); line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 4px 24px rgba(6,50,24,.4);
 }
-.orb__sub { font-size: 14px; color: rgba(255,255,255,.82); }
-.hero__deal {
-  position: absolute; z-index: 2;
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 16px; border-radius: 999px;
-  background: color-mix(in srgb, var(--white) 94%, transparent);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  border: 1px solid var(--line); box-shadow: var(--glint), var(--shadow);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-700);
-  white-space: nowrap;
-  animation: float 5s ease-in-out infinite;
-}
-.hero__deal b { color: var(--value-ink); font-weight: 800; }
-.hero__deal svg { width: 17px; height: 17px; fill: none; stroke: var(--accent-ink); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-.hero__deal--a { top: 6%; inset-inline-start: 4%; animation-delay: 0s; }
-.hero__deal--b { bottom: 16%; inset-inline-end: 0; animation-delay: 1.4s; }
-.hero__deal--c { bottom: 2%; inset-inline-start: 12%; animation-delay: 2.6s; }
-@media (prefers-reduced-motion: reduce) { .orb, .orb__ring, .hero__deal { animation: none; } }
+.hero-card__rows { display: grid; gap: 8px; border-block: 1px solid var(--line); padding-block: 16px; }
+.hero-card__row { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink-700); }
+.hero-card__row svg { width: 18px; height: 18px; fill: none; stroke: var(--accent-ink); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.hero-card__row b { margin-inline-start: auto; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.hero-card__stats { display: flex; justify-content: space-between; gap: 8px; }
+.hero-card__stats li { list-style: none; display: grid; gap: 2px; text-align: center; }
+.hero-card__stats b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.hero-card__stats span { font-size: 12px; color: var(--muted); }
+.hero-card__fine { font-size: 11.5px; color: var(--ink-400); margin: 0; }
 @media (max-width: 980px) {
   .hero__split { grid-template-columns: 1fr; }
-  /* Phones lead with the tiles — the mockup would push the CTAs below the fold. */
-  .hero__visual { display: none; }
+  .hero__visual { justify-items: stretch; }
+  .hero-card { width: 100%; }
 }

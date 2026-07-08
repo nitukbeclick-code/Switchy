@@ -458,7 +458,9 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .nav__ico--ai svg { width: 22px; height: 22px; }
 .nav__ico--lang svg { width: 22px; height: 22px; }
 .nav__ico--zoom svg { width: 28px; height: 28px; display: block; }
-.nav__toggle { display: none; background: none; border: 0; width: 44px; height: 44px; cursor: pointer; padding: 10px; }
+/* flex-shrink/min-width guard: without it the icon row squeezes the burger to a
+   ~20px sliver that clips off-screen at 390px (header scrollWidth > viewport). */
+.nav__toggle { display: none; background: none; border: 0; width: 44px; min-width: 44px; height: 44px; flex-shrink: 0; cursor: pointer; padding: 10px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
 .nav__toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
@@ -554,8 +556,30 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
    primary navigation. Owner ask: "like kamaze, improved, beautiful colours, no
    black". The tile gradients are theme-independent (like carrier brand colours);
    white tile text sits over the deep gradient stop for WCAG AA. */
-.hero--light { padding: 28px 0 44px; }
+.hero--light { padding: 28px 0 44px; position: relative; overflow: hidden; }
 .hero--light::before, .hero--light::after { display: none; } /* no dot-grid/ambient under the panel */
+/* Aurora — two soft brand washes drifting BEHIND the hero panel (an .hero__aurora
+   div in index.html, kept outside the panel so its blur never touches the copy).
+   Opacities are whisper-level (≤.16 at source, blurred) so the panel stays the
+   star; dark mode inherits via the flipped --accent token. */
+.hero__aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero__aurora::before, .hero__aurora::after {
+  content: ""; position: absolute; border-radius: 50%; filter: blur(72px);
+}
+.hero__aurora::before {
+  width: 620px; height: 440px; top: -180px; inset-inline-start: -140px;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 17%, transparent), transparent 72%);
+  animation: aurora-a 17s var(--ease) infinite alternate;
+}
+.hero__aurora::after {
+  width: 540px; height: 400px; bottom: -160px; inset-inline-end: -120px;
+  background: radial-gradient(closest-side, rgba(56,189,248,.11), transparent 72%);
+  animation: aurora-b 21s var(--ease) infinite alternate;
+}
+@keyframes aurora-a { to { transform: translate(46px, 30px) scale(1.08); } }
+@keyframes aurora-b { to { transform: translate(-40px, -24px) scale(1.06); } }
+@media (prefers-reduced-motion: reduce) { .hero__aurora::before, .hero__aurora::after { animation: none; } }
+.hero--light .container { position: relative; z-index: 1; }
 .hero--light .hero__panel {
   background:
     radial-gradient(760px 420px at 50% -14%, rgba(22,163,74,.10), transparent 62%),
@@ -565,7 +589,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   box-shadow: var(--shadow-lg);
 }
 .hero--light .hero__panel .hero__copy { max-width: 960px; }
-.hero--light h1 { background: none; -webkit-text-fill-color: #123D2E; color: #123D2E; }
+.hero--light h1 { background: none; -webkit-text-fill-color: var(--ink-900); color: var(--ink-900); }
 .hero--light .hl { color: var(--accent-ink); -webkit-text-fill-color: var(--accent-ink); }
 .hero--light .hl::after { display: none; }
 .hero--light .pill { background: var(--accent-t); color: var(--accent-ink); box-shadow: inset 0 0 0 1px rgba(22,163,74,.22); }
@@ -575,7 +599,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 
 .hero__launch-prompt {
   font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 19px;
-  letter-spacing: -.4px; color: #123D2E; margin: 30px 0 0;
+  letter-spacing: -.4px; color: var(--ink-900); margin: 30px 0 0;
 }
 :root[data-theme="dark"] .hero__launch-prompt { color: #EAF7EF; }
 
@@ -584,25 +608,39 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   list-style: none; margin: 14px 0 0; padding: 0;
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
 }
+/* Editorial glass tile — the old full-bleed rainbow gradients read as toy-like
+   next to the ink/glass brand. The per-category hue (--tf/--tt) survives only
+   as a WHISPER: a tinted icon chip + a tinted hover border. Price = VALUE, so
+   it always speaks the one green value tier, never the category hue. */
 .launch-tile {
   --tf: var(--accent); --tt: var(--accent-d); --td: #0B5E2C;
   display: flex; flex-direction: column; min-height: 160px;
-  border-radius: var(--radius-lg); padding: 18px; color: #fff; text-decoration: none;
-  background: linear-gradient(160deg, var(--tf) 0%, var(--tt) 82%);
-  box-shadow: 0 12px 30px -10px color-mix(in srgb, var(--tt) 55%, transparent);
-  transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+  border-radius: var(--radius-lg); padding: 18px; color: var(--ink); text-decoration: none;
+  background: var(--white);
+  border: 1px solid var(--line);
+  box-shadow: var(--glint), var(--shadow-sm);
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease);
 }
-.launch-tile:hover { transform: translateY(-3px); box-shadow: 0 18px 42px -12px color-mix(in srgb, var(--tt) 62%, transparent); }
+.launch-tile:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--tt) 42%, var(--line));
+  box-shadow: var(--glint), var(--shadow);
+}
 .launch-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .launch-tile__ico {
   width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
-  background: rgba(255,255,255,.20); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+  background: color-mix(in srgb, var(--tf) 14%, var(--white));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tt) 26%, transparent);
 }
-.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: #fff; }
+.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--tt); }
 .launch-tile__body { margin-top: auto; padding-top: 14px; }
-.launch-tile__name { display: block; font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: #fff; }
-.launch-tile__count { display: block; margin-top: 2px; font-size: 14px; color: #fff; }
-.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.94); color: var(--td); font-weight: 800; font-size: 12.5px; }
+.launch-tile__name { display: block; font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
+.launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: var(--muted); }
+.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--value-t); color: var(--value-ink); font-weight: 800; font-size: 12.5px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--value) 24%, transparent); }
+/* Dark: the tinted chip mixes against the dark card surface, and the category
+   stroke lifts toward white so it clears AA on the dark tint. */
+:root[data-theme="dark"] .launch-tile__ico { background: color-mix(in srgb, var(--tf) 24%, var(--white)); }
+:root[data-theme="dark"] .launch-tile__ico svg { stroke: color-mix(in srgb, var(--tf) 72%, #fff); }
 
 /* "קטגוריות נוספות" chip row. */
 .hero__more { margin-top: 16px; }
@@ -1255,7 +1293,8 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .pflag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: var(--mint); color: var(--green); }
 .pflag--5g { background: var(--lime); color: var(--green-d); }
 .plan__bottom { margin-top: auto; padding-top: 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-.plan__price b { font-family: 'Rubik', sans-serif; font-size: 24px; font-weight: 800; color: var(--green); }
+/* The price is the card's decision datum — let it lead the visual hierarchy. */
+.plan__price b { font-family: 'Rubik', sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -.5px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
 .plan--hasjump .plan__after { color: var(--value-ink); font-weight: 600; }
@@ -1264,14 +1303,19 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */
 .plan__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+/* Filled ACTION pill (was a bare text link) — the conversion CTA earns the
+   brand gradient. White on --accent-d-range greens clears AA (5.0:1). */
 .plan__cta {
-  flex: 1 1 auto; align-self: flex-start;
-  display: inline-flex; align-items: center; gap: 6px;
-  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px; color: var(--accent-ink);
-  text-decoration: none; padding: 10px 14px; margin-inline-start: -14px; min-height: 44px;
-  border-radius: 12px; transition: background .18s, color .15s, transform .15s var(--ease-spring);
+  flex: 1 1 auto;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px; color: #fff;
+  text-decoration: none; padding: 10px 14px; min-height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(165deg, #15803D, #126C34);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 16px -6px rgba(22,163,74,.45);
+  transition: box-shadow .18s, filter .15s, transform .15s var(--ease-spring);
 }
-.plan__cta:hover { background: var(--accent-t); color: var(--accent-d); }
+.plan__cta:hover { filter: brightness(1.06); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 22px -6px rgba(22,163,74,.55); color: #fff; }
 .plan__cta:hover .ico { transform: translateX(-2px); }
 .plan__cta .ico { transition: transform .2s var(--ease); }
 .plan__cta:active { transform: scale(.97); }
@@ -1466,6 +1510,9 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 @media (max-width: 520px) { .footer__inner { grid-template-columns: 1fr; } }
 @media (max-width: 760px) {
   .nav__links, .nav__cta, .nav__wa { display: none; }
+  /* Secondary icon actions fold into the drawer on phones (תיאום פגישה + the AI
+     section are both linked there) — the burger must never fight them for room. */
+  .nav__ico--zoom, .nav__ico--ai { display: none; }
   .nav__toggle { display: block; }
   .nav__mobile.open { display: flex; }
   .section { padding: 56px 0; }
@@ -1615,13 +1662,61 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .collection-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 20px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: inherit; box-shadow: var(--glint), var(--shadow-sm); transition: transform .18s var(--ease), box-shadow .18s, border-color .18s; }
 .collection-chip:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--accent); }
 .collection-chip:focus-visible { transform: translateY(-4px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
-.collection-chip__icon { font-size: 1.5rem; line-height: 1; }
+.collection-chip__icon {
+  width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--accent-t); color: var(--accent-ink); margin-bottom: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.collection-chip__icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; }
 .collection-chip__title { font-family: 'Rubik', sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
 .collection-chip__sub { font-size: 12px; color: var(--muted); }
 @media (max-width: 1024px) { .collections-grid { grid-template-columns: repeat(4, 1fr); } }
-@media (max-width: 700px) { .collections-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+/* Phones: a snap-scrolling rail instead of a tall 2-col wall — one thumb, no
+   orphans, and the page keeps its rhythm. Chips keep a readable min width. */
+@media (max-width: 700px) {
+  .collections-grid {
+    display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .collections-grid .collection-chip { flex: 0 0 168px; scroll-snap-align: start; }
+}
+@media (max-width: 700px) {
   .collection-chip { padding: 14px 14px; }
-  .collection-chip__title { font-size: 13px; } }
+  .collection-chip__title { font-size: 13px; }
+}
+
+/* ── Provider logo marquee — the trust band under the hero ──────────────────
+   Two identical tracks translate -50% in a loop; pauses on hover/focus, and
+   reduced-motion (or no-JS-needed fallback) degrades to a wrapped static row. */
+.logo-marquee { overflow: hidden; position: relative; }
+.logo-marquee::before, .logo-marquee::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 1; pointer-events: none;
+}
+.logo-marquee::before { inset-inline-start: 0; background: linear-gradient(to left, transparent, var(--cream)); }
+.logo-marquee::after { inset-inline-end: 0; background: linear-gradient(to right, transparent, var(--cream)); }
+.logo-marquee__row { display: flex; gap: 12px; width: max-content; animation: marquee 42s linear infinite; }
+.logo-marquee__track { display: flex; gap: 12px; }
+.logo-marquee:hover .logo-marquee__row,
+.logo-marquee:focus-within .logo-marquee__row { animation-play-state: paused; }
+/* RTL: content flows right→left, so the seamless half-width shift runs positive. */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(50%); } }
+.logo-chip {
+  display: inline-flex; align-items: center; gap: 9px; flex: none;
+  min-height: 44px; padding: 8px 16px; border-radius: 999px;
+  background: var(--white); border: 1px solid var(--line);
+  color: var(--ink-700); font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px;
+  text-decoration: none; box-shadow: var(--glint), var(--shadow-sm);
+  transition: border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);
+}
+.logo-chip:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); color: var(--ink-900); transform: translateY(-1px); }
+.logo-chip img { width: 22px; height: 22px; object-fit: contain; border-radius: 5px; }
+@media (prefers-reduced-motion: reduce) {
+  .logo-marquee__row { animation: none; width: auto; }
+  .logo-marquee__track { flex-wrap: wrap; justify-content: center; }
+  .logo-marquee__track[aria-hidden="true"] { display: none; }
+  .logo-marquee::before, .logo-marquee::after { display: none; }
+}
 
 /* ╔══════════════════════════════════════════════════════════════════════╗
    ║  DESIGN-SYSTEM COMPONENTS — plan tiers, callouts, TOC, mega-menu,      ║
@@ -2516,12 +2611,13 @@ body.pmodal-lock { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) { .pmodal__backdrop, .pmodal__panel { transition: none; } }
 
 /* ── Cookie consent banner (GA4 Consent Mode v2) ─────────────────────────────── */
+/* A slim docked bar (was a floating card that sat over mid-page content). */
 .cbanner {
-  position: fixed; inset-inline: 12px; bottom: 12px; z-index: 1100;
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px;
-  max-width: 760px; margin-inline: auto; padding: 14px 18px;
-  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--glint), var(--shadow-lg);
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 1100;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px;
+  padding: 12px clamp(16px, 4vw, 32px);
+  background: var(--white); border-top: 1px solid var(--line); border-radius: 0;
+  box-shadow: 0 -8px 30px rgba(15,27,34,.10);
 }
 .cbanner[hidden] { display: none; }
 /* Tiny slide only — the from-state (10px down, full opacity) is itself fully
@@ -2946,9 +3042,11 @@ h1 { letter-spacing: -.02em; }
    gracefully collapse to one column on small screens (handled below + by the
    existing responsive block). Markup unchanged — pure CSS over current classes. */
 
-/* Features ("how to choose" / category bullets): roomier auto-fit bento. */
+/* Features ("how to choose" / category bullets): roomier auto-fit bento.
+   min 300px (not 240) so a 6-card grid lands 3x2 on desktop instead of an
+   orphaned 4+2 with an empty column. */
 .features {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: var(--gap-bento);
 }
 /* The 4-bullet category feature grid reads best as a balanced 2x2 bento with a
@@ -2971,13 +3069,9 @@ h1 { letter-spacing: -.02em; }
    base .cats rule; the responsive block collapses to 2-up / 1-up. */
 .cats { gap: var(--gap-bento); }
 
-/* Collections grid -> relaxed bento with a wider lead tile. */
+/* Collections grid — UNIFORM: the old span-2 lead tile left an orphan card and
+   a hole on the last row (10 items in 11 slots). Every chip equal, no gaps. */
 .collections-grid { gap: var(--gap-bento); }
-@media (min-width: 900px) {
-  .collections-grid:has(> .collection-chip:nth-child(5)) > .collection-chip:first-child {
-    grid-column: span 2;
-  }
-}
 
 /* Guide / quote / ratings grids — keep their counts but gain the bento gap. */
 .guide-cards, .quotes, .ratings, .ratings__grid { gap: var(--gap-bento); }

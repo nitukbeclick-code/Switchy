@@ -828,6 +828,7 @@ ${megaMenuColumns()}
       <a href="compare.html">השוואה</a>
       <a href="/community">קהילה</a>
       <a href="book.html">תיאום פגישת וידאו</a>
+      <a href="index.html#switchy-ai">SWITCHY AI — היועץ החכם</a>
       <a href="app.html">האפליקציה</a>
       <a href="guides.html">כל המדריכים</a>
 ${mobileGuideLinks()}
@@ -958,7 +959,7 @@ ${a11yWidget}
 // opt-in, never pre-ticked). Pass the page's own submit-button label.
 // NOTE: index.html is hand-written — keep its form's consent block in sync.
 const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
@@ -1994,7 +1995,7 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(desc)}" />
   <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />
-  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
+  <style>.skip{position:absolute;inset-inline-start:0;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0;clip-path:inset(50%);white-space:nowrap}.skip:focus{clip-path:none}</style>
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="${canonicalUrl(url)}" />
   <link rel="alternate" hreflang="he-IL" href="${canonicalUrl(url)}" />

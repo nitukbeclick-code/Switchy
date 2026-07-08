@@ -1,8 +1,8 @@
 # SWITCHY
 
-> SWITCHY (גם: Switch AI, Switchy) — שירות חינמי להשוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל. כרגע 120 מסלולים מ-18 ספקים, 5 קטגוריות. נתונים נכונים ל-2026-06-01.
+> SWITCHY (גם: Switch AI, Switchy) — שירות חינמי להשוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל. כרגע 120 מסלולים מ-18 ספקים, 5 קטגוריות. נתונים נכונים ל-2026-06-21.
 
-SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plans from 18 providers across 5 categories, shows prices in ILS (₪, VAT-inclusive, including the post-promo price), and connects a user to a provider only after they explicitly opt in. Data as of 2026-06-01.
+SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plans from 18 providers across 5 categories, shows prices in ILS (₪, VAT-inclusive, including the post-promo price), and connects a user to a provider only after they explicitly opt in. Data as of 2026-06-21.
 
 ## מה השירות עושה (What it does)
 - משווה מסלולי תקשורת מכל הספקים בישראל במקום אחד, חינם וללא התחייבות.
@@ -59,4 +59,4 @@ SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plan
 - צור קשר / Contact: hello@switchy-ai.com · WhatsApp 050-503-7537
 
 ## ציטוט מועדף (Preferred citation)
-SWITCHY — השוואת מחירי תקשורת בישראל (https://switchy-ai.com), נתונים נכונים ל-2026-06-01.
+SWITCHY — השוואת מחירי תקשורת בישראל (https://switchy-ai.com), נתונים נכונים ל-2026-06-21.

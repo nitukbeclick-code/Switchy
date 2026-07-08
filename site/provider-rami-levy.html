@@ -9,9 +9,9 @@
   <!-- Accessibility guard: re-apply saved a11y adjustments (font-size + toggles) before first paint so they never flash. Mirrored by script.js. -->
   <script>try{var a=JSON.parse(localStorage.getItem('chosech-a11y')||'{}'),r=document.documentElement;['contrast','links','readfont','noanim','focus'].forEach(function(k){if(a[k])r.classList.add('a11y-'+k)});if(a.font&&a.font!==100)r.style.fontSize=Math.min(160,Math.max(90,a.font))+'%';}catch(e){}</script>
   <title>כל המסלולים של רמי לוי — מחירים והשוואה | SWITCHY</title>
-  <meta name="description" content="כל מסלולי רמי לוי במקום אחד — 9 מסלולים מ-₪14.9. השוו מחירים ותכונות ומצאו את המשתלם ביותר." />
+  <meta name="description" content="כל מסלולי רמי לוי במקום אחד — 9 מסלולים מ-₪15. השוו מחירים ותכונות ומצאו את המשתלם ביותר." />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
+  <style>.skip{position:absolute;inset-inline-start:0;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0;clip-path:inset(50%);white-space:nowrap}.skip:focus{clip-path:none}</style>
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="https://switchy-ai.com/providers/rami-levy" />
   <link rel="alternate" hreflang="he-IL" href="https://switchy-ai.com/providers/rami-levy" />
@@ -24,7 +24,7 @@
   <meta property="og:url" content="https://switchy-ai.com/providers/rami-levy" />
   <meta property="og:site_name" content="SWITCHY" />
   <meta property="og:title" content="כל המסלולים של רמי לוי — מחירים והשוואה | SWITCHY" />
-  <meta property="og:description" content="כל מסלולי רמי לוי במקום אחד — 9 מסלולים מ-₪14.9. השוו מחירים ותכונות ומצאו את המשתלם ביותר." />
+  <meta property="og:description" content="כל מסלולי רמי לוי במקום אחד — 9 מסלולים מ-₪15. השוו מחירים ותכונות ומצאו את המשתלם ביותר." />
   <meta property="og:image" content="https://switchy-ai.com/og-image.png" />
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
@@ -32,7 +32,7 @@
   <meta property="og:image:alt" content="SWITCHY — השוואת מחירי תקשורת חכמה" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="כל המסלולים של רמי לוי — מחירים והשוואה | SWITCHY" />
-  <meta name="twitter:description" content="כל מסלולי רמי לוי במקום אחד — 9 מסלולים מ-₪14.9. השוו מחירים ותכונות ומצאו את המשתלם ביותר." />
+  <meta name="twitter:description" content="כל מסלולי רמי לוי במקום אחד — 9 מסלולים מ-₪15. השוו מחירים ותכונות ומצאו את המשתלם ביותר." />
   <meta name="twitter:image" content="https://switchy-ai.com/og-image.png" />
   <meta name="twitter:image:alt" content="SWITCHY — השוואת מחירי תקשורת חכמה" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -46,7 +46,7 @@
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=210b6775" />
+  <link rel="stylesheet" href="styles.css?v=a1970997" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -130,6 +130,7 @@
       <a href="compare.html">השוואה</a>
       <a href="/community">קהילה</a>
       <a href="book.html">תיאום פגישת וידאו</a>
+      <a href="index.html#switchy-ai">SWITCHY AI — היועץ החכם</a>
       <a href="app.html">האפליקציה</a>
       <a href="guides.html">כל המדריכים</a>
       <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
@@ -165,11 +166,11 @@
           <span class="plogo plogo--img" style="width:64px;height:64px"><img src="assets/logos/rami-levy.webp" alt="" width="64" height="64" loading="lazy" decoding="async"></span>
           <h1>כל המסלולים של <span class="hl">רמי לוי</span></h1>
         </div>
-        <p>9 מסלולים (סלולר) — החל מ-₪14.9. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
+        <p>9 מסלולים (סלולר) — החל מ-₪15. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
         <ul class="stat-band" aria-label="נתוני רמי לוי — מהקטלוג">
           <li><b data-count-to="9">9</b> מסלולים</li>
           <li><b>1</b> קטגוריות</li>
-          <li>החל מ-<b dir="ltr">₪14.9</b></li>
+          <li>החל מ-<b dir="ltr">₪15</b></li>
         </ul>
         <div class="hero__cta">
           <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
@@ -203,9 +204,9 @@
     </section>
     <section class="section" id="plans">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">9 מסלולים</span><h2>כל המסלולים של רמי לוי — בפירוט</h2><p>ממוין מהזול ביותר, עם כל הפרטים וכפתור פנייה ישיר.</p><p class="data-fresh" role="note" style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:999px;font-size:.82rem;font-weight:600;opacity:.85"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 22%,transparent)"></span>מחירים עודכנו <time datetime="2026-06-01">01.06.2026</time></p></header>
+        <header class="section__head reveal"><span class="eyebrow">9 מסלולים</span><h2>כל המסלולים של רמי לוי — בפירוט</h2><p>ממוין מהזול ביותר, עם כל הפרטים וכפתור פנייה ישיר.</p><p class="data-fresh" role="note" style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:999px;font-size:.82rem;font-weight:600;opacity:.85"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 22%,transparent)"></span>מחירים עודכנו <time datetime="2026-06-21">21.06.2026</time></p></header>
         <div class="plan-grid">
-        <article class="plan plan--best plan--budget" data-cat="cellular" data-text="רמי לוי זול להיות בקשר כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 4,000 מחוץ" data-price="14.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_zolkasher">
+        <article class="plan plan--best plan--budget" data-cat="cellular" data-text="רמי לוי זול להיות בקשר כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 4,000 מחוץ" data-price="15" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_zolkasher">
         <span class="plan__badge">המחיר הנמוך ביותר</span>
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score plan__score--best" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">93</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">זול להיות בקשר כשר <span class="plan__net">4G</span></div>
@@ -218,7 +219,7 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_zolkasher" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי זול להיות בקשר כשר"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי max כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 5,000 מחוץ" data-price="16.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_maxkasher">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי max כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 5,000 מחוץ" data-price="17" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_maxkasher">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">92</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">Max כשר <span class="plan__net">4G</span></div>
@@ -231,11 +232,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_maxkasher" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי Max כשר"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי מבצע זוגות 250gb 5g 250gb גלישה 2,500 דק׳ ₪50 לזוג 2,500 ללא הגבלה 250gb" data-price="30" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couplepromo250">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי מבצע זוגות 250gb 5g 250gb גלישה 2,500 דק׳ ₪50 לזוג 250gb ללא הגבלה 2,500" data-price="30" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couplepromo250">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">91</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">מבצע זוגות 250GB <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -244,11 +245,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_couplepromo250" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי מבצע זוגות 250GB"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי זוג קווים 250gb 5g 250gb גלישה 2,500 דק׳ ₪50 לזוג 2,500 ללא הגבלה 250gb" data-price="30" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couple250">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי זוג קווים 250gb 5g 250gb גלישה 2,500 דק׳ ₪50 לזוג 250gb ללא הגבלה 2,500" data-price="30" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couple250">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">91</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">זוג קווים 250GB <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -257,11 +258,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_couple250" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי זוג קווים 250GB"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי 600gb טריפל 5g 600gb גלישה 5,000 דק׳ ₪80 ל-3 קווים 5,000 ללא הגבלה 600gb" data-price="35" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_600triple">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי 600gb טריפל 5g 600gb גלישה 5,000 דק׳ ₪80 ל-3 קווים 600gb ללא הגבלה 5,000" data-price="35" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_600triple">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">89</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">600GB טריפל <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">600GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">600GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -270,11 +271,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_600triple" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי 600GB טריפל"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי זוג קווים 500gb 5g 500gb גלישה 5,000 דק׳ ₪55 לזוג קווים 5,000 ללא הגבלה 500gb" data-price="35" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couple500">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי זוג קווים 500gb 5g 500gb גלישה 5,000 דק׳ ₪55 לזוג קווים 500gb ללא הגבלה 5,000" data-price="35" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couple500">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">89</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">זוג קווים 500GB <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -283,11 +284,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_couple500" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי זוג קווים 500GB"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי 300gb xtreme 5g 300gb גלישה 2,500 דק׳ 2,500 ללא הגבלה 300gb" data-price="35" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_300xtreme">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי 300gb xtreme 5g 300gb גלישה 2,500 דק׳ 300gb ללא הגבלה 2,500" data-price="35" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_300xtreme">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">89</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">300GB Xtreme <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">300GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">300GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -296,11 +297,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_300xtreme" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי 300GB Xtreme"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan plan--premium" data-cat="cellular" data-text="רמי לוי 500gb global 5g 500gb גלישה 500 דק׳ לחו&quot;ל 2,500 דק׳ 2,500 500 דק׳ ליעדים בחו&quot;ל ללא הגבלה 500gb" data-price="50" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_500global">
+        <article class="plan plan--premium" data-cat="cellular" data-text="רמי לוי 500gb global 5g 500gb גלישה 500 דק׳ לחו&quot;ל 2,500 דק׳ 500gb ללא הגבלה 2,500 500 דק׳ ליעדים בחו&quot;ל" data-price="50" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_500global">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">86</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">500GB Global <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">500 דק׳ ליעדים בחו&quot;ל</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">500 דק׳ ליעדים בחו&quot;ל</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪50</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -309,11 +310,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_500global" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי 500GB Global"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-        <article class="plan" data-cat="cellular" data-text="רמי לוי 1000gb xtreme 5g 1000gb גלישה 2,500 דק׳ 2,500 ללא הגבלה 1000gb" data-price="55" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_1000xtreme">
+        <article class="plan" data-cat="cellular" data-text="רמי לוי 1000gb xtreme 5g 1000gb גלישה 2,500 דק׳ 1000gb ללא הגבלה 2,500" data-price="55" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_1000xtreme">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">82</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">1000GB Xtreme <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">1000GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">1000GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪55</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -337,12 +338,12 @@
       <div class="container">
         <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
         <div class="providers__row">
-          <a class="chip" href="provider-hot-mobile.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> הוט מובייל</a>
-          <a class="chip" href="provider-019mobile.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> 019 מובייל</a>
-          <a class="chip" href="provider-xphone.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/xphone.png" alt="" width="22" height="22" loading="lazy" decoding="async"></span> Xphone</a>
-          <a class="chip" href="provider-wecom.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async"></span> WeCom</a>
-          <a class="chip" href="provider-walla-mobile.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/walla-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> וואלה מובייל</a>
+          <a class="chip" href="provider-cellcom.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> סלקום</a>
           <a class="chip" href="provider-partner.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> פרטנר</a>
+          <a class="chip" href="provider-pelephone.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async"></span> פלאפון</a>
+          <a class="chip" href="provider-golan.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> גולן טלקום</a>
+          <a class="chip" href="provider-hot-mobile.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> הוט מובייל</a>
+          <a class="chip" href="provider-xphone.html"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/xphone.png" alt="" width="22" height="22" loading="lazy" decoding="async"></span> Xphone</a>
         </div>
       </div>
     </section>
@@ -400,7 +401,7 @@
         <h2>רוצים לעבור לרמי לוי — או ממנו?</h2>
         <p>השאירו פרטים ונעזור לכם למצוא ולעבור למסלול הכי משתלם, חינם ובלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
@@ -518,6 +519,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=b8114b47" defer></script>
+  <script src="script.js?v=8cd92c1f" defer></script>
 </body>
 </html>

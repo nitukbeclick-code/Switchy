@@ -139,6 +139,9 @@ export default function CommunityFeed() {
   }, [prefill]);
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
+  // Other users' live posts, BUFFERED behind a "N new posts" pill instead of
+  // jumping to the top mid-read (the Facebook/Twitter feed pattern).
+  const [pendingNew, setPendingNew] = useState<CommunityPost[]>([]);
   const [blocked, setBlocked] = useState<string[]>([]);
   const [loading, setLoading] = useState(true); // first page of the current tab
   const [loadingMore, setLoadingMore] = useState(false);
@@ -375,22 +378,25 @@ export default function CommunityFeed() {
             accepted_reply_id: row.accepted_reply_id ?? null,
           };
 
-          let added = false;
-          setPosts((prev) => {
-            // Skip if already present (e.g. our own optimistic prepend).
+          // Our OWN new post is already shown optimistically (via `prepend`) — don't
+          // also buffer it into the pill.
+          if (viewerId && row.user_id === viewerId) return;
+
+          // Buffer other users' live posts behind the "N new posts" pill instead of
+          // jumping them to the top mid-read. Dedupe against what's already buffered
+          // (and, on flush, against what's on screen).
+          let buffered = false;
+          setPendingNew((prev) => {
             if (prev.some((p) => p.id === post.id)) return prev;
-            // Fresh inserts belong at the top; re-apply the current sort so the
-            // popular view stays ordered.
-            added = true;
-            return sortPosts([post, ...prev], sortRef.current);
+            buffered = true;
+            return [post, ...prev];
           });
 
-          // Announce to screen readers only when a live post was actually added,
-          // coalescing a burst so it announces once (not once per insert).
-          if (added) {
+          // Announce availability to screen readers once per burst (not per insert).
+          if (buffered) {
             if (liveAnnounceTimer.current) clearTimeout(liveAnnounceTimer.current);
             liveAnnounceTimer.current = setTimeout(() => {
-              setStatusMsg("פוסט חדש התווסף לראש הפיד");
+              setStatusMsg("פוסטים חדשים זמינים בראש הפיד");
             }, 300);
           }
         },
@@ -409,6 +415,8 @@ export default function CommunityFeed() {
           // shown "under review").
           if (row.is_flagged === true && !isOwnRow) {
             setPosts((prev) => prev.filter((p) => p.id !== row.id));
+            // Also drop it if it's still waiting behind the "new posts" pill.
+            setPendingNew((prev) => prev.filter((p) => p.id !== row.id));
             return;
           }
 
@@ -465,6 +473,29 @@ export default function CommunityFeed() {
     },
     [tab, sort, sortPosts, router, searchParamsKey],
   );
+
+  // ── Flush the buffered "new posts" to the top of the feed ─────────────────────
+  const showPending = useCallback(() => {
+    if (pendingNew.length === 0) return;
+    setPosts((prev) => {
+      const seen = new Set(prev.map((p) => p.id));
+      const fresh = pendingNew.filter((p) => !seen.has(p.id));
+      return fresh.length ? sortPosts([...fresh, ...prev], sortRef.current) : prev;
+    });
+    setPendingNew([]);
+    setStatusMsg("הפוסטים החדשים נטענו.");
+    // Bring the reader back to the top to see them (motion-safe).
+    if (typeof window !== "undefined") {
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    }
+  }, [pendingNew, sortPosts]);
+
+  // A tab / sort switch refetches the feed from scratch — any buffered posts are
+  // now stale, so drop them.
+  useEffect(() => {
+    setPendingNew([]);
+  }, [tab, sort]);
 
   // ── Drop a deleted post (from <PostCard>) ─────────────────────────────────────
   const handleDeleted = useCallback((id: string) => {
@@ -783,6 +814,23 @@ export default function CommunityFeed() {
       {/* Feed */}
       {!searchMode && (
       <div className="flex flex-col gap-4">
+        {/* "New posts" pill — buffered live inserts, loaded on click (never jumps
+            the feed mid-read). Sticky so it stays reachable while scrolling. */}
+        {!loading && pendingNew.length > 0 && (
+          <div className="sticky top-2 z-10 flex justify-center">
+            <button
+              type="button"
+              onClick={showPending}
+              aria-label="טעינת הפוסטים החדשים לראש הפיד"
+              className="press inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-float transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <span aria-hidden="true">↑</span>
+              {pendingNew.length === 1
+                ? "פוסט חדש"
+                : `${pendingNew.length.toLocaleString("he-IL")} פוסטים חדשים`}
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col gap-4">
             <PostSkeleton />

@@ -3429,44 +3429,16 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .carousel__bar-fill { display: block; height: 100%; width: 10%; border-radius: 999px; background: var(--accent); transition: width .3s var(--ease); }
 
 
-/* ── Hero split — copy beside a phone mockup riding a green organic blob ───── */
-.hero__split { display: grid; grid-template-columns: 1.02fr .78fr; gap: 44px; align-items: center; }
-/* In the split, the copy column is ~half the panel: 2x2 large tiles (kamaze
-   energy) instead of four crushed columns, and a display size that keeps the
-   headline on two lines. */
+/* ── Hero split — copy (headline + CTA) beside the 4 category tiles ───────────
+   align-items:start so the tiles sit UP at the top-left, level with the
+   headline, rather than floating in the vertical centre. */
+.hero__split { display: grid; grid-template-columns: 1.02fr .78fr; gap: 44px; align-items: start; }
+/* In the visual column the launcher is a 2x2 grid of large tiles that opens
+   flush with the top of the headline. */
 .hero__split .hero__launch { grid-template-columns: repeat(2, 1fr); }
+.hero__split .hero__launch-prompt { margin-top: 0; }
 .hero__split h1 { font-size: clamp(38px, 4.7vw, 64px); }
-.hero__visual { display: grid; place-items: center; }
-/* Hero DATA CARD — one clean, grid-aligned surface (replaces the orb and the
-   absolutely-positioned floating chips, which overlapped at odd viewports).
-   THE single home of the catalogue stats — no duplication elsewhere in the hero. */
-.hero-card {
-  width: min(430px, 100%);
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--glint), var(--elev-3);
-  padding: 24px;
-  display: grid; gap: 16px;
-}
-.hero-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.hero-card__head span { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--muted); }
-.hero-card__head b {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900;
-  font-size: 40px; letter-spacing: -1.5px; color: var(--value-ink); line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-.hero-card__rows { display: grid; gap: 8px; border-block: 1px solid var(--line); padding-block: 16px; }
-.hero-card__row { display: flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink-700); }
-.hero-card__row svg { width: 18px; height: 18px; fill: none; stroke: var(--accent-ink); stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.hero-card__row b { margin-inline-start: auto; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); font-variant-numeric: tabular-nums; }
-.hero-card__stats { display: flex; justify-content: space-between; gap: 8px; }
-.hero-card__stats li { list-style: none; display: grid; gap: 2px; text-align: center; }
-.hero-card__stats b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
-.hero-card__stats span { font-size: 12px; color: var(--muted); }
-.hero-card__fine { font-size: 11.5px; color: var(--ink-400); margin: 0; }
+.hero__visual { display: block; align-content: start; }
 @media (max-width: 980px) {
   .hero__split { grid-template-columns: 1fr; }
-  .hero__visual { justify-items: stretch; }
-  .hero-card { width: 100%; }
 }

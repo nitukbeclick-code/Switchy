@@ -2019,8 +2019,6 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <meta name="twitter:description" content="${esc(desc)}" />
   <meta name="twitter:image" content="${OG_IMAGE}" />
   <meta name="twitter:image:alt" content="${esc(OG_IMAGE_ALT)}" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
   <!-- Fonts via Google CDN. Loaded as a PLAIN stylesheet (preloaded +
@@ -2028,8 +2026,12 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
        media="print" onload swap left the whole site on the browser's default
        (serif) faces whenever inline handlers were blocked (e.g. a strict CSP).
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- SELF-HOSTED fonts (assets/fonts) — zero third-party dependency, so
+       Rubik/Assistant render even on networks that block Google Fonts. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-900-normal.woff2" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
+  <link rel="stylesheet" href="assets/fonts/fonts.css" />
   <link rel="stylesheet" href="${CSS_HREF}" />
   ${analyticsTag()}
   ${siteJsonLdTag()}

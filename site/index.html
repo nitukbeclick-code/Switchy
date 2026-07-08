@@ -56,7 +56,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <link rel="stylesheet" href="styles.css?v=d75467c9" />
+  <link rel="stylesheet" href="styles.css?v=d19034a5" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -252,6 +252,7 @@
       <div class="hero__aurora" aria-hidden="true"></div>
       <div class="container">
         <div class="hero__panel reveal">
+        <div class="hero__split">
         <div class="hero__copy">
           <span class="pill">גישה מוקדמת · חינם · בלי התחייבות</span>
           <h1>מפסיקים לשלם<br /><span class="hl">יותר מדי על תקשורת</span></h1>
@@ -302,6 +303,25 @@
             <li><b>מ-<span dir="ltr">₪11</span></b><span>מחיר התחלתי</span></li>
           </ul>
           <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
+        </div>
+        <div class="hero__visual" aria-hidden="true">
+          <div class="hero__blob">
+            <svg viewBox="0 0 600 600" aria-hidden="true" focusable="false">
+              <defs>
+                <linearGradient id="heroBlobG" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#22C55E"/>
+                  <stop offset="1" stop-color="#0F7A37"/>
+                </linearGradient>
+              </defs>
+              <path fill="url(#heroBlobG)" opacity=".92" d="M436 76c62 41 110 106 116 177 6 71-30 148-88 196-58 48-138 67-212 46C178 474 110 413 84 336 58 259 74 166 130 111 186 56 282 39 436 76Z"/>
+              <path fill="#16A34A" opacity=".18" d="M540 210c28 60 20 136-18 190-38 54-106 86-172 84-66-2-130-38-160-94-30-56-26-132 12-186 38-54 110-86 178-82 68 4 132 28 160 88Z"/>
+            </svg>
+          </div>
+          <figure class="app-shot app-shot--hero">
+            <img src="assets/app/shot-home.webp" alt="" width="390" height="844" loading="eager" decoding="async" fetchpriority="high" />
+          </figure>
+          <span class="hero__float"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5.5 14.5 12 21l6.5-6.5"/></svg> ₪1,188 חיסכון בשנה</span>
+        </div>
         </div>
         </div>
       </div>

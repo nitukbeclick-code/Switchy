@@ -390,9 +390,15 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 /* ── Navbar ──────────────────────────────────────────────────────────── */
 .nav {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(246,248,249,.82); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  /* At rest the bar is PART of the page — same mint ground, no seam. On scroll
+     (.scrolled below + the glass block later) it lifts to frosted glass. */
+  background: color-mix(in srgb, var(--cream) 72%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid transparent; transition: border-color .25s, box-shadow .25s, background .25s;
 }
+/* Nav anchors carry no class — exempt them (and the drawer/mega-menu) from the
+   global a:not([class]) underline so the bar reads as chrome, not body copy. */
+.nav__links a, .nav__mobile a, .mega-menu__panel a { text-decoration: none; }
 .nav.scrolled { border-bottom-color: var(--line); box-shadow: 0 4px 18px rgba(15,27,34,.05); background: rgba(246,248,249,.95); }
 .nav__inner { display: flex; align-items: center; gap: 18px; height: 68px; }
 .brand { display: flex; align-items: center; gap: 9px; }
@@ -2938,11 +2944,12 @@ h1 { letter-spacing: -.02em; }
    A stronger frosted-glass header: more blur + saturation, a hairline glass
    edge, and a soft lifted shadow once scrolled. */
 .nav {
-  background: rgba(246, 248, 249, .68);
+  background: color-mix(in srgb, var(--cream) 70%, transparent);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-bottom: 1px solid var(--line-softer);
+  border-bottom: 1px solid transparent;
 }
+.nav.scrolled { border-bottom-color: var(--line-softer); }
 .nav.scrolled {
   background: rgba(246, 248, 249, .8);
   border-bottom-color: var(--line-soft);

@@ -13,7 +13,7 @@
   --mint: #F0F2F4;          /* subtle grey tint surface */
   --sage: #6B7280;          /* muted slate accent */
   --sand: #fbf3e0;          /* warm tint */
-  --cream: #F5F7F8;         /* glass white */
+  --cream: #F3FAF4;         /* fresh mint-white page ground */
   --ink: #0B0F14;           /* near-black text */
   --muted: #4B5563;
   --white: #ffffff;
@@ -96,8 +96,8 @@
   /* Fluid type scale — one clamp() ramp the headings tune against, so display
      sizes breathe between phone and desktop without per-component media queries.
      min / preferred (vw) / max are hand-tuned to the existing hero & section sizes. */
-  --fs-h1:   clamp(40px, 6.4vw, 76px);
-  --fs-h2:   clamp(30px, 4.4vw, 50px);
+  --fs-h1:   clamp(42px, 6.6vw, 82px);
+  --fs-h2:   clamp(32px, 4.6vw, 54px);
   --fs-h3:   clamp(20px, 2.4vw, 25px);
   --fs-lead: clamp(16px, 2vw, 19px);
   --fs-body: clamp(15px, 1.2vw, 17px);
@@ -581,12 +581,14 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 @media (prefers-reduced-motion: reduce) { .hero__aurora::before, .hero__aurora::after { animation: none; } }
 .hero--light .container { position: relative; z-index: 1; }
 .hero--light .hero__panel {
-  background:
-    radial-gradient(760px 420px at 50% -14%, rgba(22,163,74,.10), transparent 62%),
-    var(--white);
-  border: 1px solid var(--line);
+  /* OPEN hero — the boxed white panel read as timid; the hero now breathes
+     full-bleed on the mint ground (kamaze-style), the aurora + blob carry it. */
+  background: none;
+  border: 0;
   color: var(--ink);
-  box-shadow: var(--shadow-lg);
+  box-shadow: none;
+  padding-inline: 0;
+  padding-block: clamp(16px, 3vw, 36px);
 }
 .hero--light .hero__panel .hero__copy { max-width: 960px; }
 .hero--light h1 { background: none; -webkit-text-fill-color: var(--ink-900); color: var(--ink-900); }
@@ -791,7 +793,11 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .feature { background: rgba(255,255,255,.66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.6); border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .feature { background: #fff; } }
 /* .feature:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
-.feature__icon { font-size: 30px; display: grid; place-items: center; width: 56px; height: 56px; background: var(--mint); border-radius: 16px; margin-bottom: 16px; }
+.feature__icon {
+  font-size: 30px; display: grid; place-items: center; width: 56px; height: 56px;
+  background: linear-gradient(140deg, #16A34A, #0F7A37); border-radius: 16px; margin-bottom: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 8px 18px -6px rgba(21,128,61,.4);
+}
 .feature h3 { font-size: 18px; color: var(--green-d); margin-bottom: 6px; }
 .feature p { color: var(--muted); }
 .feature em { color: var(--accent-ink); font-style: normal; font-weight: 700; }
@@ -1197,7 +1203,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .lead-hero h1 .hl { color: var(--green); }
 .lead-hero p { color: var(--muted); font-size: 18px; margin: 16px auto 26px; max-width: 38em; }
 .lead-hero .hero__cta { justify-content: center; }
-.feature--check .feature__icon { background: var(--lime); color: var(--green-d); font-weight: 900; }
+.feature--check .feature__icon { font-weight: 900; }
 .crumbs { font-size: 14px; color: var(--muted); margin-bottom: 18px; }
 .crumbs a { color: var(--green); font-weight: 600; }
 
@@ -1567,7 +1573,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .ico { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex: none; }
 .cat__icon { color: var(--green); line-height: 0; }
 .cat__icon .ico { width: 34px; height: 34px; }
-.feature__icon { color: var(--green); }
+.feature__icon { color: #fff; }
 .feature__icon .ico { width: 28px; height: 28px; }
 .feature--check .feature__icon { color: var(--green-d); }
 .pill--ico { display: inline-flex; align-items: center; gap: 7px; }

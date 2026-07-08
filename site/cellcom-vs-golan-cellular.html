@@ -35,8 +35,6 @@
   <meta name="twitter:description" content="סלקום או גולן טלקום? השוואה אמיתית של מסלולי הסלולר — מחיר התחלתי, מספר מסלולים, 5G והתחייבות — עם המסלולים הזולים בכל צד, מהקטלוג המעודכן של SWITCHY." />
   <meta name="twitter:image" content="https://switchy-ai.com/og-image.png" />
   <meta name="twitter:image:alt" content="SWITCHY — השוואת מחירי תקשורת חכמה" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
   <!-- Fonts via Google CDN. Loaded as a PLAIN stylesheet (preloaded +
@@ -44,9 +42,13 @@
        media="print" onload swap left the whole site on the browser's default
        (serif) faces whenever inline handlers were blocked (e.g. a strict CSP).
        Rubik/Assistant must always load; swap keeps text visible meanwhile. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=d19034a5" />
+  <!-- SELF-HOSTED fonts (assets/fonts) — zero third-party dependency, so
+       Rubik/Assistant render even on networks that block Google Fonts. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-900-normal.woff2" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
+  <link rel="stylesheet" href="assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="styles.css?v=ff70043e" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>

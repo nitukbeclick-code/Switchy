@@ -41,22 +41,22 @@
   <meta name="twitter:image" content="https://switchy-ai.com/og-image.png" />
   <meta name="twitter:image:alt" content="SWITCHY — השוואת מחירי תקשורת חכמה" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
   <!-- dns-prefetch fallbacks for older browsers / engines that skip preconnect. -->
-  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-  <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
   <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
   <!-- Fonts as a PLAIN stylesheet (no JS-dependent media swap) — guarantees
        Rubik/Assistant load even when inline handlers are blocked (strict CSP),
        so headings can never fall back to the browser's default serif. -->
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <link rel="stylesheet" href="styles.css?v=d19034a5" />
+  <!-- SELF-HOSTED fonts (assets/fonts) — zero third-party dependency, so
+       Rubik/Assistant render even on networks that block Google Fonts. -->
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-900-normal.woff2" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
+  <link rel="stylesheet" href="assets/fonts/fonts.css" />
+  <link rel="stylesheet" href="styles.css?v=ff70043e" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>

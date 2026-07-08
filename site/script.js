@@ -3057,4 +3057,112 @@
       });
     });
   })();
+
+  // ── (9) CAROUSELS — enhance [data-carousel] grids into snap rails ───────────
+  // Markup contract: <div class="guide-cards" data-carousel="3" data-carousel-m="1.12">.
+  // The container keeps its own classes (no-JS = original grid); we wrap it,
+  // promote it to a scroll-snap viewport and mount arrows + dots. RTL-safe:
+  // navigation targets real child offsets via scrollIntoView(inline).
+  (function () {
+    const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.querySelectorAll('[data-carousel]').forEach((grid) => {
+      if (grid.dataset.carouselReady) return;
+      grid.dataset.carouselReady = '1';
+      const kids = Array.from(grid.children).filter((c) => c.tagName !== 'TEMPLATE');
+      if (kids.length < 2) return;
+      const n = parseFloat(grid.dataset.carousel) || 3;
+      const wrap = document.createElement('div');
+      wrap.className = 'carousel';
+      grid.parentNode.insertBefore(wrap, grid);
+      wrap.appendChild(grid);
+      grid.classList.add('carousel__viewport');
+      grid.style.setProperty('--car-nd', n);
+      if (grid.dataset.carouselM) grid.style.setProperty('--car-nm', grid.dataset.carouselM);
+      if (grid.dataset.carouselT) grid.style.setProperty('--car-nt', grid.dataset.carouselT);
+      grid.setAttribute('tabindex', '-1');
+
+      const mkBtn = (dir, label, path) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'carousel__btn carousel__btn--' + dir;
+        b.setAttribute('aria-label', label);
+        b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"/></svg>';
+        wrap.appendChild(b);
+        return b;
+      };
+      // Chevrons are direction-agnostic glyphs: "prev" points toward inline-start.
+      const rtl = (document.documentElement.dir || 'rtl') === 'rtl';
+      const prev = mkBtn('prev', 'הקודם', rtl ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6');
+      const next = mkBtn('next', 'הבא', rtl ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6');
+      const dots = document.createElement('div');
+      dots.className = 'carousel__dots';
+      wrap.appendChild(dots);
+
+      let pages = [];   // index of the first child of each snap page
+      let cur = 0;
+      const perView = () => Math.max(1, Math.round(parseFloat(getComputedStyle(grid).getPropertyValue('--car-n')) || n));
+      const rebuildPages = () => {
+        const pv = perView();
+        pages = [];
+        for (let i = 0; i < kids.length; i += pv) pages.push(i);
+        dots.innerHTML = '';
+        // Long rails (guide libraries) would spray dozens of dots — swap to a
+        // slim progress bar past 10 pages; short rails keep tappable dots.
+        if (pages.length > 10) {
+          dots.classList.add('carousel__dots--bar');
+          dots.innerHTML = '<span class="carousel__bar" aria-hidden="true"><span class="carousel__bar-fill"></span></span>';
+          return;
+        }
+        dots.classList.remove('carousel__dots--bar');
+        pages.forEach((_, pi) => {
+          const d = document.createElement('button');
+          d.type = 'button';
+          d.className = 'carousel__dot';
+          d.setAttribute('aria-label', 'מעבר לעמוד ' + (pi + 1) + ' מתוך ' + pages.length);
+          d.addEventListener('click', () => goTo(pi));
+          dots.appendChild(d);
+        });
+      };
+      const goTo = (pi) => {
+        pi = Math.max(0, Math.min(pages.length - 1, pi));
+        kids[pages[pi]].scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', inline: 'start', block: 'nearest' });
+      };
+      const sync = () => {
+        const hasOverflow = grid.scrollWidth > grid.clientWidth + 4;
+        wrap.classList.toggle('carousel--no-overflow', !hasOverflow);
+        if (!hasOverflow) return;
+        // Current page = the page whose first child's start edge is nearest the
+        // viewport's start edge (right edge in RTL).
+        const vp = grid.getBoundingClientRect();
+        const startOf = (el) => { const r = el.getBoundingClientRect(); return rtl ? vp.right - r.right : r.left - vp.left; };
+        let best = 0, bestDist = Infinity;
+        pages.forEach((ki, pi) => {
+          const d = Math.abs(startOf(kids[ki]));
+          if (d < bestDist) { bestDist = d; best = pi; }
+        });
+        cur = best;
+        const fill = dots.querySelector('.carousel__bar-fill');
+        if (fill) {
+          fill.style.width = Math.round(((cur + 1) / pages.length) * 100) + '%';
+        } else {
+          Array.from(dots.children).forEach((d, pi) => {
+            if (pi === cur) d.setAttribute('aria-current', 'true');
+            else d.removeAttribute('aria-current');
+          });
+        }
+        // End state: disable at the true scroll extents, not just page math.
+        const max = grid.scrollWidth - grid.clientWidth - 2;
+        const pos = Math.abs(grid.scrollLeft);
+        prev.disabled = pos <= 2;
+        next.disabled = pos >= max;
+      };
+      prev.addEventListener('click', () => goTo(cur - 1));
+      next.addEventListener('click', () => goTo(cur + 1));
+      let raf = 0;
+      grid.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(sync); }, { passive: true });
+      if (window.ResizeObserver) new ResizeObserver(() => { rebuildPages(); sync(); }).observe(grid);
+      rebuildPages();
+      sync();
+    });
+  })();
 })();

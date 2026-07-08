@@ -1680,7 +1680,7 @@ ${faqs}
     <section class="section" aria-label="מדריכים שימושיים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
-        <div class="guide-cards guide-cards--4">
+        <div class="guide-cards guide-cards--4" data-carousel="4" data-carousel-t="2" data-carousel-m="1.1">
 ${catGuides}
         </div>
       </div>
@@ -2146,7 +2146,7 @@ ${topPlans.map((p) => planCardHtml(p, false)).join('\n')}
   })()}      <section class="section section--alt" aria-label="מדריכים נוספים">
         <div class="container">
           <header class="section__head reveal"><span class="eyebrow">להמשך קריאה</span><h2>מדריכים נוספים</h2></header>
-          <div class="guide-cards">
+          <div class="guide-cards" data-carousel="3" data-carousel-m="1.1">
 ${relatedCards}
           </div>
         </div>
@@ -2225,7 +2225,7 @@ function guidesIndexPage() {
     <section class="section${c !== catOrder[0] ? ' section--alt' : ''}" aria-label="${esc(c)}">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">${esc(c)}</span><h2>${esc(c === 'מדריך כללי' ? 'מדריכים כלליים' : `מדריכי ${c}`)}</h2></header>
-        <div class="guide-cards">
+        <div class="guide-cards" data-carousel="3" data-carousel-m="1.1">
 ${grouped[c].map(guideCard).join('\n')}
         </div>
       </div>
@@ -2572,7 +2572,7 @@ ${colChips ? `        <div class="providers__row" style="margin-top:14px">
     <section class="section" aria-label="מדריכים שימושיים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שיחסכו לכם כסף</h2></header>
-        <div class="guide-cards guide-cards--4">
+        <div class="guide-cards guide-cards--4" data-carousel="4" data-carousel-t="2" data-carousel-m="1.1">
 ${guideCards}
         </div>
       </div>
@@ -3058,7 +3058,7 @@ ${nav}
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [name, null]])}
         <div class="provider-hero__lockup">
-          ${providerLogo(name, 64)}
+          ${providerLogo(name, 84)}
           <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
         </div>
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
@@ -3114,7 +3114,7 @@ ${provTables}
     <section class="section section--alt" aria-label="מדריכים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
-        <div class="guide-cards guide-cards--2">
+        <div class="guide-cards guide-cards--2" data-carousel="2" data-carousel-m="1.1">
 ${gHtml}
         </div>
       </div>
@@ -3770,7 +3770,7 @@ ${guidesHtml ? `
     <section class="section section--alt" aria-label="מדריכים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
-        <div class="guide-cards guide-cards--2">
+        <div class="guide-cards guide-cards--2" data-carousel="2" data-carousel-m="1.1">
 ${guidesHtml}
         </div>
       </div>
@@ -4120,7 +4120,7 @@ ${guidesHtml ? `
     <section class="section section--alt" aria-label="מדריכים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
-        <div class="guide-cards guide-cards--2">
+        <div class="guide-cards guide-cards--2" data-carousel="2" data-carousel-m="1.1">
 ${guidesHtml}
         </div>
       </div>
@@ -4250,7 +4250,7 @@ ${cards}
     <section class="section" aria-label="מדריכים שימושיים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שיעמיקו את התמונה</h2></header>
-        <div class="guide-cards guide-cards--4">
+        <div class="guide-cards guide-cards--4" data-carousel="4" data-carousel-t="2" data-carousel-m="1.1">
 ${guideCards}
         </div>
       </div>
@@ -4392,7 +4392,7 @@ ${guideCardHtml ? `
     <section class="section section--alt" aria-label="מדריך מורחב">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">להעמקה</span><h2>המדריך המלא</h2></header>
-        <div class="guide-cards guide-cards--2">
+        <div class="guide-cards guide-cards--2" data-carousel="2" data-carousel-m="1.1">
 ${guideCardHtml}
         </div>
       </div>
@@ -4638,7 +4638,7 @@ ${siblingsStrip}${relatedGuideCards ? `
     <section class="section" aria-label="מדריכים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
-        <div class="guide-cards guide-cards--2">
+        <div class="guide-cards guide-cards--2" data-carousel="2" data-carousel-m="1.1">
 ${relatedGuideCards}
         </div>
       </div>

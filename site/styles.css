@@ -572,7 +572,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
    primary navigation. Owner ask: "like kamaze, improved, beautiful colours, no
    black". The tile gradients are theme-independent (like carrier brand colours);
    white tile text sits over the deep gradient stop for WCAG AA. */
-.hero--light { padding: 28px 0 44px; position: relative; overflow: hidden; }
+.hero--light { padding: 8px 0 44px; position: relative; overflow: hidden; }
 .hero--light::before, .hero--light::after { display: none; } /* no dot-grid/ambient under the panel */
 /* Aurora — two soft brand washes drifting BEHIND the hero panel (an .hero__aurora
    div in index.html, kept outside the panel so its blur never touches the copy).

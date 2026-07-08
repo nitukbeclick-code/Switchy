@@ -3165,4 +3165,77 @@
       sync();
     });
   })();
+
+  // ── (10) HERO FINDER — the answer-in-10-seconds widget ──────────────────────
+  // Hydrates #heroFinder from the build-stamped window.__HERO_PLANS__ blob
+  // (8 cheapest monthly plans per category, refreshed on every catalogue
+  // rebuild). Pure client-side: pick a category, drag "what I pay today",
+  // and the three cheapest real plans + the yearly saving render instantly.
+  (function () {
+    var data = window.__HERO_PLANS__;
+    var root = document.getElementById('heroFinder');
+    if (!root || !data || !data.cellular || !data.cellular.length) return;
+    root.hidden = false;
+    var bill = document.getElementById('finderBill');
+    var out = document.getElementById('finderBillOut');
+    var res = document.getElementById('finderResults');
+    var save = document.getElementById('finderSave');
+    if (!bill || !out || !res || !save) return;
+    var RANGES = { cellular: [20, 200, 60], internet: [40, 300, 120], tv: [30, 300, 100], triple: [80, 500, 250] };
+    var cat = 'cellular';
+    var escEl = document.createElement('span');
+    var esc = function (t) { escEl.textContent = t == null ? '' : String(t); return escEl.innerHTML; };
+    var fmt = function (v) { return '₪' + Number(v).toLocaleString('he-IL'); };
+    function render() {
+      var list = (data[cat] || []).slice(0, 3);
+      res.innerHTML = list.map(function (p) {
+        var msg = encodeURIComponent('היי, מעניין אותי ' + p.p + ' - ' + p.n + ' (₪' + p.pr + ')');
+        return '<a class="finder__row" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=' + msg + '">' +
+          '<span class="finder__meta"><b class="finder__prov">' + esc(p.p) + '</b><span class="finder__plan">' + esc(p.n) + '</span></span>' +
+          (p.net ? '<span class="finder__net">' + esc(p.net) + '</span>' : '') +
+          '<b class="finder__price" dir="ltr">₪' + p.pr + '</b></a>';
+      }).join('');
+      var best = list[0];
+      if (best) {
+        var yearly = Math.max(0, Math.round((Number(bill.value) - best.pr) * 12));
+        save.innerHTML = yearly > 0
+          ? 'לפי מה שאתם משלמים היום — תחסכו עד <b>' + fmt(yearly) + '</b> בשנה'
+          : 'אתם כבר במחיר מצוין — שווה לוודא מול ההשוואה המלאה';
+      } else { save.textContent = ''; }
+    }
+    root.querySelectorAll('.finder__cat').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cat = btn.dataset.cat;
+        root.querySelectorAll('.finder__cat').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+        var r = RANGES[cat] || RANGES.cellular;
+        bill.min = r[0]; bill.max = r[1]; bill.value = r[2];
+        out.textContent = fmt(bill.value);
+        render();
+      });
+    });
+    var raf = 0;
+    bill.addEventListener('input', function () {
+      out.textContent = fmt(bill.value);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(render);
+    }, { passive: true });
+    out.textContent = fmt(bill.value);
+    render();
+  })();
+
+  // ── (11) DEAL TICKER — rotate the build-stamped deal-of-day items ───────────
+  (function () {
+    var wrap = document.querySelector('#dealTicker .ticker__inner');
+    if (!wrap) return;
+    var items = Array.from(wrap.querySelectorAll('.ticker__item'));
+    if (items.length < 2) { if (items[0]) items[0].classList.add('is-on'); return; }
+    var i = 0;
+    items[0].classList.add('is-on');
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setInterval(function () {
+      items[i].classList.remove('is-on');
+      i = (i + 1) % items.length;
+      items[i].classList.add('is-on');
+    }, 6000);
+  })();
 })();

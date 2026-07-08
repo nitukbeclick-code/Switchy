@@ -5016,6 +5016,38 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
 
   // 1) Cache-busting hashes — rewrite ANY existing ?v=<hash> on the styles.css /
   //    script.js refs to the current fingerprints (idempotent; a no-op when equal).
+  // 0) Hero finder data — a TRIMMED per-category blob (8 cheapest monthly plans
+  //    per category, minimal fields, ~4-6KB) so the homepage "answer in 10
+  //    seconds" widget works instantly with zero network. Rewritten in place on
+  //    every build (same contract as the ?v= hashes) so prices track the
+  //    catalogue. The deal ticker items are refreshed the same way.
+  const FINDER_CATS = ['cellular', 'internet', 'tv', 'triple'];
+  const heroPlans = {};
+  for (const cat of FINDER_CATS) {
+    heroPlans[cat] = catalogue.plans
+      .filter((p) => p.cat === cat && (!p.priceUnit || p.priceUnit === 'month'))
+      .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price))
+      .slice(0, 8)
+      .map((p) => ({ p: p.provider, n: p.plan, pr: p.price, a: p.after || null, net: p.net || '' }));
+  }
+  const heroBlob = `<script>window.__HERO_PLANS__=${jsonForScript(heroPlans)};</script>`;
+  if (/<script>window\.__HERO_PLANS__=.*?<\/script>/.test(html)) {
+    html = html.replace(/<script>window\.__HERO_PLANS__=.*?<\/script>/, heroBlob);
+  } else {
+    notes.push('WARN: no __HERO_PLANS__ placeholder found in index.html');
+  }
+  const dealItems = FINDER_CATS.map((cat) => {
+    const best = heroPlans[cat] && heroPlans[cat][0];
+    if (!best) return '';
+    const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת' }[cat];
+    return `<span class="ticker__item"><b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום</span>`;
+  }).filter(Boolean).join('');
+  if (/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/.test(html)) {
+    html = html.replace(/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/, `<!--DEALS:START-->${dealItems}<!--DEALS:END-->`);
+  } else {
+    notes.push('WARN: no DEALS markers found in index.html');
+  }
+
   const cssMatched = /href="styles\.css\?v=[0-9a-f]+"/.test(html);
   const jsMatched = /src="script\.js\?v=[0-9a-f]+"/.test(html);
   const rtMatched = /src="translate-runtime\.js\?v=[0-9a-f]+"/.test(html);

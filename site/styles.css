@@ -471,7 +471,17 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
 .nav__toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
 .nav__toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
-.nav__mobile { display: none; flex-direction: column; gap: 4px; padding: 8px 20px 18px; }
+.nav__mobile {
+  display: none; flex-direction: column; gap: 4px; padding: 8px 20px 18px;
+  /* Animated open via @starting-style (enter only — closing stays instant so
+     dismissal never feels laggy). Engines without allow-discrete just toggle. */
+  transition: opacity 200ms var(--ease), transform 200ms var(--ease), display 200ms allow-discrete;
+  @starting-style { opacity: 0; transform: translateY(-10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav__mobile, .mega-menu__panel { transition: none; }
+}
+.nav__mobile--legacy { display: none; }
 .nav__mobile a { padding: 13px 6px; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--ink); border-bottom: 1px solid var(--line); }
 .nav__mobile .btn { margin-top: 10px; }
 
@@ -1497,7 +1507,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 }
 
 /* ── Scroll reveal ───────────────────────────────────────────────────── */
-.reveal { opacity: 0; transform: translateY(22px); transition: opacity .4s var(--ease), transform .4s var(--ease); }
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .3s var(--ease), transform .3s var(--ease); }
 .reveal.in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
@@ -1796,9 +1806,25 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    removal OR a parent [aria-expanded] / :focus-within / :hover, so it works
    with keyboard, mouse, and JS toggling. RTL-anchored to the inline-start. */
 .mega-menu { position: relative; }
+/* Homepage variant: .mega > .mega-menu IS the panel — same pop-in contract. */
+.mega > .mega-menu {
+  transform-origin: top right;
+  transition: opacity 180ms var(--ease), transform 180ms var(--ease), display 180ms allow-discrete;
+  @starting-style { opacity: 0; transform: scale(.97) translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) { .mega > .mega-menu { transition: none; } }
+
 .mega-menu__panel {
   position: absolute; inset-inline-start: 0; top: calc(100% + 12px); z-index: 55;
   min-width: 500px; max-width: 92vw; padding: 22px;
+  /* Origin-aware pop-in: the panel scales from its trigger corner (top-start;
+     the site is RTL-only so top-start = top right), never from center.
+     @starting-style + allow-discrete animate the [hidden] toggle in modern
+     engines; older ones just show it instantly. Exit is instant by design —
+     dismissal should never lag (asymmetric enter/exit). */
+  transform-origin: top right;
+  transition: opacity 180ms var(--ease), transform 180ms var(--ease), display 180ms allow-discrete;
+  @starting-style { opacity: 0; transform: scale(.97) translateY(-4px); }
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--glint), var(--shadow-lg);
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px;

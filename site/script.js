@@ -3030,4 +3030,31 @@
     const btn = document.getElementById('langBtn');
     if (btn) { try { window.SwitchyI18n.mountMenu(btn); } catch (_) { /* ignore */ } }
   })();
+
+  // ── (8) POINTER TILT — a whisper of 3D depth on the hero launch tiles ────────
+  // Fine pointers only, and never under reduced-motion: the tile leans ≤3°
+  // toward the cursor and settles back on leave. Pure perspective transform —
+  // no library, no layout shift, and touch devices never see it.
+  (function () {
+    if (!window.matchMedia) return;
+    if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const MAX = 3; // degrees
+    document.querySelectorAll('.launch-tile').forEach((tile) => {
+      let raf = 0;
+      tile.addEventListener('pointermove', (e) => {
+        const r = tile.getBoundingClientRect();
+        const dx = (e.clientX - r.left) / r.width - 0.5;
+        const dy = (e.clientY - r.top) / r.height - 0.5;
+        cancelAnimationFrame(raf);
+        raf = requestAnimationFrame(() => {
+          tile.style.transform = `perspective(700px) rotateX(${(-dy * MAX).toFixed(2)}deg) rotateY(${(dx * MAX).toFixed(2)}deg) translateY(-3px)`;
+        });
+      });
+      tile.addEventListener('pointerleave', () => {
+        cancelAnimationFrame(raf);
+        tile.style.transform = '';
+      });
+    });
+  })();
 })();

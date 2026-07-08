@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="build:catalogue-source" content="live" />
+  <meta name="build:catalogue-source" content="bundled" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
   <!-- Theme guard: set data-theme before first paint (saved choice or system) so dark mode never flashes. -->
@@ -56,7 +56,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <link rel="stylesheet" href="styles.css?v=210b6775" />
+  <link rel="stylesheet" href="styles.css?v=a1970997" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -149,7 +149,7 @@
     ]
   }
   </script>
-  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
+  <style>.skip{position:absolute;inset-inline-start:0;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0;clip-path:inset(50%);white-space:nowrap}.skip:focus{clip-path:none}</style>
 </head>
 <body>
   <!-- ── Navbar — UNIFIED header: same logo lockup + same curated nav as every
@@ -229,6 +229,7 @@
       <a href="compare.html">השוואה</a>
       <a href="/community">קהילה</a>
       <a href="book.html">תיאום פגישת וידאו</a>
+      <a href="#switchy-ai">SWITCHY AI — היועץ החכם</a>
       <a href="app.html">האפליקציה</a>
       <a href="guides.html">כל המדריכים</a>
       <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
@@ -248,6 +249,7 @@
          generated category pages). חו״ל (mixed units) → a chip, no monthly anchor.
          Colours are AA-tuned + dark-parity-safe (see .hero--light in styles.css). -->
     <section class="hero hero--light">
+      <div class="hero__aurora" aria-hidden="true"></div>
       <div class="container">
         <div class="hero__panel reveal">
         <div class="hero__copy">
@@ -291,12 +293,12 @@
             <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
           </div>
           <p class="hero__trust-note">חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-          <p class="hero__social"><span aria-hidden="true">✦</span> משווים <strong>120+ מסלולים</strong> מ-18 ספקים — מתעדכן כל יום</p>
+          <p class="hero__social">משווים <strong><span data-count-to="120" data-count-suffix="+">120+</span> מסלולים</strong> מ-18 ספקים — מתעדכן כל יום</p>
           <p class="hero__avail" role="status"><span class="hero__dot" aria-hidden="true"></span> הקטלוג עודכן היום · מחירים אמיתיים, כולל המחיר שאחרי המבצע</p>
           <ul class="hero__stats" aria-label="נתונים על ההשוואה">
-            <li><b>120+</b><span>מסלולים בהשוואה</span></li>
-            <li><b>18</b><span>ספקים</span></li>
-            <li><b>5</b><span>קטגוריות</span></li>
+            <li><b data-count-to="120" data-count-suffix="+">120+</b><span>מסלולים בהשוואה</span></li>
+            <li><b data-count-to="18">18</b><span>ספקים</span></li>
+            <li><b data-count-to="5">5</b><span>קטגוריות</span></li>
             <li><b>מ-<span dir="ltr">₪11</span></b><span>מחיר התחלתי</span></li>
           </ul>
           <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
@@ -320,19 +322,37 @@
     <section class="providers" aria-label="חברות התקשורת">
       <div class="container">
         <p class="providers__title">משווים את כל הגדולות — והקטנות</p>
-        <div class="providers__row">
-          <a class="chip" href="provider-pelephone.html">פלאפון</a>
-          <a class="chip" href="provider-cellcom.html">סלקום</a>
-          <a class="chip" href="provider-partner.html">פרטנר</a>
-          <a class="chip" href="provider-hot-mobile.html">הוט מובייל</a>
-          <a class="chip" href="provider-golan.html">גולן טלקום</a>
-          <a class="chip" href="provider-019mobile.html">019 מובייל</a>
-          <a class="chip" href="provider-rami-levy.html">רמי לוי</a>
-          <a class="chip" href="provider-bezeq.html">בזק</a>
-          <a class="chip" href="provider-yes.html">yes</a>
-          <a class="chip" href="provider-hot.html">HOT</a>
-          <a class="chip" href="provider-wecom.html">WeCom</a>
-          <a class="chip" href="provider-airalo.html">Airalo</a>
+        <div class="logo-marquee">
+          <div class="logo-marquee__row">
+            <div class="logo-marquee__track">
+              <a class="logo-chip" href="provider-pelephone.html"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async">פלאפון</a>
+              <a class="logo-chip" href="provider-cellcom.html"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async">סלקום</a>
+              <a class="logo-chip" href="provider-partner.html"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async">פרטנר</a>
+              <a class="logo-chip" href="provider-hot-mobile.html"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">הוט מובייל</a>
+              <a class="logo-chip" href="provider-golan.html"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async">גולן טלקום</a>
+              <a class="logo-chip" href="provider-019mobile.html"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">019 מובייל</a>
+              <a class="logo-chip" href="provider-rami-levy.html"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async">רמי לוי</a>
+              <a class="logo-chip" href="provider-bezeq.html"><img src="assets/logos/bezeq.svg" alt="" width="22" height="22" loading="lazy" decoding="async">בזק</a>
+              <a class="logo-chip" href="provider-yes.html"><img src="assets/logos/yes.webp" alt="" width="22" height="22" loading="lazy" decoding="async">yes</a>
+              <a class="logo-chip" href="provider-hot.html"><img src="assets/logos/hot.svg" alt="" width="22" height="22" loading="lazy" decoding="async">HOT</a>
+              <a class="logo-chip" href="provider-wecom.html"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async">WeCom</a>
+              <a class="logo-chip" href="provider-airalo.html"><img src="assets/logos/airalo.webp" alt="" width="22" height="22" loading="lazy" decoding="async">Airalo</a>
+            </div>
+            <div class="logo-marquee__track" aria-hidden="true">
+              <a class="logo-chip" href="provider-pelephone.html" tabindex="-1"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async">פלאפון</a>
+              <a class="logo-chip" href="provider-cellcom.html" tabindex="-1"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async">סלקום</a>
+              <a class="logo-chip" href="provider-partner.html" tabindex="-1"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async">פרטנר</a>
+              <a class="logo-chip" href="provider-hot-mobile.html" tabindex="-1"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">הוט מובייל</a>
+              <a class="logo-chip" href="provider-golan.html" tabindex="-1"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async">גולן טלקום</a>
+              <a class="logo-chip" href="provider-019mobile.html" tabindex="-1"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">019 מובייל</a>
+              <a class="logo-chip" href="provider-rami-levy.html" tabindex="-1"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async">רמי לוי</a>
+              <a class="logo-chip" href="provider-bezeq.html" tabindex="-1"><img src="assets/logos/bezeq.svg" alt="" width="22" height="22" loading="lazy" decoding="async">בזק</a>
+              <a class="logo-chip" href="provider-yes.html" tabindex="-1"><img src="assets/logos/yes.webp" alt="" width="22" height="22" loading="lazy" decoding="async">yes</a>
+              <a class="logo-chip" href="provider-hot.html" tabindex="-1"><img src="assets/logos/hot.svg" alt="" width="22" height="22" loading="lazy" decoding="async">HOT</a>
+              <a class="logo-chip" href="provider-wecom.html" tabindex="-1"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async">WeCom</a>
+              <a class="logo-chip" href="provider-airalo.html" tabindex="-1"><img src="assets/logos/airalo.webp" alt="" width="22" height="22" loading="lazy" decoding="async">Airalo</a>
+            </div>
+          </div>
         </div>
         <p class="providers__more"><a href="providers.html">לכל הספקים ←</a></p>
       </div>
@@ -432,52 +452,52 @@
         </header>
         <div class="collections-grid reveal">
           <a class="collection-chip" href="cellular-budget.html">
-            <span class="collection-chip__icon">💸</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.2 9.8h.01M17.8 14.2h.01"/></svg></span>
             <span class="collection-chip__title">סלולר מתחת ל-₪30</span>
             <span class="collection-chip__sub">הכי זול בשוק</span>
           </a>
           <a class="collection-chip" href="cellular-5g.html">
-            <span class="collection-chip__icon">📶</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 18.5v-3M9.5 18.5v-6M14.5 18.5v-9M19.5 18.5v-13"/></svg></span>
             <span class="collection-chip__title">מסלולי 5G</span>
             <span class="collection-chip__sub">מהירות מקסימלית</span>
           </a>
           <a class="collection-chip" href="internet-fiber-only.html">
-            <span class="collection-chip__icon">🌐</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18"/></svg></span>
             <span class="collection-chip__title">אינטרנט סיב אופטי</span>
             <span class="collection-chip__sub">מהיר ויציב</span>
           </a>
           <a class="collection-chip" href="plans-no-commitment.html">
-            <span class="collection-chip__icon">🔓</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/></svg></span>
             <span class="collection-chip__title">ללא התחייבות</span>
             <span class="collection-chip__sub">עוזבים מתי שרוצים</span>
           </a>
           <a class="collection-chip" href="esim-abroad.html">
-            <span class="collection-chip__icon">✈️</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2.5 3 10l6.5 2.5L12 19l2.5-6.5 7-10z"/><path d="m9.5 12.5 3-3"/></svg></span>
             <span class="collection-chip__title">eSIM לחו״ל</span>
             <span class="collection-chip__sub">גלישה בחו״ל בזול</span>
           </a>
           <a class="collection-chip" href="cellular-with-abroad.html">
-            <span class="collection-chip__icon">🌍</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8M12 3c2.4 2.6 2.4 15.4 0 18"/></svg></span>
             <span class="collection-chip__title">סלולר עם חו״ל כלול</span>
             <span class="collection-chip__sub">לנוסעים תכופים</span>
           </a>
           <a class="collection-chip" href="internet-giga.html">
-            <span class="collection-chip__icon">⚡</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.5 22 18 10.5h-6.5L13 2z"/></svg></span>
             <span class="collection-chip__title">אינטרנט גיגה</span>
             <span class="collection-chip__sub">1000Mb לבית עמוס</span>
           </a>
           <a class="collection-chip" href="kosher-plans.html">
-            <span class="collection-chip__icon">✡️</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 14.4 5h3.6v3.6L20.5 11 18 13.4V17h-3.6L12 19.5 9.6 17H6v-3.6L3.5 11 6 8.6V5h3.6L12 2.5z"/><path d="m9.4 11.6 2 2 3.4-3.6"/></svg></span>
             <span class="collection-chip__title">מסלולים כשרים</span>
             <span class="collection-chip__sub">עם פיקוח מוסמך</span>
           </a>
           <a class="collection-chip" href="cellular-mid-range.html">
-            <span class="collection-chip__icon">💡</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 18h5M10.5 21h3"/><path d="M12 3a6 6 0 0 1 3.5 10.9c-.8.6-1 1.3-1 2.1h-5c0-.8-.2-1.5-1-2.1A6 6 0 0 1 12 3z"/></svg></span>
             <span class="collection-chip__title">סלולר ₪30–₪60</span>
             <span class="collection-chip__sub">איזון מחיר ואיכות</span>
           </a>
           <a class="collection-chip" href="abroad-daily.html">
-            <span class="collection-chip__icon">🗓️</span>
+            <span class="collection-chip__icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></span>
             <span class="collection-chip__title">חבילות יומיות לחו״ל</span>
             <span class="collection-chip__sub">לנסיעות קצרות</span>
           </a>
@@ -553,7 +573,7 @@
             <p>נשלח לכם מייל קצר כשמופיע מסלול משתלם יותר או כשמבצע עומד להסתיים. בלי ספאם, אפשר לבטל בכל עת.</p>
           </div>
           <form class="subscribe__form" id="subscribeForm" novalidate>
-            <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" class="subscribe__hp" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+            <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" class="subscribe__hp" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;opacity:0" />
             <label class="subscribe__field" for="subscribeEmail">
               <span class="sr-only">כתובת אימייל</span>
               <input type="email" id="subscribeEmail" name="email" placeholder="כתובת אימייל" autocomplete="email" inputmode="email" required />
@@ -748,7 +768,7 @@
           <div class="ai-chat" id="aiChat">
             <div class="ai-bubble ai-bubble--bot">היי! אני SWITCHY AI — שאלו אותי על מסלולי סלולר, אינטרנט, טלוויזיה או חו״ל, ואני אענה לפי הנתונים האמיתיים שלנו.</div>
           </div>
-          <div class="ai-chips" aria-label="שאלות מהירות לדוגמה"><span class="ai-chip">✨ מה הכי משתלם לי?</span><span class="ai-chip">📱 סלולר הכי זול</span><span class="ai-chip">🌐 אינטרנט 1000Mb</span><span class="ai-chip">✅ ללא התחייבות</span><span class="ai-chip">✈️ חבילת חו״ל</span><span class="ai-chip">💰 פחות מ-₪50</span></div>
+          <div class="ai-chips" aria-label="שאלות מהירות לדוגמה"><span class="ai-chip">מה הכי משתלם לי?</span><span class="ai-chip">סלולר הכי זול</span><span class="ai-chip">אינטרנט 1000Mb</span><span class="ai-chip">ללא התחייבות</span><span class="ai-chip">חבילת חו״ל</span><span class="ai-chip">פחות מ-₪50</span></div>
           <form class="ai-input" id="aiChatForm">
             <input type="text" id="aiChatInput" maxlength="500" placeholder="שאלו אותי כל דבר על מסלולים..." aria-label="שאלו את SWITCHY AI" autocomplete="off" />
             <button type="submit" class="btn btn--primary">שלחו</button>
@@ -790,7 +810,7 @@
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener">
-          <span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעדיפים וואטסאפ? דברו איתנו
         </a>
       </div>
     </section>
@@ -901,6 +921,6 @@
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=b8114b47" defer></script>
+  <script src="script.js?v=8cd92c1f" defer></script>
 </body>
 </html>

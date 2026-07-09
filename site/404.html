@@ -50,7 +50,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=14227374" />
+  <link rel="stylesheet" href="styles.css?v=706d48c9" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -148,11 +148,22 @@
   <main id="main">
     <section class="lead-hero" style="text-align:center">
       <div class="container">
+        <div class="lost-bot" aria-hidden="true">
+          <svg viewBox="0 0 120 110" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="60" y1="8" x2="60" y2="22"/><circle cx="60" cy="7" r="4" fill="currentColor" stroke="none"/>
+            <rect x="24" y="22" width="72" height="56" rx="14"/>
+            <circle cx="46" cy="46" r="5" fill="currentColor" stroke="none"/>
+            <circle cx="74" cy="46" r="5" fill="currentColor" stroke="none"/>
+            <path d="M48 64c4-4 20-4 24 0" transform="rotate(180 60 62)"/>
+            <line x1="24" y1="46" x2="12" y2="42"/><line x1="96" y1="46" x2="108" y2="52"/>
+            <path d="M40 88c0 8 40 8 40 0" opacity=".35"/>
+          </svg>
+        </div>
         <span class="pill">404</span>
-        <h1>אופס, הדף לא נמצא</h1>
-        <p>הדף שחיפשתם לא קיים או עבר דירה. בואו נחזיר אתכם למסלול.</p>
+        <h1>המסלול הזה כבר לא קיים</h1>
+        <p>הדף שחיפשתם עבר דירה או ירד מהמדף — אבל יש בקטלוג 120+ מסלולים חיים אחרים. בואו נחזיר אתכם למסלול.</p>
         <div class="hero__cta" style="justify-content:center">
-          <a class="btn btn--primary btn--lg" href="index.html">חזרה לדף הבית</a>
+          <a class="btn btn--primary btn--lg" href="index.html#heroFinder">בדקו כמה תוכלו לחסוך<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="btn btn--ghost btn--lg" href="plans.html">כל המסלולים</a>
         </div>
       </div>
@@ -161,7 +172,7 @@
       <div class="container">
         <header class="section__head reveal" style="text-align:center"><span class="eyebrow">ניווט מהיר</span><h2>לאן רוצים לעבור?</h2></header>
         <nav style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:800px;margin:0 auto" aria-label="ניווט מהיר">
-          <a href="cellular.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-phone"/></svg></span><br>סלולר</a><a href="internet.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-globe"/></svg></span><br>אינטרנט</a><a href="tv.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-tv"/></svg></span><br>טלוויזיה</a><a href="triple.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-home"/></svg></span><br>חבילה משולבת</a><a href="abroad.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-plane"/></svg></span><br>חבילות חו״ל</a>
+          <a href="cellular.html" class="glass quick-nav__card" style="--tf:#22C55E;--tt:#0B7A38"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-phone"/></svg></span><br>סלולר</a><a href="internet.html" class="glass quick-nav__card" style="--tf:#38BDF8;--tt:#0369A1"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-globe"/></svg></span><br>אינטרנט</a><a href="tv.html" class="glass quick-nav__card" style="--tf:#818CF8;--tt:#4338CA"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-tv"/></svg></span><br>טלוויזיה</a><a href="triple.html" class="glass quick-nav__card" style="--tf:#FBBF24;--tt:#B45309"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-home"/></svg></span><br>חבילה משולבת</a><a href="abroad.html" class="glass quick-nav__card" style="--tf:#FB7185;--tt:#BE123C"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-plane"/></svg></span><br>חבילות חו״ל</a>
           <a href="compare.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg></span><br>השוואת מסלולים</a>
           <a href="providers.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-building"/></svg></span><br>כל הספקים</a>
           <a href="guides.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-book"/></svg></span><br>מדריכים</a>

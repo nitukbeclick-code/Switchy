@@ -2920,11 +2920,22 @@ ${navNoCta}
   <main id="main">
     <section class="lead-hero" style="text-align:center">
       <div class="container">
+        <div class="lost-bot" aria-hidden="true">
+          <svg viewBox="0 0 120 110" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="60" y1="8" x2="60" y2="22"/><circle cx="60" cy="7" r="4" fill="currentColor" stroke="none"/>
+            <rect x="24" y="22" width="72" height="56" rx="14"/>
+            <circle cx="46" cy="46" r="5" fill="currentColor" stroke="none"/>
+            <circle cx="74" cy="46" r="5" fill="currentColor" stroke="none"/>
+            <path d="M48 64c4-4 20-4 24 0" transform="rotate(180 60 62)"/>
+            <line x1="24" y1="46" x2="12" y2="42"/><line x1="96" y1="46" x2="108" y2="52"/>
+            <path d="M40 88c0 8 40 8 40 0" opacity=".35"/>
+          </svg>
+        </div>
         <span class="pill">404</span>
-        <h1>אופס, הדף לא נמצא</h1>
-        <p>הדף שחיפשתם לא קיים או עבר דירה. בואו נחזיר אתכם למסלול.</p>
+        <h1>המסלול הזה כבר לא קיים</h1>
+        <p>הדף שחיפשתם עבר דירה או ירד מהמדף — אבל יש בקטלוג ${PLAN_COUNT}+ מסלולים חיים אחרים. בואו נחזיר אתכם למסלול.</p>
         <div class="hero__cta" style="justify-content:center">
-          <a class="btn btn--primary btn--lg" href="index.html">חזרה לדף הבית</a>
+          <a class="btn btn--primary btn--lg" href="index.html#heroFinder">בדקו כמה תוכלו לחסוך${chev()}</a>
           <a class="btn btn--ghost btn--lg" href="plans.html">כל המסלולים</a>
         </div>
       </div>
@@ -2933,7 +2944,7 @@ ${navNoCta}
       <div class="container">
         <header class="section__head reveal" style="text-align:center"><span class="eyebrow">ניווט מהיר</span><h2>לאן רוצים לעבור?</h2></header>
         <nav style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:800px;margin:0 auto" aria-label="ניווט מהיר">
-          ${categories.map((c) => `<a href="${c.slug}.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${iconFor(c.icon)}</span><br>${esc(c.name)}</a>`).join('')}
+          ${categories.map((c) => `<a href="${c.slug}.html" class="glass quick-nav__card"${catHueStyle(c.slug)}><span class="quick-nav__ico" aria-hidden="true">${iconFor(c.icon)}</span><br>${esc(c.name)}</a>`).join('')}
           <a href="compare.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('scale')}</span><br>השוואת מסלולים</a>
           <a href="providers.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('building')}</span><br>כל הספקים</a>
           <a href="guides.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('book')}</span><br>מדריכים</a>

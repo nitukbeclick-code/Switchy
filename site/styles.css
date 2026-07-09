@@ -3780,6 +3780,88 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .post-card__report svg { width: 15px; height: 15px; }
 
+/* ── Conversion wave — the Zoom closing channel everywhere ────────────────── */
+.zoom-cta {
+  display: flex; align-items: center; gap: 10px; margin-top: 14px;
+  padding: 11px 14px; border-radius: 12px; text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 7%, var(--white));
+  border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line));
+  color: var(--ink-700); font-size: 13.5px; line-height: 1.5;
+  transition: border-color .18s, background .18s, transform .16s cubic-bezier(.23,1,.32,1);
+}
+.zoom-cta svg { width: 22px; height: 22px; color: var(--accent-d); flex: 0 0 auto; }
+.zoom-cta b { color: var(--accent-ink); }
+.zoom-cta:active { transform: scale(.98); }
+@media (hover: hover) and (pointer: fine) {
+  .zoom-cta:hover { border-style: solid; border-color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, var(--white)); }
+}
+:root[data-theme="dark"] .zoom-cta { background: rgba(74,222,128,.07); border-color: rgba(74,222,128,.3); }
+:root[data-theme="dark"] .zoom-cta svg, :root[data-theme="dark"] .zoom-cta b { color: var(--accent); }
+.zoom-cta--finder { margin-top: 12px; font-size: 12.5px; padding: 9px 12px; }
+
+/* Post-lead Zoom upsell — the hottest moment gets the warmest invitation. */
+.zoom-upsell {
+  display: block; margin: 14px auto 0; max-width: 560px; padding: 14px 18px; border-radius: 14px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35);
+  color: #fff; text-decoration: none; font-size: 14.5px; line-height: 1.55; text-align: center;
+  transition: background .18s, transform .16s cubic-bezier(.23,1,.32,1);
+  @starting-style { opacity: 0; transform: translateY(8px); }
+}
+.zoom-upsell b { color: var(--lime, #BEF264); }
+.zoom-upsell:hover { background: rgba(255,255,255,.18); }
+.zoom-upsell:active { transform: scale(.98); }
+
+/* Meeting nudge — one respectful glass card, bottom corner. */
+.meet-nudge {
+  position: fixed; bottom: 18px; inset-inline-start: 18px; z-index: 70;
+  width: min(340px, calc(100vw - 36px));
+  padding: 18px 16px 16px; border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--white) 88%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line); box-shadow: var(--shadow-lg);
+  transition: opacity .24s cubic-bezier(.23,1,.32,1), transform .24s cubic-bezier(.23,1,.32,1);
+  @starting-style { opacity: 0; transform: translateY(14px) scale(.98); }
+}
+@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) { .meet-nudge { background: var(--white); } }
+.meet-nudge__x {
+  position: absolute; top: 8px; inset-inline-end: 8px; width: 34px; height: 34px;
+  border: 0; background: none; cursor: pointer; color: var(--muted); font-size: 14px; border-radius: 8px;
+}
+.meet-nudge__x:hover { color: var(--ink-900); background: var(--mint); }
+.meet-nudge__ico {
+  width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--accent-t); color: var(--accent-d); margin-bottom: 10px;
+}
+.meet-nudge__ico svg { width: 22px; height: 22px; }
+.meet-nudge p { margin: 0 0 12px; font-size: 13.5px; line-height: 1.55; color: var(--ink-700); }
+.meet-nudge .btn { width: 100%; }
+:root[data-theme="dark"] .meet-nudge { background: rgba(17,22,28,.88); border-color: rgba(255,255,255,.12); }
+@media (max-width: 720px) { .meet-nudge { bottom: 84px; } } /* above the sticky bar */
+@media (prefers-reduced-motion: reduce) { .meet-nudge, .zoom-upsell { transition: none; } }
+
+/* Sticky mobile bar: primary CTA + always-reachable Zoom button. */
+.sticky-cta { display: flex; gap: 8px; align-items: stretch; }
+.sticky-cta .btn { flex: 1 1 auto; width: auto; }
+.sticky-cta__zoom {
+  flex: 0 0 auto; width: 52px; display: grid; place-items: center; border-radius: 14px;
+  background: var(--white); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+  color: var(--accent-d);
+}
+.sticky-cta__zoom svg { width: 22px; height: 22px; }
+.sticky-cta__zoom:active { transform: scale(.95); }
+:root[data-theme="dark"] .sticky-cta__zoom { background: rgba(28,36,46,.9); color: var(--accent); }
+
+/* Booking page proof line + a quiet pulse dot on the nav meeting link. */
+.book-proof { margin-top: 10px; font-weight: 700; color: var(--accent-ink); font-size: 14.5px; }
+.nav__links a[href="book.html"] { position: relative; padding-inline-end: 12px; }
+.nav__links a[href="book.html"]::after {
+  content: ""; position: absolute; top: 4px; inset-inline-end: 0; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--accent);
+  animation: nav-pulse 2.6s ease-in-out infinite;
+}
+@keyframes nav-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(22,163,74,.4); } 50% { box-shadow: 0 0 0 5px rgba(22,163,74,0); } }
+@media (prefers-reduced-motion: reduce) { .nav__links a[href="book.html"]::after { animation: none; } }
+
 /* ── תעודת מסלול — the standardized transparency label in the plan modal ──── */
 .plan-label {
   border: 2px solid var(--ink-900); border-radius: 12px; padding: 14px 16px; margin: 16px 0 6px;

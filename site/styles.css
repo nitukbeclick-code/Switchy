@@ -256,12 +256,24 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 body {
   font-family: 'Assistant', 'Segoe UI', Arial, sans-serif;
   color: var(--ink);
-  background: var(--cream);
+  /* Living paper: a whisper dot-grid + an icy wash at the top of every page —
+     depth for all ~240 pages from one rule. Sections with their own ground
+     simply cover it, so the texture peeks only between surfaces. */
+  background:
+    radial-gradient(rgba(17,24,39,.045) 1px, transparent 1.2px) 0 0 / 26px 26px,
+    linear-gradient(180deg, color-mix(in srgb, #BAE6FD 12%, var(--cream)), var(--cream) 520px);
+  background-color: var(--cream);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
   position: relative;
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(rgba(255,255,255,.03) 1px, transparent 1.2px) 0 0 / 26px 26px,
+    linear-gradient(180deg, color-mix(in srgb, #1E3A5F 22%, var(--cream)), var(--cream) 520px);
+  background-color: var(--cream);
 }
 
 /* Fine film grain over the whole page — adds tactile, premium depth without
@@ -748,7 +760,17 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* ── Sections ────────────────────────────────────────────────────────── */
 .section { padding: 64px 0; }
-.section--alt { background: #fff; }
+/* Alt sections: a two-tone drift (white → minty) + a colour-horizon hairline
+   on the top edge — the section breaks read as designed moments, not borders. */
+.section--alt {
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--mint) 60%, #fff));
+  position: relative;
+}
+.section--alt::before {
+  content: ""; position: absolute; top: -1px; inset-inline: 0; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 4%, rgba(22,163,74,.30), rgba(56,189,248,.30), rgba(129,140,248,.30), transparent 96%);
+}
+:root[data-theme="dark"] .section--alt::before { opacity: .5; }
 .section__head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
 .section__head h2 { font-size: var(--fs-h2); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
 .section__head p { color: var(--muted); margin-top: 14px; font-size: var(--fs-lead); line-height: 1.65; }
@@ -832,7 +854,14 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* Testimonials */
 .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.quote { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+.quote { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; position: relative; overflow: hidden; }
+/* Oversized decorative quotation mark behind the text — editorial richness. */
+.quote::before {
+  content: "”"; position: absolute; top: -34px; inset-inline-start: 8px;
+  font-family: Georgia, 'Times New Roman', serif; font-size: 150px; line-height: 1;
+  color: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none;
+}
+.quote blockquote, .quote figcaption { position: relative; }
 .section--alt .quote { background: var(--cream); }
 /* Rating stars — amber VALUE, darkened to clear the 3:1 graphical bar on white
    (the bright #f5a623 fill sat at ~2.3:1). Still reads as warm gold. */
@@ -867,6 +896,9 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .cta::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
+    radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.2px) 0 0 / 22px 22px,
+    radial-gradient(460px 320px at 10% 112%, rgba(129,140,248,.28), transparent 70%),
+    radial-gradient(420px 300px at 92% -12%, rgba(56,189,248,.20), transparent 70%),
     radial-gradient(900px 360px at 50% -30%, rgba(255,255,255,.10), transparent 70%),
     linear-gradient(180deg, rgba(255,255,255,.06), transparent 22%);
 }
@@ -1243,6 +1275,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .lead-hero h1 .hl { color: var(--green); }
 /* Category pages carry their hue (--tf/--tt stamped by build.js): the headline
    highlight and the hero pill speak the category colour — instant orientation. */
+.lead-hero--cat { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent 280px); }
 .lead-hero--cat h1 .hl { color: var(--tt, var(--green)); }
 .lead-hero--cat .pill {
   background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent);
@@ -1649,8 +1682,8 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .plan__cta .ico { width: 16px; height: 16px; vertical-align: -3px; margin-inline-end: 3px; }
 
 /* ── "Best value" anchor — the lowest-price plan in a category listing ─────── */
-.plan.plan--best { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), var(--shadow); }
-.plan.plan--best:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), var(--shadow-lg); }
+.plan.plan--best { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), 0 14px 44px -14px rgba(217,119,6,.35), var(--shadow); }
+.plan.plan--best:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), 0 18px 52px -14px rgba(217,119,6,.42), var(--shadow-lg); }
 .plan__badge {
   position: absolute; top: -10px; inset-inline-start: 14px; z-index: 2;
   background: var(--value-t); color: var(--value-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
@@ -1761,12 +1794,22 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ── Provider logo marquee — the trust band under the hero ──────────────────
    Two identical tracks translate -50% in a loop; pauses on hover/focus, and
    reduced-motion (or no-JS-needed fallback) degrades to a wrapped static row. */
-.logo-marquee { overflow: hidden; position: relative; }
+/* Premium ink band: the provider chips float on a lit dark strip instead of
+   bare page ground — the trust row reads as a designed object. */
+.logo-marquee {
+  overflow: hidden; position: relative; border-radius: var(--radius-lg); padding: 16px 0;
+  background: linear-gradient(140deg, #0B0F14, #141D27);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), var(--shadow-sm);
+}
 .logo-marquee::before, .logo-marquee::after {
   content: ""; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 1; pointer-events: none;
 }
-.logo-marquee::before { inset-inline-start: 0; background: linear-gradient(to left, transparent, var(--cream)); }
-.logo-marquee::after { inset-inline-end: 0; background: linear-gradient(to right, transparent, var(--cream)); }
+.logo-marquee::before { inset-inline-start: 0; background: linear-gradient(to left, transparent, #0B0F14); }
+.logo-marquee::after { inset-inline-end: 0; background: linear-gradient(to right, transparent, #0B0F14); }
+.logo-marquee .logo-chip { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.13); color: #E5E7EB; }
+@media (hover: hover) and (pointer: fine) {
+  .logo-marquee .logo-chip:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.24); color: #fff; }
+}
 .logo-marquee__row { display: flex; gap: 12px; width: max-content; animation: marquee 42s linear infinite; }
 .logo-marquee__track { display: flex; gap: 12px; }
 .logo-marquee:hover .logo-marquee__row,
@@ -3736,6 +3779,43 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   .community-stats { gap: 8px; }
   .community-stats__item b { font-size: 21px; }
 }
+
+/* ── Bento band — "SWITCHY at a glance" showcase on the homepage ────────────
+   Asymmetric 4-cell grid; each cell whispers a different hue, the ink cell
+   carries the CTA. Numbers are restated from elsewhere on the page (honest). */
+.bento-sec { padding-top: 0; }
+.bento { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1.25fr; gap: 14px; }
+.bento__cell {
+  border-radius: var(--radius-lg); padding: 26px 22px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--white); border: 1px solid var(--line); box-shadow: var(--glint), var(--shadow-sm);
+}
+.bento__cell b {
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: -1.5px;
+  font-size: clamp(34px, 3.4vw, 46px); line-height: 1; color: var(--ink-900); font-variant-numeric: tabular-nums;
+}
+.bento__cell b small { font-size: .45em; font-weight: 800; letter-spacing: 0; }
+.bento__cell > span { font-size: 13.5px; line-height: 1.5; color: var(--ink-600); } /* direct child only — the counter <span> inside <b> must inherit the display size */
+.bento__cell .btn { margin-top: auto; align-self: flex-start; }
+.bento__cell--value { background: linear-gradient(160deg, #FFFDF5, var(--value-t)); border-color: color-mix(in srgb, var(--value) 30%, var(--line)); }
+.bento__cell--value b { color: var(--value-ink); }
+.bento__cell--sky { background: linear-gradient(160deg, #FFF, #E8F6FE); border-color: color-mix(in srgb, #38BDF8 30%, var(--line)); }
+.bento__cell--sky b { color: #0369A1; }
+.bento__cell--violet { background: linear-gradient(160deg, #FFF, #EEF0FE); border-color: color-mix(in srgb, #818CF8 30%, var(--line)); }
+.bento__cell--violet b { color: #4338CA; }
+.bento__cell--ink {
+  background: linear-gradient(150deg, #0B0F14, #17222E);
+  border-color: rgba(255,255,255,.09);
+  background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1.2px), linear-gradient(150deg, #0B0F14, #17222E);
+  background-size: 20px 20px, auto;
+}
+.bento__cell--ink b { color: #fff; }
+.bento__cell--ink > span { color: rgba(245,247,248,.75); }
+:root[data-theme="dark"] .bento__cell { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+:root[data-theme="dark"] .bento__cell--value b { color: var(--value); }
+:root[data-theme="dark"] .bento__cell--sky b { color: #7DD3FC; }
+:root[data-theme="dark"] .bento__cell--violet b { color: #A5B4FC; }
+@media (max-width: 900px) { .bento { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 460px) { .bento { gap: 10px; } .bento__cell { padding: 20px 16px; } }
 
 /* Ticker items are links into the deals page. */
 a.ticker__item { text-decoration: none; color: var(--ink-700); }

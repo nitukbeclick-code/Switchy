@@ -164,7 +164,7 @@ export default async function AbroadLandingPage() {
             {minFeatured !== undefined ? (
               <>
                 {" "}
-                <span className="text-accent">
+                <span className="text-[#4ade80]">
                   מ-{ils(minFeatured)} {minUnitLabel}.
                 </span>
               </>
@@ -204,7 +204,7 @@ export default async function AbroadLandingPage() {
               style={{ animationDelay: "150ms" }}
             >
               {all.length} חבילות · החל מ-
-              <span className="font-display font-bold text-accent">
+              <span className="font-display font-bold text-[#4ade80]">
                 {ils(minFeatured)}
               </span>{" "}
               {minUnitLabel}

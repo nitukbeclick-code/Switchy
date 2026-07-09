@@ -153,7 +153,7 @@ export default function AboutPage() {
             <h1 className="sw-reveal mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
               משווים, חוסכים, עוברים — בלי כאב ראש.{" "}
               {minPrice > 0 ? (
-                <span className="text-accent">מסלולים מ-{ils(minPrice)} לחודש.</span>
+                <span className="text-[#4ade80]">מסלולים מ-{ils(minPrice)} לחודש.</span>
               ) : null}
             </h1>
             <p
@@ -213,7 +213,7 @@ export default function AboutPage() {
                 <>
                   {" "}
                   · החל מ-
-                  <span className="font-display font-bold text-accent">
+                  <span className="font-display font-bold text-[#4ade80]">
                     {ils(minPrice)}
                   </span>{" "}
                   לחודש

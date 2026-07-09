@@ -1856,9 +1856,10 @@
         channels.forEach((ch) => filterRow.appendChild(mk(ch, ch)));
       };
 
-      (async () => {
+      const skeletons = '<div class="post-skel" aria-hidden="true"><i></i><i></i><i></i></div>'.repeat(3);
+      const loadFeed = async () => {
         feed.setAttribute('aria-busy', 'true');
-        feed.innerHTML = '<p class="community__loading">טוען את הקהילה…</p>';
+        feed.innerHTML = skeletons;
         try {
           const posts = await sbRest('community_posts?select=id,author,avatar,channel,body,media_type,media_url,created_at' +
             '&is_flagged=eq.false&order=created_at.desc&limit=30');
@@ -1867,10 +1868,15 @@
           buildFilter();
           paintFeed();
         } catch (_) {
-          feed.innerHTML = '<p class="community__error">לא הצלחנו לטעון את הקהילה כרגע — נסו שוב בעוד רגע, או פתחו את האפליקציה 💬</p>';
+          // A calm contained card, not floating red text — red is for user errors.
+          feed.innerHTML = '<div class="load-error"><p>לא הצלחנו לטעון את הקהילה כרגע.</p>' +
+            '<button type="button" class="btn btn--ghost" id="feedRetry">נסו שוב</button></div>';
+          const retry = feed.querySelector('#feedRetry');
+          if (retry) retry.addEventListener('click', loadFeed, { once: true });
         }
         feed.removeAttribute('aria-busy');
-      })();
+      };
+      loadFeed();
     }
 
     // ── Provider ratings + recent reviews ────────────────────────────────────
@@ -1892,9 +1898,9 @@
         return '<span class="rating-card__stars" aria-hidden="true">' + out + '</span>';
       };
 
-      (async () => {
+      const loadRatings = async () => {
         ratingsHost.setAttribute('aria-busy', 'true');
-        ratingsHost.innerHTML = '<p class="ratings__loading">טוען דירוגים…</p>';
+        ratingsHost.innerHTML = '<div class="post-skel" aria-hidden="true"><i></i><i></i><i></i></div>';
         try {
           const rows = await sbRest('provider_rating_summary?select=*');
           const summary = Array.isArray(rows) ? rows.slice() : [];
@@ -1917,10 +1923,14 @@
             }).join('') + '</div>';
           }
         } catch (_) {
-          ratingsHost.innerHTML = '<p class="ratings__error">לא הצלחנו לטעון דירוגים כרגע — נסו שוב בעוד רגע.</p>';
+          ratingsHost.innerHTML = '<div class="load-error"><p>לא הצלחנו לטעון דירוגים כרגע.</p>' +
+            '<button type="button" class="btn btn--ghost" id="ratingsRetry">נסו שוב</button></div>';
+          const retry = ratingsHost.querySelector('#ratingsRetry');
+          if (retry) retry.addEventListener('click', loadRatings, { once: true });
         }
         ratingsHost.removeAttribute('aria-busy');
-      })();
+      };
+      loadRatings();
 
       if (reviewsHost) {
         (async () => {
@@ -3435,6 +3445,24 @@
       var section = host.closest('.community-leaders');
       if (section) section.hidden = false;
     }).catch(function () { /* stay hidden */ });
+  })();
+
+  // ── (16) SCROLL-DIRECTION FLAG — lets CSS tuck floating chrome away ────────
+  // Reading down = the WhatsApp FAB hides (mobile CSS); any scroll up brings it
+  // back. Passive + rAF-throttled; ignored near the top of the page.
+  (() => {
+    let lastY = 0;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY || 0;
+        document.body.classList.toggle('is-scroll-down', y > lastY && y > 320);
+        lastY = y;
+        ticking = false;
+      });
+    }, { passive: true });
   })();
 
   // ── (15) PER-PLAN PRICE WATCH — "עקבו אחרי המסלול הזה" ─────────────────────

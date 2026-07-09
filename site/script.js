@@ -2833,6 +2833,27 @@
 
     const rows = (obj) => Object.entries(obj || {}).filter(([, v]) => v).map(([k, v]) =>
       `<div class="pmodal__row"><span class="pmodal__k">${esc(k)}</span><span class="pmodal__v">${esc(v)}</span></div>`).join('');
+
+    // "תעודת מסלול" — a standardized transparency label (FCC broadband-label
+    // inspired): the same five facts, in the same order, for every plan. All
+    // figures are straight from the catalogue; the yearly line is honest
+    // arithmetic (12× today / 12× after) presented as a range.
+    const planLabel = (p) => {
+      const monthly = !p.priceUnit || p.priceUnit === 'month';
+      const priceV = p.priceExact != null ? p.priceExact : p.price;
+      const afterV = p.afterExact != null ? p.afterExact : p.after;
+      const hasJump = p.after != null && p.after > p.price;
+      const yr = (n) => '₪' + Math.round(n * 12).toLocaleString('he-IL');
+      const row = (k, v, cls) => `<div class="plan-label__row${cls ? ' ' + cls : ''}"><span>${esc(k)}</span><b>${v}</b></div>`;
+      return `<div class="plan-label" role="group" aria-label="תעודת מסלול — כל העובדות במבנה אחיד">
+        <p class="plan-label__t">תעודת מסלול <span>שקיפות מלאה, אותו מבנה לכל מסלול</span></p>
+        ${row('מחיר חודשי היום', `<span dir="ltr">₪${esc(priceV)}</span>`)}
+        ${hasJump ? row('מחיר אחרי המבצע', `<span dir="ltr">₪${esc(afterV)}</span>`, 'plan-label__row--after') : row('שינוי מחיר', 'מחיר קבוע — אין קפיצה')}
+        ${row('התחייבות', p.noCommit ? 'ללא התחייבות' : esc((p.term || '') + ' חודשים'))}
+        ${monthly ? row('עלות שנה (טווח כנה)', hasJump ? `<span dir="ltr">${yr(p.price)}–${yr(p.after)}</span>` : `<span dir="ltr">${yr(p.price)}</span>`) : ''}
+        ${p.net ? row('רשת / תשתית', esc(p.net)) : ''}
+      </div>`;
+    };
     const list = (arr) => (arr || []).filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('');
 
     const render = (p) => {
@@ -2855,6 +2876,7 @@
           <div class="pmodal__price"><b dir="ltr">${price}</b> <span>${esc(unit)}</span> ${after}</div>
           ${flags.length ? `<div class="pmodal__flags">${flags.map((f) => `<span class="pmodal__flag">${esc(f)}</span>`).join('')}</div>` : ''}
         </header>
+        ${planLabel(p)}
         ${specs ? `<section class="pmodal__sec"><h3>מה מקבלים</h3><div class="pmodal__grid">${specs}</div></section>` : ''}
         ${fees ? `<section class="pmodal__sec"><h3>עלויות וציוד</h3><div class="pmodal__grid">${fees}</div></section>` : ''}
         ${(p.feats && p.feats.length) ? `<section class="pmodal__sec"><h3>כלול בחבילה</h3><ul class="pmodal__ul">${list(p.feats)}</ul></section>` : ''}
@@ -3445,6 +3467,54 @@
       var section = host.closest('.community-leaders');
       if (section) section.hidden = false;
     }).catch(function () { /* stay hidden */ });
+  })();
+
+  // ── (17) CATEGORY QUICK FILTERS — sticky chips + live result count ─────────
+  // Mirrors the plans.html filter logic on category pages: flag chips + max
+  // price, a live "מציג X מתוך Y" counter and a clear-all that appears only
+  // when something is filtered. Pure show/hide on the pre-rendered cards.
+  (() => {
+    const grid = $('catPlanGrid');
+    const bar = $('catFilters');
+    if (!grid || !bar) return;
+    const cards = Array.from(grid.querySelectorAll('.plan'));
+    const total = Number(grid.getAttribute('data-total')) || cards.length;
+    const chips = Array.from(bar.querySelectorAll('.flag-chip'));
+    const maxEl = $('catMaxPrice');
+    const countEl = $('catCount');
+    const clearEl = $('catClear');
+    const emptyEl = $('catEmpty');
+    const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo' };
+
+    const apply = () => {
+      const active = chips.filter((ch) => ch.classList.contains('active')).map((ch) => ch.dataset.flag);
+      const maxPrice = maxEl && maxEl.value ? Number(maxEl.value) : Infinity;
+      let shown = 0;
+      for (const card of cards) {
+        const okFlags = active.every((f) => card.getAttribute(flagKey[f]) === 'true');
+        const okPrice = Number(card.dataset.price) <= maxPrice;
+        const visible = okFlags && okPrice;
+        card.style.display = visible ? '' : 'none';
+        if (visible) shown++;
+      }
+      const filtering = active.length || maxPrice !== Infinity;
+      if (countEl) countEl.textContent = filtering ? ('מציג ' + shown + ' מתוך ' + total + ' מסלולים') : ('מציג את כל ' + total + ' המסלולים');
+      if (clearEl) clearEl.hidden = !filtering;
+      if (emptyEl) emptyEl.hidden = shown > 0;
+    };
+    chips.forEach((ch) => ch.addEventListener('click', () => {
+      const on = !ch.classList.contains('active');
+      ch.classList.toggle('active', on);
+      ch.setAttribute('aria-pressed', String(on));
+      apply();
+      track('cat_filter', { flag: ch.dataset.flag, on: on });
+    }));
+    if (maxEl) maxEl.addEventListener('input', apply);
+    if (clearEl) clearEl.addEventListener('click', () => {
+      chips.forEach((ch) => { ch.classList.remove('active'); ch.setAttribute('aria-pressed', 'false'); });
+      if (maxEl) maxEl.value = '';
+      apply();
+    });
   })();
 
   // ── (16) SCROLL-DIRECTION FLAG — lets CSS tuck floating chrome away ────────

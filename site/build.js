@@ -1756,9 +1756,21 @@ ${comparisonTable(catPlans, c.slug)}
     <section class="section" id="plans">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">${catPlans.length} מסלולים</span><h2>כל המסלולים — בפירוט מלא</h2><p>אותם מסלולים כמו בטבלה, עם כל הפרטים וכפתור פנייה ישיר.</p>${freshnessBadge()}</header>
-        <div class="plan-grid">
+        <div class="cat-filters" id="catFilters" role="group" aria-label="סינון מסלולים">
+          <div class="cat-filters__chips">
+            <button type="button" class="flag-chip" data-flag="haspromo" aria-pressed="false">במבצע</button>
+            <button type="button" class="flag-chip" data-flag="nocommit" aria-pressed="false">ללא התחייבות</button>
+            ${c.slug === 'cellular' ? '<button type="button" class="flag-chip" data-flag="5g" aria-pressed="false">5G</button>' : ''}
+            ${['cellular', 'triple'].includes(c.slug) ? '<button type="button" class="flag-chip" data-flag="abroad" aria-pressed="false">כולל חו״ל</button>' : ''}
+          </div>
+          <label class="cat-filters__price" for="catMaxPrice">עד&nbsp;₪<input type="number" id="catMaxPrice" min="0" inputmode="numeric" placeholder="—" aria-label="מחיר מקסימלי בשקלים" /></label>
+          <span class="cat-filters__count" id="catCount" aria-live="polite">מציג את כל ${catPlans.length} המסלולים</span>
+          <button type="button" class="linklike cat-filters__clear" id="catClear" hidden>נקו הכול</button>
+        </div>
+        <div class="plan-grid" id="catPlanGrid" data-total="${catPlans.length}">
       ${planCards}
         </div>
+        <p class="cat-filters__empty" id="catEmpty" hidden>אין מסלולים שמתאימים לסינון — נסו להסיר פילטר.</p>
       </div>
     </section>
 

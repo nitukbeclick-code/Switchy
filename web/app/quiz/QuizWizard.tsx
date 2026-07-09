@@ -263,6 +263,21 @@ export default function QuizWizard() {
           </span>
           <span>{progress}%</span>
         </div>
+        {/* Step dots — a glanceable per-step position strip: done/active steps are
+            accent-green, upcoming steps neutral. Decorative (the progressbar below
+            owns the a11y semantics), so the strip is aria-hidden. RTL-correct:
+            flex follows the document's logical direction. */}
+        <div aria-hidden="true" className="mb-1.5 flex items-center gap-1.5">
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <span
+              key={i}
+              className={[
+                "h-1.5 flex-1 rounded-full transition-colors ease-[var(--ease-out)]",
+                i <= step ? "bg-accent" : "bg-border",
+              ].join(" ")}
+            />
+          ))}
+        </div>
         <div
           className="h-1.5 w-full overflow-hidden rounded-full bg-border"
           role="progressbar"

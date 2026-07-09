@@ -323,9 +323,9 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
         {phase === "error" && error && (
           <div
             role="alert"
-            className="bento mt-4 border-l-4 border-l-value p-5 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]"
+            className="bento mt-4 border-s-4 border-s-danger bg-danger/5 p-5 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]"
           >
-            <p className="text-sm font-medium text-ink">{error}</p>
+            <p className="text-sm font-medium text-danger-text">{error}</p>
             <button
               type="button"
               onClick={reset}
@@ -520,9 +520,9 @@ function ConfidenceNote({
         <Icon
           name={tone === "ok" ? "check" : "alert"}
           size={14}
-          className={`shrink-0 ${tone === "ok" ? "text-muted" : "text-value-text"}`}
+          className={`shrink-0 ${tone === "ok" ? "text-muted" : "text-danger-text"}`}
         />
-        <span className={tone === "ok" ? "text-muted" : "text-value-text"}>
+        <span className={tone === "ok" ? "text-muted" : "text-danger-text"}>
           רמת ודאות בקריאה: {label}
         </span>
       </p>

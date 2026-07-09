@@ -130,7 +130,7 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
               id={catId}
               value={category}
               onChange={(e) => setCategory(e.target.value as NegotiateCategory)}
-              className="interactive mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-foreground focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="interactive mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             >
               {NEGOTIATE_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
@@ -154,7 +154,7 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
               onChange={(e) => setProvider(e.target.value)}
               placeholder="לדוגמה: סלקום"
               autoComplete="off"
-              className="interactive mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="interactive mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
             <datalist id={listId}>
               {providers.map((p) => (
@@ -179,7 +179,7 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
               value={bill}
               onChange={(e) => setBill(e.target.value)}
               placeholder="0"
-              className="interactive mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-end text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="interactive mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-end text-foreground placeholder:text-muted outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             />
           </div>
 
@@ -187,7 +187,7 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
           <div className="flex items-end">
             <label
               htmlFor={abroadId}
-              className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5"
+              className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5"
             >
               <input
                 id={abroadId}
@@ -207,7 +207,7 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
           type="submit"
           disabled={status === "loading"}
           aria-busy={status === "loading"}
-          className="interactive press glow-accent mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-bold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60 sm:w-auto"
+          className="interactive press shadow-soft mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60 sm:w-auto"
         >
           {status === "loading" ? "בונה תסריט…" : "בנו לי תסריט מיקוח"}
           {status === "loading" ? null : <Icon name="arrow" size={18} aria-hidden />}
@@ -238,9 +238,9 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
       {status === "error" && (
         <p
           role="alert"
-          className="mt-6 flex items-start gap-2.5 rounded-2xl border border-value/40 bg-value/5 p-5 text-foreground"
+          className="mt-6 flex items-start gap-2.5 rounded-2xl border border-danger/40 bg-danger/5 p-5 text-foreground"
         >
-          <Icon name="alert" size={20} className="mt-0.5 shrink-0 text-value-text" aria-hidden />
+          <Icon name="alert" size={20} className="mt-0.5 shrink-0 text-danger-text" aria-hidden />
           <span>
             {error}{" "}
             <Link

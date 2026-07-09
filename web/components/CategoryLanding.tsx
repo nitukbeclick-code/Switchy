@@ -32,7 +32,8 @@ import RelatedLinks from "@/components/RelatedLinks";
 import JsonLd from "@/components/JsonLd";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
-import { ils, priceUnitLabel } from "@/lib/format";
+import { priceUnitLabel } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 import {
   buildCategoryRelatedGroups,
   relatedNavLinks,
@@ -105,7 +106,12 @@ export default function CategoryLanding({
   const cheapestFeatured = pricedPlans.length
     ? pricedPlans.reduce((a, b) => (b.price < a.price ? b : a))
     : undefined;
-  const minFeatured = cheapestFeatured?.price;
+  // Render the entry price with priceText — the SAME decimal-preserving helper the
+  // ComparisonTable rows use — so the hero floor equals the cheapest row shown
+  // below and never rounds a ₪10.90 plan UP to ₪11 (which would understate the
+  // deal and drift from the catalogue). Falls back to String(price) when no exact
+  // price exists, exactly like the table.
+  const minFeaturedText = cheapestFeatured ? priceText(cheapestFeatured) : undefined;
   const minUnitLabel = cheapestFeatured ? priceUnitLabel(cheapestFeatured) : "לחודש";
 
   // Catalogue-derived hub-spoke cross-links: this category's providers, head-to-
@@ -144,14 +150,14 @@ export default function CategoryLanding({
               className="sw-reveal font-display text-3xl font-bold tracking-tight text-white sm:text-5xl"
             >
               {titleHe}
-              {minFeatured !== undefined ? (
+              {minFeaturedText !== undefined ? (
                 <>
                   {" "}
                   {/* Bright green (the dark-theme accent) — the fill-grade
                       #15803d green is only ~3.5:1 on this dark ink hero; #4ade80
                       is ~9:1. This is green TEXT on dark, not a fill, so it wants
                       the light-on-dark shade, not the CTA fill shade. */}
-                  <span className="text-[#4ade80]">מ-{ils(minFeatured)} {minUnitLabel}.</span>
+                  <span className="text-[#4ade80]">מ-₪{minFeaturedText} {minUnitLabel}.</span>
                 </>
               ) : null}
             </h2>
@@ -174,7 +180,7 @@ export default function CategoryLanding({
                 label="compare"
                 className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
               >
-                {`לכל מסלולי ${titleHe}`}
+                {`לכל ${titleHe}`}
                 <Icon name="chevron" size={18} aria-hidden="true" />
               </TrackedCtaLink>
             </div>
@@ -222,7 +228,7 @@ export default function CategoryLanding({
           href={comparePath}
           className="interactive mt-6 inline-flex items-center gap-1 font-medium text-accent-text underline underline-offset-4 hover:text-accent-hover"
         >
-          {`לכל מסלולי ${titleHe}`}
+          {`לכל ${titleHe}`}
           <Icon name="chevron" size={16} aria-hidden="true" />
         </Link>
       </div>

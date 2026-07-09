@@ -28,7 +28,7 @@ import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
 import type { ForensicsPlan } from "@/lib/bill-forensics";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
-import { ils } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
@@ -49,12 +49,15 @@ export default function BillsPage() {
   const providerCount = providers.length;
   const categoryCount = getCategories().length;
 
-  // The real cheapest catalogue entry price — the ONLY figure that carries the
-  // green VALUE emphasis in the hero. Never a fabricated/promised number.
+  // The real cheapest catalogue entry PLAN — the ONLY figure that carries the
+  // green VALUE emphasis in the hero. Never a fabricated/promised number. We keep
+  // the cheapest priced plan OBJECT (not just its rounded number) so the hero floor
+  // renders via priceText — the same decimal-preserving helper the comparison rows
+  // use — and never rounds a ₪10.90 plan UP to ₪11, which would overstate the floor.
   const priced = plans.filter((p) => typeof p.price === "number");
-  const minFeatured = priced.length
-    ? Math.min(...priced.map((p) => p.price))
-    : 0;
+  const cheapest = priced.length
+    ? priced.reduce((a, b) => (b.price < a.price ? b : a))
+    : undefined;
 
   // Slim, serializable catalogue projection for the bill-forensics expired-promo
   // detection (needs the promo→post-promo `after` step-up). Only plans that carry
@@ -132,8 +135,13 @@ export default function BillsPage() {
       <section className="relative isolate mt-3 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
         <div className="mx-auto max-w-2xl">
           <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            צלמו את החשבון, בדקו כמה אפשר לחסוך.{" "}
-            <span className="text-[#4ade80]">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+            צלמו את החשבון, בדקו כמה אפשר לחסוך.
+            {cheapest ? (
+              <>
+                {" "}
+                <span className="text-[#4ade80]">מסלולים מ-₪{priceText(cheapest)} לחודש.</span>
+              </>
+            ) : null}
           </h1>
           <p
             className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
@@ -172,11 +180,16 @@ export default function BillsPage() {
             className="sw-reveal mt-8 text-sm text-white/85"
             style={{ animationDelay: "150ms" }}
           >
-            {planCount} מסלולים · {providerCount} ספקים · החל מ-
-            <span className="font-display font-bold text-[#4ade80]">
-              {ils(minFeatured)}
-            </span>{" "}
-            לחודש
+            {planCount} מסלולים · {providerCount} ספקים
+            {cheapest ? (
+              <>
+                {" · "}החל מ-
+                <span className="font-display font-bold text-[#4ade80]">
+                  ₪{priceText(cheapest)}
+                </span>{" "}
+                לחודש
+              </>
+            ) : null}
           </p>
           {/* Quiet qualitative value line — muted, small green tick, honest (no
               fabricated figure). */}

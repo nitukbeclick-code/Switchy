@@ -98,6 +98,12 @@ export default function StreetPricesClient({
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
   const [submitMsg, setSubmitMsg] = useState("");
   const [submitErr, setSubmitErr] = useState("");
+  // Which free-text input (if any) the last client-side validation flagged, so it
+  // can be marked aria-invalid + danger-bordered. Server / network errors aren't
+  // tied to a single field, so they leave this null.
+  const [invalidField, setInvalidField] = useState<"provider" | "price" | null>(
+    null,
+  );
 
   // Refresh once on mount to pick up any reports since SSR. The effect body does
   // NO synchronous setState — the fetch helper is called and state is set only in
@@ -117,12 +123,16 @@ export default function StreetPricesClient({
     e.preventDefault();
     setSubmitErr("");
     setSubmitMsg("");
+    setInvalidField(null);
 
     // Client-side guard (the edge fn re-validates + runs the nuanced screen).
     const v = validateSubmission({ category, provider, reported_price: price });
     if (!v.ok) {
       setSubmitStatus("error");
       setSubmitErr(v.error);
+      // Mirror validateSubmission's field order (category is a fixed select, so the
+      // offender is the provider when it's blank, otherwise the price field).
+      setInvalidField(provider.trim() === "" ? "provider" : "price");
       return;
     }
 
@@ -173,7 +183,7 @@ export default function StreetPricesClient({
       <section aria-labelledby="chart-h">
         <h2
           id="chart-h"
-          className="font-display text-xl font-bold tracking-tight text-ink"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
         >
           המחיר האמיתי לפי הקהילה
         </h2>
@@ -198,7 +208,7 @@ export default function StreetPricesClient({
       >
         <h2
           id="report-h"
-          className="font-display text-xl font-bold tracking-tight text-ink"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
         >
           דווחו כמה אתם משלמים
         </h2>
@@ -249,7 +259,8 @@ export default function StreetPricesClient({
                 onChange={(e) => setProvider(e.target.value)}
                 placeholder="לדוגמה: סלקום"
                 autoComplete="off"
-                className="interactive mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                aria-invalid={invalidField === "provider"}
+                className={`interactive mt-1.5 w-full rounded-xl border ${invalidField === "provider" ? "border-danger" : "border-border"} bg-surface px-3 py-2.5 text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
               />
               <datalist id={listId}>
                 {providers.map((p) => (
@@ -276,7 +287,8 @@ export default function StreetPricesClient({
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="0"
-                className="interactive mt-1.5 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-end text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                aria-invalid={invalidField === "price"}
+                className={`interactive mt-1.5 w-full rounded-xl border ${invalidField === "price" ? "border-danger" : "border-border"} bg-surface px-3 py-2.5 text-end text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
               />
             </div>
           </div>
@@ -306,7 +318,7 @@ export default function StreetPricesClient({
             {submitStatus === "error" && submitErr ? (
               <p
                 role="alert"
-                className="mt-4 rounded-xl border border-border p-4 text-sm leading-relaxed text-foreground"
+                className="mt-4 rounded-xl border border-danger/40 bg-danger/5 p-4 text-sm leading-relaxed text-danger-text"
               >
                 {submitErr}
               </p>

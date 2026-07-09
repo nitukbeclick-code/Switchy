@@ -38,6 +38,7 @@ import {
 import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import type { Plan } from "@/lib/types";
 
@@ -108,7 +109,7 @@ function buildAuthority(
   const cheapest = [...plans].sort((a, b) => a.price - b.price)[0];
   const answer = cheapest
     ? `${provider.name} מופיעה בקטלוג שלנו עם ${plans.length} מסלולים ` +
-      `ב-${picks.length} קטגוריות, החל מ-${ils(cheapest.price)} ` +
+      `ב-${picks.length} קטגוריות, החל מ-₪${priceText(cheapest)} ` +
       `(${cheapest.plan}). הטבלה למטה מציגה את המסלול ההתחלתי של ${provider.name} ` +
       `בכל קטגוריה — להשוואה מול ספקים אחרים.`
     : `${provider.name} מופיעה בקטלוג שלנו; ראו את המסלולים והשוו מול ספקים אחרים למטה.`;
@@ -241,9 +242,17 @@ export default async function ProviderPage({ params }: Params) {
   // FAQ and summary agree with the table / AggregateOffer / AEO answer. Falls back
   // to the bundled provider aggregates only if (defensively) plans is empty.
   const shownPlanCount = plans.length || provider.planCount;
-  const shownMinPrice = plans.length
-    ? Math.min(...plans.map((p) => p.price))
-    : provider.minPrice;
+  // Keep the cheapest RENDERED plan OBJECT (not just its rounded number) so every
+  // "החל מ-₪X" floor renders via priceText — the SAME decimal-preserving helper the
+  // ComparisonTable rows use — and never rounds a ₪10.90 plan UP to ₪11 (which would
+  // overstate the floor and drift from the table below). Falls back to the bundled
+  // provider aggregate only if (defensively) no plan is rendered.
+  const cheapestShown = plans.length
+    ? plans.reduce((a, b) => (b.price < a.price ? b : a))
+    : undefined;
+  const shownMinPriceText = cheapestShown
+    ? `₪${priceText(cheapestShown)}`
+    : ils(provider.minPrice);
   const picks = bestFor(plans);
   const authority = buildAuthority(provider, plans);
   const reasoning = buildReasoning(provider, plans);
@@ -267,7 +276,7 @@ export default async function ProviderPage({ params }: Params) {
       answer:
         `בקטלוג שלנו מופיעים ${shownPlanCount} מסלולים של ${provider.name} ` +
         `בקטגוריות ${provider.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}, ` +
-        `החל מ-${ils(shownMinPrice)}.`,
+        `החל מ-${shownMinPriceText}.`,
     },
     {
       question: `איך עוברים ל${provider.name}?`,
@@ -281,7 +290,7 @@ export default async function ProviderPage({ params }: Params) {
   const summary =
     `${provider.name} מציעה ${shownPlanCount} מסלולים בקטלוג שלנו ` +
     `בקטגוריות ${provider.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}, ` +
-    `החל מ-${ils(shownMinPrice)}. כאן אפשר להשוות את כל המסלולים שלה מול ` +
+    `החל מ-${shownMinPriceText}. כאן אפשר להשוות את כל המסלולים שלה מול ` +
     `ספקים אחרים בישראל — בשקלים וללא עלות.`;
 
   return (
@@ -383,7 +392,7 @@ export default async function ProviderPage({ params }: Params) {
           <div className="bento px-5 py-4">
             <dt className="text-muted">מחיר התחלתי</dt>
             <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-value-text">
-              {ils(shownMinPrice)}
+              {shownMinPriceText}
             </dd>
           </div>
           {/* Categories render as discrete tags (not one long bold sentence) so

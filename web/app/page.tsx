@@ -29,6 +29,7 @@ import { itemListSchema, faqPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 
 // GENERAL_FAQ items are {question, answer} (QA); <FaqAccordion> renders {q, a}.
 // Map them here so the SAME canonical home FAQ copy drives both the visible
@@ -56,12 +57,15 @@ function cheapestIn(cat: string, n: number) {
 // The REAL catalogue entry price for a category (lowest numeric price), or null
 // when the category has no priced plans. Catalogue-derived so per-category
 // anchors on the hero / category cards can never drift from the data.
-function catEntryPrice(cat: string): number | null {
+function catEntryPriceText(cat: string): string | null {
   const priced = plansByCategory(cat).filter(
     (p) => typeof p.price === "number",
   );
   if (priced.length === 0) return null;
-  return Math.min(...priced.map((p) => p.price));
+  // The cheapest priced plan's EXACT advertised price (₪10.90, not a rounded-up
+  // ₪11), via priceText — mirrors the comparison table so this anchor can never
+  // read HIGHER than a plan the same catalogue actually offers.
+  return priceText(priced.reduce((a, b) => (b.price < a.price ? b : a)));
 }
 
 // Categories whose prices are a per-MONTH figure, so a "מ-₪X לחודש" anchor is
@@ -73,8 +77,8 @@ const MONTHLY_ANCHOR_CATS = new Set(["cellular", "internet", "tv", "triple"]);
 // monthly-priced categories, or a qualitative line for חו״ל (mixed units).
 function categoryEntryLabel(cat: string): string {
   if (!MONTHLY_ANCHOR_CATS.has(cat)) return "מחו״ל — במגוון יחידות";
-  const entry = catEntryPrice(cat);
-  return entry != null ? `מ-${ils(entry)} לחודש` : "";
+  const entry = catEntryPriceText(cat);
+  return entry != null ? `מ-₪${entry} לחודש` : "";
 }
 
 // ── Category launcher visual identity ────────────────────────────────────────
@@ -117,13 +121,20 @@ export default function Home() {
   // Featured table: cheapest cellular plans (the highest-traffic category).
   const featuredCat = categories.includes("cellular") ? "cellular" : categories[0];
   const featured = cheapestIn(featuredCat, 6);
-  const minFeatured = featured.length ? featured[0].price : 0;
+  // Keep the cheapest featured plan ITSELF (not just its rounded sort-key price)
+  // so the hero / trust-band floor renders with priceText — the SAME decimal-
+  // preserving helper the ComparisonTable rows below use — and never rounds a
+  // ₪10.90 plan UP to ₪11 (which would OVERSTATE the floor and drift from the
+  // catalogue). `cheapestIn` already priced-filters and sorts ascending, so [0]
+  // is the cheapest; undefined ⇒ no fabricated number is shown.
+  const cheapestFeatured = featured[0];
+  const minFeaturedText = cheapestFeatured ? priceText(cheapestFeatured) : undefined;
 
   // Second category anchor for the hero value clause — the honest internet entry
   // price (CRO's category-honest move), shown only when the catalogue actually
   // has priced internet plans so the clause can never fabricate a figure.
   const internetEntry = categories.includes("internet")
-    ? catEntryPrice("internet")
+    ? catEntryPriceText("internet")
     : null;
 
   // Transparent "best value" ranking — cheapest entry point first (top 6).
@@ -146,11 +157,15 @@ export default function Home() {
     );
   const extraCats = categories.filter((c) => !PRIMARY_LAUNCHER_CATS.includes(c));
 
+  // Hero floor clause for the GEO summary — omitted entirely when nothing is
+  // priced so the answer box never states a fabricated figure. Uses the exact
+  // advertised price (priceText via minFeaturedText), never the rounded-up key.
+  const summaryFloor = minFeaturedText ? `החל מ-₪${minFeaturedText} לחודש. ` : "";
   const summaryText =
     `Switchy AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
     `אנו משווים ${planCount} מסלולים מ-${providers.length} ספקים בחמש קטגוריות — ` +
     `סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל — ` +
-    `החל מ-${ils(minFeatured)} לחודש. המחירים בשקלים ומעודכנים, וכוללים גם את המחיר ` +
+    `${summaryFloor}המחירים בשקלים ומעודכנים, וכוללים גם את המחיר ` +
     `אחרי המבצע; פנייה לספק נשלחת רק לאחר אישורכם.`;
 
   return (
@@ -237,8 +252,8 @@ export default function Home() {
           <h1 className="hero-ink sw-reveal mt-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
             משווים תקשורת, משלמים פחות.{" "}
             <span className="text-accent-text">
-              סלולר מ-{ils(minFeatured)}
-              {internetEntry != null ? ` · אינטרנט מ-${ils(internetEntry)}` : ""}{" "}
+              סלולר מ-₪{minFeaturedText}
+              {internetEntry != null ? ` · אינטרנט מ-₪${internetEntry}` : ""}{" "}
               לחודש.
             </span>
           </h1>
@@ -368,7 +383,7 @@ export default function Home() {
             {planCount} מסלולים · {providers.length} ספקים ·{" "}
             {categories.length} קטגוריות · החל מ-
             <span className="font-display font-bold text-accent-text">
-              {ils(minFeatured)}
+              ₪{minFeaturedText}
             </span>{" "}
             לחודש
           </p>
@@ -456,7 +471,7 @@ export default function Home() {
             <li key={p.slug}>
               <Link
                 href={`/providers/${p.slug}`}
-                className="sw-reveal sw-lift interactive press inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface py-1.5 pe-3.5 ps-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
+                className="sw-reveal sw-lift interactive press inline-flex min-h-11 items-center gap-2 rounded-full border border-border/60 bg-surface py-1.5 pe-3.5 ps-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
                 style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
               >
                 <ProviderLogo provider={p.name} size={28} rounded="full" />
@@ -645,7 +660,8 @@ export default function Home() {
           the page's `.sw-lift` CTA, mobile-first and RTL. ──────────────────── */}
       <section aria-labelledby="guides-h" className="mt-16">
         <div className="bento p-6 sm:p-9">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
+          <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
+            <Icon name="spark" size={14} className="shrink-0" />
             ידע שמוביל לחיסכון
           </p>
           <h2
@@ -686,7 +702,7 @@ export default function Home() {
               <li key={c.slug}>
                 <Link
                   href={`/compare/${featuredCat}/${c.slug}`}
-                  className="interactive press sw-lift inline-block rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
+                  className="interactive press sw-lift inline-flex min-h-11 items-center rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
                 >
                   {c.name}
                 </Link>

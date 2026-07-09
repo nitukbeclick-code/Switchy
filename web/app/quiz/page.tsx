@@ -31,7 +31,7 @@ import {
   howToSchema,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
-import { ils } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 import QuizWizard from "./QuizWizard";
 
 export const metadata: Metadata = pageMetadata({
@@ -56,10 +56,20 @@ export default function QuizPage() {
   const featuredCat = categories.includes("cellular")
     ? "cellular"
     : categories[0];
-  const featuredMin = [...plansByCategory(featuredCat)]
-    .filter((p) => typeof p.price === "number")
-    .sort((a, b) => a.price - b.price);
-  const minFeatured = featuredMin.length ? featuredMin[0].price : 0;
+  const featuredPriced = [...plansByCategory(featuredCat)].filter(
+    (p) => typeof p.price === "number",
+  );
+  // Keep the cheapest priced plan OBJECT (not just its rounded number) so the
+  // floor can render its EXACT advertised price via priceText — the SAME
+  // decimal-preserving helper the ComparisonTable rows use — instead of the
+  // rounded sort-key, which would round a ₪10.90 plan UP to ₪11 and overstate
+  // the floor / drift from the catalogue. Undefined ⇒ no fabricated number.
+  const cheapestFeatured = featuredPriced.length
+    ? featuredPriced.reduce((a, b) => (b.price < a.price ? b : a))
+    : undefined;
+  const minFeaturedText = cheapestFeatured
+    ? priceText(cheapestFeatured)
+    : undefined;
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -138,14 +148,21 @@ export default function QuizPage() {
           themes) with the white headline set directly on it — NO photo/video —
           and ONE primary CTA. The H1 is a CHECK ("בודקים…"), never a promised
           amount; green is applied ONLY to the price clause (VALUE), bound to the
-          real catalogue entry price (minFeatured). The primary CTA is an in-page
+          real catalogue entry price (minFeaturedText). The primary CTA is an in-page
           jump to the wizard; /book is demoted to a quiet SECONDARY white link. */}
       <header>
         <section className="relative isolate mt-4 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
           <div className="mx-auto max-w-2xl">
             <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
-              בודקים כמה תוכלו לחסוך על התקשורת.{" "}
-              <span className="text-[#4ade80]">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+              בודקים כמה תוכלו לחסוך על התקשורת.
+              {minFeaturedText !== undefined ? (
+                <>
+                  {" "}
+                  <span className="text-[#4ade80]">
+                    מסלולים מ-₪{minFeaturedText} לחודש.
+                  </span>
+                </>
+              ) : null}
             </h1>
             <p
               className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
@@ -183,11 +200,16 @@ export default function QuizPage() {
               className="sw-reveal mt-8 text-sm text-white/85"
               style={{ animationDelay: "150ms" }}
             >
-              {planCount} מסלולים · {providerCount} ספקים · החל מ-
-              <span className="font-display font-bold text-[#4ade80]">
-                {ils(minFeatured)}
-              </span>{" "}
-              לחודש
+              {planCount} מסלולים · {providerCount} ספקים
+              {minFeaturedText !== undefined ? (
+                <>
+                  {" · החל מ-"}
+                  <span className="font-display font-bold text-[#4ade80]">
+                    ₪{minFeaturedText}
+                  </span>{" "}
+                  לחודש
+                </>
+              ) : null}
             </p>
             {/* Quiet qualitative value line — muted, small green tick, no
                 fabricated figure. */}

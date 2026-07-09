@@ -142,7 +142,7 @@ export default function ComparisonTable({
       aria-label={caption}
     >
       {/* Visible + accessible caption, shared by both views. */}
-      <p className="mb-3 text-start font-display text-sm font-semibold tracking-tight text-ink lg:sr-only">
+      <p className="mb-3 text-start text-sm font-normal text-muted lg:sr-only">
         {caption}
       </p>
 

@@ -33,7 +33,7 @@ import {
   SITE_NAME,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
-import { ils } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 import { CONTACT_EMAIL, CONTACT_WHATSAPP, CONTACT_WHATSAPP_INTL } from "@/lib/legal";
 
 export const metadata: Metadata = pageMetadata({
@@ -69,11 +69,17 @@ export default function AboutPage() {
   const providerCount = getProviders().length;
   const categoryCount = getCategories().length;
 
-  // Real catalogue entry price (lowest numeric price across the catalogue) — the
-  // green VALUE clause in the hero + the trust band. Catalogue-derived so it can
-  // never drift from the data; falls back to 0 only on an empty catalogue.
+  // Real catalogue entry price — the green VALUE clause in the hero + the trust
+  // band. Take the cheapest PLAN OBJECT from the priced set and render it with
+  // priceText (the decimal-preserving helper the ComparisonTable rows use), NOT
+  // Math.min of the rounded sort-key `price` — which would round a ₪10.90 plan UP
+  // to ₪11 and OVERSTATE the floor / drift from the catalogue. Undefined ⇒ empty
+  // catalogue ⇒ no fabricated number shown.
   const priced = plans.filter((p) => typeof p.price === "number");
-  const minPrice = priced.length ? Math.min(...priced.map((p) => p.price)) : 0;
+  const cheapest = priced.length
+    ? priced.reduce((a, b) => (b.price < a.price ? b : a))
+    : undefined;
+  const minPriceText = cheapest ? priceText(cheapest) : undefined;
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -137,8 +143,9 @@ export default function AboutPage() {
           set directly on it — NO photo/video behind — an eyebrow pill, ONE green
           primary CTA + ONE quiet secondary link, and a REAL catalogue trust band
           (plans · providers · categories · entry price). Green is applied ONLY to
-          the entry-price clause (VALUE), bound to the real catalogue floor
-          (minPrice). Entrance staggers via the global `.sw-reveal` alias. A
+          the entry-price clause (VALUE), bound to the real catalogue floor (the
+          cheapest priced plan via priceText). Entrance staggers via the global
+          `.sw-reveal` alias. A
           hairline border keeps the panel defined on the dark page background. */}
       <header className="mt-4">
         <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
@@ -152,8 +159,8 @@ export default function AboutPage() {
             </p>
             <h1 className="sw-reveal mt-4 font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
               משווים, חוסכים, עוברים — בלי כאב ראש.{" "}
-              {minPrice > 0 ? (
-                <span className="text-[#4ade80]">מסלולים מ-{ils(minPrice)} לחודש.</span>
+              {minPriceText ? (
+                <span className="text-[#4ade80]">מסלולים מ-₪{minPriceText} לחודש.</span>
               ) : null}
             </h1>
             <p
@@ -209,12 +216,12 @@ export default function AboutPage() {
                 {categoryCount}
               </span>{" "}
               קטגוריות
-              {minPrice > 0 ? (
+              {minPriceText ? (
                 <>
                   {" "}
                   · החל מ-
                   <span className="font-display font-bold text-[#4ade80]">
-                    {ils(minPrice)}
+                    ₪{minPriceText}
                   </span>{" "}
                   לחודש
                 </>
@@ -266,7 +273,7 @@ export default function AboutPage() {
           {whatWeDo.map((item, i) => (
             <li
               key={item.title}
-              className="sw-reveal sw-lift card flex h-full gap-4 p-5 sm:p-6"
+              className="sw-reveal card flex h-full gap-4 p-5 sm:p-6"
               style={{ animationDelay: `${Math.min(i * 60, 240)}ms` }}
             >
               <span

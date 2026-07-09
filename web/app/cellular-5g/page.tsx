@@ -161,7 +161,7 @@ export default async function Cellular5gPage() {
             {minFeatured !== undefined ? (
               <>
                 {" "}
-                <span className="text-accent">מ-{ils(minFeatured)} לחודש.</span>
+                <span className="text-[#4ade80]">מ-{ils(minFeatured)} לחודש.</span>
               </>
             ) : null}
           </h1>
@@ -199,7 +199,7 @@ export default async function Cellular5gPage() {
               style={{ animationDelay: "150ms" }}
             >
               {total5G} מסלולי 5G · החל מ-
-              <span className="font-display font-bold text-accent">
+              <span className="font-display font-bold text-[#4ade80]">
                 {ils(minFeatured)}
               </span>{" "}
               לחודש

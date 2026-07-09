@@ -194,7 +194,7 @@ export default function SwitchKitPage() {
           <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
             בונים לכם ערכת מעבר — מוכנה לשליחה על ידיכם.{" "}
             {minFeatured > 0 ? (
-              <span className="text-accent">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+              <span className="text-[#4ade80]">מסלולים מ-{ils(minFeatured)} לחודש.</span>
             ) : null}
           </h1>
           <p
@@ -235,7 +235,7 @@ export default function SwitchKitPage() {
             {minFeatured > 0 ? (
               <>
                 {" · "}החל מ-
-                <span className="font-display font-bold text-accent">
+                <span className="font-display font-bold text-[#4ade80]">
                   {ils(minFeatured)}
                 </span>{" "}
                 לחודש

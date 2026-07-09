@@ -84,7 +84,7 @@ export default function ReferralPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
               שתפו את Switchy AI עם חברים.{" "}
-              <span className="text-accent">חינם, בלי התחייבות.</span>
+              <span className="text-[#4ade80]">חינם, בלי התחייבות.</span>
             </h1>
             <p
               className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"

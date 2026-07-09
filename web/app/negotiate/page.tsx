@@ -166,14 +166,14 @@ export default function NegotiatePage() {
           fixed ink fill in both themes. ─────────────────────────────────────── */}
       <section className="relative isolate mt-5 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
         <div className="mx-auto max-w-2xl">
-          <span className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+          <span className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-[#4ade80]">
             <Icon name="spark" size={14} aria-hidden />
             תסריט שימור מבוסס נתונים
           </span>
           <h1 className="sw-reveal mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-white sm:text-[2.65rem]">
             לפני שעוזבים: כך משיגים מהספק את המחיר.{" "}
             {marketFloor > 0 ? (
-              <span className="text-accent">
+              <span className="text-[#4ade80]">
                 המחיר הזול בשוק מ-{ils(marketFloor)} לחודש.
               </span>
             ) : null}
@@ -218,7 +218,7 @@ export default function NegotiatePage() {
             {marketFloor > 0 ? (
               <>
                 {" · "}הזול בשוק מ-
-                <span className="font-display font-bold text-accent">
+                <span className="font-display font-bold text-[#4ade80]">
                   {ils(marketFloor)}
                 </span>{" "}
                 לחודש

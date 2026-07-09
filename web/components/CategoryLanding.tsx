@@ -147,7 +147,11 @@ export default function CategoryLanding({
               {minFeatured !== undefined ? (
                 <>
                   {" "}
-                  <span className="text-accent">מ-{ils(minFeatured)} {minUnitLabel}.</span>
+                  {/* Bright green (the dark-theme accent) — the fill-grade
+                      #15803d green is only ~3.5:1 on this dark ink hero; #4ade80
+                      is ~9:1. This is green TEXT on dark, not a fill, so it wants
+                      the light-on-dark shade, not the CTA fill shade. */}
+                  <span className="text-[#4ade80]">מ-{ils(minFeatured)} {minUnitLabel}.</span>
                 </>
               ) : null}
             </h2>

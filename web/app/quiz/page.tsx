@@ -145,7 +145,7 @@ export default function QuizPage() {
           <div className="mx-auto max-w-2xl">
             <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
               בודקים כמה תוכלו לחסוך על התקשורת.{" "}
-              <span className="text-accent">מסלולים מ-{ils(minFeatured)} לחודש.</span>
+              <span className="text-[#4ade80]">מסלולים מ-{ils(minFeatured)} לחודש.</span>
             </h1>
             <p
               className="sw-reveal mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/85 sm:text-xl"
@@ -184,7 +184,7 @@ export default function QuizPage() {
               style={{ animationDelay: "150ms" }}
             >
               {planCount} מסלולים · {providerCount} ספקים · החל מ-
-              <span className="font-display font-bold text-accent">
+              <span className="font-display font-bold text-[#4ade80]">
                 {ils(minFeatured)}
               </span>{" "}
               לחודש

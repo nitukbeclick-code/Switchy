@@ -227,7 +227,7 @@ export default function MarketPulsePage() {
             <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
               בודקים היכן מחירי התקשורת עומדים כרגע.{" "}
               {minFeatured > 0 ? (
-                <span className="text-accent">
+                <span className="text-[#4ade80]">
                   נקודת כניסה מ-{ils(minFeatured)} לחודש.
                 </span>
               ) : null}
@@ -275,7 +275,7 @@ export default function MarketPulsePage() {
                 <>
                   {" "}
                   · החל מ-
-                  <span className="font-display font-bold text-accent">
+                  <span className="font-display font-bold text-[#4ade80]">
                     {ils(minFeatured)}
                   </span>{" "}
                   לחודש

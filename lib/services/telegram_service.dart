@@ -1,23 +1,20 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
-/// Telegram Bot integration for sending notifications via Telegram.
+/// Telegram message-body builders (Hebrew copy, HTML-escaped).
 ///
-/// Messages are sent to users who have connected their Telegram account
-/// to the app. Requires TELEGRAM_BOT_TOKEN environment variable set.
-///
-/// Each message body is produced by a pure, network-free `build*Body` method
-/// (Hebrew copy, every interpolated value HTML-escaped) so it can be unit
-/// tested without hitting the Telegram API — see
-/// test/telegram_service_test.dart. The `send*` wrappers just build + ship.
+/// SECURITY: this client intentionally holds **no** Telegram bot token and
+/// makes **no** direct calls to api.telegram.org. A bot token embedded in a
+/// shipped app or web bundle is a full-control secret — anyone who decompiles
+/// the APK or reads the JS bundle could extract it and hijack the bot (spam or
+/// phish every linked user). All Telegram delivery therefore happens
+/// server-side, where the token lives in the Supabase Vault (see the
+/// `telegram-webhook`, `renewal-reminders`, `savings-watch` and
+/// `community-notify` edge functions). The `send*` wrappers below are kept as
+/// safe no-ops so callers keep compiling; only the pure `build*Body` methods
+/// carry real behaviour, and they are network-free + unit-tested (see
+/// test/telegram_service_test.dart).
 class TelegramService {
   TelegramService._();
-
-  // Get from environment at build time: --dart-define TELEGRAM_BOT_TOKEN=...
-  static const String _botToken = String.fromEnvironment('TELEGRAM_BOT_TOKEN');
-  static const String _apiBase = 'https://api.telegram.org/bot';
 
   /// HTML-escape an interpolated value so a stray `<`, `>` or `&` in a
   /// provider / plan / rep name can't break Telegram's HTML parse_mode.
@@ -27,43 +24,23 @@ class TelegramService {
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;');
 
-  /// Send a text message to a Telegram chat.
-  /// Returns true if successful, false otherwise.
+  /// No-op stand-in for the old client-side sender.
+  ///
+  /// Client-side Telegram delivery has been removed for security (see the class
+  /// doc): the app no longer embeds a bot token nor talks to api.telegram.org.
+  /// Delivery is owned by the server. This always returns `false` so any
+  /// remaining caller degrades gracefully instead of silently believing a
+  /// message was sent.
   static Future<bool> sendMessage({
     required String chatId,
     required String message,
     bool parseHtml = true,
   }) async {
-    if (_botToken.isEmpty) {
-      if (kDebugMode) debugPrint('⚠️ Telegram: Bot token not configured');
-      return false;
+    if (kDebugMode) {
+      debugPrint(
+          'ℹ️ Telegram: client-side send is disabled; delivery is server-side');
     }
-
-    try {
-      final response = await http.post(
-        Uri.parse('$_apiBase$_botToken/sendMessage'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'chat_id': chatId,
-          'text': message,
-          'parse_mode': parseHtml ? 'HTML' : 'Markdown',
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        if (kDebugMode) debugPrint('✅ Telegram message sent to $chatId');
-        return true;
-      } else {
-        if (kDebugMode) {
-          debugPrint(
-              '❌ Telegram error: ${response.statusCode} ${response.body}');
-        }
-        return false;
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ Telegram error: $e');
-      return false;
-    }
+    return false;
   }
 
   // ── Pure message builders (network-free, HTML-escaped, Hebrew) ────────────

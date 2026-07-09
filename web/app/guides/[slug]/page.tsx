@@ -273,11 +273,11 @@ export default async function GuidePage({ params }: Params) {
           aria-label="פירורי לחם"
           className="text-sm text-muted lg:col-span-2"
         >
-          <Link href="/" className="interactive hover:text-accent">
+          <Link href="/" className="interactive underline underline-offset-2 hover:text-accent">
             בית
           </Link>
           <span className="px-1.5">/</span>
-          <Link href="/guides" className="interactive hover:text-accent">
+          <Link href="/guides" className="interactive underline underline-offset-2 hover:text-accent">
             מדריכים
           </Link>
           <span className="px-1.5">/</span>

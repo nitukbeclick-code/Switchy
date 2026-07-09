@@ -35,13 +35,19 @@
   --accent: #15803d; /* ACTION (green) — fills/CTAs/active nav/focus */
   --accent-hover: #126c34; /* darker green for hover */
   --accent-contrast: #ffffff; /* text on green (now ≥4.5:1) */
-  --accent-text: #0f7a37; /* green for text/links on light bg (≥4.5:1) */
+  /* Deepened from #0f7a37: green text/links also appear on the 10%-alpha
+     accent tint (bg-accent/10 pills, active nav), where #0f7a37 measured only
+     4.44:1. #0e7034 clears AA on the tint (~5.1:1), on the value tint (~5.2:1),
+     and on plain white (~6.2:1). */
+  --accent-text: #0e7034; /* green for text/links on light bg (≥4.5:1 incl. tints) */
   /* VALUE tier — mono-green brand: savings/win states use the SAME green system
-     (fill #16A34A / AA text #15803D), never amber/orange. Token names kept so
-     every existing bg-value/text-value-text usage repaints without edits. */
+     (fill #16A34A / AA text), never amber/orange. Token names kept so every
+     existing bg-value/text-value-text usage repaints without edits. */
   --value: #16a34a; /* VALUE (green fill) — badges/win states */
   --value-contrast: #ffffff; /* text on the green fill */
-  --value-text: #15803d; /* green for value text/figures on light bg (≥4.5:1) */
+  /* #15803d measured 4.21:1 on the bg-value/10 tint (wallet pill); the shared
+     deep green clears AA there too (~5.2:1). */
+  --value-text: #0e7034; /* green for value text/figures on light bg (≥4.5:1 incl. tints) */
 
   /* Danger / error — the one state color outside the two-accent system. Split
      fill vs text like the accents: -text is AA (≥4.5:1) for small error copy on

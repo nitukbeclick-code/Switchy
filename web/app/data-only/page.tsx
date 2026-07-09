@@ -121,11 +121,11 @@ export default async function DataOnlyPage() {
       <JsonLd data={breadcrumbSchema(crumbs)} />
 
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="underline underline-offset-2 hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
-        <Link href={`/compare/${CATEGORY}`} className="hover:text-accent">
+        <Link href={`/compare/${CATEGORY}`} className="underline underline-offset-2 hover:text-accent">
           {CATEGORY_HE[CATEGORY]}
         </Link>
         <span className="px-1.5">/</span>

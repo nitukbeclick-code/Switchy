@@ -253,7 +253,7 @@ function SideCard({
       <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-ink">
         <Link
           href={`/providers/${side.provider.slug}`}
-          className="interactive hover:text-accent"
+          className="interactive underline underline-offset-2 hover:text-accent"
         >
           {side.provider.name}
         </Link>
@@ -525,11 +525,11 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="underline underline-offset-2 hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
-        <Link href="/compare" className="hover:text-accent">
+        <Link href="/compare" className="underline underline-offset-2 hover:text-accent">
           השוואות
         </Link>
         <span className="px-1.5">/</span>

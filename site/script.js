@@ -1856,9 +1856,10 @@
         channels.forEach((ch) => filterRow.appendChild(mk(ch, ch)));
       };
 
-      (async () => {
+      const skeletons = '<div class="post-skel" aria-hidden="true"><i></i><i></i><i></i></div>'.repeat(3);
+      const loadFeed = async () => {
         feed.setAttribute('aria-busy', 'true');
-        feed.innerHTML = '<p class="community__loading">טוען את הקהילה…</p>';
+        feed.innerHTML = skeletons;
         try {
           const posts = await sbRest('community_posts?select=id,author,avatar,channel,body,media_type,media_url,created_at' +
             '&is_flagged=eq.false&order=created_at.desc&limit=30');
@@ -1867,10 +1868,15 @@
           buildFilter();
           paintFeed();
         } catch (_) {
-          feed.innerHTML = '<p class="community__error">לא הצלחנו לטעון את הקהילה כרגע — נסו שוב בעוד רגע, או פתחו את האפליקציה 💬</p>';
+          // A calm contained card, not floating red text — red is for user errors.
+          feed.innerHTML = '<div class="load-error"><p>לא הצלחנו לטעון את הקהילה כרגע.</p>' +
+            '<button type="button" class="btn btn--ghost" id="feedRetry">נסו שוב</button></div>';
+          const retry = feed.querySelector('#feedRetry');
+          if (retry) retry.addEventListener('click', loadFeed, { once: true });
         }
         feed.removeAttribute('aria-busy');
-      })();
+      };
+      loadFeed();
     }
 
     // ── Provider ratings + recent reviews ────────────────────────────────────
@@ -1892,9 +1898,9 @@
         return '<span class="rating-card__stars" aria-hidden="true">' + out + '</span>';
       };
 
-      (async () => {
+      const loadRatings = async () => {
         ratingsHost.setAttribute('aria-busy', 'true');
-        ratingsHost.innerHTML = '<p class="ratings__loading">טוען דירוגים…</p>';
+        ratingsHost.innerHTML = '<div class="post-skel" aria-hidden="true"><i></i><i></i><i></i></div>';
         try {
           const rows = await sbRest('provider_rating_summary?select=*');
           const summary = Array.isArray(rows) ? rows.slice() : [];
@@ -1917,10 +1923,14 @@
             }).join('') + '</div>';
           }
         } catch (_) {
-          ratingsHost.innerHTML = '<p class="ratings__error">לא הצלחנו לטעון דירוגים כרגע — נסו שוב בעוד רגע.</p>';
+          ratingsHost.innerHTML = '<div class="load-error"><p>לא הצלחנו לטעון דירוגים כרגע.</p>' +
+            '<button type="button" class="btn btn--ghost" id="ratingsRetry">נסו שוב</button></div>';
+          const retry = ratingsHost.querySelector('#ratingsRetry');
+          if (retry) retry.addEventListener('click', loadRatings, { once: true });
         }
         ratingsHost.removeAttribute('aria-busy');
-      })();
+      };
+      loadRatings();
 
       if (reviewsHost) {
         (async () => {
@@ -1947,7 +1957,7 @@
                 '</div>';
             }).join('');
           } catch (_) {
-            reviewsHost.innerHTML = '<p class="ratings__error">לא הצלחנו לטעון חוות דעת כרגע.</p>';
+            reviewsHost.innerHTML = ''; // the ratings block already shows the contained retry card — no second red line
           }
           reviewsHost.removeAttribute('aria-busy');
         })();
@@ -3435,5 +3445,123 @@
       var section = host.closest('.community-leaders');
       if (section) section.hidden = false;
     }).catch(function () { /* stay hidden */ });
+  })();
+
+  // ── (16) SCROLL-DIRECTION FLAG — lets CSS tuck floating chrome away ────────
+  // Reading down = the WhatsApp FAB hides (mobile CSS); any scroll up brings it
+  // back. Passive + rAF-throttled; ignored near the top of the page.
+  (() => {
+    let lastY = 0;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY || 0;
+        document.body.classList.toggle('is-scroll-down', y > lastY && y > 320);
+        lastY = y;
+        ticking = false;
+      });
+    }, { passive: true });
+  })();
+
+  // ── (15) PER-PLAN PRICE WATCH — "עקבו אחרי המסלול הזה" ─────────────────────
+  // The bell on each plan card opens a small dialog: email + explicit §30A
+  // consent → site-subscribe with topic 'plan:<id>' (stamped into the
+  // subscriber's source, feeding savings-watch). Followed plan ids persist in
+  // localStorage so the bell stays filled. Fail-soft: submit errors just toast.
+  (() => {
+    if (!document.querySelector('.plan__watch')) return;
+    const KEY = 'switchy-watch';
+    const read = () => {
+      try { const v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+    };
+    const save = (list) => { try { localStorage.setItem(KEY, JSON.stringify(list.slice(-40))); } catch (_) { /* private mode */ } };
+    const paint = () => {
+      const list = read();
+      document.querySelectorAll('.plan__watch').forEach((b) => {
+        const on = list.includes(b.getAttribute('data-watch'));
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    };
+    paint();
+
+    let modal = null;
+    let current = null;
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const build = () => {
+      modal = document.createElement('div');
+      modal.className = 'pmodal watch-modal';
+      modal.id = 'watchModal';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.setAttribute('aria-labelledby', 'watchTitle');
+      modal.hidden = true;
+      modal.innerHTML =
+        '<div class="pmodal__backdrop" data-watch-close></div>' +
+        '<div class="pmodal__panel watch-modal__panel" role="document">' +
+          '<button type="button" class="pmodal__x" data-watch-close aria-label="סגירת החלון">✕</button>' +
+          '<h3 class="watch-modal__title" id="watchTitle">מעקב מחיר</h3>' +
+          '<p class="watch-modal__lead" id="watchLead"></p>' +
+          '<form class="watch-modal__form" id="watchForm" novalidate>' +
+            '<input class="watch-modal__email" id="watchEmail" type="email" placeholder="האימייל שלכם" autocomplete="email" inputmode="email" aria-label="כתובת אימייל לעדכוני מחיר" required />' +
+            '<label class="watch-modal__consent" for="watchConsent"><input type="checkbox" id="watchConsent" required /> אני מאשר/ת קבלת עדכוני מחיר והזדמנויות חיסכון במייל (אפשר לבטל בכל עת)</label>' +
+            '<button class="btn btn--primary watch-modal__go" type="submit">עקבו אחרי המסלול ←</button>' +
+          '</form>' +
+          '<p class="watch-modal__note">בלי ספאם — נכתוב רק כשיש חיסכון אמיתי במסלול הזה.</p>' +
+        '</div>';
+      document.body.appendChild(modal);
+      const close = () => { modal.classList.remove('pmodal--open'); modal.hidden = true; };
+      modal.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-watch-close]')) close(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+      const form = modal.querySelector('#watchForm');
+      const emailEl = modal.querySelector('#watchEmail');
+      const consentEl = modal.querySelector('#watchConsent');
+      const go = modal.querySelector('.watch-modal__go');
+      let busy = false;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (busy || !current) return;
+        const email = (emailEl.value || '').trim();
+        if (!EMAIL_RE.test(email)) { emailEl.setAttribute('aria-invalid', 'true'); emailEl.focus(); toast('נא להזין כתובת אימייל תקינה', 'error'); return; }
+        emailEl.removeAttribute('aria-invalid');
+        if (!consentEl.checked) { consentEl.focus(); toast('יש לאשר קבלת עדכונים כדי לעקוב', 'error'); return; }
+        busy = true;
+        go.disabled = true;
+        const label = go.textContent;
+        go.textContent = 'נרשם…';
+        try {
+          await callAiFunction('site-subscribe', { email: email, consent: true, topic: 'plan:' + current.id });
+          track('price_watch', { plan: current.id });
+          const list = read();
+          if (!list.includes(current.id)) { list.push(current.id); save(list); }
+          paint();
+          close();
+          toast('במעקב! נעדכן אתכם כשהמחיר של ' + current.name + ' יורד', 'success');
+        } catch (_) {
+          toast('ההרשמה נכשלה — נסו שוב בעוד רגע', 'error');
+        }
+        go.disabled = false;
+        go.textContent = label;
+        busy = false;
+      });
+    };
+
+    const open = (btn) => {
+      if (!modal) build();
+      current = { id: btn.getAttribute('data-watch') || '', name: btn.getAttribute('data-watch-name') || 'המסלול' };
+      const lead = modal.querySelector('#watchLead');
+      lead.textContent = read().includes(current.id)
+        ? current.name + ' כבר במעקב אצלכם — אפשר להוסיף כתובת מייל נוספת.'
+        : 'נעדכן אתכם במייל כשהמחיר של ' + current.name + ' יורד, או כשמופיעה חלופה זולה יותר.';
+      modal.hidden = false;
+      requestAnimationFrame(() => modal.classList.add('pmodal--open'));
+      modal.querySelector('#watchEmail').focus();
+    };
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('.plan__watch');
+      if (b) { e.preventDefault(); open(b); }
+    });
   })();
 })();

@@ -32,23 +32,23 @@
   --ink-050: #F0F2F4;
 
   /* Refined accent system — color used with intent over the ink/glass base.
-     ONE green accent (matching the Switchy logo) carries both ACTION (CTAs,
-     links, active, focus) and VALUE (savings / best-value emphasis). The old
-     amber --value tier now aliases to the same green so no orange/amber
-     accent survives anywhere in the system. */
+     TWO disciplined accents (2026-07 UX audit): green = ACTION (CTAs, links,
+     active, focus) and amber = VALUE (savings, "best value", win states).
+     When everything is green, nothing stands out — the amber tier gives the
+     money moments their own voice while green stays exclusively "click here". */
   --accent: #16A34A;        /* brand green — primary action (fills/CTAs/borders/icons) */
   --accent-d: #15803D;      /* deep green for gradient depth + hover */
   --accent-t: #DCFCE7;      /* light green surface tint */
-  --value: #16A34A;         /* savings / value emphasis — folded into the ONE green accent */
-  --value-t: #DCFCE7;       /* light green surface tint — "best value" table row */
-  --value-d: #15803D;
-  /* On-light TEXT tiers — the same brand hue, darkened so green used as
-     small text clears WCAG AA (≥4.5:1) on white/glass. --accent (3.3:1 on white)
-     is fine for fills, borders, icons and large display, but fails for label-
-     sized text; these are the values to use whenever the colour IS the ink.
+  --value: #D97706;         /* amber — savings / value emphasis (fills, borders, big numerals) */
+  --value-t: #FEF3C7;       /* light amber surface tint — "best value" table row */
+  --value-d: #B45309;
+  /* On-light TEXT tiers — the same hues, darkened so accent-coloured
+     small text clears WCAG AA (≥4.5:1) on white/glass. --accent (3.3:1) and
+     --value (3.5:1) are fine for fills, borders, icons and large display, but
+     fail for label-sized text; use these whenever the colour IS the ink.
      In dark mode the lifted --accent/--value already pass, so these alias back. */
   --accent-ink: #15803D;    /* green text on light — 4.6:1 on white */
-  --value-ink: #15803D;     /* value text on light — same AA green */
+  --value-ink: #B45309;     /* amber text on light — 5.2:1 on white */
 
   /* Semantic status colours — driven from one place so toasts / field-errors /
      callouts stop hand-coding raw hex. Light surfaces (--*-t) for tinted ground. */
@@ -145,13 +145,13 @@
     --accent: #4ADE80;        /* green lifted for contrast on dark glass */
     --accent-d: #22C55E;
     --accent-t: #0B2A18;      /* tinted green surface */
-    --value: #4ADE80;         /* value = the same lifted green */
-    --value-d: #22C55E;
-    --value-t: #0B2A18;       /* dark green tint — "best value" table row */
+    --value: #FBBF24;         /* amber lifted for contrast on dark glass */
+    --value-d: #F59E0B;
+    --value-t: #2A2110;       /* dark amber tint — "best value" table row */
     /* On dark glass the lifted accents already clear AA (10:1+), so the on-light
-       text tiers alias back to them — green text stays bright, not dark. */
+       text tiers alias back to them — accent text stays bright, not dark. */
     --accent-ink: #4ADE80;
-    --value-ink: #4ADE80;
+    --value-ink: #FBBF24;
 
     /* Semantic status — lifted hues + dark tinted grounds so callouts/toasts
        stay legible on dark glass (the light --*-t tints would glare). */
@@ -168,9 +168,9 @@
     --shadow-ink: 0 10px 24px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.5);
     --shadow-glass: 0 2px 6px rgba(0,0,0,.45), 0 14px 38px rgba(0,0,0,.55);
 
-    --ring: 0 0 0 2px var(--cream), 0 0 0 5px rgba(129,140,248,.5);
-    --ring-value: 0 0 0 2px var(--cream), 0 0 0 5px rgba(74,222,128,.5);
-    --ring-flush: 0 0 0 3px rgba(129,140,248,.45);
+    --ring: 0 0 0 2px var(--cream), 0 0 0 5px rgba(74,222,128,.5);
+    --ring-value: 0 0 0 2px var(--cream), 0 0 0 5px rgba(251,191,36,.5);
+    --ring-flush: 0 0 0 3px rgba(74,222,128,.45);
   }
 /* Glass utility adapts to a dark frosted panel rather than translucent white. */
 :root[data-theme="dark"] .glass { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
@@ -299,7 +299,7 @@ a:not([class]):focus-visible { border-radius: 6px; box-shadow: var(--ring-flush)
 /* ── Scroll progress bar (injected by script.js) ─────────────────────────── */
 .scroll-progress {
   position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60; transform-origin: right center;
-  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--ink-800), var(--ink-500));
+  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--accent-d), var(--accent)); /* brand progress, not a stray ink hairline */
   will-change: transform; pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) { .scroll-progress { display: none; } }
@@ -516,6 +516,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .hero__sub { font-size: var(--fs-lead); color: var(--muted); margin: 20px 0 28px; max-width: 30em; }
 .hero__sub strong { color: var(--green); font-weight: 700; }
+:root[data-theme="dark"] .hero__sub strong { color: var(--accent); } /* keep the emphasis visible on dark glass */
 .hero__fineprint { display: block; font-size: 12.5px; line-height: 1.5; color: var(--ink-600); margin-top: 10px; }
 .hero__fineprint a { color: inherit; text-decoration: underline; }
 .hero__cta { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -630,30 +631,33 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
    next to the ink/glass brand. The per-category hue (--tf/--tt) survives only
    as a WHISPER: a tinted icon chip + a tinted hover border. Price = VALUE, so
    it always speaks the one green value tier, never the category hue. */
-/* Bold SOLID brand-green launch tiles (kamaze-style energy, ONE green family —
-   never a rainbow). Theme-independent fixed greens: white label text clears AA
-   on the deep gradient stop in both themes. */
+/* White-glass editorial launch tiles (2026-07 UX audit): four saturated green
+   slabs next to a green CTA left the hero with no focal point. The tiles now
+   sit back on white glass — green survives only as the icon chip whisper and
+   the price — so the single green CTA owns the ACTION color. */
 .launch-tile {
   display: flex; flex-direction: column; min-height: 160px;
-  border-radius: var(--radius-lg); padding: 18px; color: #fff; text-decoration: none;
-  background: linear-gradient(160deg, #16A34A 0%, #0F7A37 88%);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 12px 30px -10px rgba(21,128,61,.5);
-  transition: transform .18s var(--ease), box-shadow .18s var(--ease);
+  border-radius: var(--radius-lg); padding: 18px; color: var(--ink-900); text-decoration: none;
+  background: var(--white); border: 1px solid var(--line);
+  box-shadow: var(--glint), var(--shadow-sm);
+  transition: transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s var(--ease);
 }
 .launch-tile:hover {
   transform: translateY(-4px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 20px 44px -12px rgba(21,128,61,.62);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: var(--glint), var(--shadow);
 }
 .launch-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .launch-tile__ico {
   width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
-  background: rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.26);
+  background: var(--accent-t); box-shadow: inset 0 0 0 1px rgba(22,163,74,.18);
 }
-.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: #fff; }
+.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--accent-d); }
+:root[data-theme="dark"] .launch-tile__ico svg { stroke: var(--accent); }
 .launch-tile__body { margin-top: auto; padding-top: 14px; }
-.launch-tile__name { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: #fff; }
-.launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: rgba(255,255,255,.85); }
-.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.95); color: #0B5E2C; font-weight: 800; font-size: 12.5px; }
+.launch-tile__name { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
+.launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: var(--muted); }
+.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--accent-t); color: var(--accent-ink); font-weight: 800; font-size: 12.5px; }
 
 /* "קטגוריות נוספות" chip row. */
 .hero__more { margin-top: 16px; }
@@ -749,7 +753,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .steps::before {
   content: ""; position: absolute; z-index: 0;
   top: calc(28px + 22px); height: 2px; inset-inline: 16%;
-  background: linear-gradient(90deg, transparent, var(--accent-t) 12%, var(--accent-t) 88%, transparent);
+  background: linear-gradient(90deg, transparent, var(--ink-200) 12%, var(--ink-200) 88%, transparent);
   pointer-events: none;
 }
 .step { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 24px; position: relative; z-index: 1; }
@@ -974,6 +978,18 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
   }
   .wa-fab:active { transform: scale(.94); }
   .wa-fab svg { width: 26px; height: 26px; display: block; }
+  /* Reading down = the FAB gets out of the way; it returns on any scroll up.
+     (script.js stamps body.is-scroll-down; audit: 3 floating layers ate ~140px.) */
+  .wa-fab { transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease), opacity .22s var(--ease); }
+  body.is-scroll-down .wa-fab { opacity: 0; transform: translateY(14px); pointer-events: none; }
+  /* Slimmer a11y launcher on phones — it was hiding section headings. */
+  .a11y-fab { width: 44px; height: 44px; bottom: 12px; }
+  body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 72px; }
+  /* Comfortable 44px touch targets for the card icon actions. (.plan prefix
+     outranks the base 36px rules declared later in the sheet.) */
+  .plan .plan__compare, .plan .plan__watch { width: 44px; height: 44px; }
+  /* Content never hides under the sticky bar at the end of a scroll. */
+  html { scroll-padding-bottom: 92px; }
 }
 @media (prefers-reduced-motion: reduce) { .wa-fab { transition: none; } }
 
@@ -1250,7 +1266,10 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 /* .guide-card:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 /* The whole card is an <a> — give it the focus ring + the same lift as hover. */
 .guide-card:focus-visible { box-shadow: var(--ring), var(--shadow); border-color: var(--accent); transform: translateY(-4px); }
-.guide-card .tag-cat { align-self: flex-start; background: var(--accent-t); color: var(--accent-ink); font-weight: 700; font-size: 12px; padding: 4px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s; }
+/* Category tag on guide cards — quiet ink chip; a row of identical green pills
+   said nothing (UX audit). The card's hover state carries the green instead. */
+.guide-card .tag-cat { align-self: flex-start; background: var(--mint); color: var(--ink-600); border: 1px solid var(--line); font-weight: 700; font-size: 12px; padding: 3px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s, border-color .18s; }
+.guide-card:hover .tag-cat { background: var(--accent-t); color: var(--accent-ink); border-color: transparent; }
 .guide-card h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin-bottom: 8px; line-height: 1.32; transition: color .15s; }
 .guide-card:hover h3, .guide-card:focus-visible h3 { color: var(--accent-ink); }
 .guide-card p { color: var(--muted); flex: 1; line-height: 1.6; }
@@ -1319,7 +1338,9 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 /* The site's most-repeated CTA (every plan card) — a real green tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */
-.plan__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+/* flex-wrap keeps a long CTA from spilling past the card edge — the icons drop
+   to a second row instead (the CTA itself never line-breaks mid-label). */
+.plan__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 /* Filled ACTION pill (was a bare text link) — the conversion CTA earns the
    brand gradient. White on --accent-d-range greens clears AA (5.0:1). */
 .plan__cta {
@@ -1327,6 +1348,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: #fff;
   text-decoration: none; padding: 10px 14px; min-height: 44px;
+  white-space: nowrap; /* the label must never wrap into two lines inside a card */
   border-radius: 12px;
   background: linear-gradient(165deg, #15803D, #126C34);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 16px -6px rgba(22,163,74,.45);
@@ -1601,9 +1623,17 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .plan.plan--best:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), var(--shadow-lg); }
 .plan__badge {
   position: absolute; top: -10px; inset-inline-start: 14px; z-index: 2;
-  background: var(--accent-t); color: var(--accent-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
-  font-size: 11px; padding: 4px 11px; border-radius: 999px; box-shadow: 0 6px 14px rgba(21,128,61,.24);
+  background: var(--value-t); color: var(--value-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
+  font-size: 11px; padding: 4px 11px; border-radius: 999px; box-shadow: 0 6px 14px rgba(180,83,9,.22);
 }
+
+/* Spec label/value rows inside a plan card — a hairline ledger. The explicit
+   flex gap also keeps Hebrew labels from visually fusing with LTR values
+   ("נתונים20GB") at the bidi boundary. */
+.plan__specs { display: grid; gap: 5px; margin-top: 10px; }
+.plan__spec { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13.5px; line-height: 1.45; }
+.plan__spec-k { color: var(--muted); flex-shrink: 0; }
+.plan__spec-v { color: var(--ink-800); font-weight: 700; unicode-bidi: isolate; font-variant-numeric: tabular-nums; text-align: start; }
 
 /* ── Interaction: kill the 300ms mobile tap delay on all controls ─────────── */
 a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"] { touch-action: manipulation; }
@@ -1748,12 +1778,13 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .plan--premium:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 1px var(--accent), var(--shadow-lg); }
 .plan--budget { border-color: var(--line); background: var(--cream); box-shadow: var(--shadow-sm); }
 .plan--budget .plan__price b { color: var(--ink-700); }
-/* Score badge — a compact green pill rating the plan's value (e.g. "9.2"). */
+/* Score badge — a compact amber pill rating the plan's VALUE (e.g. "9.2").
+   Amber = value tier; green stays exclusively for actions. */
 .plan__score {
   display: inline-flex; align-items: center; gap: 4px;
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; line-height: 1;
-  color: var(--accent-ink); background: var(--accent-t); padding: 4px 9px; border-radius: 999px;
-  box-shadow: 0 3px 10px rgba(21,128,61,.2);
+  color: var(--value-ink); background: var(--value-t); padding: 4px 9px; border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(180,83,9,.18);
 }
 .plan__score::before { content: "★"; font-size: 11px; }
 
@@ -1773,7 +1804,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .callout b, .callout strong { color: var(--green-d); }
 .callout p { margin: 0; }
 .callout p + p { margin-top: 6px; }
-.callout--tip { --callout-c: var(--value); --callout-bg: rgba(22,163,74,.10); }
+.callout--tip { --callout-c: var(--accent); --callout-bg: rgba(22,163,74,.10); }
 .callout--warn { --callout-c: var(--warning); --callout-bg: var(--warning-t); }
 .callout--info { --callout-c: var(--info); --callout-bg: var(--info-t); }
 
@@ -1875,7 +1906,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   transition: opacity .25s var(--ease), transform .25s var(--ease-spring);
 }
 .toast.is-visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-.toast--success { --toast-c: var(--value); }
+.toast--success { --toast-c: var(--accent); }
 .toast--error { --toast-c: var(--error); }
 .toast--info { --toast-c: var(--info); }
 .toast .ico { width: 18px; height: 18px; color: var(--toast-c); flex: none; }
@@ -2867,6 +2898,33 @@ body.pmodal-lock { overflow: hidden; }
   text-align: center; color: var(--muted); font-size: 14px; padding: 28px 16px;
 }
 .ratings__error, .community__error { color: var(--error); }
+
+/* Network hiccups get a calm, contained card — red text floating on a blank
+   page reads as "the site is broken" (2026-07 UX audit). Red stays reserved
+   for user-input errors. */
+.load-error {
+  max-width: 420px; margin: 20px auto; padding: 22px 20px; text-align: center;
+  background: var(--mint); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.load-error p { margin: 0 0 14px; color: var(--ink-700); font-size: 14.5px; }
+:root[data-theme="dark"] .load-error { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+
+/* Loading skeleton for feed cards — a quiet shimmer instead of a text line. */
+.post-skel {
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 18px;
+  background: var(--white); margin-bottom: 12px;
+}
+.post-skel i {
+  display: block; height: 12px; border-radius: 6px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--ink-100) 25%, var(--mint) 50%, var(--ink-100) 75%);
+  background-size: 200% 100%; animation: skel-wave 1.4s ease infinite;
+}
+.post-skel i:nth-child(1) { width: 34%; }
+.post-skel i:nth-child(2) { width: 88%; }
+.post-skel i:nth-child(3) { width: 62%; margin-bottom: 0; }
+@keyframes skel-wave { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .post-skel i { animation: none; } }
+:root[data-theme="dark"] .post-skel { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
 .rating-card__score { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 24px; color: var(--green-d); margin-top: 8px; letter-spacing: -.5px; }
 .rating-card__count { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
 
@@ -3515,7 +3573,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 /* Partial-fill stars: grey base + a green overlay clipped to --fill percent. */
 .prov-rating__stars { position: relative; font-size: 18px; letter-spacing: 2px; color: var(--ink-200); line-height: 1; }
 .prov-rating__on {
-  position: absolute; inset: 0; overflow: hidden; color: var(--accent);
+  position: absolute; inset: 0; overflow: hidden; color: var(--value); /* stars read as rating gold, not action green */
   width: var(--fill, 0%); white-space: nowrap;
 }
 
@@ -3542,6 +3600,34 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 /* The scale icon reflects tray membership. */
 .plan__compare.is-in { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
 .plan__compare.is-in:hover { background: var(--accent-d); }
+
+/* Per-plan price-watch bell — same footprint as the compare icon. */
+.plan__watch {
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--cream); cursor: pointer;
+  color: var(--ink-700); padding: 0; transition: border-color .15s, background .15s, transform .15s; flex-shrink: 0;
+}
+.plan__watch svg { width: 17px; height: 17px; }
+.plan__watch:hover { border-color: var(--accent); background: var(--accent-t); transform: scale(1.07); }
+.plan__watch:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.plan__watch.is-on { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
+.plan__watch.is-on:hover { background: var(--accent-d); }
+
+/* Watch dialog — rides the shared .pmodal chrome; only the form bits are custom. */
+.watch-modal__panel { max-width: 440px; }
+.watch-modal__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 20px; margin: 0 24px 6px 0; color: var(--ink-900); }
+.watch-modal__lead { margin: 0 0 14px; font-size: 14.5px; line-height: 1.6; color: var(--ink-600); }
+.watch-modal__form { display: flex; flex-direction: column; gap: 12px; }
+.watch-modal__email {
+  width: 100%; min-height: 48px; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid var(--ink-200); background: var(--white); font: inherit; color: var(--ink-900);
+}
+.watch-modal__email:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.watch-modal__email[aria-invalid="true"] { border-color: #B91C1C; }
+.watch-modal__consent { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; color: var(--ink-600); cursor: pointer; }
+.watch-modal__consent input { margin-top: 3px; accent-color: var(--accent); }
+.watch-modal__note { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
+:root[data-theme="dark"] .watch-modal__email { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.14); }
 
 /* ── Home community strip + post share ─────────────────────────────────────── */
 .home-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }

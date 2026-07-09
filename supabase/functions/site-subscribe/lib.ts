@@ -17,3 +17,17 @@ export type InsertResult = "inserted" | "exists" | "error";
 export function shouldWelcome(result: InsertResult): boolean {
   return result === "inserted";
 }
+
+// Optional per-plan interest tag sent by the site's price-watch bell
+// ("topic": "plan:<catalogue id>"). It lands in newsletter_subscribers.source,
+// so it must stay a short, boring string: word chars (Latin or Hebrew), colon,
+// dot, dash, space. Anything else — or anything over 80 chars — collapses to ""
+// (plain newsletter signup), never an error: the subscription itself must not
+// fail because of a malformed tag.
+const TOPIC_RE = /^[\w:.\-֐-׿ ]+$/;
+export function sanitizeTopic(t: unknown): string {
+  if (typeof t !== "string") return "";
+  const s = t.trim();
+  if (!s || s.length > 80) return "";
+  return TOPIC_RE.test(s) ? s : "";
+}

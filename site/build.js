@@ -794,6 +794,7 @@ function planCardHtml(p, best) {
         <div class="plan__actions">
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
           <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
+          <button type="button" class="plan__watch" data-watch="${esc(p.id || '')}" data-watch-name="${esc(`${p.provider} ${p.plan}`)}" title="עקבו אחרי המסלול — עדכון במייל כשהמחיר יורד" aria-label="${esc(`קבלו עדכון במייל כשהמחיר של ${p.provider} ${p.plan} יורד`)}" aria-pressed="false">${svgIcon('bell')}</button>
         </div>
         <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול${chev(true)}</button>
       </article>`;
@@ -2047,7 +2048,8 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <meta name="description" content="${esc(desc)}" />
   <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />
   <style>.skip{position:absolute;inset-inline-start:0;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0;clip-path:inset(50%);white-space:nowrap}.skip:focus{clip-path:none}</style>
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#F7F9F8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0B0F14" media="(prefers-color-scheme: dark)" />
   <link rel="canonical" href="${canonicalUrl(url)}" />
   <link rel="alternate" hreflang="he-IL" href="${canonicalUrl(url)}" />
   <link rel="alternate" hreflang="x-default" href="${canonicalUrl(url)}" />

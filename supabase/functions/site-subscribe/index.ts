@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { EMAIL_RE, type InsertResult, shouldWelcome } from "./lib.ts";
+import { EMAIL_RE, type InsertResult, sanitizeTopic, shouldWelcome } from "./lib.ts";
 import { listUnsubscribeHeader, unsubscribeUrlFor, welcomeEmail } from "../_shared/email.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,6 +105,7 @@ const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רג
 async function insertSubscriber(
   email: string,
   ip: string,
+  source: string,
 ): Promise<InsertResult> {
   const creds = serviceCreds();
   if (!creds) {
@@ -123,7 +124,7 @@ async function insertSubscriber(
       body: JSON.stringify({
         email,
         consent: true,
-        source: "site",
+        source,
         source_ip: ip || null,
       }),
     });
@@ -133,6 +134,26 @@ async function insertSubscriber(
     const text = await r.text().catch(() => "");
     if (r.status === 409 || text.includes("23505") || text.includes("duplicate")) {
       jlog({ at: "site-subscribe.insert", ok: true, already: true });
+      // A returning subscriber following a specific plan: refresh their source
+      // tag so savings-watch sees the latest interest. Best-effort — a failure
+      // here never fails the (already idempotent-successful) subscription.
+      if (source !== "site") {
+        try {
+          await fetch(
+            `${creds.url}/rest/v1/newsletter_subscribers?email=eq.${encodeURIComponent(email)}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": creds.key,
+                "Authorization": `Bearer ${creds.key}`,
+                "Prefer": "return=minimal",
+              },
+              body: JSON.stringify({ source }),
+            },
+          );
+        } catch (_) { /* best-effort only */ }
+      }
       return "exists";
     }
     jlog({ at: "site-subscribe.insert", ok: false, status: r.status });
@@ -193,7 +214,7 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
-  let body: { email?: unknown; consent?: unknown };
+  let body: { email?: unknown; consent?: unknown; topic?: unknown };
   try {
     body = await req.json();
   } catch (_) {
@@ -213,7 +234,13 @@ Deno.serve(async (req: Request) => {
   if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
   if (limited) return json({ error: "בקשות רבות מדי, נסו שוב מאוחר יותר" }, 429);
 
-  const result = await insertSubscriber(email, ip);
+  // Optional per-plan interest tag from the site's price-watch bell. Malformed
+  // input degrades to a plain signup — it never rejects the subscription.
+  const topic = sanitizeTopic(body.topic);
+  const source = topic ? `site:${topic}` : "site";
+  if (topic) jlog({ at: "site-subscribe", topic });
+
+  const result = await insertSubscriber(email, ip, source);
   if (result === "error") {
     return json({ error: "אירעה שגיאה, נסו שוב בעוד רגע" }, 502);
   }

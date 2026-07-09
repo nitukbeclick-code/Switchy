@@ -121,6 +121,38 @@ Deno.test("runWhatsappAgent passes channel/history/plans/billHint and persists t
   assertEquals(s.slots.budget, 50);
 });
 
+// ── memory write-side: the harvested slotPatch is UNIONed into the session ─────
+
+Deno.test("runWhatsappAgent persists the harvested slotPatch (rejected ids / objections), unioning with prior slots", async () => {
+  const loaded = emptySession("whatsapp", "conv-1");
+  loaded.slots.rejectedPlanIds = ["c1"]; // one plan already rejected earlier
+  let saved: ChatSession | null = null;
+
+  await runWhatsappAgent({
+    sessionKey: "conv-1",
+    message: "יש משהו זול יותר?",
+    plans: PLANS,
+    keys: { gemini: "k" },
+    deps: fakeDeps(),
+    loadSessionFn: () => Promise.resolve(loaded),
+    saveSessionFn: (s) => { saved = s; return Promise.resolve(true); },
+    runAgentFn: () =>
+      Promise.resolve<RunAgentResult>({
+        reply: "הנה אפשרות זולה יותר",
+        via: "tools",
+        toolCalls: [{ name: "refine_recommendation", ok: true }],
+        timedOut: false,
+        slotPatch: { rejectedPlanIds: ["c2"], objections: ["price"] },
+      }),
+  });
+
+  assert(saved);
+  const s = saved as ChatSession;
+  // UNION with the pre-existing slot, deduped — the write-side that activates memory.
+  assertEquals([...(s.slots.rejectedPlanIds ?? [])].sort(), ["c1", "c2"]);
+  assertEquals(s.slots.objections, ["price"]);
+});
+
 // ── the toolContext sinks actually drive the REAL tools ───────────────────────
 
 Deno.test("the wired toolContext refuses a lead without consent (consent gate)", async () => {

@@ -58,6 +58,7 @@ import {
   asChatTurns,
   type ChatSession,
   loadSession,
+  mergeSlots,
   recordToolCall,
   safeSessionId,
   saveSession,
@@ -291,6 +292,10 @@ async function handle(req: Request): Promise<Response> {
   let via = "hard_fallback";
   let timedOut = false;
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
+  // Memory the agent harvests this turn (rejected plan ids / objections) to persist
+  // into the session so it shapes the next turn — the write-side that activates
+  // `memory`. Undefined until runAgent returns something to record.
+  let slotPatch: { rejectedPlanIds?: string[]; objections?: string[] } | undefined;
   // ── Parity with WhatsApp: feed the shared brain the same context ───────────
   // Until now the site agent was structurally dumber than WhatsApp despite
   // sharing runAgent — it passed none of these. Each is fail-soft and truth-only,
@@ -337,6 +342,7 @@ async function handle(req: Request): Promise<Response> {
     via = res.via;
     timedOut = res.timedOut;
     toolCalls.push(...res.toolCalls);
+    slotPatch = res.slotPatch;
   } catch (e) {
     jlog({ at: "ai-chat", ok: false, error: String(e) });
     return json(req, { error: "ai request failed" }, 502);
@@ -364,6 +370,10 @@ async function handle(req: Request): Promise<Response> {
     appendTurn(session, "bot", finalReply);
     for (const tc of toolCalls) recordToolCall(session, tc.name, tc.ok, tc.preview);
     if (leadCaptured || leadCapturedByTool) session.slots.leadCaptured = true;
+    // Persist the memory the agent harvested this turn (rejected plan ids /
+    // objections) so `memory` shapes the next turn. UNION + capped by mergeSlots;
+    // empty ⇒ no-op. Same activation as the WhatsApp runner, for site + app parity.
+    if (slotPatch) mergeSlots(session, slotPatch);
     saveSession(session, ip).catch(() => {});
   }
   // Best-effort rate-limit audit row, never blocks the reply.

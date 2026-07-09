@@ -475,6 +475,28 @@ const catHueStyle = (slug) => {
   return h ? ` style="--tf:${h[0]};--tt:${h[1]}"` : '';
 };
 
+// D2 — "today vs after" live promo-jump card for a category hero. Picks the
+// REAL monthly plan with the biggest advertised after-promo jump and draws two
+// proportional bars (fill animates via the standard .reveal `in` class). If the
+// category has no meaningful jump, returns null and the hero keeps the app shot.
+function promoJumpCard(c, catPlans) {
+  const candidates = (catPlans || []).filter((p) =>
+    (!p.priceUnit || p.priceUnit === 'month') && p.after && (p.after - p.price) >= 20);
+  if (!candidates.length) return null;
+  const p = candidates.slice().sort((a, b) => (b.after - b.price) - (a.after - a.price))[0];
+  const todayPct = Math.max(18, Math.round((p.price / p.after) * 100));
+  const diff = p.after - p.price;
+  return `<div class="jump-card reveal" role="img" aria-label="${esc(`דוגמה אמיתית מהקטלוג: ${p.provider} ${p.plan} — ₪${p.price} היום, ₪${p.after} אחרי המבצע (הפרש ₪${diff} בחודש)`)}">
+            <p class="jump-card__title">ככה נראה מבצע שנגמר</p>
+            <p class="jump-card__plan">${providerLogo(p.provider, 24)} ${esc(p.provider)} · ${esc(p.plan)}</p>
+            <div class="jump-card__bars" aria-hidden="true">
+              <div class="jump-bar"><span>היום</span><i style="--w:${todayPct}%"></i><b dir="ltr">₪${p.price}</b></div>
+              <div class="jump-bar jump-bar--after"><span>אחרי המבצע</span><i style="--w:100%"></i><b dir="ltr">₪${p.after}</b></div>
+            </div>
+            <p class="jump-card__note">הפרש של <b dir="ltr">₪${diff}</b> בחודש — בדיוק בשביל זה יש לנו התראת חידוש.</p>
+          </div>`;
+}
+
 const categories = [
   {
     slug: 'cellular', name: 'סלולר', icon: '📱',
@@ -1705,9 +1727,9 @@ ${nav}
           ${heroStats}
         </div>
         <div class="lead-hero__media" aria-hidden="false">
-          <figure class="app-shot app-shot--hero">
+          ${promoJumpCard(c, catPlans) || `<figure class="app-shot app-shot--hero">
             <img src="assets/app/shot-results.webp" alt="${esc(`אפליקציית SWITCHY — השוואת מסלולי ${c.name} עם ציון התאמה וחיסכון`)}" width="390" height="844" loading="lazy" decoding="async" />
-          </figure>
+          </figure>`}
         </div>
       </div>
     </section>

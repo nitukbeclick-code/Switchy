@@ -243,7 +243,7 @@ export default function CompareIndexPage() {
                       // VALUE-tinted ribbon (not a button) — a truthful signal
                       // that this axis carries the most plans. Pinned to the
                       // inline-start top corner; RTL-safe via logical start-4.
-                      <span className="pointer-events-none absolute -top-2.5 start-4 inline-flex items-center gap-1 rounded-full border border-value/20 bg-value/10 px-2.5 py-0.5 text-[11px] font-semibold text-value-text shadow-[var(--shadow-soft)]">
+                      <span className="pointer-events-none absolute -top-2.5 start-4 inline-flex items-center gap-1 rounded-full border border-value/20 bg-value/10 px-2.5 py-0.5 text-[12px] font-semibold text-value-text shadow-[var(--shadow-soft)]">
                         <Icon name="spark" size={12} aria-hidden="true" />
                         הכי הרבה מסלולים
                       </span>
@@ -314,11 +314,10 @@ export default function CompareIndexPage() {
           { figure: services.length.toLocaleString("he-IL"), label: "שירותים להשוואה" },
         ].map((s) => (
           <div key={s.label} className="flex items-baseline gap-1.5">
-            <dt className="sr-only">{s.label}</dt>
-            <dd className="font-display text-xl font-bold tracking-tight text-ink">
+            <dt className="order-2 text-sm text-muted">{s.label}</dt>
+            <dd className="order-1 font-display text-xl font-bold tracking-tight text-ink">
               {s.figure}
             </dd>
-            <span className="text-sm text-muted">{s.label}</span>
           </div>
         ))}
       </dl>

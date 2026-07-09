@@ -206,7 +206,7 @@ export default function ComparisonTable({
         <table className="w-full min-w-[720px] border-collapse text-right">
           <caption className="sr-only">{caption}</caption>
           <thead>
-            <tr className="border-b border-border bg-background/60 text-[11px] font-medium uppercase tracking-wide text-muted">
+            <tr className="border-b border-border bg-background/60 text-[12px] font-medium uppercase tracking-wide text-muted">
               {desktopColumns.map((col) => (
                 <th key={col} scope="col" className="px-4 py-3 text-start font-medium">
                   {col}

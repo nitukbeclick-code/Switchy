@@ -245,7 +245,7 @@ function SideCard({
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted">{label}</span>
         {value && (
-          <span className="inline-flex items-center rounded-full bg-value/12 px-2 py-0.5 text-[11px] font-semibold text-value-text">
+          <span className="inline-flex items-center rounded-full bg-value/12 px-2 py-0.5 text-[12px] font-semibold text-value-text">
             הזול ביותר בכניסה
           </span>
         )}

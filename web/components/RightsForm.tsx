@@ -311,7 +311,7 @@ export default function RightsForm() {
               aria-describedby={
                 errors.consent ? "rights-consent-error" : undefined
               }
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
               {...register("consent", {
                 required: "יש לאשר את הטיפול בבקשה כדי להמשיך",
               })}

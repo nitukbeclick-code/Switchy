@@ -550,7 +550,7 @@ function OptionGrid({
               value={opt.value}
               checked={isSel}
               onChange={() => onSelect(opt.value)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-accent focus:ring-2 focus:ring-accent/30"
+              className="mt-0.5 h-5 w-5 shrink-0 accent-accent focus:ring-2 focus:ring-accent/30"
             />
             <span className="flex flex-col">
               <span className="text-sm font-semibold text-foreground">
@@ -702,7 +702,7 @@ function MatchCard({
                 {match.plan}
               </h3>
               {top && (
-                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-semibold text-accent-text">
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-semibold text-accent-text">
                   ההתאמה הטובה ביותר
                 </span>
               )}

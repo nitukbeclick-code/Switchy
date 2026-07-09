@@ -426,7 +426,7 @@ export default function AiConcierge() {
                 >
                   Switchy AI
                 </h2>
-                <p className="text-[11px] leading-tight text-muted">
+                <p className="text-[12px] leading-tight text-muted">
                   עוזר חכם להשוואת מסלולי תקשורת
                 </p>
               </div>
@@ -559,7 +559,7 @@ export default function AiConcierge() {
                         ? `${consentId}-lead-error`
                         : undefined
                     }
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
                   />
                   <label
                     htmlFor={`${consentId}-consent`}
@@ -650,7 +650,7 @@ export default function AiConcierge() {
           </form>
 
           {/* Honesty footer — escalation affordance + grounding note. */}
-          <p className="border-t border-border bg-surface px-4 py-2 text-center text-[11px] leading-snug text-muted">
+          <p className="border-t border-border bg-surface px-4 py-2 text-center text-[12px] leading-snug text-muted">
             התשובות מבוססות על קטלוג המסלולים שלנו. לשיחה עם נציג:{" "}
             <a
               href={`https://wa.me/${CONTACT_WHATSAPP_INTL}`}

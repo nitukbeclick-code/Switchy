@@ -316,7 +316,7 @@ export default function AboutPage() {
           רוצים את הפרטים המלאים? קראו את{" "}
           <Link
             href="/transparency"
-            className="interactive text-accent-text underline-offset-4 hover:text-accent-hover hover:underline"
+            className="interactive text-accent-text underline underline-offset-4 hover:text-accent-hover"
           >
             מדיניות השקיפות והמתודולוגיה
           </Link>{" "}

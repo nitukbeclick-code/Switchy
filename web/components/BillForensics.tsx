@@ -55,7 +55,7 @@ function severityStyle(flag: ForensicsFlag): { glyph: string; accent: string } {
 function InferredPill() {
   return (
     <span
-      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-value/12 px-2 py-0.5 text-[11px] font-medium text-value-text"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-value/12 px-2 py-0.5 text-[12px] font-medium text-value-text"
       title="הערכה מבוססת-נתונים — לא קביעה ודאית. כדאי לבדוק מול הספק."
     >
       <span aria-hidden="true">≈</span>

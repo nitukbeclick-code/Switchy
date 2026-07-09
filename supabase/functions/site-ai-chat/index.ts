@@ -51,6 +51,8 @@ import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { type Plan, plansFromRows, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
+import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
+import { lookupOpenLead } from "../_shared/leadlookup.ts";
 import {
   appendTurn,
   asChatTurns,
@@ -109,6 +111,18 @@ async function loadPlans(): Promise<Plan[]> {
   _plans = plans;
   _plansAt = now;
   return plans;
+}
+
+// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function
+// instance via the service-role read — mirrors whatsapp-webhook getBotKnowledge
+// so the website chat gains the SAME knowledge base WhatsApp has. Fail-soft →
+// [] (loadBotKnowledge never throws); a missing/empty table simply means the
+// agent runs without the knowledge block (prompt byte-identical to today).
+let _knowledge: KnowledgeEntry[] | null = null;
+async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
+  if (_knowledge) return _knowledge;
+  _knowledge = await loadBotKnowledge();
+  return _knowledge;
 }
 
 function clientIp(req: Request): string {
@@ -260,6 +274,18 @@ async function handle(req: Request): Promise<Response> {
   let via = "hard_fallback";
   let timedOut = false;
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
+  // ── Parity with WhatsApp: feed the shared brain the same context ───────────
+  // Until now the site agent was structurally dumber than WhatsApp despite
+  // sharing runAgent — it passed none of these. Each is fail-soft and truth-only,
+  // so an empty knowledge table / no open lead / a fresh session leaves the
+  // prompt byte-identical to today. Prices/numbers are never touched.
+  const knowledgeContext = formatKnowledgeForPrompt(await getBotKnowledge()) || undefined;
+  // Open-lead awareness: only when a lead was captured earlier THIS session
+  // (slots.phone). No phone ⇒ no lookup ⇒ no section (identical to WhatsApp's
+  // null contract). null → undefined so it satisfies the optional param type.
+  const activeLead = session.slots.phone
+    ? ((await lookupOpenLead(session.slots.phone)) ?? undefined)
+    : undefined;
   try {
     const res = await runAgent({
       channel: "site",
@@ -274,6 +300,16 @@ async function handle(req: Request): Promise<Response> {
         logSecurityEvent,
         // Consent-gated capture — the same honest gate the client path uses.
         captureLead: (input) => captureAiLead(input as AiLeadInput),
+      },
+      knowledgeContext,
+      activeLead,
+      // Conversation-shaping memory from the loaded session slots — turnCount is
+      // live (paces the close); rejectedPlanIds/objections activate once tools
+      // record them.
+      memory: {
+        rejectedPlanIds: session.slots.rejectedPlanIds,
+        objections: session.slots.objections,
+        turnCount: session.slots.turnCount,
       },
     });
     agentReply = res.reply;

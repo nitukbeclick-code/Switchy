@@ -143,6 +143,14 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
       billHint: input.billHint,
       knowledgeContext: input.knowledgeContext,
       activeLead: input.activeLead,
+      // Conversation-shaping memory from the loaded session slots — turnCount is
+      // live (bumped per turn); rejectedPlanIds/objections activate once tools
+      // record them. Fail-soft: empty slots ⇒ empty memory ⇒ prompt unchanged.
+      memory: {
+        rejectedPlanIds: session.slots.rejectedPlanIds,
+        objections: session.slots.objections,
+        turnCount: session.slots.turnCount,
+      },
     });
   } catch (_e) {
     // The shared runAgent shouldn't throw, but if it ever does we MUST still let

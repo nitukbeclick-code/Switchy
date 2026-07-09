@@ -81,14 +81,26 @@ function isAllowedOrigin(req: Request): boolean {
 }
 
 /**
- * Resolve the real client IP from the edge/CDN headers (CDN-set header first, then
- * the LAST infra-appended X-Forwarded-For hop — never the spoofable first hop).
- * Forwarded to the edge fn so its reporter fingerprint + rate-limit key on the
- * user, not our server. Mirrors /api/analyze-bill clientIp().
+ * Resolve the real client IP for the edge fn's reporter fingerprint + rate limit.
+ *
+ * SECURITY: request headers are attacker-controlled, so trust Vercel's
+ * platform-injected `x-vercel-forwarded-for` FIRST (it cannot be spoofed by the
+ * caller); otherwise a client could rotate a forged `cf-connecting-ip` to bypass
+ * the per-reporter dedupe and skew the public street-price aggregate. Fall back to
+ * the CDN header (Cloudflare-fronted deploys), then `x-real-ip`, then the LAST
+ * infra-appended X-Forwarded-For hop — never the spoofable first hop. Mirrors
+ * /api/analyze-bill clientIp().
  */
 function clientIp(req: Request): string {
+  const vercel = req.headers.get("x-vercel-forwarded-for");
+  if (vercel) {
+    const hops = vercel.split(",").map((s) => s.trim()).filter(Boolean);
+    if (hops.length) return hops[0]; // Vercel puts the real client first
+  }
   const cf = req.headers.get("cf-connecting-ip");
   if (cf) return cf.trim();
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
     const hops = xff.split(",").map((s) => s.trim()).filter(Boolean);

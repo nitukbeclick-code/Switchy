@@ -12,7 +12,9 @@
     <application
         android:label="Switchy AI"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"><!-- Keep PII in SharedPreferences (name/phone/email/bills/quiz) out of Auto Backup / device-transfer. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -707,7 +707,6 @@ export interface PublicProfile {
   name: string | null;
   avatar_url: string | null;
   is_verified_customer: boolean | null;
-  is_admin: boolean | null;
   /** Account age ("member since") — public-safe. */
   created_at: string | null;
   /** Optional self-written community bio (public, escaped in the UI). */
@@ -724,7 +723,7 @@ export async function fetchPublicProfile(userId: string): Promise<PublicProfile 
   // granted to anon + authenticated, so any visitor can see another member's public profile.
   const { data } = await getBrowserSupabase()
     .from("public_profiles")
-    .select("id,name,avatar_url,is_verified_customer,is_admin,created_at,bio")
+    .select("id,name,avatar_url,is_verified_customer,created_at,bio")
     .eq("id", userId)
     .maybeSingle();
   return (data as PublicProfile) ?? null;

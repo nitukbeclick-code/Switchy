@@ -11,6 +11,8 @@
 // invalid top-level block.
 // ────────────────────────────────────────────────────────────────────────────
 
+import { safeJsonForScript } from "@/lib/safe-json";
+
 export interface JsonLdProps {
   /**
    * A top-level JSON-LD node — a plain object carrying its own
@@ -39,8 +41,11 @@ export default function JsonLd({ data }: JsonLdProps) {
   return (
     <script
       type="application/ld+json"
-      // JSON-LD is data, not executable HTML; stringify is the standard pattern.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      // JSON-LD is data, not executable HTML — but the payload can carry
+      // user-generated strings (e.g. community Q&A bodies), so escape `<`/`>`/`&`
+      // and the U+2028/U+2029 separators; otherwise a `</script>` in the data
+      // would break out of this block. safeJsonForScript keeps the JSON valid.
+      dangerouslySetInnerHTML={{ __html: safeJsonForScript(data) }}
     />
   );
 }

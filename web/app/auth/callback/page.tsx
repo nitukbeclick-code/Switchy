@@ -27,8 +27,13 @@ export default function AuthCallbackPage() {
     const finish = () => {
       let back = "/community";
       try {
-        back = sessionStorage.getItem("swc:return") || "/community";
+        const stored = sessionStorage.getItem("swc:return");
         sessionStorage.removeItem("swc:return");
+        // Only honour a same-origin relative path: it must start with a single
+        // "/" (not "//" or "/\", which browsers treat as protocol-relative and
+        // would let a poisoned value redirect off-site). Defence-in-depth — the
+        // value is only ever written as location.pathname+search today.
+        if (stored && /^\/(?![/\\])/.test(stored)) back = stored;
       } catch {
         /* ignore */
       }

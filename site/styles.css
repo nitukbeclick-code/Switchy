@@ -3564,3 +3564,8 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .post-card__share svg { width: 16px; height: 16px; }
 .post-card__share:hover { text-decoration: underline; }
+
+/* Ticker items are links into the deals page. */
+a.ticker__item { text-decoration: none; color: var(--ink-700); }
+.ticker__more { color: var(--accent-ink); font-weight: 700; }
+a.ticker__item:hover .ticker__more { text-decoration: underline; }

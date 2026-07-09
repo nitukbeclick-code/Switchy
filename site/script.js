@@ -3190,6 +3190,28 @@
     if (!bill || !out || !res || !save) return;
     var RANGES = { cellular: [20, 200, 60], internet: [40, 300, 120], tv: [30, 300, 100], triple: [80, 500, 250] };
     var cat = 'cellular';
+    // Memory + deep-link: restore the visitor's last category/bill, and honor
+    // a shareable #finder=<cat>-<bill> fragment (which also wins over memory).
+    var MEMKEY = 'switchy-finder';
+    try {
+      var mem = JSON.parse(localStorage.getItem(MEMKEY) || 'null');
+      if (mem && RANGES[mem.cat]) { cat = mem.cat; }
+      var m = /#finder=([a-z]+)-(\d+)/.exec(location.hash);
+      if (m && RANGES[m[1]]) { cat = m[1]; mem = { cat: cat, bill: Number(m[2]) }; }
+      if (mem && Number.isFinite(Number(mem.bill))) {
+        var r0 = RANGES[cat];
+        bill.min = r0[0]; bill.max = r0[1];
+        bill.value = Math.max(r0[0], Math.min(r0[1], Number(mem.bill)));
+      } else if (cat !== 'cellular') {
+        var r1 = RANGES[cat];
+        bill.min = r1[0]; bill.max = r1[1]; bill.value = r1[2];
+      }
+      root.querySelectorAll('.finder__cat').forEach(function (b) { b.classList.toggle('is-active', b.dataset.cat === cat); });
+      if (m) setTimeout(function () { root.scrollIntoView({ block: 'center' }); }, 150);
+    } catch (_) {}
+    var remember = function () {
+      try { localStorage.setItem(MEMKEY, JSON.stringify({ cat: cat, bill: Number(bill.value) })); } catch (_) {}
+    };
     var escEl = document.createElement('span');
     var esc = function (t) { escEl.textContent = t == null ? '' : String(t); return escEl.innerHTML; };
     var fmt = function (v) { return '₪' + Number(v).toLocaleString('he-IL'); };
@@ -3218,13 +3240,14 @@
         bill.min = r[0]; bill.max = r[1]; bill.value = r[2];
         out.textContent = fmt(bill.value);
         render();
+        remember();
       });
     });
     var raf = 0;
     bill.addEventListener('input', function () {
       out.textContent = fmt(bill.value);
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(render);
+      raf = requestAnimationFrame(function () { render(); remember(); });
     }, { passive: true });
     out.textContent = fmt(bill.value);
     render();

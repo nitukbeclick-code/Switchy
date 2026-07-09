@@ -2905,6 +2905,97 @@ ${footer}
 `;
 }
 
+// ── Deals page — today's cheapest per category + promos about to expire ─────
+// 100%% derived from the live catalogue on every rebuild; the homepage deal
+// ticker links here. "Ending promos" = plans whose after-promo price jumps the
+// most (the honest angle: know the jump BEFORE you sign).
+function dealsPage() {
+  const url = `${SITE}/deals.html`;
+  const monthly = catalogue.plans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const bestPer = categories
+    .map((c) => {
+      const list = monthly.filter((p) => p.cat === c.slug)
+        .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price));
+      return list[0] ? { cat: c, plan: list[0] } : null;
+    })
+    .filter(Boolean);
+  const bestCards = bestPer.map(({ cat, plan }, i) => `
+      <div>
+        <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">${esc(cat.name)}</span></header>
+        ${planCardHtml(plan, true)}
+      </div>`).join('\n');
+  const jumps = monthly
+    .filter((p) => p.after && p.after > p.price)
+    .sort((a, b) => (b.after - b.price) - (a.after - a.price))
+    .slice(0, 6);
+  const jumpCards = jumps.map((p) => planCardHtml(p)).join('\n        ');
+  const dealsJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'העסקאות של היום', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: 'העסקאות הזולות של היום', url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      temporalCoverage: CATALOGUE_MONTH,
+      mainEntity: plansItemListJsonLd(bestPer.map((b) => b.plan), url, 'העסקאות של היום') },
+  ] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('העסקאות של היום — הזול ביותר בכל קטגוריה | SWITCHY', `המסלול הזול ביותר היום בכל קטגוריה — סלולר, אינטרנט, טלוויזיה וחבילות — ישירות מהקטלוג המתעדכן, כולל המבצעים שעומדים להתייקר הכי הרבה.`, url, dealsJsonLd, false, 'website')}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+      <div class="container">
+        ${crumbsHtml([['דף הבית', 'index.html'], ['העסקאות של היום', null]])}
+        <span class="pill pill--ico">${iconFor('✨')} מתעדכן בכל רענון קטלוג · ${esc(BUILD_DATE_HE)}</span>
+        <h1>העסקאות של <span class="hl">היום</span></h1>
+        <p>המסלול הזול ביותר בכל קטגוריה, ישר מהקטלוג — בלי כוכביות. למטה: המבצעים שקופצים הכי הרבה כשהם נגמרים, כדי שתדעו לפני שאתם חותמים.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#best">לעסקאות${chev()}</a>
+          <a class="hero__link hero__link--ink" href="plans.html">לכל המחירון</a>
+        </div>
+        ${heroTrustLine()}
+      </div>
+    </section>
+
+    <section class="section" id="best">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">הזול ביותר היום</span><h2>אלוף המחיר בכל קטגוריה</h2></header>
+        <div class="plan-grid plan-grid--featured">
+${bestCards}
+        </div>
+      </div>
+    </section>
+${jumps.length ? `
+    <section class="section section--alt" id="jumps">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">שקיפות</span><h2>המבצעים שמתייקרים הכי הרבה</h2><p>המחיר שאחרי המבצע כבר כאן — אלה המסלולים עם הקפיצה הגדולה ביותר.</p></header>
+        <div class="plan-grid">
+        ${jumpCards}
+        </div>
+      </div>
+    </section>` : ''}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>רוצים שנתפוס לכם את העסקה?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
 function plansPage() {
   const url = `${SITE}/plans.html`;
   const filterBtns = [['all', 'הכל'], ...categories.map((c) => [c.slug, c.name])]
@@ -4854,6 +4945,7 @@ fs.writeFileSync(path.join(__dirname, 'faq.html'), faqPage());
 fs.writeFileSync(path.join(__dirname, 'glossary.html'), glossaryPage());
 fs.writeFileSync(path.join(__dirname, 'how-it-works.html'), howItWorksPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
+fs.writeFileSync(path.join(__dirname, 'deals.html'), dealsPage());
 fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
 fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
 fs.writeFileSync(path.join(__dirname, 'comparisons.html'), comparisonsHubPage());
@@ -4996,6 +5088,7 @@ const BUILD_DATE = isoDate(Date.now());
 const locs = [
   { loc: `${SITE}/`, lastmod: CATALOGUE_DATE, priority: '1.0', changefreq: 'daily', images: [`${SITE}/og-image.png`] },
   { loc: `${SITE}/plans.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' },
+  { loc: `${SITE}/deals.html`, lastmod: CATALOGUE_DATE, priority: '0.85', changefreq: 'daily' },
   { loc: `${SITE}/providers.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/compare.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/comparisons.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
@@ -5111,7 +5204,7 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     const best = heroPlans[cat] && heroPlans[cat][0];
     if (!best) return '';
     const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת' }[cat];
-    return `<span class="ticker__item"><b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום</span>`;
+    return `<a class="ticker__item" href="deals.html"><b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a>`;
   }).filter(Boolean).join('');
   if (/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/.test(html)) {
     html = html.replace(/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/, `<!--DEALS:START-->${dealItems}<!--DEALS:END-->`);

@@ -24,21 +24,21 @@ import { jlog } from "../_shared/log.ts";
 import {
   buildRecommendBlock,
   buildSuggestions,
-  catalogueProviders,
   CATEGORY_HE,
   normalizeCategory,
-  normalizeProvider,
   type Plan,
   plansFromRows,
 } from "../_shared/catalogue.ts";
 import {
   type AiKeys,
-  callGeminiVision,
   type ChatTurn,
-  extractJson,
   transcribeAudio,
-  VISION_PROMPT,
 } from "../_shared/ai.ts";
+// The ONE shared bill-photo Vision extractor (Vision → parse → normalize → clamp),
+// shared with site-bill-analyzer + the in-chat photo path so all bill OCR stays on
+// a single implementation (no drift). WhatsApp keeps its own media download +
+// deterministic fallback copy around it.
+import { extractBillHint as extractBillFromImage } from "../_shared/bill.ts";
 // Shared Cloud API toolkit (fail-soft): markRead/markTyping make the bot feel
 // responsive, sendList drives the >3-option category picker. sendText keeps its
 // signature but now retries once on a 5xx internally — see _shared/whatsapp.ts.
@@ -955,7 +955,6 @@ async function extractBillHint(mediaId: string, aiKeys: AiKeys): Promise<BillExt
     };
   }
   const plans = await getPlans();
-  const providers = catalogueProviders(plans);
   const img = await downloadMedia(mediaId);
   if (!img) {
     return {
@@ -963,9 +962,12 @@ async function extractBillHint(mediaId: string, aiKeys: AiKeys): Promise<BillExt
       fallbackReply: "לא הצלחתי לקרוא את התמונה 🙏 אפשר לשלוח שוב, או פשוט לכתוב לי מה הספק והסכום החודשי?",
     };
   }
-  let out = "";
+  // ONE shared extractor: Gemini Vision → parse → normalize → clamp. It THROWS on a
+  // hard vision error (we keep WhatsApp's distinct fallback copy) and returns
+  // hint:null when no usable monthly amount was read.
+  let hint: Awaited<ReturnType<typeof extractBillFromImage>>["hint"];
   try {
-    out = await callGeminiVision(aiKeys.gemini, VISION_PROMPT.replace("__PROVIDERS__", providers.join(", ")), img);
+    ({ hint } = await extractBillFromImage(aiKeys.gemini, plans, img));
   } catch (e) {
     jlog({ at: "wa.bill", ok: false, error: String(e) });
     return {
@@ -973,20 +975,18 @@ async function extractBillHint(mediaId: string, aiKeys: AiKeys): Promise<BillExt
       fallbackReply: "לא הצלחתי לנתח את החשבון כרגע 🙏 אפשר לנסות שוב, או לכתוב לי את הספק והסכום החודשי?",
     };
   }
-  const ex = extractJson(out);
-  const monthly = Number(ex?.monthly);
-  if (!ex || !(monthly > 0)) {
+  if (!hint) {
     return {
       hint: null,
       fallbackReply: "לא הצלחתי לקרוא את הסכום מהחשבון 🙏 אפשר לשלוח תמונה ברורה יותר, או לכתוב לי את הספק והסכום החודשי?",
     };
   }
-  const category = normalizeCategory(String(ex.category ?? ""));
-  const provider = normalizeProvider(String(ex.provider ?? ""), providers);
-  const spend = Math.round(Math.min(5000, Math.max(0, monthly)));
+  const provider = hint.provider ?? "";
+  const category = hint.category ?? "";
   return {
-    hint: { provider: provider || undefined, monthly: spend, category: category || undefined, imageId: mediaId },
-    fallbackReply: buildBillFallbackReply(plans, provider, spend, category),
+    // Add WhatsApp's own imageId to the shared hint (for the audit trail).
+    hint: { ...hint, imageId: mediaId },
+    fallbackReply: buildBillFallbackReply(plans, provider, hint.monthly, category),
   };
 }
 

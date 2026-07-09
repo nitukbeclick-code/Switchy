@@ -3506,3 +3506,15 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .wave-sep svg { display: block; width: 100%; height: 48px; }
 .wave-sep svg path { fill: #000; }
 :root[data-theme="dark"] .wave-sep svg path { fill: #0B0F14; }
+
+/* ── Community provider rating — stars row on provider pages ───────────────── */
+.prov-rating { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 0; font-size: 14.5px; color: var(--ink-700); flex-wrap: wrap; }
+.prov-rating b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); }
+.prov-rating a { color: var(--accent-ink); font-weight: 700; text-decoration: none; }
+.prov-rating a:hover { text-decoration: underline; }
+/* Partial-fill stars: grey base + a green overlay clipped to --fill percent. */
+.prov-rating__stars { position: relative; font-size: 18px; letter-spacing: 2px; color: var(--ink-200); line-height: 1; }
+.prov-rating__on {
+  position: absolute; inset: 0; overflow: hidden; color: var(--accent);
+  width: var(--fill, 0%); white-space: nowrap;
+}

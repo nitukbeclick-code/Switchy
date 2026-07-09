@@ -216,6 +216,57 @@ function readPlansFromDbSync() {
   }
 }
 
+// ── Community provider ratings (LIVE, fail-soft) ─────────────────────────────
+// Same isolated-child REST pattern as readPlansFromDbSync: pull the public
+// provider_reviews rows (anon SELECT, RLS-gated) and aggregate to
+// { provider: { avg, count } }. ANY failure → null, and provider pages simply
+// render without a rating row / AggregateRating node — never fabricated.
+function readProviderRatingsSync() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  const child = `
+    const url = ${JSON.stringify(url)}.replace(/\\/$/, '') + '/rest/v1/provider_reviews?select=provider,overall';
+    const key = ${JSON.stringify(key)};
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 8000);
+    fetch(url, {
+      cache: 'no-store',
+      signal: ac.signal,
+      headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' },
+    })
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((rows) => { clearTimeout(t); process.stdout.write(JSON.stringify(rows)); })
+      .catch((e) => { clearTimeout(t); process.stderr.write(String(e && e.message || e)); process.exit(1); });
+  `;
+  try {
+    const out = require('node:child_process').execFileSync(process.execPath, ['-e', child], {
+      encoding: 'utf8', timeout: 15000, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const rows = JSON.parse(out);
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const agg = {};
+    for (const r of rows) {
+      const prov = r && r.provider;
+      const overall = Number(r && r.overall);
+      if (!prov || !Number.isFinite(overall) || overall < 1 || overall > 5) continue;
+      (agg[prov] = agg[prov] || { sum: 0, count: 0 }).sum += overall;
+      agg[prov].count += 1;
+    }
+    const out2 = {};
+    for (const [prov, a] of Object.entries(agg)) {
+      if (a.count > 0) out2[prov] = { avg: Math.round((a.sum / a.count) * 10) / 10, count: a.count };
+    }
+    return Object.keys(out2).length ? out2 : null;
+  } catch {
+    return null;
+  }
+}
+const PROVIDER_RATINGS = readProviderRatingsSync();
+console.log(PROVIDER_RATINGS
+  ? `Community ratings: LIVE (${Object.keys(PROVIDER_RATINGS).length} providers rated)`
+  : 'Community ratings: none available (provider pages render without stars)');
+
 // Build the in-memory `catalogue` (SAME shape as data/plans.json): LIVE plans
 // when the DB read yields ≥1 valid normalised plan, else the bundled snapshot.
 // `CATALOGUE_SOURCE` records which path won ('live' | 'bundled') so the build can
@@ -3034,6 +3085,26 @@ function providerPage(name, plans) {
   // at this entity by @id so engines resolve our provider page to the
   // authoritative provider. Mirrors the web app's provider Organization nodes.
   const provOrg = providerOrgNode(name);
+  // Community rating — visible stars + schema.org AggregateRating, ONLY when
+  // real reviews exist (LIVE read; fail-soft). ratingValue mirrors the visible
+  // figure exactly so the SERP stars can never diverge from the page.
+  const rating = PROVIDER_RATINGS && PROVIDER_RATINGS[name];
+  if (rating) {
+    provOrg.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: rating.avg,
+      reviewCount: rating.count,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+  const ratingHtml = rating
+    ? `\n        <p class="prov-rating" aria-label="דירוג קהילה: ${rating.avg} מתוך 5, לפי ${rating.count} ביקורות">
+          <span class="prov-rating__stars" aria-hidden="true" style="--fill:${Math.round((rating.avg / 5) * 100)}%">★★★★★<span class="prov-rating__on">★★★★★</span></span>
+          <b>${rating.avg}</b> · ${rating.count} ביקורות מהקהילה
+          <a href="/community">כתבו ביקורת ←</a>
+        </p>`
+    : '';
   const provGraph = [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
@@ -3062,7 +3133,7 @@ ${nav}
         <div class="provider-hero__lockup">
           ${providerLogo(name, 84)}
           <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
-        </div>
+        </div>${ratingHtml}
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
         <ul class="stat-band" aria-label="נתוני ${esc(name)} — מהקטלוג">
           <li><b data-count-to="${plans.length}">${plans.length}</b> מסלולים</li>

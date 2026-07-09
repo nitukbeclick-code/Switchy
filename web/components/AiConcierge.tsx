@@ -76,6 +76,38 @@ interface ChatResponse {
   error?: string;
 }
 
+/**
+ * An already-analyzed bill the chat can reference (seeded from the bill-analyzer
+ * result screen via the `switchy:concierge-open` event), so a user can ask
+ * follow-ups about their OWN bill. Sent with every message once set; the backend
+ * re-validates + clamps it (parseBillHint) — this is just client-side hygiene.
+ */
+export interface ConciergeBillHint {
+  provider?: string;
+  monthly: number;
+  category?: string;
+}
+
+/** Detail carried by the `switchy:concierge-open` event (bill hand-off → chat). */
+interface ConciergeOpenDetail {
+  billHint?: unknown;
+  /** Optional opener the widget auto-sends once opened (e.g. a bill question). */
+  prompt?: string;
+}
+
+/** Total + truth-only: junk / non-positive monthly → null (no bill sent). Mirrors the backend clamp. */
+function normalizeBillHint(raw: unknown): ConciergeBillHint | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const monthly = Math.round(Math.min(5000, Math.max(0, Number(o.monthly))));
+  if (!Number.isFinite(monthly) || monthly <= 0) return null;
+  const provider =
+    typeof o.provider === "string" ? o.provider.trim().slice(0, 40) || undefined : undefined;
+  const category =
+    typeof o.category === "string" ? o.category.trim().slice(0, 20) || undefined : undefined;
+  return { provider, monthly, category };
+}
+
 export default function AiConcierge() {
   const [open, setOpen] = useState(false);
   // Graceful EXIT: closing the panel doesn't unmount it instantly — we keep it in
@@ -106,6 +138,10 @@ export default function AiConcierge() {
   const [leadSending, setLeadSending] = useState(false);
 
   const sessionIdRef = useRef<string>("");
+  // The bill seeded from the analyzer screen, persisted so EVERY follow-up keeps
+  // sending it (a ref, not state — it never needs to trigger a re-render, and
+  // send() reads the latest value). Cleared only by a fresh page load.
+  const billHintRef = useRef<ConciergeBillHint | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -224,6 +260,9 @@ export default function AiConcierge() {
             message: message.slice(0, MAX_MESSAGE_LEN),
             history,
             sessionId: sessionIdRef.current,
+            // Present only after the user seeds a bill from the analyzer screen;
+            // kept on every follow-up so the agent stays grounded in that bill.
+            ...(billHintRef.current ? { billHint: billHintRef.current } : {}),
           }),
         });
         const data = (await res.json().catch(() => null)) as ChatResponse | null;
@@ -261,6 +300,37 @@ export default function AiConcierge() {
     },
     [sending, turns],
   );
+
+  // Open pre-seeded from the bill-analyzer ("שאל את Switchy AI על החשבון"): stash
+  // the billHint (persisted for ALL follow-ups) and grow the panel from the
+  // launcher, mirroring toggle()'s open branch. If an opener prompt rides along
+  // we auto-send it so the agent immediately answers about THAT bill.
+  useEffect(() => {
+    function onOpenWith(e: Event) {
+      const detail = (e as CustomEvent<ConciergeOpenDetail>).detail ?? {};
+      const hint = normalizeBillHint(detail.billHint);
+      if (hint) billHintRef.current = hint;
+      setClosing(false);
+      if (exitTimer.current) {
+        clearTimeout(exitTimer.current);
+        exitTimer.current = null;
+      }
+      setOpen(true);
+      // One header popover at a time — ask siblings (a11y / notifications) to close.
+      window.dispatchEvent(
+        new CustomEvent("switchy:popover-open", { detail: "concierge" }),
+      );
+      trackEvent("ai_chat_open", { source: hint ? "bill" : "concierge" });
+      const opener = typeof detail.prompt === "string" ? detail.prompt.trim() : "";
+      if (opener) void send(opener);
+    }
+    window.addEventListener("switchy:concierge-open", onOpenWith as EventListener);
+    return () =>
+      window.removeEventListener(
+        "switchy:concierge-open",
+        onOpenWith as EventListener,
+      );
+  }, [send]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();

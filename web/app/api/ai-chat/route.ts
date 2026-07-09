@@ -9,8 +9,10 @@
 // origin allow-list as the other /api routes.
 //
 // CONTRACT (passthrough of the backend's shape):
-//   POST { message, history?, sessionId?, lead? }
+//   POST { message, history?, sessionId?, lead?, billHint? }
 //     -> { reply, offerLead?, leadCaptured?, contextTruncated?, sessionId? }
+// `billHint` {provider?, monthly, category?} lets a chat reference an
+// already-analyzed bill; the backend re-validates + clamps it (parseBillHint).
 //
 // COMPLIANCE: lead capture is gated server-side (consent===true required, §7b
 // disclosure shown in the UI before the lead step). We never fabricate consent;
@@ -76,6 +78,7 @@ export async function POST(req: Request) {
     history?: unknown;
     sessionId?: unknown;
     lead?: unknown;
+    billHint?: unknown;
   };
   try {
     body = await req.json();
@@ -116,6 +119,10 @@ export async function POST(req: Request) {
         history: body.history,
         sessionId: body.sessionId,
         lead: body.lead,
+        // Optional already-analyzed bill the client seeds (from the bill-analyzer
+        // result screen) so follow-ups can reference the user's own bill. The
+        // backend re-validates + clamps (parseBillHint); we relay it verbatim.
+        billHint: body.billHint,
       }),
       signal: controller.signal,
     });

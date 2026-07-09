@@ -125,6 +125,22 @@ async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
   return _knowledge;
 }
 
+// A client may seed a chat with an already-analyzed bill (from the bill-analyzer
+// screen) so the user can ask follow-ups about their OWN bill — the shared agent
+// then injects it and can call analyze_bill (grounded, truth-only). Validate +
+// clamp exactly like the WhatsApp/OCR paths (0..5000, rounded); a non-usable
+// bill (no positive monthly) → undefined so the prompt stays unchanged. No image
+// is accepted here (that's the separate OCR path); this only references figures.
+function parseBillHint(raw: unknown): { provider?: string; monthly: number; category?: string } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const monthly = Math.round(Math.min(5000, Math.max(0, Number(o.monthly))));
+  if (!Number.isFinite(monthly) || monthly <= 0) return undefined;
+  const provider = typeof o.provider === "string" ? (o.provider.trim().slice(0, 40) || undefined) : undefined;
+  const category = typeof o.category === "string" ? (o.category.trim().slice(0, 20) || undefined) : undefined;
+  return { provider, monthly, category };
+}
+
 function clientIp(req: Request): string {
   // Same trust order as the leads rate-limit gate: CDN-set header first, then
   // the last (infra-appended) X-Forwarded-For hop — never the spoofable first hop.
@@ -211,6 +227,7 @@ async function handle(req: Request): Promise<Response> {
     history?: unknown;
     sessionId?: unknown;
     lead?: AiLeadInput;
+    billHint?: unknown;
   };
   try {
     body = await req.json();
@@ -286,6 +303,9 @@ async function handle(req: Request): Promise<Response> {
   const activeLead = session.slots.phone
     ? ((await lookupOpenLead(session.slots.phone)) ?? undefined)
     : undefined;
+  // Conversational bill: a client-seeded, already-analyzed bill lets the user ask
+  // follow-ups about their own bill (the agent injects it + can call analyze_bill).
+  const billHint = parseBillHint(body.billHint);
   try {
     const res = await runAgent({
       channel: "site",
@@ -303,6 +323,7 @@ async function handle(req: Request): Promise<Response> {
       },
       knowledgeContext,
       activeLead,
+      billHint,
       // Conversation-shaping memory from the loaded session slots — turnCount is
       // live (paces the close); rejectedPlanIds/objections activate once tools
       // record them.

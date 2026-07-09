@@ -1736,6 +1736,7 @@
     const renderPost = (post) => {
       const card = document.createElement('article');
       card.className = 'post-card';
+      card.id = 'post-' + String(post.id);
       const avatar = post.avatar
         ? '<img class="post-card__avatar" src="' + escHtmlS(post.avatar) + '" alt="" loading="lazy" decoding="async">'
         : '<span class="post-card__avatar post-card__avatar--ph" aria-hidden="true">' +
@@ -1750,7 +1751,13 @@
         '</header>' +
         '<div class="post-card__body">' + escHtmlS(post.body || '') + '</div>' +
         mediaHtml(post.media_type, post.media_url) +
+        '<div class="post-card__actions">' +
         '<button type="button" class="post-card__toggle" aria-expanded="false" aria-controls="' + repliesId + '">הצגת תגובות</button>' +
+        '<a class="post-card__share" target="_blank" rel="noopener" aria-label="שיתוף הפוסט בוואטסאפ" href="https://wa.me/?text=' +
+          encodeURIComponent('מהקהילה של SWITCHY: "' + String(post.body || '').slice(0, 120) + '" — ' +
+            'https://switchy-ai.com/community.html#post-' + String(post.id)) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> שיתוף</a>' +
+        '</div>' +
         '<div class="post-card__replies" id="' + repliesId + '" hidden></div>';
 
       const toggleBtn = card.querySelector('.post-card__toggle');
@@ -3314,5 +3321,28 @@
     });
     bar.querySelector('.cmp-tray__clear').addEventListener('click', function () { write([]); sync(); });
     sync();
+  })();
+
+  // ── (13) HOME COMMUNITY STRIP — "hot in the community right now" ────────────
+  // Renders the 3 latest public posts into #homeFeed (homepage only). Any
+  // failure leaves the section hidden — the homepage never shows an empty box.
+  (function () {
+    var host = document.getElementById('homeFeed');
+    if (!host) return;
+    sbRest('community_posts?select=id,author,channel,body,created_at&is_flagged=eq.false&order=created_at.desc&limit=3')
+      .then(function (posts) {
+        if (!Array.isArray(posts) || !posts.length) return;
+        host.innerHTML = posts.map(function (post) {
+          return '<a class="home-post" href="community.html#post-' + escHtmlS(String(post.id)) + '">' +
+            '<span class="home-post__head"><b>' + escHtmlS(post.author || 'אנונימי') + '</b>' +
+            '<span class="home-post__channel">' + escHtmlS(post.channel || 'כללי') + '</span>' +
+            '<time>' + escHtmlS(relTimeHe(post.created_at)) + '</time></span>' +
+            '<span class="home-post__body">' + escHtmlS(String(post.body || '').slice(0, 140)) + '</span>' +
+          '</a>';
+        }).join('');
+        var section = host.closest('.home-community');
+        if (section) section.hidden = false;
+      })
+      .catch(function () { /* stay hidden */ });
   })();
 })();

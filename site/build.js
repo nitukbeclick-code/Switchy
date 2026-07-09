@@ -813,7 +813,15 @@ function planCardHtml(p, best) {
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
   if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
   const hasJump = p.after && (p.after - p.price) > 30;
-  const after = p.after ? `<span class="plan__after">ואז <span dir="ltr">₪${p.afterExact != null ? p.afterExact : p.after}</span></span>` : '';
+  // The after-promo chip is a real button when the plan has an id: tapping it
+  // opens the full-details modal (same [data-plan-more] path as the card CTA) —
+  // the price jump becomes an explorable fact, not fine print.
+  const afterTxt = `ואז <span dir="ltr">₪${p.afterExact != null ? p.afterExact : p.after}</span>`;
+  const after = p.after
+    ? (p.id
+      ? `<button type="button" class="plan__after plan__after--btn" data-plan-more="${esc(p.id)}" aria-haspopup="dialog" aria-label="${esc(`מה קורה אחרי המבצע ב${p.provider} ${p.plan} — כל הפרטים`)}">${afterTxt}</button>`
+      : `<span class="plan__after">${afterTxt}</span>`)
+    : '';
   // Card variant: the value anchor (cheapest in its category) reads as a budget
   // pick; a richer 5G/abroad plan with a promo-jump reads as a premium pick.
   // These are presentational accents only (A2 styles them); they never change

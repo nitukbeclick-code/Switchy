@@ -610,6 +610,10 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   background: radial-gradient(closest-side, rgba(56,189,248,.11), transparent 72%);
   animation: aurora-b 21s var(--ease) infinite alternate;
 }
+/* Dark theme: the washes glow like neon behind glass — deeper, wider, alive. */
+:root[data-theme="dark"] .hero__aurora { background: radial-gradient(620px 420px at 22% 78%, rgba(129,140,248,.16), transparent 72%); }
+:root[data-theme="dark"] .hero__aurora::before { background: radial-gradient(closest-side, rgba(74,222,128,.20), transparent 72%); }
+:root[data-theme="dark"] .hero__aurora::after { background: radial-gradient(closest-side, rgba(56,189,248,.17), transparent 72%); }
 @keyframes aurora-a { to { transform: translate(46px, 30px) scale(1.08); } }
 @keyframes aurora-b { to { transform: translate(-40px, -24px) scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .hero__aurora::before, .hero__aurora::after { animation: none; } }
@@ -771,6 +775,12 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
   background: linear-gradient(90deg, transparent 4%, rgba(22,163,74,.30), rgba(56,189,248,.30), rgba(129,140,248,.30), transparent 96%);
 }
 :root[data-theme="dark"] .section--alt::before { opacity: .5; }
+/* Dark alt sections get their own depth: a violet corner glow over the flat fill. */
+:root[data-theme="dark"] .section--alt {
+  background:
+    radial-gradient(560px 320px at 88% -10%, rgba(129,140,248,.09), transparent 70%),
+    #0E141A;
+}
 .section__head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
 .section__head h2 { font-size: var(--fs-h2); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
 /* Short gradient keel under every section title — a colour cue that replaces
@@ -1417,6 +1427,15 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
 .plan--hasjump .plan__after { color: var(--value-ink); font-weight: 600; }
 .plan--hasjump .plan__after::before { content: '⚠ '; }
+/* Tappable after-price chip — opens the plan modal with the full jump story. */
+button.plan__after--btn {
+  background: none; border: 0; padding: 2px 0; cursor: pointer; font: inherit; font-size: 11px;
+  text-align: start; text-decoration: underline dotted; text-underline-offset: 3px;
+  transition: transform .16s cubic-bezier(.23,1,.32,1), color .16s;
+}
+button.plan__after--btn:hover { color: var(--value-ink); }
+button.plan__after--btn:active { transform: scale(.96); }
+button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-flush); border-radius: 6px; }
 /* The site's most-repeated CTA (every plan card) — a real green tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */

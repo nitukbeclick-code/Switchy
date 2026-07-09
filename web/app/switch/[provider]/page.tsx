@@ -268,11 +268,11 @@ export default async function SwitchProviderPage({ params }: Params) {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="underline underline-offset-2 hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
-        <Link href="/switch" className="hover:text-accent">
+        <Link href="/switch" className="underline underline-offset-2 hover:text-accent">
           מדריכי מעבר וניתוק
         </Link>
         <span className="px-1.5">/</span>

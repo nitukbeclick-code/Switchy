@@ -143,7 +143,7 @@ export default function FaqPage() {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="interactive hover:text-accent">
+        <Link href="/" className="interactive underline underline-offset-2 hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>

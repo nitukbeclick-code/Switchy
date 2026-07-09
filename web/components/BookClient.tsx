@@ -632,7 +632,7 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
               type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
+              className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
             />
             <span className="leading-snug">
               <label htmlFor={id("consent")} className="cursor-pointer">

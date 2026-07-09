@@ -100,7 +100,7 @@ export default function StickyLeadCta({
             a hardcoded glyph. */}
         <Icon name="arrow" size={18} aria-hidden="true" className="-scale-x-100" />
       </button>
-      <p className="mt-1.5 text-center text-[11px] leading-snug text-muted">
+      <p className="mt-1.5 text-center text-[12px] leading-snug text-muted">
         השוואה חינמית · ללא התחייבות · פנייה רק באישורכם
       </p>
     </div>

@@ -313,7 +313,7 @@ export default function MarketPulseCharts({
             width="100%"
             className="h-auto w-full"
             preserveAspectRatio="xMidYMid meet"
-            role="img"
+            role="group"
             aria-labelledby="market-pulse-chart-title market-pulse-chart-desc"
           >
             <title id="market-pulse-chart-title">

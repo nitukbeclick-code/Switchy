@@ -309,7 +309,7 @@ export default function AccessibilityPage() {
           נשמח שתדווחו לנו בכתובת{" "}
           <a
             href="mailto:hello@switchy-ai.com"
-            className="interactive text-accent-text hover:text-accent-hover"
+            className="interactive text-accent-text underline underline-offset-2 hover:text-accent-hover"
           >
             hello@switchy-ai.com
           </a>{" "}

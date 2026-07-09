@@ -277,7 +277,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
             setOptOut(e.target.checked);
             setSaved(false);
           }}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <label
           htmlFor="profile-notify-opt-out"
@@ -300,7 +300,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
             setDigestOptIn(e.target.checked);
             setSaved(false);
           }}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <label
           htmlFor="profile-digest-opt-in"

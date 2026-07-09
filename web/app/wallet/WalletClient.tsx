@@ -249,7 +249,7 @@ export default function WalletClient({ categories }: WalletClientProps) {
 
               {/* REAL cheapest catalogue option for this category. */}
               <div className="mt-3 rounded-xl border border-border/70 bg-surface px-3 py-2.5">
-                <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
+                <p className="text-[12px] font-medium uppercase tracking-wide text-muted">
                   הזול ביותר בקטלוג
                 </p>
                 <p className="mt-1 text-sm leading-relaxed text-foreground">

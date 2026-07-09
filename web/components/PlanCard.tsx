@@ -42,12 +42,12 @@ export interface DropProps {
 export function FeatureBadges({ label }: { label: FeatureLabel }) {
   return (
     <>
-      <span className="inline-flex items-center rounded-full bg-value px-2 py-0.5 text-[11px] font-bold text-value-contrast">
+      <span className="inline-flex items-center rounded-full bg-value px-2 py-0.5 text-[12px] font-bold text-value-contrast">
         מומלץ
       </span>
       <span
         className={[
-          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+          "inline-flex items-center rounded-full px-2 py-0.5 text-[12px] font-semibold",
           label === "editor"
             ? "bg-value/15 text-value-text"
             : "bg-accent/15 text-accent-text",

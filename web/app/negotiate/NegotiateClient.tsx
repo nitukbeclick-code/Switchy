@@ -194,7 +194,7 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
                 type="checkbox"
                 checked={abroad}
                 onChange={(e) => setAbroad(e.target.checked)}
-                className="interactive h-4 w-4 shrink-0 accent-[var(--accent)]"
+                className="interactive h-5 w-5 shrink-0 accent-[var(--accent)]"
               />
               <span className="text-sm text-foreground">
                 חשובה לי גלישה/שיחות בחו״ל

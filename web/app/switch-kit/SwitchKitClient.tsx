@@ -536,7 +536,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
                     <button
                       type="button"
                       onClick={() => cycleStep(key, s.key)}
-                      className={`switchkit-screen-only press rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                      className={`switchkit-screen-only press rounded-full px-2 py-0.5 text-[12px] font-semibold transition-colors ${
                         state === "done"
                           ? "bg-accent/15 text-accent-text"
                           : state === "in_progress"

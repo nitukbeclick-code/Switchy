@@ -286,7 +286,7 @@ export default async function VsIndexPage() {
                     </dl>
 
                     {cheaper && (
-                      <span className="mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-value/10 px-2 py-0.5 text-[11px] font-semibold text-value-text">
+                      <span className="mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-value/10 px-2 py-0.5 text-[12px] font-semibold text-value-text">
                         {cheaper.provider.name} זול יותר בכניסה
                       </span>
                     )}

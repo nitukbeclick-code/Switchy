@@ -1350,7 +1350,10 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .article-hero--decor, .article-hero--hued { position: relative; overflow: hidden; }
 .article-hero--decor .container, .article-hero--hued .container { position: relative; z-index: 1; }
 .article-hero--hued { --hue-stop: 240px; padding-bottom: 18px; }
-.prose { max-width: 760px; margin: 0 auto; }
+/* overflow-wrap is inherited, so this breaks any long unbreakable token (bare
+   URLs like gov.il/he/departments/…, long IDs) across lines instead of forcing
+   horizontal page scroll on narrow screens. */
+.prose { max-width: 760px; margin: 0 auto; overflow-wrap: break-word; }
 .prose > p { font-size: 17px; color: var(--ink-700); margin: 0 0 20px; line-height: 1.8; }
 .prose h2 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 25px; color: var(--green-d); margin: 36px 0 12px; }
 .prose h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin: 22px 0 8px; }

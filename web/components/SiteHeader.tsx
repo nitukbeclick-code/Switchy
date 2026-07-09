@@ -104,7 +104,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             <details> dropdown so the 5 category landings stay one tap away. */}
         <nav
           aria-label="ניווט ראשי"
-          className="hidden items-center gap-1 md:flex"
+          className="hidden items-center gap-1 lg:flex"
         >
           {NAV_LINKS.map((link) => (
             <Link
@@ -169,15 +169,17 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           </TrackedCtaLink>
           {/* Light/dark toggle. 40px tap target (compact — 5 controls share the row). */}
           <ThemeToggle className="min-h-10 min-w-10" />
-          {/* Community account — login button / avatar menu. Desktop only (md+) so
-              it never crowds the tight mobile cluster; on a phone the community page
-              carries its own login prompts. */}
+          {/* Community account — login button / avatar menu. Desktop only (lg+) so
+              it never crowds the tight mobile/tablet cluster; below lg the community
+              page carries its own login prompts. */}
           <AccountMenu />
 
         {/* CTA — the single green ACTION in the masthead → the Zoom consultation
             scheduler (/book), labelled so it's clearly a Zoom video meeting (not
-            just a callback form). Shown ONLY at md+ (hidden md:inline-flex): on a
-            phone the masthead stays chrome-only (brand + toggle + menu trigger,
+            just a callback form). Shown ONLY at lg+ (hidden lg:inline-flex): the
+            full horizontal nav needs ~944px, so below lg (tablets/phones) the
+            hamburger carries it and the masthead stays chrome-only (brand + toggle
+            + menu trigger,
             zero solid-green fill) and this action lives as a plain nav item inside
             the mobile <details> menu below. The homepage LeadForm (#lead) remains
             its own section lower on the page. */}
@@ -185,18 +187,19 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           href="/book"
           location="header"
           label="consult"
-          className="hidden items-center justify-center rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:inline-flex"
+          className="hidden items-center justify-center rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:inline-flex"
         >
           שיחת ייעוץ בזום
         </TrackedCtaLink>
 
-        {/* Mobile menu — a native <details> disclosure, shown only < md (the
-            desktop <nav> above takes over at md). No client JS: the <summary> is
+        {/* Mobile menu — a native <details> disclosure, shown only < lg (the
+            desktop <nav> above takes over at lg, once the row has room). No client
+            JS: the <summary> is
             a real button (keyboard + SR operable), and the panel is plain markup.
             Only opacity/transform animate, so it's reduced-motion safe. */}
         <details
           data-mobile-menu
-          className="group relative md:hidden"
+          className="group relative lg:hidden"
         >
           <summary
             aria-label="תפריט ניווט"

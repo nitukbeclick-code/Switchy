@@ -47,7 +47,7 @@ export default function AccountMenu() {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="hidden items-center gap-2 rounded-xl border border-accent/40 px-3 py-2 text-sm font-semibold text-accent-text transition-colors hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent md:inline-flex"
+          className="hidden items-center gap-2 rounded-xl border border-accent/40 px-3 py-2 text-sm font-semibold text-accent-text transition-colors hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:inline-flex"
         >
           התחברות
         </button>
@@ -61,7 +61,7 @@ export default function AccountMenu() {
   const initial = (profile?.name || "•").trim().charAt(0).toUpperCase();
 
   return (
-    <div ref={wrapRef} className="relative hidden md:block">
+    <div ref={wrapRef} className="relative hidden lg:block">
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}

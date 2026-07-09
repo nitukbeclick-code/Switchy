@@ -1590,7 +1590,9 @@
       e.preventDefault();
       if (busy) return;
       const email = (emailEl && emailEl.value || '').trim();
-      const consent = consentEl ? !!consentEl.checked : true;
+      // Never fabricate consent: if the checkbox is somehow absent, default to
+      // false (fail-closed) rather than auto-asserting it. The server re-checks.
+      const consent = consentEl ? !!consentEl.checked : false;
       if (!EMAIL_RE.test(email)) {
         if (emailEl) { emailEl.setAttribute('aria-invalid', 'true'); emailEl.focus(); }
         toast('נא להזין כתובת אימייל תקינה', 'error');

@@ -773,6 +773,14 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 :root[data-theme="dark"] .section--alt::before { opacity: .5; }
 .section__head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
 .section__head h2 { font-size: var(--fs-h2); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
+/* Short gradient keel under every section title — a colour cue that replaces
+   visual monotony without another block of green. */
+.section__head h2::after {
+  content: ""; display: block; width: 56px; height: 4px; border-radius: 999px;
+  margin-top: 12px; margin-inline: auto;
+  background: linear-gradient(90deg, var(--accent), #38BDF8);
+}
+.section__head--start h2::after, .section__head[style*="text-align:right"] h2::after { margin-inline: 0; }
 .section__head p { color: var(--muted); margin-top: 14px; font-size: var(--fs-lead); line-height: 1.65; }
 
 /* Steps */
@@ -1276,6 +1284,14 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 /* Category pages carry their hue (--tf/--tt stamped by build.js): the headline
    highlight and the hero pill speak the category colour — instant orientation. */
 .lead-hero--cat { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent 280px); }
+/* Provider pages: the provider's OWN brand colour (never remapped) as a thin
+   identity strip on the top edge + a whisper wash behind the lockup. */
+.lead-hero--provider { position: relative; }
+.lead-hero--provider::before {
+  content: ""; position: absolute; top: 0; inset-inline: 0; height: 4px;
+  background: linear-gradient(90deg, transparent, var(--brand, var(--accent)) 22%, var(--brand, var(--accent)) 78%, transparent);
+}
+.lead-hero--provider .provider-hero__lockup .plogo { box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--brand, var(--accent)) 55%, transparent); }
 .lead-hero--cat h1 .hl { color: var(--tt, var(--green)); }
 .lead-hero--cat .pill {
   background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent);
@@ -3728,6 +3744,28 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   color: var(--ink-400); text-decoration: none; min-height: 44px; margin-inline-start: auto;
 }
 .post-card__report svg { width: 15px; height: 15px; }
+
+/* ── D1 micro-interactions (emil-design-eng) ───────────────────────────────
+   Finder result rows are re-created on every category/slider change, so
+   @starting-style gives a free staggered entrance; exit is instant (removal). */
+.finder__row {
+  transition: opacity .18s cubic-bezier(.23,1,.32,1), transform .18s cubic-bezier(.23,1,.32,1);
+  @starting-style { opacity: 0; transform: translateY(6px); }
+}
+.finder__row:nth-child(2) { transition-delay: 40ms; }
+.finder__row:nth-child(3) { transition-delay: 80ms; }
+/* One deliberate ring when a price-watch is confirmed — decorative, one-shot. */
+@keyframes bell-ring {
+  0% { transform: rotate(0); } 25% { transform: rotate(12deg); }
+  55% { transform: rotate(-9deg); } 80% { transform: rotate(4deg); } 100% { transform: rotate(0); }
+}
+.plan__watch.just-on svg { animation: bell-ring .5s cubic-bezier(.23,1,.32,1); transform-origin: top center; }
+/* Pressables answer the finger: subtle scale on :active across card icons. */
+.plan__watch:active, .plan__compare:active, .post-card__share:active, .post-card__report:active { transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  .finder__row, .finder__row:nth-child(2), .finder__row:nth-child(3) { transition: none; }
+  .plan__watch.just-on svg { animation: none; }
+}
 .post-card__report:hover { color: #B91C1C; text-decoration: underline; }
 :root[data-theme="dark"] .post-card__report:hover { color: #F87171; }
 

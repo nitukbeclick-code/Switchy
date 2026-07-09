@@ -644,6 +644,13 @@ const LOGO_FILE = {
   'sting-tv': 'sting-tv.png', 'walla-mobile': 'walla-mobile.webp', 'gilat': 'gilat.webp', 'yes': 'yes.webp',
   'nexttv': 'nexttv.png', 'airalo': 'airalo.webp',
 };
+// The provider's own brand colour (from the LOGO tuples) — used ONLY as a thin
+// identity strip on provider pages; never remapped to the site palette.
+function providerBrandColor(name) {
+  for (const [key, c] of LOGO) if (name.includes(key)) return c;
+  return '#0F766E';
+}
+
 function providerLogo(name, size = 36) {
   const file = LOGO_FILE[providerSlug(name)];
   if (file) {
@@ -3235,7 +3242,7 @@ ${head(`כל המסלולים של ${name} — מחירים והשוואה | SWI
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
+    <section class="lead-hero lead-hero--provider" style="--brand:${providerBrandColor(name)}">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [name, null]])}

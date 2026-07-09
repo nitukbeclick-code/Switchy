@@ -3569,3 +3569,27 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 a.ticker__item { text-decoration: none; color: var(--ink-700); }
 .ticker__more { color: var(--accent-ink); font-weight: 700; }
 a.ticker__item:hover .ticker__more { text-decoration: underline; }
+
+/* ── Community leaders — top contributors board ────────────────────────────── */
+.leaders { list-style: none; margin: 0 auto; padding: 0; max-width: 560px; display: grid; gap: 10px; }
+.leaders__row {
+  display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--glint), var(--elev-1);
+}
+.leaders__medal {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px;
+  background: var(--mint); color: var(--ink-700);
+}
+.leaders__medal--gold { background: linear-gradient(150deg, #FDE68A, #F59E0B); color: #78350F; }
+.leaders__medal--silver { background: linear-gradient(150deg, #E5E7EB, #9CA3AF); color: #1F2937; }
+.leaders__medal--bronze { background: linear-gradient(150deg, #FBD9BD, #C2743B); color: #57250C; }
+.leaders__avatar {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: var(--accent-t); color: var(--accent-ink);
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
+}
+.leaders__meta { display: grid; gap: 1px; }
+.leaders__meta b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink-900); }
+.leaders__meta span { font-size: 12.5px; color: var(--muted); }

@@ -3368,4 +3368,44 @@
       })
       .catch(function () { /* stay hidden */ });
   })();
+
+  // ── (14) COMMUNITY LEADERS — client-side leaderboard (posts + replies) ──────
+  // Aggregates public author names from posts+replies (anon reads). Top 5 get
+  // medal badges. Any failure → the section simply stays hidden.
+  (function () {
+    var host = document.getElementById('communityLeaders');
+    if (!host) return;
+    Promise.all([
+      sbRest('community_posts?select=author&is_flagged=eq.false&limit=1000'),
+      sbRest('community_replies?select=author&is_flagged=eq.false&limit=1000'),
+    ]).then(function (res) {
+      var counts = {};
+      res.forEach(function (rows, ri) {
+        (rows || []).forEach(function (r) {
+          var a = (r && r.author || '').trim();
+          if (!a) return;
+          counts[a] = counts[a] || { posts: 0, replies: 0 };
+          if (ri === 0) counts[a].posts += 1; else counts[a].replies += 1;
+        });
+      });
+      var top = Object.entries(counts)
+        .map(function (e) { return { name: e[0], posts: e[1].posts, replies: e[1].replies, score: e[1].posts * 2 + e[1].replies }; })
+        .sort(function (a, b) { return b.score - a.score; })
+        .slice(0, 5);
+      if (!top.length) return;
+      var medals = ['leaders__medal--gold', 'leaders__medal--silver', 'leaders__medal--bronze'];
+      host.innerHTML = top.map(function (u, i) {
+        var parts = [];
+        if (u.posts) parts.push(u.posts === 1 ? 'פוסט אחד' : u.posts + ' פוסטים');
+        if (u.replies) parts.push(u.replies === 1 ? 'תגובה אחת' : u.replies + ' תגובות');
+        return '<li class="leaders__row">' +
+          '<span class="leaders__medal ' + (medals[i] || '') + '">' + (i + 1) + '</span>' +
+          '<span class="leaders__avatar" aria-hidden="true">' + escHtmlS(u.name.charAt(0)) + '</span>' +
+          '<span class="leaders__meta"><b>' + escHtmlS(u.name) + '</b><span>' + escHtmlS(parts.join(' · ')) + '</span></span>' +
+        '</li>';
+      }).join('');
+      var section = host.closest('.community-leaders');
+      if (section) section.hidden = false;
+    }).catch(function () { /* stay hidden */ });
+  })();
 })();

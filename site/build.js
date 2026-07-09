@@ -4033,6 +4033,13 @@ ${navNoCta}
         </div>
       </div>
     </section>
+
+    <section class="section community-leaders" aria-label="מובילי הקהילה" hidden>
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כל הכבוד</span><h2>מובילי הקהילה</h2><p>מי שתרמו הכי הרבה שאלות, תשובות וטיפים.</p></header>
+        <ol class="leaders" id="communityLeaders"></ol>
+      </div>
+    </section>
   </main>
 ${footer}
   ${leadsConfigTag()}

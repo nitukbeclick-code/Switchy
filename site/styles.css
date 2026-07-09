@@ -256,12 +256,24 @@ html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 body {
   font-family: 'Assistant', 'Segoe UI', Arial, sans-serif;
   color: var(--ink);
-  background: var(--cream);
+  /* Living paper: a whisper dot-grid + an icy wash at the top of every page —
+     depth for all ~240 pages from one rule. Sections with their own ground
+     simply cover it, so the texture peeks only between surfaces. */
+  background:
+    radial-gradient(rgba(17,24,39,.045) 1px, transparent 1.2px) 0 0 / 26px 26px,
+    linear-gradient(180deg, color-mix(in srgb, #BAE6FD 12%, var(--cream)), var(--cream) 520px);
+  background-color: var(--cream);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
   position: relative;
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(rgba(255,255,255,.03) 1px, transparent 1.2px) 0 0 / 26px 26px,
+    linear-gradient(180deg, color-mix(in srgb, #1E3A5F 22%, var(--cream)), var(--cream) 520px);
+  background-color: var(--cream);
 }
 
 /* Fine film grain over the whole page — adds tactile, premium depth without
@@ -579,13 +591,18 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
    div in index.html, kept outside the panel so its blur never touches the copy).
    Opacities are whisper-level (≤.16 at source, blurred) so the panel stays the
    star; dark mode inherits via the flipped --accent token. */
-.hero__aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero__aurora {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  /* Third, static wash — a soft violet counterpoint so the hero isn't a
+     single-hue field (the two animated washes are green + sky). */
+  background: radial-gradient(560px 380px at 22% 78%, rgba(129,140,248,.10), transparent 72%);
+}
 .hero__aurora::before, .hero__aurora::after {
   content: ""; position: absolute; border-radius: 50%; filter: blur(72px);
 }
 .hero__aurora::before {
   width: 620px; height: 440px; top: -180px; inset-inline-start: -140px;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 17%, transparent), transparent 72%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent 72%);
   animation: aurora-a 17s var(--ease) infinite alternate;
 }
 .hero__aurora::after {
@@ -644,20 +661,23 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .launch-tile:hover {
   transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-color: color-mix(in srgb, var(--tf, var(--accent)) 55%, var(--line));
   box-shadow: var(--glint), var(--shadow);
 }
-.launch-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.launch-tile:focus-visible { outline: 3px solid var(--tf, var(--accent)); outline-offset: 3px; }
+/* Each tile speaks its category hue (--tf/--tt stamped inline in index.html). */
 .launch-tile__ico {
   width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
-  background: var(--accent-t); box-shadow: inset 0 0 0 1px rgba(22,163,74,.18);
+  background: color-mix(in srgb, var(--tf, var(--accent)) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tf, var(--accent)) 24%, transparent);
 }
-.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--accent-d); }
-:root[data-theme="dark"] .launch-tile__ico svg { stroke: var(--accent); }
+.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--tt, var(--accent-d)); }
+:root[data-theme="dark"] .launch-tile__ico svg { stroke: var(--tf, var(--accent)); }
 .launch-tile__body { margin-top: auto; padding-top: 14px; }
 .launch-tile__name { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
 .launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: var(--muted); }
-.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--accent-t); color: var(--accent-ink); font-weight: 800; font-size: 12.5px; }
+.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tf, var(--accent)) 15%, transparent); color: var(--tt, var(--accent-ink)); font-weight: 800; font-size: 12.5px; }
+:root[data-theme="dark"] .launch-tile__price { color: var(--tf, var(--accent)); }
 
 /* "קטגוריות נוספות" chip row. */
 .hero__more { margin-top: 16px; }
@@ -740,9 +760,27 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* ── Sections ────────────────────────────────────────────────────────── */
 .section { padding: 64px 0; }
-.section--alt { background: #fff; }
+/* Alt sections: a two-tone drift (white → minty) + a colour-horizon hairline
+   on the top edge — the section breaks read as designed moments, not borders. */
+.section--alt {
+  background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--mint) 60%, #fff));
+  position: relative;
+}
+.section--alt::before {
+  content: ""; position: absolute; top: -1px; inset-inline: 0; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent 4%, rgba(22,163,74,.30), rgba(56,189,248,.30), rgba(129,140,248,.30), transparent 96%);
+}
+:root[data-theme="dark"] .section--alt::before { opacity: .5; }
 .section__head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
 .section__head h2 { font-size: var(--fs-h2); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
+/* Short gradient keel under every section title — a colour cue that replaces
+   visual monotony without another block of green. */
+.section__head h2::after {
+  content: ""; display: block; width: 56px; height: 4px; border-radius: 999px;
+  margin-top: 12px; margin-inline: auto;
+  background: linear-gradient(90deg, var(--accent), #38BDF8);
+}
+.section__head--start h2::after, .section__head[style*="text-align:right"] h2::after { margin-inline: 0; }
 .section__head p { color: var(--muted); margin-top: 14px; font-size: var(--fs-lead); line-height: 1.65; }
 
 /* Steps */
@@ -824,7 +862,14 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* Testimonials */
 .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.quote { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+.quote { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; position: relative; overflow: hidden; }
+/* Oversized decorative quotation mark behind the text — editorial richness. */
+.quote::before {
+  content: "”"; position: absolute; top: -34px; inset-inline-start: 8px;
+  font-family: Georgia, 'Times New Roman', serif; font-size: 150px; line-height: 1;
+  color: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none;
+}
+.quote blockquote, .quote figcaption { position: relative; }
 .section--alt .quote { background: var(--cream); }
 /* Rating stars — amber VALUE, darkened to clear the 3:1 graphical bar on white
    (the bright #f5a623 fill sat at ~2.3:1). Still reads as warm gold. */
@@ -859,6 +904,9 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .cta::before {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background:
+    radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.2px) 0 0 / 22px 22px,
+    radial-gradient(460px 320px at 10% 112%, rgba(129,140,248,.28), transparent 70%),
+    radial-gradient(420px 300px at 92% -12%, rgba(56,189,248,.20), transparent 70%),
     radial-gradient(900px 360px at 50% -30%, rgba(255,255,255,.10), transparent 70%),
     linear-gradient(180deg, rgba(255,255,255,.06), transparent 22%);
 }
@@ -1233,6 +1281,24 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 }
 .lead-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(34px, 5.4vw, 66px); font-weight: 900; color: var(--green-d); letter-spacing: -1.6px; line-height: 1.04; }
 .lead-hero h1 .hl { color: var(--green); }
+/* Category pages carry their hue (--tf/--tt stamped by build.js): the headline
+   highlight and the hero pill speak the category colour — instant orientation. */
+.lead-hero--cat { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent 280px); }
+/* Provider pages: the provider's OWN brand colour (never remapped) as a thin
+   identity strip on the top edge + a whisper wash behind the lockup. */
+.lead-hero--provider { position: relative; }
+.lead-hero--provider::before {
+  content: ""; position: absolute; top: 0; inset-inline: 0; height: 4px;
+  background: linear-gradient(90deg, transparent, var(--brand, var(--accent)) 22%, var(--brand, var(--accent)) 78%, transparent);
+}
+.lead-hero--provider .provider-hero__lockup .plogo { box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--brand, var(--accent)) 55%, transparent); }
+.lead-hero--cat h1 .hl { color: var(--tt, var(--green)); }
+.lead-hero--cat .pill {
+  background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent);
+  color: var(--tt, var(--accent-ink));
+}
+:root[data-theme="dark"] .lead-hero--cat h1 .hl,
+:root[data-theme="dark"] .lead-hero--cat .pill { color: var(--tf, var(--accent)); }
 .lead-hero p { color: var(--muted); font-size: 18px; margin: 16px auto 26px; max-width: 38em; }
 .lead-hero .hero__cta { justify-content: center; }
 .feature--check .feature__icon { font-weight: 900; }
@@ -1609,8 +1675,21 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 
 /* ── Line icons (replace emoji; inherit ink via currentColor) ─────────────── */
 .ico { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex: none; }
-.cat__icon { color: var(--green); line-height: 0; }
+/* Category hue (--tf fill / --tt deep, stamped by build.js) tints the icon chip
+   and the "go" cue — each category gets its own colour voice, action stays green. */
+.cat { --tf: var(--accent); --tt: var(--accent-d); }
+.cat__icon { color: var(--tt); line-height: 0; }
 .cat__icon .ico { width: 34px; height: 34px; }
+.cat__icon .ico, .cat__icon svg {
+  background: color-mix(in srgb, var(--tf) 13%, transparent);
+  border-radius: 14px; padding: 9px; width: 52px; height: 52px; box-sizing: border-box;
+}
+:root[data-theme="dark"] .cat__icon { color: var(--tf); }
+.cat .cat__go { color: var(--tt); }
+:root[data-theme="dark"] .cat .cat__go { color: var(--tf); }
+@media (hover: hover) and (pointer: fine) {
+  .cat:hover { border-color: color-mix(in srgb, var(--tf) 55%, var(--line)); }
+}
 .feature__icon { color: #fff; }
 .feature__icon .ico { width: 28px; height: 28px; }
 .feature--check .feature__icon { color: var(--green-d); }
@@ -1619,8 +1698,8 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .plan__cta .ico { width: 16px; height: 16px; vertical-align: -3px; margin-inline-end: 3px; }
 
 /* ── "Best value" anchor — the lowest-price plan in a category listing ─────── */
-.plan.plan--best { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), var(--shadow); }
-.plan.plan--best:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), var(--shadow-lg); }
+.plan.plan--best { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), 0 14px 44px -14px rgba(217,119,6,.35), var(--shadow); }
+.plan.plan--best:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 2px var(--value), 0 18px 52px -14px rgba(217,119,6,.42), var(--shadow-lg); }
 .plan__badge {
   position: absolute; top: -10px; inset-inline-start: 14px; z-index: 2;
   background: var(--value-t); color: var(--value-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
@@ -1731,12 +1810,22 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ── Provider logo marquee — the trust band under the hero ──────────────────
    Two identical tracks translate -50% in a loop; pauses on hover/focus, and
    reduced-motion (or no-JS-needed fallback) degrades to a wrapped static row. */
-.logo-marquee { overflow: hidden; position: relative; }
+/* Premium ink band: the provider chips float on a lit dark strip instead of
+   bare page ground — the trust row reads as a designed object. */
+.logo-marquee {
+  overflow: hidden; position: relative; border-radius: var(--radius-lg); padding: 16px 0;
+  background: linear-gradient(140deg, #0B0F14, #141D27);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), var(--shadow-sm);
+}
 .logo-marquee::before, .logo-marquee::after {
   content: ""; position: absolute; top: 0; bottom: 0; width: 60px; z-index: 1; pointer-events: none;
 }
-.logo-marquee::before { inset-inline-start: 0; background: linear-gradient(to left, transparent, var(--cream)); }
-.logo-marquee::after { inset-inline-end: 0; background: linear-gradient(to right, transparent, var(--cream)); }
+.logo-marquee::before { inset-inline-start: 0; background: linear-gradient(to left, transparent, #0B0F14); }
+.logo-marquee::after { inset-inline-end: 0; background: linear-gradient(to right, transparent, #0B0F14); }
+.logo-marquee .logo-chip { background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.13); color: #E5E7EB; }
+@media (hover: hover) and (pointer: fine) {
+  .logo-marquee .logo-chip:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.24); color: #fff; }
+}
 .logo-marquee__row { display: flex; gap: 12px; width: max-content; animation: marquee 42s linear infinite; }
 .logo-marquee__track { display: flex; gap: 12px; }
 .logo-marquee:hover .logo-marquee__row,
@@ -3655,6 +3744,28 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   color: var(--ink-400); text-decoration: none; min-height: 44px; margin-inline-start: auto;
 }
 .post-card__report svg { width: 15px; height: 15px; }
+
+/* ── D1 micro-interactions (emil-design-eng) ───────────────────────────────
+   Finder result rows are re-created on every category/slider change, so
+   @starting-style gives a free staggered entrance; exit is instant (removal). */
+.finder__row {
+  transition: opacity .18s cubic-bezier(.23,1,.32,1), transform .18s cubic-bezier(.23,1,.32,1);
+  @starting-style { opacity: 0; transform: translateY(6px); }
+}
+.finder__row:nth-child(2) { transition-delay: 40ms; }
+.finder__row:nth-child(3) { transition-delay: 80ms; }
+/* One deliberate ring when a price-watch is confirmed — decorative, one-shot. */
+@keyframes bell-ring {
+  0% { transform: rotate(0); } 25% { transform: rotate(12deg); }
+  55% { transform: rotate(-9deg); } 80% { transform: rotate(4deg); } 100% { transform: rotate(0); }
+}
+.plan__watch.just-on svg { animation: bell-ring .5s cubic-bezier(.23,1,.32,1); transform-origin: top center; }
+/* Pressables answer the finger: subtle scale on :active across card icons. */
+.plan__watch:active, .plan__compare:active, .post-card__share:active, .post-card__report:active { transform: scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  .finder__row, .finder__row:nth-child(2), .finder__row:nth-child(3) { transition: none; }
+  .plan__watch.just-on svg { animation: none; }
+}
 .post-card__report:hover { color: #B91C1C; text-decoration: underline; }
 :root[data-theme="dark"] .post-card__report:hover { color: #F87171; }
 
@@ -3706,6 +3817,43 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   .community-stats { gap: 8px; }
   .community-stats__item b { font-size: 21px; }
 }
+
+/* ── Bento band — "SWITCHY at a glance" showcase on the homepage ────────────
+   Asymmetric 4-cell grid; each cell whispers a different hue, the ink cell
+   carries the CTA. Numbers are restated from elsewhere on the page (honest). */
+.bento-sec { padding-top: 0; }
+.bento { display: grid; grid-template-columns: 1.35fr 1fr 1fr 1.25fr; gap: 14px; }
+.bento__cell {
+  border-radius: var(--radius-lg); padding: 26px 22px; display: flex; flex-direction: column; gap: 8px;
+  background: var(--white); border: 1px solid var(--line); box-shadow: var(--glint), var(--shadow-sm);
+}
+.bento__cell b {
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: -1.5px;
+  font-size: clamp(34px, 3.4vw, 46px); line-height: 1; color: var(--ink-900); font-variant-numeric: tabular-nums;
+}
+.bento__cell b small { font-size: .45em; font-weight: 800; letter-spacing: 0; }
+.bento__cell > span { font-size: 13.5px; line-height: 1.5; color: var(--ink-600); } /* direct child only — the counter <span> inside <b> must inherit the display size */
+.bento__cell .btn { margin-top: auto; align-self: flex-start; }
+.bento__cell--value { background: linear-gradient(160deg, #FFFDF5, var(--value-t)); border-color: color-mix(in srgb, var(--value) 30%, var(--line)); }
+.bento__cell--value b { color: var(--value-ink); }
+.bento__cell--sky { background: linear-gradient(160deg, #FFF, #E8F6FE); border-color: color-mix(in srgb, #38BDF8 30%, var(--line)); }
+.bento__cell--sky b { color: #0369A1; }
+.bento__cell--violet { background: linear-gradient(160deg, #FFF, #EEF0FE); border-color: color-mix(in srgb, #818CF8 30%, var(--line)); }
+.bento__cell--violet b { color: #4338CA; }
+.bento__cell--ink {
+  background: linear-gradient(150deg, #0B0F14, #17222E);
+  border-color: rgba(255,255,255,.09);
+  background-image: radial-gradient(rgba(255,255,255,.06) 1px, transparent 1.2px), linear-gradient(150deg, #0B0F14, #17222E);
+  background-size: 20px 20px, auto;
+}
+.bento__cell--ink b { color: #fff; }
+.bento__cell--ink > span { color: rgba(245,247,248,.75); }
+:root[data-theme="dark"] .bento__cell { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+:root[data-theme="dark"] .bento__cell--value b { color: var(--value); }
+:root[data-theme="dark"] .bento__cell--sky b { color: #7DD3FC; }
+:root[data-theme="dark"] .bento__cell--violet b { color: #A5B4FC; }
+@media (max-width: 900px) { .bento { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 460px) { .bento { gap: 10px; } .bento__cell { padding: 20px 16px; } }
 
 /* Ticker items are links into the deals page. */
 a.ticker__item { text-decoration: none; color: var(--ink-700); }

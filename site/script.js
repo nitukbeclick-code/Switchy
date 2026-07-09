@@ -3537,6 +3537,11 @@
           const list = read();
           if (!list.includes(current.id)) { list.push(current.id); save(list); }
           paint();
+          // One celebratory ring on the bell that was just armed (CSS one-shot).
+          document.querySelectorAll('.plan__watch[data-watch="' + (window.CSS && CSS.escape ? CSS.escape(current.id) : current.id) + '"]').forEach((b) => {
+            b.classList.add('just-on');
+            b.addEventListener('animationend', () => b.classList.remove('just-on'), { once: true });
+          });
           close();
           toast('במעקב! נעדכן אתכם כשהמחיר של ' + current.name + ' יורד', 'success');
         } catch (_) {

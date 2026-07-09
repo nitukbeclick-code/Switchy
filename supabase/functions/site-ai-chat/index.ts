@@ -51,11 +51,16 @@ import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { type Plan, plansFromRows, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
+import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
+import { lookupOpenLead } from "../_shared/leadlookup.ts";
+import { type BillHint, extractBillHint, MAX_BILL_BASE64_LEN, parseImage } from "../_shared/bill.ts";
+import { chunkText, sseFrame } from "../_shared/sse.ts";
 import {
   appendTurn,
   asChatTurns,
   type ChatSession,
   loadSession,
+  mergeSlots,
   recordToolCall,
   safeSessionId,
   saveSession,
@@ -111,6 +116,34 @@ async function loadPlans(): Promise<Plan[]> {
   return plans;
 }
 
+// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function
+// instance via the service-role read — mirrors whatsapp-webhook getBotKnowledge
+// so the website chat gains the SAME knowledge base WhatsApp has. Fail-soft →
+// [] (loadBotKnowledge never throws); a missing/empty table simply means the
+// agent runs without the knowledge block (prompt byte-identical to today).
+let _knowledge: KnowledgeEntry[] | null = null;
+async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
+  if (_knowledge) return _knowledge;
+  _knowledge = await loadBotKnowledge();
+  return _knowledge;
+}
+
+// A client may seed a chat with an already-analyzed bill (from the bill-analyzer
+// screen) so the user can ask follow-ups about their OWN bill — the shared agent
+// then injects it and can call analyze_bill (grounded, truth-only). Validate +
+// clamp exactly like the WhatsApp/OCR paths (0..5000, rounded); a non-usable
+// bill (no positive monthly) → undefined so the prompt stays unchanged. No image
+// is accepted here (that's the separate OCR path); this only references figures.
+function parseBillHint(raw: unknown): { provider?: string; monthly: number; category?: string } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const monthly = Math.round(Math.min(5000, Math.max(0, Number(o.monthly))));
+  if (!Number.isFinite(monthly) || monthly <= 0) return undefined;
+  const provider = typeof o.provider === "string" ? (o.provider.trim().slice(0, 40) || undefined) : undefined;
+  const category = typeof o.category === "string" ? (o.category.trim().slice(0, 20) || undefined) : undefined;
+  return { provider, monthly, category };
+}
+
 function clientIp(req: Request): string {
   // Same trust order as the leads rate-limit gate: CDN-set header first, then
   // the last (infra-appended) X-Forwarded-For hop — never the spoofable first hop.
@@ -136,6 +169,23 @@ async function rateLimited(ip: string): Promise<boolean | null> {
   );
   if (rows === null) return null; // query failed — fail CLOSED (caller returns 503)
   return rows.length >= PER_IP_HOURLY_LIMIT;
+}
+
+// A SEPARATE, far stricter daily cap for in-chat bill-photo OCR — paid Gemini
+// Vision costs far more than a text turn, so the hourly text limit is too loose.
+// It counts the shared bill_analyses ledger (the SAME table the analyzer screen
+// writes) so the per-IP daily Vision budget can't be bypassed by switching
+// surfaces. Fail-CLOSED on a query error (block rather than let a DB blip enable
+// a paid-Vision burst); fail-open only when there's no IP.
+const CHAT_VISION_DAILY_LIMIT = 3;
+async function billVisionCapReached(ip: string): Promise<boolean> {
+  if (!ip) return false; // can't limit without an IP — fail-open
+  const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const rows = await fetchRows<{ id: string }>(
+    `/rest/v1/bill_analyses?select=id&ip=eq.${encodeURIComponent(ip)}&created_at=gte.${encodeURIComponent(since)}`,
+  );
+  if (rows === null) return true; // query failed → fail CLOSED (paid Vision)
+  return rows.length >= CHAT_VISION_DAILY_LIMIT;
 }
 
 // Sanitize the browser-replayed history into the {role,text} turns the session
@@ -197,6 +247,8 @@ async function handle(req: Request): Promise<Response> {
     history?: unknown;
     sessionId?: unknown;
     lead?: AiLeadInput;
+    billHint?: unknown;
+    imageBase64?: unknown;
   };
   try {
     body = await req.json();
@@ -260,13 +312,64 @@ async function handle(req: Request): Promise<Response> {
   let via = "hard_fallback";
   let timedOut = false;
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
+  // Memory the agent harvests this turn (rejected plan ids / objections) to persist
+  // into the session so it shapes the next turn — the write-side that activates
+  // `memory`. Undefined until runAgent returns something to record.
+  let slotPatch: { rejectedPlanIds?: string[]; objections?: string[] } | undefined;
+  // ── Parity with WhatsApp: feed the shared brain the same context ───────────
+  // Until now the site agent was structurally dumber than WhatsApp despite
+  // sharing runAgent — it passed none of these. Each is fail-soft and truth-only,
+  // so an empty knowledge table / no open lead / a fresh session leaves the
+  // prompt byte-identical to today. Prices/numbers are never touched.
+  const knowledgeContext = formatKnowledgeForPrompt(await getBotKnowledge()) || undefined;
+  // Open-lead awareness: only when a lead was captured earlier THIS session
+  // (slots.phone). No phone ⇒ no lookup ⇒ no section (identical to WhatsApp's
+  // null contract). null → undefined so it satisfies the optional param type.
+  const activeLead = session.slots.phone
+    ? ((await lookupOpenLead(session.slots.phone)) ?? undefined)
+    : undefined;
+  const plans = await loadPlans();
+  // ── In-chat bill photo (optional) — full Gemini-Vision OCR → billHint ───────
+  // A user can attach a bill photo IN chat and ask about it. Gated by a strict,
+  // SEPARATE daily Vision cost cap (paid Vision ≫ a text turn). Fail-soft at every
+  // step: oversize / bad format / rate-limited / unreadable / vision error ⇒ we
+  // simply proceed WITHOUT a bill hint (the agent asks for the figures honestly).
+  // The photo is NEVER stored — only a PII-light ledger row for the daily cap
+  // (mirrors the analyzer screen's privacy contract).
+  let imageHint: BillHint | null = null;
+  const rawImage = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+  if (rawImage.trim() && geminiKey) {
+    if (rawImage.length > MAX_BILL_BASE64_LEN) {
+      jlog({ at: "ai-chat.vision", ok: false, reason: "too_large" });
+    } else if (await billVisionCapReached(ip)) {
+      jlog({ at: "ai-chat.vision", ok: false, reason: "rate_limited" });
+    } else {
+      const img = parseImage(rawImage);
+      if (img && img.data.length <= MAX_BILL_BASE64_LEN) {
+        // Ledger the Vision ATTEMPT first (PII-light, no photo) so the daily cap
+        // counts every paid call — even an unreadable one — closing an abuse loop.
+        insertRow("bill_analyses", { ip: ip || null }).catch(() => {});
+        try {
+          const { hint } = await extractBillHint(geminiKey, plans, img);
+          imageHint = hint;
+          jlog({ at: "ai-chat.vision", ok: true, readable: !!hint });
+        } catch (e) {
+          jlog({ at: "ai-chat.vision", ok: false, error: String(e) });
+        }
+      }
+    }
+  }
+  // Conversational bill: a photo-read bill (when readable) OVERRIDES a client-sent
+  // text billHint; otherwise fall back to the already-analyzed figures the client
+  // may have seeded (the agent injects it + can call analyze_bill).
+  const billHint = imageHint ?? parseBillHint(body.billHint);
   try {
     const res = await runAgent({
       channel: "site",
       message,
       history,
       keys,
-      plans: await loadPlans(),
+      plans,
       toolContext: {
         conversationId: sessionId || null,
         contactId: null,
@@ -275,11 +378,23 @@ async function handle(req: Request): Promise<Response> {
         // Consent-gated capture — the same honest gate the client path uses.
         captureLead: (input) => captureAiLead(input as AiLeadInput),
       },
+      knowledgeContext,
+      activeLead,
+      billHint,
+      // Conversation-shaping memory from the loaded session slots — turnCount is
+      // live (paces the close); rejectedPlanIds/objections activate once tools
+      // record them.
+      memory: {
+        rejectedPlanIds: session.slots.rejectedPlanIds,
+        objections: session.slots.objections,
+        turnCount: session.slots.turnCount,
+      },
     });
     agentReply = res.reply;
     via = res.via;
     timedOut = res.timedOut;
     toolCalls.push(...res.toolCalls);
+    slotPatch = res.slotPatch;
   } catch (e) {
     jlog({ at: "ai-chat", ok: false, error: String(e) });
     return json(req, { error: "ai request failed" }, 502);
@@ -307,17 +422,60 @@ async function handle(req: Request): Promise<Response> {
     appendTurn(session, "bot", finalReply);
     for (const tc of toolCalls) recordToolCall(session, tc.name, tc.ok, tc.preview);
     if (leadCaptured || leadCapturedByTool) session.slots.leadCaptured = true;
+    // Persist the memory the agent harvested this turn (rejected plan ids /
+    // objections) so `memory` shapes the next turn. UNION + capped by mergeSlots;
+    // empty ⇒ no-op. Same activation as the WhatsApp runner, for site + app parity.
+    if (slotPatch) mergeSlots(session, slotPatch);
     saveSession(session, ip).catch(() => {});
   }
   // Best-effort rate-limit audit row, never blocks the reply.
   insertRow("chat_messages", { ip: ip || null }).catch(() => {});
 
-  const out: Record<string, unknown> = { reply: finalReply };
-  if (offerLead) out.offerLead = true;
-  if (leadCaptured || leadCapturedByTool) out.leadCaptured = true;
-  if (contextTruncated) out.contextTruncated = true;
-  if (sessionId) out.sessionId = sessionId;
-  return json(req, out);
+  // Response metadata (identical set for the buffered + streamed paths).
+  const meta: Record<string, unknown> = {};
+  if (offerLead) meta.offerLead = true;
+  if (leadCaptured || leadCapturedByTool) meta.leadCaptured = true;
+  if (contextTruncated) meta.contextTruncated = true;
+  if (sessionId) meta.sessionId = sessionId;
+
+  // ── Flag-gated streaming (opt-in via ?stream=1) ────────────────────────────
+  // The buffered JSON path below is the DEFAULT and byte-identical to before —
+  // nothing streams unless a client explicitly asks. Streaming delivers the SAME
+  // already-computed reply as progressive `token` events + a trailing `meta`/
+  // `done`, so the honesty rails and the metadata contract are unchanged; only the
+  // transport differs. (Real time-to-first-token streaming is a later, live-
+  // verified upgrade that swaps the chunk SOURCE — this transport stays.)
+  let wantsStream = false;
+  try {
+    wantsStream = new URL(req.url).searchParams.get("stream") === "1";
+  } catch { /* malformed URL → buffered default */ }
+
+  if (wantsStream) {
+    const enc = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        try {
+          for (const c of chunkText(finalReply)) {
+            controller.enqueue(enc.encode(sseFrame("token", { text: c })));
+          }
+          controller.enqueue(enc.encode(sseFrame("meta", meta)));
+          controller.enqueue(enc.encode(sseFrame("done", {})));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        ...corsHeaders(req),
+      },
+    });
+  }
+
+  return json(req, { reply: finalReply, ...meta });
 }
 
 // Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).

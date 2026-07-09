@@ -125,6 +125,28 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+/**
+ * Hand the just-read bill to the <AiConcierge> chat (mounted in the header) via a
+ * window CustomEvent, so the user can ask follow-ups about their OWN bill. The
+ * concierge stashes the billHint (persisted for every follow-up) and auto-sends
+ * the opener; it re-validates + clamps client- and server-side. Truth-only: we
+ * pass only the figures we actually read from THIS bill.
+ */
+function askSwitchyAboutBill(result: AnalyzeResult): void {
+  const provider = result.provider?.trim() || undefined;
+  const monthly = Math.round(result.currentSpend);
+  const category = result.category?.trim() || undefined;
+  const opener = provider
+    ? `ניתחתם לי חשבון של ${provider} על ₪${monthly} בחודש. איך אפשר לחסוך?`
+    : `ניתחתם לי חשבון על ₪${monthly} בחודש. איך אפשר לחסוך?`;
+  window.dispatchEvent(
+    new CustomEvent("switchy:concierge-open", {
+      detail: { billHint: { provider, monthly, category }, prompt: opener },
+    }),
+  );
+  trackEvent("bill_ask_ai", { source: "bills", category });
+}
+
 export interface BillUploaderProps {
   /**
    * A slim, serializable projection of the REAL catalogue (cat/provider/plan/
@@ -401,6 +423,19 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
               confidence={result.confidence}
               warnings={result.warnings}
             />
+
+            {/* Conversational follow-up — hand this exact read to Switchy AI so
+                the user can ask about their OWN bill. The chat is grounded (same
+                catalogue + these figures), and the hint rides along on every
+                follow-up so the thread stays anchored to this bill. */}
+            <button
+              type="button"
+              onClick={() => askSwitchyAboutBill(result)}
+              className="interactive press mt-4 inline-flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/5 px-4 py-2.5 text-sm font-semibold text-accent-text hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <Icon name="chat" size={18} aria-hidden="true" />
+              שאל את Switchy AI על החשבון
+            </button>
           </div>
 
           {/* Signature clip-path before/after — "your annual cost today" wipes to

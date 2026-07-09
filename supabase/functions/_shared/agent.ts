@@ -329,7 +329,35 @@ export type RunAgentResult = {
   toolCalls: { name: string; ok: boolean; preview?: string }[];
   // Whether any provider aborted on its timeout (caller may map to a 504).
   timedOut: boolean;
+  // Conversation-shaping memory the agent HARVESTED this turn from tool results
+  // (refine_recommendation echoes the rejected plan ids + the parsed objections in
+  // its data). The caller mergeSlots()es this into the session so `memory` actually
+  // shapes the NEXT turn — this is the write-side that ACTIVATES the otherwise-inert
+  // rejectedPlanIds/objections memory on every surface. Omitted when nothing was
+  // harvested (backward-compatible). TRUTH-ONLY: only real strings a tool produced.
+  slotPatch?: { rejectedPlanIds?: string[]; objections?: string[] };
 };
+
+// Harvest the conversation-shaping memory a tool surfaced in its result `data`.
+// refine_recommendation echoes `rejectedPlanIds` (the ids the user dismissed) and
+// `objections` (the parsed objection tags) precisely so they can be persisted into
+// the session slots; this collects them, deduped, into the caller's accumulators.
+// Bounds mirror session.ts clipSlots (64 / 120) as defence in depth — mergeSlots +
+// clipSlots also cap. Pure + total: a tool with neither key contributes nothing.
+function harvestMemory(res: ToolResult, rejected: Set<string>, objections: Set<string>): void {
+  const d = res.data;
+  if (!d) return;
+  if (Array.isArray(d.rejectedPlanIds)) {
+    for (const x of d.rejectedPlanIds) {
+      if (typeof x === "string" && x.trim()) rejected.add(x.trim().slice(0, 64));
+    }
+  }
+  if (Array.isArray(d.objections)) {
+    for (const x of d.objections) {
+      if (typeof x === "string" && x.trim()) objections.add(x.trim().slice(0, 120));
+    }
+  }
+}
 
 // ── Model tier selection ──────────────────────────────────────────────────────
 // Pick the answer profile for THIS turn (see _shared/ai.ts ModelTier):
@@ -494,6 +522,17 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     message,
   );
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
+  // Conversation-shaping memory harvested from tool results this turn (deduped).
+  // Attached to EVERY return via memoryPatch() so the caller can persist it into
+  // the session slots — the write-side that makes `memory` non-inert.
+  const rejectedAcc = new Set<string>();
+  const objectionAcc = new Set<string>();
+  const memoryPatch = (): RunAgentResult["slotPatch"] => {
+    const patch: { rejectedPlanIds?: string[]; objections?: string[] } = {};
+    if (rejectedAcc.size) patch.rejectedPlanIds = [...rejectedAcc];
+    if (objectionAcc.size) patch.objections = [...objectionAcc];
+    return patch.rejectedPlanIds || patch.objections ? patch : undefined;
+  };
   // Pass the resolved language to the tools so their surfaced notes (retention
   // script, referral line) are localized to the same language as the reply.
   const ctx: ToolContext = { ...input.toolContext, plans, channel, lang };
@@ -533,7 +572,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
             reply = `${reply}\n\n${lastToolNote}`;
           }
           reply = reply || lastToolNote;
-          if (reply) return { reply, via: "tools", toolCalls, timedOut: false };
+          if (reply) return { reply, via: "tools", toolCalls, timedOut: false, slotPatch: memoryPatch() };
           break; // empty text with no calls → fall through to text chain
         }
 
@@ -550,6 +589,10 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
           const call = out.calls[i];
           const res = results[i];
           toolCalls.push({ name: call.name, ok: res.ok, preview: res.note?.slice(0, 80) });
+          // Harvest the memory the tool surfaced (refine_recommendation echoes the
+          // rejected ids + parsed objections) so the caller persists it → `memory`
+          // shapes the next turn. Truth-only; deduped by the accumulator Sets.
+          harvestMemory(res, rejectedAcc, objectionAcc);
           if (res.note) lastToolNote = res.note;
           appendFunctionResponse(contents, call.name, {
             ok: res.ok,
@@ -571,7 +614,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   const meta: ReplyMeta = { timedOut: false };
   try {
     const text = await generateReply(keys, system, history, message || "שלום", maxOutTokens, meta, tierOpts);
-    if (text) return { reply: text, via: "text", toolCalls, timedOut: meta.timedOut };
+    if (text) return { reply: text, via: "text", toolCalls, timedOut: meta.timedOut, slotPatch: memoryPatch() };
   } catch (_e) {
     // fall through
   }
@@ -580,10 +623,10 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   if (input.templateFallback) {
     try {
       const t = await input.templateFallback(message);
-      if (t) return { reply: t, via: "template", toolCalls, timedOut: meta.timedOut };
+      if (t) return { reply: t, via: "template", toolCalls, timedOut: meta.timedOut, slotPatch: memoryPatch() };
     } catch (_e) { /* fall through */ }
   }
 
   // ── 4) Hard fallback — the customer always gets *something* ───────────────
-  return { reply: HARD_FALLBACK, via: "hard_fallback", toolCalls, timedOut: meta.timedOut };
+  return { reply: HARD_FALLBACK, via: "hard_fallback", toolCalls, timedOut: meta.timedOut, slotPatch: memoryPatch() };
 }

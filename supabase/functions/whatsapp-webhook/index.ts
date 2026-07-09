@@ -90,6 +90,7 @@ import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
 // generic welcome menu. The lead itself is looked up in public.leads by phone
 // (lookupOpenLead below) and threaded into the agent as TRUTH-ONLY context.
 import { type ActiveLead, isLeadStatusInquiry } from "../_shared/agent.ts";
+import { leadPhoneCandidates, lookupOpenLead } from "../_shared/leadlookup.ts";
 // Curated, truth-only verified-FAQ knowledge layer (bot_knowledge) + the learning
 // data sink (bot_question_log). The webhook loads the knowledge once per instance,
 // injects it into the agent prompt for the free-text Q&A path, and appends each
@@ -857,67 +858,11 @@ function normalizeLeadPhone(raw: string): string {
 }
 
 // ── app-handoff / open-lead awareness ────────────────────────────────────────
-// public.leads.phone is stored in TWO shapes depending on the capture path:
-//   • this webhook's own handoff leads: "+<E.164 digits>" (normalizeLeadPhone
-//     above, e.g. "+972501234567"),
-//   • app/site/advisor leads (_shared/leads.ts normalizeLeadPhone + the web
-//     LeadForm): the national 0-leading form (e.g. "0501234567").
-// A WhatsApp wa_id arrives as bare E.164 digits ("972501234567"), so we derive
-// EVERY exact shape this phone could have been stored under and match with a
-// PostgREST in.() filter. Pure + total (junk/too-short → []) so it's testable.
-export function leadPhoneCandidates(raw: string): string[] {
-  const digits = String(raw ?? "").replace(/\D/g, "");
-  if (digits.length < 7 || digits.length > 14) return [];
-  const out = new Set<string>();
-  if (digits.startsWith("972")) {
-    // E.164 (the wa_id shape) → +E.164, bare digits, and the national 0-form.
-    out.add(`+${digits}`);
-    out.add(digits);
-    out.add(`0${digits.slice(3)}`);
-  } else if (digits.startsWith("0")) {
-    // National 0-leading form → itself + both IL E.164 shapes.
-    out.add(digits);
-    out.add(`+972${digits.slice(1)}`);
-    out.add(`972${digits.slice(1)}`);
-  } else {
-    // Unknown country shape — match only the exact digit forms, never guess IL.
-    out.add(`+${digits}`);
-    out.add(digits);
-  }
-  return [...out];
-}
-
-// The NEWEST lead for this WhatsApp phone (any status — the stage text derives
-// from leads.status truthfully, including 'won'/'lost'). Returns null when there
-// is no lead OR on ANY lookup failure (fetchRows is fail-soft → null), so the
-// webhook behaves EXACTLY as today when the DB is unreachable — the agent simply
-// gets no activeLead section and never claims a lead exists. The notes snippet is
-// clipped + whitespace-collapsed here so no long PII blob rides into the prompt.
-export async function lookupOpenLead(waPhone: string): Promise<ActiveLead | null> {
-  try {
-    const candidates = leadPhoneCandidates(waPhone);
-    if (!candidates.length) return null;
-    // PostgREST in.() — each value double-quoted (the '+' and any ',' stay literal),
-    // the whole list URL-encoded.
-    const list = encodeURIComponent(candidates.map((c) => `"${c}"`).join(","));
-    const rows = await fetchRows<Row>(
-      `/rest/v1/leads?phone=in.(${list})&order=created_at.desc&limit=1&select=status,created_at,notes`,
-    );
-    if (!rows || !rows.length) return null; // error OR genuinely no lead → null
-    const r = rows[0];
-    const status = String(r.status ?? "").trim();
-    if (!status) return null; // a row without a status can't ground a stage
-    const notes = String(r.notes ?? "").trim().replace(/\s+/g, " ").slice(0, 160);
-    return {
-      status,
-      created_at: r.created_at ? String(r.created_at) : undefined,
-      notes: notes || undefined,
-    };
-  } catch (e) {
-    jlog({ at: "wa.leadLookup", ok: false, error: String(e) });
-    return null; // fail-soft: identical behavior to today
-  }
-}
+// leadPhoneCandidates + lookupOpenLead now live in _shared/leadlookup.ts so the
+// website + app chat feed runAgent the SAME truth-only open-lead context. They
+// are imported above for this webhook's own use and re-exported here so existing
+// importers (incl. whatsapp_lead_handoff_test) keep resolving them from this module.
+export { leadPhoneCandidates, lookupOpenLead };
 
 // Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
 // contact to handed_off. Returns whether the lead landed. Shared by the explicit

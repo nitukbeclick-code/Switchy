@@ -33,6 +33,7 @@ import CommissionDisclosure from "@/components/CommissionDisclosure";
 import { trackEvent, fireLeadConversion } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
 import { CONTACT_WHATSAPP_INTL } from "@/lib/legal";
+import { compressImageToDataUrl } from "@/lib/image";
 
 type Role = "user" | "bot";
 interface Turn {
@@ -44,6 +45,10 @@ interface Turn {
 const SESSION_KEY = "chosech-ai-session";
 const MAX_MESSAGE_LEN = 500;
 const MAX_HISTORY_SENT = 6;
+// In-chat bill photo: opener used when the user attaches a photo without typing,
+// and the client-side ceiling (~6MB data-URL) mirrored from the backend guard.
+const BILL_PHOTO_OPENER = "צירפתי תמונה של החשבון שלי — אפשר לחסוך?";
+const MAX_IMAGE_DATAURL_LEN = 6 * 1024 * 1024;
 
 const GREETING =
   "היי! אני Switchy AI 🤖 אפשר לשאול אותי על מסלולי סלולר, אינטרנט, טלוויזיה, " +
@@ -76,6 +81,38 @@ interface ChatResponse {
   error?: string;
 }
 
+/**
+ * An already-analyzed bill the chat can reference (seeded from the bill-analyzer
+ * result screen via the `switchy:concierge-open` event), so a user can ask
+ * follow-ups about their OWN bill. Sent with every message once set; the backend
+ * re-validates + clamps it (parseBillHint) — this is just client-side hygiene.
+ */
+export interface ConciergeBillHint {
+  provider?: string;
+  monthly: number;
+  category?: string;
+}
+
+/** Detail carried by the `switchy:concierge-open` event (bill hand-off → chat). */
+interface ConciergeOpenDetail {
+  billHint?: unknown;
+  /** Optional opener the widget auto-sends once opened (e.g. a bill question). */
+  prompt?: string;
+}
+
+/** Total + truth-only: junk / non-positive monthly → null (no bill sent). Mirrors the backend clamp. */
+function normalizeBillHint(raw: unknown): ConciergeBillHint | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const monthly = Math.round(Math.min(5000, Math.max(0, Number(o.monthly))));
+  if (!Number.isFinite(monthly) || monthly <= 0) return null;
+  const provider =
+    typeof o.provider === "string" ? o.provider.trim().slice(0, 40) || undefined : undefined;
+  const category =
+    typeof o.category === "string" ? o.category.trim().slice(0, 20) || undefined : undefined;
+  return { provider, monthly, category };
+}
+
 export default function AiConcierge() {
   const [open, setOpen] = useState(false);
   // Graceful EXIT: closing the panel doesn't unmount it instantly — we keep it in
@@ -90,6 +127,10 @@ export default function AiConcierge() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // In-chat bill photo pending the next send (a compressed JPEG data-URL). One-shot:
+  // sent with the next message, then cleared. `attaching` covers the compress step.
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState(false);
 
   // Lead capture sub-flow (shown when the agent sets offerLead).
   const [offerLead, setOfferLead] = useState(false);
@@ -106,10 +147,15 @@ export default function AiConcierge() {
   const [leadSending, setLeadSending] = useState(false);
 
   const sessionIdRef = useRef<string>("");
+  // The bill seeded from the analyzer screen, persisted so EVERY follow-up keeps
+  // sending it (a ref, not state — it never needs to trigger a re-render, and
+  // send() reads the latest value). Cleared only by a fresh page load.
+  const billHintRef = useRef<ConciergeBillHint | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const launcherRef = useRef<HTMLButtonElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const titleId = useId();
   const consentId = useId();
@@ -202,19 +248,26 @@ export default function AiConcierge() {
 
   const send = useCallback(
     async (text: string) => {
-      const message = text.trim();
+      // A one-shot bill photo may ride with this turn; if so, an empty text is
+      // fine (we use a default opener) so the user can just attach + send.
+      const image = pendingImage;
+      const message = text.trim() || (image ? BILL_PHOTO_OPENER : "");
       if (!message || sending) return;
       setError(null);
       setInput("");
       setSending(true);
+      if (image) setPendingImage(null); // one-shot — consumed by this send
 
       // Optimistically append the user's turn.
       const history = turns.slice(-MAX_HISTORY_SENT).map((t) => ({
         role: t.role,
         text: t.text,
       }));
-      setTurns((prev) => [...prev, { role: "user", text: message }]);
-      trackEvent("ai_chat_message", { source: "concierge" });
+      setTurns((prev) => [
+        ...prev,
+        { role: "user", text: image ? `📎 ${message}` : message },
+      ]);
+      trackEvent("ai_chat_message", { source: "concierge", ...(image ? { withImage: true } : {}) });
 
       try {
         const res = await fetch("/api/ai-chat", {
@@ -224,6 +277,12 @@ export default function AiConcierge() {
             message: message.slice(0, MAX_MESSAGE_LEN),
             history,
             sessionId: sessionIdRef.current,
+            // Present only after the user seeds a bill from the analyzer screen;
+            // kept on every follow-up so the agent stays grounded in that bill.
+            ...(billHintRef.current ? { billHint: billHintRef.current } : {}),
+            // One-shot in-chat bill photo — the backend runs Gemini Vision (cost-
+            // capped) to derive a billHint from it. Never stored.
+            ...(image ? { imageBase64: image } : {}),
           }),
         });
         const data = (await res.json().catch(() => null)) as ChatResponse | null;
@@ -259,8 +318,65 @@ export default function AiConcierge() {
         setSending(false);
       }
     },
-    [sending, turns],
+    [sending, turns, pendingImage],
   );
+
+  // Attach a bill photo — compress in-browser (canvas) so a 12MP original never
+  // uploads, then stage it for the next send. Fail-soft: an unreadable file just
+  // clears the attach state. The picker `accept`s images; `capture` hints mobile
+  // to offer the camera.
+  const onPickImage = useCallback(async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    setAttaching(true);
+    try {
+      const dataUrl = await compressImageToDataUrl(file);
+      if (!dataUrl || dataUrl.length > MAX_IMAGE_DATAURL_LEN) {
+        setError("התמונה גדולה מדי. צלמו תמונה קטנה יותר ונסו שוב.");
+        setPendingImage(null);
+        return;
+      }
+      setPendingImage(dataUrl);
+      trackEvent("ai_chat_attach_bill", { source: "concierge" });
+    } catch {
+      setError("לא הצלחנו לעבד את התמונה. נסו תמונה אחרת.");
+      setPendingImage(null);
+    } finally {
+      setAttaching(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, []);
+
+  // Open pre-seeded from the bill-analyzer ("שאל את Switchy AI על החשבון"): stash
+  // the billHint (persisted for ALL follow-ups) and grow the panel from the
+  // launcher, mirroring toggle()'s open branch. If an opener prompt rides along
+  // we auto-send it so the agent immediately answers about THAT bill.
+  useEffect(() => {
+    function onOpenWith(e: Event) {
+      const detail = (e as CustomEvent<ConciergeOpenDetail>).detail ?? {};
+      const hint = normalizeBillHint(detail.billHint);
+      if (hint) billHintRef.current = hint;
+      setClosing(false);
+      if (exitTimer.current) {
+        clearTimeout(exitTimer.current);
+        exitTimer.current = null;
+      }
+      setOpen(true);
+      // One header popover at a time — ask siblings (a11y / notifications) to close.
+      window.dispatchEvent(
+        new CustomEvent("switchy:popover-open", { detail: "concierge" }),
+      );
+      trackEvent("ai_chat_open", { source: hint ? "bill" : "concierge" });
+      const opener = typeof detail.prompt === "string" ? detail.prompt.trim() : "";
+      if (opener) void send(opener);
+    }
+    window.addEventListener("switchy:concierge-open", onOpenWith as EventListener);
+    return () =>
+      window.removeEventListener(
+        "switchy:concierge-open",
+        onOpenWith as EventListener,
+      );
+  }, [send]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -618,11 +734,58 @@ export default function AiConcierge() {
             )}
           </div>
 
+          {/* Pending bill-photo chip — shown after a photo is attached, before send.
+              Includes the privacy line (read automatically, not stored) so the
+              disclosure appears at the moment of attaching. */}
+          {pendingImage && (
+            <div className="border-t border-border bg-background/60 px-3 py-2">
+              <div className="flex items-center justify-between gap-2 text-xs text-foreground">
+                <span className="flex items-center gap-1.5 truncate">
+                  <span aria-hidden="true">📎</span>
+                  תמונת חשבון צורפה — תישלח עם ההודעה הבאה
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPendingImage(null)}
+                  className="interactive press shrink-0 rounded-md px-2 py-1 font-medium text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  הסר
+                </button>
+              </div>
+              <p className="mt-1 text-[11px] leading-snug text-muted">
+                התמונה נשלחת לקריאה אוטומטית (Google) ואינה נשמרת.
+              </p>
+            </div>
+          )}
+
           {/* Composer */}
           <form
             onSubmit={onSubmit}
             className="flex items-center gap-2 border-t border-border bg-surface px-3 py-3"
           >
+            {/* Bill-photo picker (hidden) + its trigger. `capture` hints mobile to
+                offer the camera; the image is compressed client-side before send. */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="sr-only"
+              onChange={(e) => void onPickImage(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={sending || attaching}
+              aria-label="צירוף תמונת חשבון"
+              title="צירוף תמונת חשבון"
+              className="interactive press flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              <span aria-hidden="true" className="text-lg leading-none">
+                {attaching ? "…" : "📎"}
+              </span>
+            </button>
+
             <label htmlFor={`${titleId}-input`} className="sr-only">
               כתבו הודעה ל-Switchy AI
             </label>
@@ -634,12 +797,12 @@ export default function AiConcierge() {
               onChange={(e) => setInput(e.target.value)}
               maxLength={MAX_MESSAGE_LEN}
               disabled={sending}
-              placeholder="כתבו שאלה…"
+              placeholder={pendingImage ? "הוסיפו שאלה (לא חובה)…" : "כתבו שאלה…"}
               className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
             />
             <button
               type="submit"
-              disabled={sending || !input.trim()}
+              disabled={sending || (!input.trim() && !pendingImage)}
               aria-label="שליחה"
               className="interactive press flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-contrast shadow-soft hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >

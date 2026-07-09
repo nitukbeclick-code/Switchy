@@ -60,6 +60,8 @@ import { type AiKeys, type ChatTurn } from "../_shared/ai.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
 import { captureAiLead, type AiLeadInput } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
+import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
+import { lookupOpenLead } from "../_shared/leadlookup.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import {
   appendTurn,
@@ -67,6 +69,7 @@ import {
   type ChatSession,
   emptySession,
   loadSession,
+  mergeSlots,
   recordToolCall,
   saveSession,
 } from "../_shared/session.ts";
@@ -108,6 +111,18 @@ async function getPlans(): Promise<Plan[]> {
   );
   _plans = rows ? plansFromRows(rows) : [];
   return _plans;
+}
+
+// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function instance
+// via the service-role read — mirrors whatsapp-webhook / site-ai-chat so the Telegram
+// user bot gains the SAME knowledge base. Fail-soft → [] (loadBotKnowledge never
+// throws); a missing/empty table simply means the agent runs without the block
+// (prompt byte-identical to today).
+let _knowledge: KnowledgeEntry[] | null = null;
+async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
+  if (_knowledge) return _knowledge;
+  _knowledge = await loadBotKnowledge();
+  return _knowledge;
 }
 
 // Gemini key: vault (gemini_api_key, via the shared config RPC) → env. The other
@@ -620,8 +635,19 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   const history: ChatTurn[] = asChatTurns(session);
   const langHint = langFromTelegramLocale(languageCode);
 
+  // ── Parity with WhatsApp / site: feed the shared brain the same context ────
+  // Each is fail-soft + truth-only — an empty knowledge table, no open lead, or a
+  // fresh session leaves the prompt byte-identical to today. Prices are never touched.
+  const knowledgeContext = formatKnowledgeForPrompt(await getBotKnowledge()) || undefined;
+  // Open-lead awareness: only when a lead was captured earlier THIS session
+  // (slots.phone). No phone ⇒ no lookup ⇒ no section (identical null contract).
+  const activeLead = session.slots.phone
+    ? ((await lookupOpenLead(session.slots.phone)) ?? undefined)
+    : undefined;
+
   let reply = "";
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
+  let slotPatch: { rejectedPlanIds?: string[]; objections?: string[] } | undefined;
   try {
     const res = await runAgent({
       channel: "app",
@@ -650,9 +676,20 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
         // paths use. Refuses unless the agent collected consent===true.
         captureLead: (input) => captureAiLead(input as AiLeadInput),
       },
+      knowledgeContext,
+      activeLead,
+      // Conversation-shaping memory from the loaded session slots — turnCount is
+      // live (paces the close); rejectedPlanIds/objections activate once tools
+      // record them (persisted below via slotPatch).
+      memory: {
+        rejectedPlanIds: session.slots.rejectedPlanIds,
+        objections: session.slots.objections,
+        turnCount: session.slots.turnCount,
+      },
     });
     reply = res.reply;
     toolCalls.push(...res.toolCalls);
+    slotPatch = res.slotPatch;
   } catch (e) {
     jlog({ at: "tgu.agent", ok: false, error: String(e) });
   }
@@ -674,7 +711,7 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
 
   // Persist memory (the reply WITHOUT the appended §11 note — that's a one-time
   // wrapper, not part of the conversation transcript).
-  await persistTurn(session, sessionKey, text, reply, toolCalls);
+  await persistTurn(session, sessionKey, text, reply, toolCalls, slotPatch);
 }
 
 // Append this turn + any tool calls to the unified session and save. Best-effort:
@@ -685,6 +722,7 @@ async function persistTurn(
   userText: string,
   botText: string,
   toolCalls: { name: string; ok: boolean; preview?: string }[],
+  slotPatch?: { rejectedPlanIds?: string[]; objections?: string[] },
 ): Promise<void> {
   if (!sessionKey) return;
   try {
@@ -694,6 +732,10 @@ async function persistTurn(
     if (toolCalls.some((t) => (t.name === "create_lead" || t.name === "book_callback") && t.ok)) {
       session.slots.leadCaptured = true;
     }
+    // Persist the memory the agent harvested this turn (rejected plan ids /
+    // objections) so `memory` shapes the next turn. UNION + capped by mergeSlots;
+    // empty ⇒ no-op. This is what activates `memory` on Telegram too.
+    if (slotPatch) mergeSlots(session, slotPatch);
     await saveSession(session);
   } catch (e) {
     jlog({ at: "tgu.persist", ok: false, error: String(e) });

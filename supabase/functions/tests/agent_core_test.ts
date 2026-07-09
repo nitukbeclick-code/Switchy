@@ -177,6 +177,64 @@ Deno.test("runAgent folds session memory into the system prompt (refine, not rep
   }
 });
 
+// ── memory WRITE-SIDE: runAgent HARVESTS refine_recommendation's echoed memory ──
+// refine_recommendation echoes the rejected plan ids + the parsed objection tags in
+// its result data precisely so the session can remember them. runAgent harvests that
+// into result.slotPatch, which the runners mergeSlots() into the session — the
+// write-side that ACTIVATES `memory` on the next turn (previously inert on every
+// surface). Drives the REAL tool via the Gemini stub, no network.
+
+Deno.test("runAgent harvests refine_recommendation's rejected ids + objections into slotPatch", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = twoStepGeminiFetch({
+    firstCalls: [
+      { name: "refine_recommendation", args: { category: "cellular", feedback: "יקר לי", prevPlanIds: ["c1"] } },
+    ],
+    finalText: "הנה אפשרות זולה יותר מהקטלוג.",
+    bodies,
+  });
+  try {
+    const res = await runAgent({
+      channel: "whatsapp",
+      message: "זה יקר לי, יש זול יותר?",
+      keys: { gemini: "k" },
+      plans: PLANS,
+      toolContext: {},
+    });
+    assertEquals(res.via, "tools");
+    assertEquals(res.toolCalls.map((t) => t.name), ["refine_recommendation"]);
+    // The harvested write-side memory: the rejected id + the parsed "price" objection.
+    assert(res.slotPatch, "slotPatch present when a tool surfaced memory");
+    assertEquals(res.slotPatch?.rejectedPlanIds, ["c1"]);
+    assertEquals(res.slotPatch?.objections, ["price"]);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+Deno.test("runAgent leaves slotPatch undefined when no memory-bearing tool ran", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = twoStepGeminiFetch({
+    firstCalls: [{ name: "recommend_plans", args: { category: "cellular" } }],
+    finalText: "הנה ההמלצות.",
+    bodies,
+  });
+  try {
+    const res = await runAgent({
+      channel: "site",
+      message: "מה מתאים?",
+      keys: { gemini: "k" },
+      plans: PLANS,
+      toolContext: {},
+    });
+    assertEquals(res.via, "tools");
+    // recommend_plans doesn't echo rejected/objections ⇒ nothing to persist.
+    assertEquals(res.slotPatch, undefined);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 Deno.test("runAgent stays backward-compatible: no memory ⇒ no recap line, still answers", async () => {
   const bodies: string[] = [];
   globalThis.fetch = twoStepGeminiFetch({ firstCalls: [], finalText: "שלום! איך אפשר לעזור?", bodies });

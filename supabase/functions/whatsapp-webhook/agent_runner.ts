@@ -143,6 +143,14 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
       billHint: input.billHint,
       knowledgeContext: input.knowledgeContext,
       activeLead: input.activeLead,
+      // Conversation-shaping memory from the loaded session slots — turnCount is
+      // live (bumped per turn); rejectedPlanIds/objections activate once tools
+      // record them. Fail-soft: empty slots ⇒ empty memory ⇒ prompt unchanged.
+      memory: {
+        rejectedPlanIds: session.slots.rejectedPlanIds,
+        objections: session.slots.objections,
+        turnCount: session.slots.turnCount,
+      },
     });
   } catch (_e) {
     // The shared runAgent shouldn't throw, but if it ever does we MUST still let
@@ -158,6 +166,10 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
     if (result.reply) appendTurn(session, "bot", result.reply);
     for (const tc of result.toolCalls) recordToolCall(session, tc.name, tc.ok, tc.preview);
     if (input.slotPatch) mergeSlots(session, input.slotPatch);
+    // Persist the memory the agent harvested this turn (rejected plan ids /
+    // objections from refine_recommendation) so it shapes the NEXT turn. UNION +
+    // capped by mergeSlots; empty ⇒ no-op. This is what activates `memory`.
+    if (result.slotPatch) mergeSlots(session, result.slotPatch);
     if (session.key) await saveSessionFn(session);
   } catch (_e) { /* memory is a bonus, never a hard dependency */ }
 

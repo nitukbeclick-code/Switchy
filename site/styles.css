@@ -3780,6 +3780,51 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .post-card__report svg { width: 15px; height: 15px; }
 
+/* ── תעודת מסלול — the standardized transparency label in the plan modal ──── */
+.plan-label {
+  border: 2px solid var(--ink-900); border-radius: 12px; padding: 14px 16px; margin: 16px 0 6px;
+  background: var(--white); box-shadow: inset 0 0 0 4px var(--white), inset 0 0 0 5px var(--ink-200);
+}
+.plan-label__t {
+  margin: 0 0 10px; padding-bottom: 8px; border-bottom: 2px solid var(--ink-900);
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 16px; color: var(--ink-900);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+}
+.plan-label__t span { font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-weight: 600; font-size: 11.5px; color: var(--muted); }
+.plan-label__row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 7px 0; border-bottom: 1px solid var(--ink-100); font-size: 13.5px; color: var(--ink-600);
+}
+.plan-label__row:last-child { border-bottom: 0; padding-bottom: 0; }
+.plan-label__row b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.plan-label__row--after b { color: var(--value-ink); }
+:root[data-theme="dark"] .plan-label { background: rgba(28,36,46,.6); border-color: var(--ink-800); box-shadow: none; }
+:root[data-theme="dark"] .plan-label__t { border-color: var(--ink-800); }
+
+/* ── Category quick filters — sticky glass bar with a live count ──────────── */
+.cat-filters {
+  position: sticky; top: 66px; z-index: 30;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+  padding: 10px 14px; margin-bottom: 20px; border-radius: 14px;
+  background: color-mix(in srgb, var(--cream) 82%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--line); box-shadow: var(--shadow-sm);
+}
+@supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) { .cat-filters { background: var(--cream); } }
+.cat-filters__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.cat-filters__price { display: inline-flex; align-items: center; gap: 4px; font-size: 13.5px; font-weight: 700; color: var(--ink-600); }
+.cat-filters__price input {
+  width: 74px; min-height: 38px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--ink-200);
+  background: var(--white); font: inherit; color: var(--ink-900); font-variant-numeric: tabular-nums;
+}
+.cat-filters__price input:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.cat-filters__count { margin-inline-start: auto; font-size: 13px; font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.cat-filters__clear { font-size: 13px; }
+.cat-filters__empty { text-align: center; color: var(--muted); padding: 28px 0; }
+:root[data-theme="dark"] .cat-filters { background: rgba(17,22,28,.8); border-color: rgba(255,255,255,.1); }
+:root[data-theme="dark"] .cat-filters__price input { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.14); }
+@media (max-width: 560px) { .cat-filters { top: 58px; } .cat-filters__count { flex-basis: 100%; margin-inline-start: 0; } }
+
 /* ── D3 — 404 with personality ─────────────────────────────────────────────
    A lost little SWITCHY robot + hue-tinted quick-nav tiles. */
 .lost-bot { color: var(--accent-d); margin-bottom: 14px; }

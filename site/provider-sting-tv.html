@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=f314755c" />
+  <link rel="stylesheet" href="styles.css?v=0906f6ed" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -145,7 +145,7 @@
     </div>
   </header>
   <main id="main">
-    <section class="lead-hero lead-hero--provider" style="--brand:#AD1457">
+    <section class="lead-hero lead-hero--split lead-hero--provider" style="--brand:#AD1457">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18"><svg class="hero-decor__svg" viewBox="0 0 600 400" fill="none" stroke="currentColor" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
         <g class="hero-decor__net" stroke-width="1.1" opacity="0.5">
           <path d="M60 320 L180 200 L320 260 L440 130 L560 190"/>
@@ -163,10 +163,9 @@
           <path d="M180 200 a16 16 0 0 0-20 20" stroke-linecap="round"/>
         </g>
       </svg></div>
-      <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="plans.html">כל החבילות</a><span class="crumbs__sep" aria-hidden="true"></span>STING TV</p>
+      <div class="container lead-hero__grid"><div class="lead-hero__text"><p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="plans.html">כל החבילות</a><span class="crumbs__sep" aria-hidden="true"></span>STING TV</p>
         <div class="provider-hero__lockup">
-          <span class="plogo plogo--img" style="width:84px;height:84px"><img src="assets/logos/sting-tv.png" alt="" width="84" height="84" loading="lazy" decoding="async"></span>
+          <span class="plogo plogo--img" style="width:84px;height:84px"><img src="assets/logos/sting-tv.png" alt="" width="84" height="84" loading="eager" fetchpriority="high" decoding="async"></span>
           <h1>כל המסלולים של <span class="hl">STING TV</span></h1>
         </div>
         <p>4 מסלולים (טלוויזיה · חבילה משולבת) — החל מ-₪49. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
@@ -179,8 +178,15 @@
           <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
         </div>
-        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-check"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-      </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-check"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p></div><div class="lead-hero__media"><div class="jump-card reveal" role="img" aria-label="דוגמה אמיתית מהקטלוג: STING TV Sting+Fiber HBO Max — ₪149 היום, ₪259 אחרי המבצע (הפרש ₪110 בחודש)">
+            <p class="jump-card__title">ככה נראה מבצע שנגמר</p>
+            <p class="jump-card__plan"><span class="plogo plogo--img" style="width:24px;height:24px"><img src="assets/logos/sting-tv.png" alt="" width="24" height="24" loading="eager" decoding="async"></span> STING TV · Sting+Fiber HBO Max</p>
+            <div class="jump-card__bars" aria-hidden="true">
+              <div class="jump-bar"><span>היום</span><i style="--w:58%"></i><b dir="ltr">₪149</b></div>
+              <div class="jump-bar jump-bar--after"><span>אחרי המבצע</span><i style="--w:100%"></i><b dir="ltr">₪259</b></div>
+            </div>
+            <p class="jump-card__note">הפרש של <b dir="ltr">₪110</b> בחודש — בדיוק בשביל זה יש לנו התראת חידוש.</p>
+          </div></div></div>
     </section>
       <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">טלוויזיה</span><h2>STING TV טלוויזיה — המסלולים הזולים</h2></header>
     <section class="section section--tight" id="compare-tv" aria-label="טבלת השוואת מחירים">
@@ -456,6 +462,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=ba9b2578" defer></script>
+  <script src="script.js?v=4a4c0e12" defer></script>
 </body>
 </html>

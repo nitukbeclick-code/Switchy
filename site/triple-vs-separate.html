@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=f314755c" />
+  <link rel="stylesheet" href="styles.css?v=0906f6ed" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -145,7 +145,7 @@
     </div>
   </header>
   <main id="main">
-    <section class="lead-hero">
+    <section class="lead-hero lead-hero--split lead-hero--cat" style="--tf:#FBBF24;--tt:#B45309">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18"><svg class="hero-decor__svg" viewBox="0 0 600 400" fill="none" stroke="currentColor" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
         <g class="hero-decor__net" stroke-width="1.1" opacity="0.5">
           <path d="M60 320 L180 200 L320 260 L440 130 L560 190"/>
@@ -163,8 +163,7 @@
           <path d="M180 200 a16 16 0 0 0-20 20" stroke-linecap="round"/>
         </g>
       </svg></div>
-      <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="triple.html">חבילה משולבת</a><span class="crumbs__sep" aria-hidden="true"></span>חבילה משולבת מול קנייה בנפרד</p>
+      <div class="container lead-hero__grid"><div class="lead-hero__text"><p class="crumbs"><a href="index.html">דף הבית</a><span class="crumbs__sep" aria-hidden="true"></span><a href="triple.html">חבילה משולבת</a><span class="crumbs__sep" aria-hidden="true"></span>חבילה משולבת מול קנייה בנפרד</p>
         <span class="pill pill--ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> השוואה אמיתית · בלי התחייבות</span>
         <h1>חבילה משולבת מול קנייה בנפרד</h1>
         <p>חבילה משולבת (טריפל) מרכזת אינטרנט, טלוויזיה וסלולר בחשבון אחד. לעומתה אפשר לקנות כל שירות בנפרד ולבחור את הזול בכל קטגוריה. הנה ההשוואה.</p>
@@ -177,13 +176,20 @@
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           <a class="hero__link hero__link--ink" href="triple.html">לכל מסלולי החבילה משולבת</a>
         </div>
-        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-check"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-      </div>
+        <p class="hero__hedge hero__hedge--ink"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-check"/></svg> חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p></div><div class="lead-hero__media"><div class="jump-card reveal" role="img" aria-label="דוגמה אמיתית מהקטלוג: yes yes+Fiber הטריפל — ₪209 היום, ₪329 אחרי המבצע (הפרש ₪120 בחודש)">
+            <p class="jump-card__title">ככה נראה מבצע שנגמר</p>
+            <p class="jump-card__plan"><span class="plogo plogo--img" style="width:24px;height:24px"><img src="assets/logos/yes.webp" alt="" width="24" height="24" loading="eager" decoding="async"></span> yes · yes+Fiber הטריפל</p>
+            <div class="jump-card__bars" aria-hidden="true">
+              <div class="jump-bar"><span>היום</span><i style="--w:64%"></i><b dir="ltr">₪209</b></div>
+              <div class="jump-bar jump-bar--after"><span>אחרי המבצע</span><i style="--w:100%"></i><b dir="ltr">₪329</b></div>
+            </div>
+            <p class="jump-card__note">הפרש של <b dir="ltr">₪120</b> בחודש — בדיוק בשביל זה יש לנו התראת חידוש.</p>
+          </div></div></div>
     </section>
 
     <section class="section section--alt" aria-label="המסקנה">
       <div class="container">
-        <div class="prose" style="max-width:760px;margin:0 auto">
+        <div class="prose">
           <div class="tldr"><b>השורה התחתונה:</b> חבילה משולבת היא לרוב המסלול הכי חסכוני וגם הכי נוח — הכול בחשבון אחד ובמעבר אחד. אבל לא תמיד: לפעמים מצרף של אינטרנט זול + טלוויזיה זולה + קו סלולר זול יוצא פחות. הכלל הפשוט — חשבו את העלות הכוללת של שתי הדרכים והשוו אותן זו לזו.</div>
         </div>
       </div>
@@ -236,7 +242,7 @@
         <button type="button" class="plan__more" data-plan-more="tri_stingtv_sting-fiber-hbo-max" aria-haspopup="dialog" aria-label="כל הפרטים על STING TV Sting+Fiber HBO Max"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
-        <div style="text-align:center;margin-top:18px"><a class="btn btn--ghost" href="triple-budget.html">לכל המסלולים בקטגוריה ←</a></div>
+        <div class="section__cta"><a class="btn btn--ghost" href="triple-budget.html">לכל המסלולים בקטגוריה<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a></div>
       </div>
     </section>
     <section class="section section--tight" id="vs-a" aria-label="טבלת השוואת מחירים">
@@ -306,7 +312,7 @@
         <button type="button" class="plan__more" data-plan-more="net_bezeq_copper100" aria-haspopup="dialog" aria-label="כל הפרטים על בזק אינטרנט 100 מגה (נחושת)"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
-        <div style="text-align:center;margin-top:18px"><a class="btn btn--ghost" href="internet-fiber-only.html">לכל המסלולים בקטגוריה ←</a></div>
+        <div class="section__cta"><a class="btn btn--ghost" href="internet-fiber-only.html">לכל המסלולים בקטגוריה<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a></div>
       </div>
     </section>
     <section class="section section--tight" id="vs-b" aria-label="טבלת השוואת מחירים">
@@ -485,6 +491,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=ba9b2578" defer></script>
+  <script src="script.js?v=4a4c0e12" defer></script>
 </body>
 </html>

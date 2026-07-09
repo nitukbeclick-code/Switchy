@@ -26,22 +26,6 @@
   const year = $('year');
   if (year) year.textContent = new Date().getFullYear();
 
-  // ── Hero background video ──────────────────────────────────────────────────
-  // Respect reduced-motion (pause → the poster frame shows) and pause when the
-  // hero scrolls out of view (saves CPU/battery — the loop only runs in view).
-  const heroVid = document.querySelector('.hero__bg-el');
-  if (heroVid) {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      heroVid.removeAttribute('autoplay');
-      heroVid.addEventListener('loadeddata', () => heroVid.pause(), { once: true });
-      heroVid.pause();
-    } else if ('IntersectionObserver' in window) {
-      new IntersectionObserver((entries) => entries.forEach((e) => {
-        if (e.isIntersecting) heroVid.play().catch(() => {}); else heroVid.pause();
-      }), { threshold: 0.1 }).observe(heroVid);
-    }
-  }
-
   // ── Sticky nav shadow ────────────────────────────────────────────────────
   // rAF-throttled: toggling a class is a write, but reading scrollY each event
   // and reacting synchronously is wasteful at scroll cadence.
@@ -141,18 +125,6 @@
     requestAnimationFrame(step);
   };
   if (heroCounter) countTo(heroCounter, 1188);
-
-  // ── Hero robot video — respect reduced-motion ───────────────────────────────
-  // The <video> ships with `autoplay`, but if the visitor prefers reduced motion
-  // we stop it and drop autoplay so the static poster shows instead of looping.
-  const heroVideo = document.querySelector('.hero__video-el');
-  if (heroVideo && reduceMotion) {
-    heroVideo.removeAttribute('autoplay');
-    heroVideo.autoplay = false;
-    try { heroVideo.pause(); } catch (_) { /* best-effort */ }
-    // Some engines begin playback before this runs; force back to the poster frame.
-    heroVideo.addEventListener('loadeddata', () => { try { heroVideo.pause(); heroVideo.currentTime = 0; } catch (_) {} }, { once: true });
-  }
 
   // ── Scroll reveal ──────────────────────────────────────────────────────────
   const reveals = document.querySelectorAll('.reveal');
@@ -2631,14 +2603,17 @@
   })();
 
   // ── (3) HERO PARALLAX — drift bg/texture layers at a fraction of scroll ──────
-  // Opt-in layers: any descendant of .hero with [data-parallax] (or the legacy
-  // .hero__bg / .hero__texture) translates at `data-parallax` × scroll (default
-  // .25 bg-ish). rAF-batched, single scroll listener. Disabled under
-  // reduced-motion and on touch/coarse pointers (where it just costs battery).
+  // Opt-in layers: any descendant of the page's top hero (.hero on the
+  // homepage; .lead-hero / .article-hero on generated pages) with
+  // [data-parallax] (or the legacy .hero__bg / .hero__texture) translates at
+  // `data-parallax` × scroll (default .25 bg-ish). rAF-batched, single scroll
+  // listener; the paint guard only animates while the hero is in view.
+  // Disabled under reduced-motion and on touch/coarse pointers (where it just
+  // costs battery).
   (() => {
     if (reduceMotion) return;
     if (window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches) return;
-    const hero = document.querySelector('.hero');
+    const hero = document.querySelector('.hero, .lead-hero, .article-hero');
     if (!hero) return;
     let layers = Array.from(hero.querySelectorAll('[data-parallax], .hero__bg, .hero__texture, .hero__visual'));
     layers = layers.map((el) => ({

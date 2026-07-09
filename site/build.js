@@ -4763,8 +4763,35 @@ function providerVsSlug(catSlug, a, b) {
   return `${providerSlug(a)}-vs-${providerSlug(b)}-${catSlug}`;
 }
 
+// 4.1 — AUTO pairs: beyond the hand-curated list, generate every head-to-head
+// among the top providers of each category (by plan count, both sides holding
+// ≥PROVIDER_VS_MIN plans so no page is thin). The curated list stays first for
+// stable slugs/ordering; auto pairs that duplicate a curated pair (either
+// direction) are skipped.
+const AUTO_VS_TOP = 8; // providers considered per category
+const AUTO_VS_PAIRS = (() => {
+  const curated = new Set(PROVIDER_VS.map(([c, a, b]) => [c, [a, b].sort().join('|')].join('~')));
+  const out = [];
+  for (const c of categories) {
+    const counts = {};
+    catalogue.plans.forEach((p) => { if (p.cat === c.slug) counts[p.provider] = (counts[p.provider] || 0) + 1; });
+    const tops = Object.entries(counts)
+      .filter(([, n]) => n >= PROVIDER_VS_MIN)
+      .sort((x, y) => y[1] - x[1])
+      .slice(0, AUTO_VS_TOP)
+      .map(([name]) => name);
+    for (let i = 0; i < tops.length; i++) {
+      for (let j = i + 1; j < tops.length; j++) {
+        const key = [c.slug, [tops[i], tops[j]].sort().join('|')].join('~');
+        if (!curated.has(key)) out.push([c.slug, tops[i], tops[j]]);
+      }
+    }
+  }
+  return out;
+})();
+
 // Candidate pairs whose BOTH sides have ≥PROVIDER_VS_MIN plans in the category.
-const builtProviderVs = PROVIDER_VS
+const builtProviderVs = PROVIDER_VS.concat(AUTO_VS_PAIRS)
   .map(([catSlug, a, b]) => {
     const A = providerVsSide(a, catSlug);
     const B = providerVsSide(b, catSlug);

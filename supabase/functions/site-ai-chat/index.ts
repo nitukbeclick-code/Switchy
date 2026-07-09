@@ -53,6 +53,7 @@ import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/
 import { runAgent } from "../_shared/agent.ts";
 import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
 import { lookupOpenLead } from "../_shared/leadlookup.ts";
+import { type BillHint, extractBillHint, MAX_BILL_BASE64_LEN, parseImage } from "../_shared/bill.ts";
 import {
   appendTurn,
   asChatTurns,
@@ -169,6 +170,23 @@ async function rateLimited(ip: string): Promise<boolean | null> {
   return rows.length >= PER_IP_HOURLY_LIMIT;
 }
 
+// A SEPARATE, far stricter daily cap for in-chat bill-photo OCR — paid Gemini
+// Vision costs far more than a text turn, so the hourly text limit is too loose.
+// It counts the shared bill_analyses ledger (the SAME table the analyzer screen
+// writes) so the per-IP daily Vision budget can't be bypassed by switching
+// surfaces. Fail-CLOSED on a query error (block rather than let a DB blip enable
+// a paid-Vision burst); fail-open only when there's no IP.
+const CHAT_VISION_DAILY_LIMIT = 3;
+async function billVisionCapReached(ip: string): Promise<boolean> {
+  if (!ip) return false; // can't limit without an IP — fail-open
+  const since = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+  const rows = await fetchRows<{ id: string }>(
+    `/rest/v1/bill_analyses?select=id&ip=eq.${encodeURIComponent(ip)}&created_at=gte.${encodeURIComponent(since)}`,
+  );
+  if (rows === null) return true; // query failed → fail CLOSED (paid Vision)
+  return rows.length >= CHAT_VISION_DAILY_LIMIT;
+}
+
 // Sanitize the browser-replayed history into the {role,text} turns the session
 // layer expects. The stored session is authoritative for older turns; this only
 // fills the very-latest turns (and works when memory is disabled).
@@ -229,6 +247,7 @@ async function handle(req: Request): Promise<Response> {
     sessionId?: unknown;
     lead?: AiLeadInput;
     billHint?: unknown;
+    imageBase64?: unknown;
   };
   try {
     body = await req.json();
@@ -308,16 +327,48 @@ async function handle(req: Request): Promise<Response> {
   const activeLead = session.slots.phone
     ? ((await lookupOpenLead(session.slots.phone)) ?? undefined)
     : undefined;
-  // Conversational bill: a client-seeded, already-analyzed bill lets the user ask
-  // follow-ups about their own bill (the agent injects it + can call analyze_bill).
-  const billHint = parseBillHint(body.billHint);
+  const plans = await loadPlans();
+  // ── In-chat bill photo (optional) — full Gemini-Vision OCR → billHint ───────
+  // A user can attach a bill photo IN chat and ask about it. Gated by a strict,
+  // SEPARATE daily Vision cost cap (paid Vision ≫ a text turn). Fail-soft at every
+  // step: oversize / bad format / rate-limited / unreadable / vision error ⇒ we
+  // simply proceed WITHOUT a bill hint (the agent asks for the figures honestly).
+  // The photo is NEVER stored — only a PII-light ledger row for the daily cap
+  // (mirrors the analyzer screen's privacy contract).
+  let imageHint: BillHint | null = null;
+  const rawImage = typeof body.imageBase64 === "string" ? body.imageBase64 : "";
+  if (rawImage.trim() && geminiKey) {
+    if (rawImage.length > MAX_BILL_BASE64_LEN) {
+      jlog({ at: "ai-chat.vision", ok: false, reason: "too_large" });
+    } else if (await billVisionCapReached(ip)) {
+      jlog({ at: "ai-chat.vision", ok: false, reason: "rate_limited" });
+    } else {
+      const img = parseImage(rawImage);
+      if (img && img.data.length <= MAX_BILL_BASE64_LEN) {
+        // Ledger the Vision ATTEMPT first (PII-light, no photo) so the daily cap
+        // counts every paid call — even an unreadable one — closing an abuse loop.
+        insertRow("bill_analyses", { ip: ip || null }).catch(() => {});
+        try {
+          const { hint } = await extractBillHint(geminiKey, plans, img);
+          imageHint = hint;
+          jlog({ at: "ai-chat.vision", ok: true, readable: !!hint });
+        } catch (e) {
+          jlog({ at: "ai-chat.vision", ok: false, error: String(e) });
+        }
+      }
+    }
+  }
+  // Conversational bill: a photo-read bill (when readable) OVERRIDES a client-sent
+  // text billHint; otherwise fall back to the already-analyzed figures the client
+  // may have seeded (the agent injects it + can call analyze_bill).
+  const billHint = imageHint ?? parseBillHint(body.billHint);
   try {
     const res = await runAgent({
       channel: "site",
       message,
       history,
       keys,
-      plans: await loadPlans(),
+      plans,
       toolContext: {
         conversationId: sessionId || null,
         contactId: null,

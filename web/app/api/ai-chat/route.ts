@@ -39,6 +39,8 @@ const AI_CHAT_FN = process.env.SITE_AI_CHAT_FN ?? "site-ai-chat";
 // Coarse abuse/cost guard mirrored from the backend (it re-validates). Reject an
 // obviously oversized payload before spending a (paid) AI call upstream.
 const MAX_INPUT_LEN = 2000;
+// In-chat bill-photo ceiling (~6MB base64), matching the backend MAX_BILL_BASE64_LEN.
+const MAX_IMAGE_LEN = 6 * 1024 * 1024;
 
 // Origin allow-list — identical posture to /api/lead, /api/rights, /api/push.
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
@@ -79,6 +81,7 @@ export async function POST(req: Request) {
     sessionId?: unknown;
     lead?: unknown;
     billHint?: unknown;
+    imageBase64?: unknown;
   };
   try {
     body = await req.json();
@@ -91,6 +94,13 @@ export async function POST(req: Request) {
   if (message.length > MAX_INPUT_LEN) {
     return Response.json({ error: "message too long" }, { status: 400 });
   }
+  // Optional in-chat bill photo (base64 data-URL). Forward only a string within a
+  // sane ceiling (~6MB, matching the backend) so an oversized blob is never
+  // relayed; the backend re-guards the size AND rate-limits paid Gemini Vision.
+  const imageBase64 =
+    typeof body.imageBase64 === "string" && body.imageBase64.length <= MAX_IMAGE_LEN
+      ? body.imageBase64
+      : undefined;
 
   // ── Forward to the backend agent (site-ai-chat) ────────────────────────────
   const endpoint = `${SUPABASE_URL.replace(/\/$/, "")}/functions/v1/${AI_CHAT_FN}`;
@@ -123,6 +133,9 @@ export async function POST(req: Request) {
         // result screen) so follow-ups can reference the user's own bill. The
         // backend re-validates + clamps (parseBillHint); we relay it verbatim.
         billHint: body.billHint,
+        // Optional in-chat bill photo — the backend runs Gemini Vision (cost-
+        // capped) to derive a billHint. Never stored. Omitted when absent/oversized.
+        ...(imageBase64 ? { imageBase64 } : {}),
       }),
       signal: controller.signal,
     });

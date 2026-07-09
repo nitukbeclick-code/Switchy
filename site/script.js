@@ -3303,12 +3303,24 @@
           '<b class="finder__price" dir="ltr">₪' + p.pr + '</b></a>';
       }).join('');
       var best = list[0];
+      var meter = document.getElementById('finderMeter');
+      var fill = document.getElementById('finderMeterFill');
       if (best) {
         var yearly = Math.max(0, Math.round((Number(bill.value) - best.pr) * 12));
         save.innerHTML = yearly > 0
           ? 'לפי מה שאתם משלמים היום — תחסכו עד <b>' + fmt(yearly) + '</b> בשנה'
           : 'אתם כבר במחיר מצוין — שווה לוודא מול ההשוואה המלאה';
-      } else { save.textContent = ''; }
+        // Savings meter: honest arithmetic as a feel-able bar (₪1,500/yr = full).
+        if (meter && fill) {
+          meter.hidden = yearly <= 0;
+          var pct = Math.max(0.04, Math.min(1, yearly / 1500));
+          fill.style.transform = 'scaleX(' + pct + ')';
+          meter.classList.toggle('is-great', yearly >= 600);
+        }
+      } else {
+        save.textContent = '';
+        if (meter) meter.hidden = true;
+      }
     }
     root.querySelectorAll('.finder__cat').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -3485,6 +3497,43 @@
       var section = host.closest('.community-leaders');
       if (section) section.hidden = false;
     }).catch(function () { /* stay hidden */ });
+  })();
+
+  // ── (19) LIVE PRICE-DROP BADGES — real history, never fabricated ───────────
+  // For the plan cards on the page, read plan_price_history (anon; may not be
+  // exposed — any error is total silence) and chip the cards whose LATEST
+  // recorded price is lower than the previous one within the last 30 days.
+  // Price rises get no chip (inform, don't alarm — the after-price already
+  // covers honesty on the way up).
+  (() => {
+    const cards = Array.from(document.querySelectorAll('.plan[data-id]'))
+      .filter((c) => c.getAttribute('data-id'));
+    if (!cards.length) return;
+    const ids = [...new Set(cards.map((c) => c.getAttribute('data-id')))].slice(0, 80);
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    sbRest('plan_price_history?select=plan_id,price,recorded_at' +
+      '&plan_id=in.(' + ids.map(encodeURIComponent).join(',') + ')' +
+      '&recorded_at=gte.' + encodeURIComponent(since) + '&order=recorded_at.desc&limit=600')
+      .then((rows) => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        const byId = {};
+        rows.forEach((r) => { (byId[r.plan_id] = byId[r.plan_id] || []).push(r); });
+        cards.forEach((card) => {
+          const hist = byId[card.getAttribute('data-id')];
+          if (!hist || hist.length < 2) return;
+          const latest = Number(hist[0].price);
+          const prev = Number(hist[1].price);
+          if (!(latest < prev)) return;
+          if (card.querySelector('.plan__drop')) return;
+          const when = relTimeHe(hist[0].recorded_at);
+          const chip = document.createElement('span');
+          chip.className = 'plan__drop';
+          chip.title = 'המחיר ירד מ-₪' + prev + ' ל-₪' + latest + (when ? ' (' + when + ')' : '');
+          chip.textContent = '↓ המחיר ירד';
+          card.appendChild(chip);
+        });
+      })
+      .catch(() => { /* history not exposed / offline — stay silent */ });
   })();
 
   // ── (18) MEETING NUDGE — one respectful Zoom prompt per week ───────────────

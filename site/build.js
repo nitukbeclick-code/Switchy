@@ -5035,10 +5035,22 @@ const llmsTxt = [
   `- [כל ההשוואות / Comparisons](${SITE}/comparisons.html)`,
   `- [ספקים / Providers](${SITE}/providers.html)`,
   `- [כל המסלולים / Plans](${SITE}/plans.html)`,
+  `- [העסקאות של היום / Deals](${SITE}/deals.html)`,
   `- [מדריכים / Guides](${SITE}/guides.html)`,
   `- [מילון מונחים / Glossary](${SITE}/glossary.html)`,
   `- [שאלות נפוצות / FAQ](${SITE}/faq.html)`,
   `- [איך זה עובד / How it works](${SITE}/how-it-works.html)`,
+  '',
+  "## העסקאות של היום (Today's cheapest — live catalogue prices)",
+  ...categories.map((c) => {
+    const best = catalogue.plans
+      .filter((p) => p.cat === c.slug && (!p.priceUnit || p.priceUnit === 'month'))
+      .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price))[0];
+    return best
+      ? `- ${c.name}: ${best.provider} — ${best.plan} — ₪${best.price}/חודש${best.after ? ` (אחרי מבצע: ₪${best.after})` : ''}`
+      : null;
+  }).filter(Boolean),
+  `- [כל העסקאות של היום / Today's deals](${SITE}/deals.html)`,
   '',
   '## קטגוריות (Categories)',
   ...llmCategoryLines,

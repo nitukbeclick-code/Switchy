@@ -48,7 +48,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=a5876d14" />
+  <link rel="stylesheet" href="styles.css?v=7d6759cb" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -171,12 +171,23 @@
           <a class="btn btn--primary btn--lg" href="app.html">להצטרף ולפרסם — הורידו את האפליקציה</a>
           <a class="btn btn--ghost btn--lg" href="#ratings">לדירוגי הספקים ↓</a>
         </div>
+        <ul class="community-trust" aria-label="אמון ואבטחה בקהילה">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.2 8.4-7 10-3.8-1.6-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>קהילה מנוהלת — תוכן פוגעני מוסר</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="8" r="4"/></svg>פרסום רק ממשתמשים מחוברים באפליקציה</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>חיבור מוצפן (HTTPS)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>אפשר לפרסם בעילום שם</li>
+        </ul>
       </div>
     </section>
 
     <section class="section community">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">הצ׳אט הקהילתי</span><h2>מה מדברים עכשיו בקהילה</h2><p>פוסטים אחרונים מהקהילה. לפרסום, תגובות ושיתוף תמונה — הצטרפו דרך האפליקציה.</p></header>
+        <div class="community-stats" id="communityStats" hidden aria-label="נתוני הקהילה בזמן אמת">
+          <div class="community-stats__item"><b id="statPosts">—</b><span>דיונים פעילים</span></div>
+          <div class="community-stats__item"><b id="statReviews">—</b><span>ביקורות על ספקים</span></div>
+          <div class="community-stats__item"><b id="statProviders">—</b><span>ספקים מדורגים</span></div>
+        </div>
         <div class="community__filter" role="group" aria-label="סינון לפי ערוץ">
           <button class="community__chan community__chan--active" type="button" data-channel="all" aria-pressed="true">הכול</button>
           <button class="community__chan" type="button" data-channel="recommend" aria-pressed="false">המלצות</button>
@@ -205,6 +216,26 @@
         <div id="ratingsSummary" class="ratings" aria-live="polite" aria-busy="true">
           <p class="booking__note">טוען דירוגים…</p>
         </div>
+      </div>
+    </section>
+
+    <section class="section community-rules" aria-label="כללי הקהילה">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">שקיפות ואמון</span><h2>כללי הקהילה</h2><p>הקהילה מנוהלת כדי שתישאר מועילה ובטוחה. אלה הכללים שכולנו שומרים עליהם.</p></header>
+        <div class="rules-grid">
+          <div class="rule-card reveal"><b>כבוד הדדי</b><p>מתווכחים על מסלולים, לא על אנשים. בלי עלבונות ובלי הטרדות.</p></div>
+          <div class="rule-card reveal"><b>בלי פרטים אישיים</b><p>לא מפרסמים טלפון, כתובת או מספר לקוח — גם לא בצילומי מסך של חשבוניות.</p></div>
+          <div class="rule-card reveal"><b>בלי ספאם ופרסום</b><p>נציגי ספקים וקידום עסקי אינם מותרים בפיד. תוכן שיווקי מוסר.</p></div>
+          <div class="rule-card reveal"><b>ביקורות מניסיון אמיתי</b><p>מדרגים רק ספק שהייתם לקוחות שלו. ביקורות מזויפות נמחקות.</p></div>
+        </div>
+        <p class="rules-note">ראיתם תוכן שמפר את הכללים? <a href="mailto:hello@switchy-ai.com?subject=%D7%93%D7%99%D7%95%D7%95%D7%97%20%D7%A2%D7%9C%20%D7%AA%D7%95%D7%9B%D7%9F%20%D7%91%D7%A7%D7%94%D7%99%D7%9C%D7%94">דווחו לנו</a> ונטפל בהקדם. הפעילות כפופה ל<a href="terms.html">תנאי השימוש</a> ול<a href="privacy.html">מדיניות הפרטיות</a>.</p>
+      </div>
+    </section>
+
+    <section class="section community-leaders" aria-label="מובילי הקהילה" hidden>
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כל הכבוד</span><h2>מובילי הקהילה</h2><p>מי שתרמו הכי הרבה שאלות, תשובות וטיפים.</p></header>
+        <ol class="leaders" id="communityLeaders"></ol>
       </div>
     </section>
   </main>
@@ -291,6 +322,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=5a21c6db" defer></script>
+  <script src="script.js?v=7906b98f" defer></script>
 </body>
 </html>

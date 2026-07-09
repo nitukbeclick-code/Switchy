@@ -1666,6 +1666,14 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  // User-supplied URLs (avatars, post media) go into src attributes — escaping
+  // alone won't neutralise a javascript:/data:text URL there. Allow only plain
+  // https or inline images; anything else renders as no media at all.
+  const safeMediaUrl = (u) => {
+    const s = String(u == null ? '' : u).trim();
+    return (/^https:\/\//i.test(s) || /^data:image\//i.test(s)) ? s : '';
+  };
+
   // Hebrew relative time — "לפני N דקות/שעות/ימים", falling back to a date.
   const relTimeHe = (iso) => {
     const t = Date.parse(iso);
@@ -1692,15 +1700,26 @@
     const ratingsHost = $('ratingsSummary');
     if (!feed && !ratingsHost) return; // not on this page
 
+    // Live community stats strip — ships hidden and only reveals once a real
+    // number lands (fail-soft: no data, no strip; nothing is fabricated).
+    const statsBox = $('communityStats');
+    const setStat = (id, txt) => {
+      const el = $(id);
+      if (!el || !txt) return;
+      el.textContent = txt;
+      if (statsBox) statsBox.hidden = false;
+    };
+
     // Channel chip for a post (falls back to "כללי" when unset).
     const channelChip = (ch) =>
       '<span class="post-card__channel">' + escHtmlS(ch || 'כללי') + '</span>';
 
     const mediaHtml = (type, url) => {
-      if (type !== 'image' || !url) return '';
+      const safe = type === 'image' ? safeMediaUrl(url) : '';
+      if (!safe) return '';
       // Only the safe URL forms; escape the attribute. The img is decorative
       // context for the post body, so alt stays empty.
-      return '<div class="post-card__media"><img src="' + escHtmlS(url) +
+      return '<div class="post-card__media"><img src="' + escHtmlS(safe) +
         '" alt="" loading="lazy" decoding="async"></div>';
     };
 
@@ -1736,8 +1755,10 @@
     const renderPost = (post) => {
       const card = document.createElement('article');
       card.className = 'post-card';
-      const avatar = post.avatar
-        ? '<img class="post-card__avatar" src="' + escHtmlS(post.avatar) + '" alt="" loading="lazy" decoding="async">'
+      card.id = 'post-' + String(post.id);
+      const avatarUrl = safeMediaUrl(post.avatar);
+      const avatar = avatarUrl
+        ? '<img class="post-card__avatar" src="' + escHtmlS(avatarUrl) + '" alt="" loading="lazy" decoding="async">'
         : '<span class="post-card__avatar post-card__avatar--ph" aria-hidden="true">' +
             escHtmlS((post.author || '?').trim().charAt(0) || '?') + '</span>';
       const repliesId = 'replies-' + escHtmlS(String(post.id));
@@ -1750,7 +1771,17 @@
         '</header>' +
         '<div class="post-card__body">' + escHtmlS(post.body || '') + '</div>' +
         mediaHtml(post.media_type, post.media_url) +
+        '<div class="post-card__actions">' +
         '<button type="button" class="post-card__toggle" aria-expanded="false" aria-controls="' + repliesId + '">הצגת תגובות</button>' +
+        '<a class="post-card__share" target="_blank" rel="noopener" aria-label="שיתוף הפוסט בוואטסאפ" href="https://wa.me/?text=' +
+          encodeURIComponent('מהקהילה של SWITCHY: "' + String(post.body || '').slice(0, 120) + '" — ' +
+            'https://switchy-ai.com/community.html#post-' + String(post.id)) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> שיתוף</a>' +
+        '<a class="post-card__report" aria-label="דיווח על תוכן בעייתי בפוסט הזה" href="mailto:hello@switchy-ai.com?subject=' +
+          encodeURIComponent('דיווח על פוסט בקהילה #' + String(post.id)) + '&body=' +
+          encodeURIComponent('אני מדווח/ת על הפוסט: https://switchy-ai.com/community.html#post-' + String(post.id) + '\nהסיבה: ') + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4"/><path d="M4 4h13l-2.5 4L17 12H4"/></svg> דיווח</a>' +
+        '</div>' +
         '<div class="post-card__replies" id="' + repliesId + '" hidden></div>';
 
       const toggleBtn = card.querySelector('.post-card__toggle');
@@ -1832,6 +1863,7 @@
           const posts = await sbRest('community_posts?select=id,author,avatar,channel,body,media_type,media_url,created_at' +
             '&is_flagged=eq.false&order=created_at.desc&limit=30');
           allPosts = Array.isArray(posts) ? posts : [];
+          if (allPosts.length) setStat('statPosts', allPosts.length >= 30 ? '30+' : String(allPosts.length));
           buildFilter();
           paintFeed();
         } catch (_) {
@@ -1867,6 +1899,9 @@
           const rows = await sbRest('provider_rating_summary?select=*');
           const summary = Array.isArray(rows) ? rows.slice() : [];
           summary.sort((a, b) => (Number(b.avg_stars) || 0) - (Number(a.avg_stars) || 0));
+          const totalReviews = summary.reduce((n, r) => n + (Number(r.review_count) || 0), 0);
+          if (totalReviews) setStat('statReviews', String(totalReviews));
+          if (summary.length) setStat('statProviders', String(summary.length));
           if (!summary.length) {
             ratingsHost.innerHTML = '<p class="ratings__empty">אין עדיין מספיק דירוגים — דרגו ספקים באפליקציה.</p>';
           } else {
@@ -3164,5 +3199,241 @@
       rebuildPages();
       sync();
     });
+  })();
+
+  // ── (10) HERO FINDER — the answer-in-10-seconds widget ──────────────────────
+  // Hydrates #heroFinder from the build-stamped window.__HERO_PLANS__ blob
+  // (8 cheapest monthly plans per category, refreshed on every catalogue
+  // rebuild). Pure client-side: pick a category, drag "what I pay today",
+  // and the three cheapest real plans + the yearly saving render instantly.
+  (function () {
+    var data = window.__HERO_PLANS__;
+    var root = document.getElementById('heroFinder');
+    if (!root || !data || !data.cellular || !data.cellular.length) return;
+    root.hidden = false;
+    var bill = document.getElementById('finderBill');
+    var out = document.getElementById('finderBillOut');
+    var res = document.getElementById('finderResults');
+    var save = document.getElementById('finderSave');
+    if (!bill || !out || !res || !save) return;
+    var RANGES = { cellular: [20, 200, 60], internet: [40, 300, 120], tv: [30, 300, 100], triple: [80, 500, 250] };
+    var cat = 'cellular';
+    // Memory + deep-link: restore the visitor's last category/bill, and honor
+    // a shareable #finder=<cat>-<bill> fragment (which also wins over memory).
+    var MEMKEY = 'switchy-finder';
+    try {
+      var mem = JSON.parse(localStorage.getItem(MEMKEY) || 'null');
+      if (mem && RANGES[mem.cat]) { cat = mem.cat; }
+      var m = /#finder=([a-z]+)-(\d+)/.exec(location.hash);
+      if (m && RANGES[m[1]]) { cat = m[1]; mem = { cat: cat, bill: Number(m[2]) }; }
+      if (mem && Number.isFinite(Number(mem.bill))) {
+        var r0 = RANGES[cat];
+        bill.min = r0[0]; bill.max = r0[1];
+        bill.value = Math.max(r0[0], Math.min(r0[1], Number(mem.bill)));
+      } else if (cat !== 'cellular') {
+        var r1 = RANGES[cat];
+        bill.min = r1[0]; bill.max = r1[1]; bill.value = r1[2];
+      }
+      root.querySelectorAll('.finder__cat').forEach(function (b) { b.classList.toggle('is-active', b.dataset.cat === cat); });
+      if (m) setTimeout(function () { root.scrollIntoView({ block: 'center' }); }, 150);
+    } catch (_) {}
+    var remember = function () {
+      try { localStorage.setItem(MEMKEY, JSON.stringify({ cat: cat, bill: Number(bill.value) })); } catch (_) {}
+    };
+    var escEl = document.createElement('span');
+    var esc = function (t) { escEl.textContent = t == null ? '' : String(t); return escEl.innerHTML; };
+    var fmt = function (v) { return '₪' + Number(v).toLocaleString('he-IL'); };
+    function render() {
+      var list = (data[cat] || []).slice(0, 3);
+      res.innerHTML = list.map(function (p) {
+        var msg = encodeURIComponent('היי, מעניין אותי ' + p.p + ' - ' + p.n + ' (₪' + p.pr + ')');
+        return '<a class="finder__row" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=' + msg + '">' +
+          '<span class="finder__meta"><b class="finder__prov">' + esc(p.p) + '</b><span class="finder__plan">' + esc(p.n) + '</span></span>' +
+          (p.net ? '<span class="finder__net">' + esc(p.net) + '</span>' : '') +
+          '<b class="finder__price" dir="ltr">₪' + p.pr + '</b></a>';
+      }).join('');
+      var best = list[0];
+      if (best) {
+        var yearly = Math.max(0, Math.round((Number(bill.value) - best.pr) * 12));
+        save.innerHTML = yearly > 0
+          ? 'לפי מה שאתם משלמים היום — תחסכו עד <b>' + fmt(yearly) + '</b> בשנה'
+          : 'אתם כבר במחיר מצוין — שווה לוודא מול ההשוואה המלאה';
+      } else { save.textContent = ''; }
+    }
+    root.querySelectorAll('.finder__cat').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        cat = btn.dataset.cat;
+        root.querySelectorAll('.finder__cat').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+        var r = RANGES[cat] || RANGES.cellular;
+        bill.min = r[0]; bill.max = r[1]; bill.value = r[2];
+        out.textContent = fmt(bill.value);
+        render();
+        remember();
+      });
+    });
+    var raf = 0;
+    bill.addEventListener('input', function () {
+      out.textContent = fmt(bill.value);
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () { render(); remember(); });
+    }, { passive: true });
+    out.textContent = fmt(bill.value);
+    render();
+  })();
+
+  // ── (11) DEAL TICKER — rotate the build-stamped deal-of-day items ───────────
+  (function () {
+    var wrap = document.querySelector('#dealTicker .ticker__inner');
+    if (!wrap) return;
+    var items = Array.from(wrap.querySelectorAll('.ticker__item'));
+    if (items.length < 2) { if (items[0]) items[0].classList.add('is-on'); return; }
+    var i = 0;
+    items[0].classList.add('is-on');
+    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    setInterval(function () {
+      items[i].classList.remove('is-on');
+      i = (i + 1) % items.length;
+      items[i].classList.add('is-on');
+    }, 6000);
+  })();
+
+  // ── (12) COMPARE TRAY — "add to compare" everywhere ─────────────────────────
+  // The scale icon on every plan card becomes a TOGGLE into a persistent
+  // (localStorage) tray of up to 3 plans; a sticky bottom bar deep-links to
+  // compare.html?p0&p1&p2 (already supported there). Without JS the icon stays
+  // a plain link that opens compare preselected with that one plan.
+  (function () {
+    var links = Array.from(document.querySelectorAll('.plan__compare'));
+    var KEY = 'switchy-cmp';
+    var read = function () {
+      try { var v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v.slice(0, 3) : []; }
+      catch (_) { return []; }
+    };
+    var write = function (list) { try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, 3))); } catch (_) {} };
+    var idOf = function (a) {
+      try { return new URLSearchParams((a.getAttribute('href') || '').split('?')[1] || '').get('p0'); }
+      catch (_) { return null; }
+    };
+
+    // compare.html: with no explicit ?p0 in the URL, prefill from the tray.
+    if (/compare\.html$/.test(location.pathname) || location.pathname === '/compare') {
+      if (!new URLSearchParams(location.search).get('p0')) {
+        var tray0 = read();
+        if (tray0.length) {
+          var picks = ['cmp0', 'cmp1', 'cmp2'].map(function (id) { return document.getElementById(id); });
+          tray0.forEach(function (id, i) {
+            if (picks[i] && picks[i].querySelector('option[value="' + CSS.escape(id) + '"]')) {
+              picks[i].value = id;
+              picks[i].dispatchEvent(new Event('change'));
+            }
+          });
+        }
+      }
+    }
+    if (!links.length) return;
+
+    var bar = document.createElement('div');
+    bar.className = 'cmp-tray';
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'מסלולים שנבחרו להשוואה');
+    bar.innerHTML = '<span class="cmp-tray__count"></span>' +
+      '<a class="btn btn--primary btn--sm cmp-tray__go" href="compare.html">השוו עכשיו ←</a>' +
+      '<button type="button" class="cmp-tray__clear" aria-label="ניקוי הבחירה">✕</button>';
+    document.body.appendChild(bar);
+    var countEl = bar.querySelector('.cmp-tray__count');
+    var goEl = bar.querySelector('.cmp-tray__go');
+
+    function sync() {
+      var tray = read();
+      links.forEach(function (a) {
+        var on = tray.indexOf(idOf(a)) !== -1;
+        a.classList.toggle('is-in', on);
+        a.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (!tray.length) { bar.classList.remove('is-on'); return; }
+      countEl.textContent = tray.length === 1 ? 'מסלול אחד נבחר להשוואה' : tray.length + ' מסלולים נבחרו להשוואה';
+      var qs = tray.map(function (id, i) { return 'p' + i + '=' + encodeURIComponent(id); }).join('&');
+      goEl.setAttribute('href', 'compare.html?' + qs);
+      bar.classList.add('is-on');
+    }
+    links.forEach(function (a) {
+      var id = idOf(a);
+      if (!id) return;
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var tray = read();
+        var at = tray.indexOf(id);
+        if (at !== -1) tray.splice(at, 1);
+        else { if (tray.length >= 3) tray.shift(); tray.push(id); }
+        write(tray);
+        sync();
+        if (typeof track === 'function') { try { track('compare_tray_toggle', { plan: id, size: tray.length }); } catch (_) {} }
+      });
+    });
+    bar.querySelector('.cmp-tray__clear').addEventListener('click', function () { write([]); sync(); });
+    sync();
+  })();
+
+  // ── (13) HOME COMMUNITY STRIP — "hot in the community right now" ────────────
+  // Renders the 3 latest public posts into #homeFeed (homepage only). Any
+  // failure leaves the section hidden — the homepage never shows an empty box.
+  (function () {
+    var host = document.getElementById('homeFeed');
+    if (!host) return;
+    sbRest('community_posts?select=id,author,channel,body,created_at&is_flagged=eq.false&order=created_at.desc&limit=3')
+      .then(function (posts) {
+        if (!Array.isArray(posts) || !posts.length) return;
+        host.innerHTML = posts.map(function (post) {
+          return '<a class="home-post" href="community.html#post-' + escHtmlS(String(post.id)) + '">' +
+            '<span class="home-post__head"><b>' + escHtmlS(post.author || 'אנונימי') + '</b>' +
+            '<span class="home-post__channel">' + escHtmlS(post.channel || 'כללי') + '</span>' +
+            '<time>' + escHtmlS(relTimeHe(post.created_at)) + '</time></span>' +
+            '<span class="home-post__body">' + escHtmlS(String(post.body || '').slice(0, 140)) + '</span>' +
+          '</a>';
+        }).join('');
+        var section = host.closest('.home-community');
+        if (section) section.hidden = false;
+      })
+      .catch(function () { /* stay hidden */ });
+  })();
+
+  // ── (14) COMMUNITY LEADERS — client-side leaderboard (posts + replies) ──────
+  // Aggregates public author names from posts+replies (anon reads). Top 5 get
+  // medal badges. Any failure → the section simply stays hidden.
+  (function () {
+    var host = document.getElementById('communityLeaders');
+    if (!host) return;
+    Promise.all([
+      sbRest('community_posts?select=author&is_flagged=eq.false&limit=1000'),
+      sbRest('community_replies?select=author&is_flagged=eq.false&limit=1000'),
+    ]).then(function (res) {
+      var counts = {};
+      res.forEach(function (rows, ri) {
+        (rows || []).forEach(function (r) {
+          var a = (r && r.author || '').trim();
+          if (!a) return;
+          counts[a] = counts[a] || { posts: 0, replies: 0 };
+          if (ri === 0) counts[a].posts += 1; else counts[a].replies += 1;
+        });
+      });
+      var top = Object.entries(counts)
+        .map(function (e) { return { name: e[0], posts: e[1].posts, replies: e[1].replies, score: e[1].posts * 2 + e[1].replies }; })
+        .sort(function (a, b) { return b.score - a.score; })
+        .slice(0, 5);
+      if (!top.length) return;
+      var medals = ['leaders__medal--gold', 'leaders__medal--silver', 'leaders__medal--bronze'];
+      host.innerHTML = top.map(function (u, i) {
+        var parts = [];
+        if (u.posts) parts.push(u.posts === 1 ? 'פוסט אחד' : u.posts + ' פוסטים');
+        if (u.replies) parts.push(u.replies === 1 ? 'תגובה אחת' : u.replies + ' תגובות');
+        return '<li class="leaders__row">' +
+          '<span class="leaders__medal ' + (medals[i] || '') + '">' + (i + 1) + '</span>' +
+          '<span class="leaders__avatar" aria-hidden="true">' + escHtmlS(u.name.charAt(0)) + '</span>' +
+          '<span class="leaders__meta"><b>' + escHtmlS(u.name) + '</b><span>' + escHtmlS(parts.join(' · ')) + '</span></span>' +
+        '</li>';
+      }).join('');
+      var section = host.closest('.community-leaders');
+      if (section) section.hidden = false;
+    }).catch(function () { /* stay hidden */ });
   })();
 })();

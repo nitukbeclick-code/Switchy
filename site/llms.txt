@@ -21,10 +21,19 @@ SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plan
 - [כל ההשוואות / Comparisons](https://switchy-ai.com/comparisons.html)
 - [ספקים / Providers](https://switchy-ai.com/providers.html)
 - [כל המסלולים / Plans](https://switchy-ai.com/plans.html)
+- [העסקאות של היום / Deals](https://switchy-ai.com/deals.html)
 - [מדריכים / Guides](https://switchy-ai.com/guides.html)
 - [מילון מונחים / Glossary](https://switchy-ai.com/glossary.html)
 - [שאלות נפוצות / FAQ](https://switchy-ai.com/faq.html)
 - [איך זה עובד / How it works](https://switchy-ai.com/how-it-works.html)
+
+## העסקאות של היום (Today's cheapest — live catalogue prices)
+- סלולר: הוט מובייל — 20GB Data Only — ₪11/חודש
+- אינטרנט: פרטנר — Fiber 1000Mb — ₪39/חודש (אחרי מבצע: ₪159)
+- טלוויזיה: STING TV — HBO Max Standard — ₪49/חודש (אחרי מבצע: ₪150)
+- חבילה משולבת: NextTV — אינטרנט סיבים + TV 1GB — ₪119/חודש
+- חבילות חו״ל: 019 מובייל — 2GB גלישה חודשי — ₪19/חודש
+- [כל העסקאות של היום / Today's deals](https://switchy-ai.com/deals.html)
 
 ## קטגוריות (Categories)
 - [סלולר](https://switchy-ai.com/cellular.html) — 59 מסלולים, החל מ-₪11.

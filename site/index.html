@@ -56,7 +56,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=a5876d14" />
+  <link rel="stylesheet" href="styles.css?v=7d6759cb" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -263,10 +263,30 @@
           </p>
 
           <div class="hero__cta">
-            <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
+            <a class="btn btn--primary btn--lg" href="#heroFinder">בדקו כמה תוכלו לחסוך ←</a>
             <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
           </div>
 
+          <!-- Answer-in-10-seconds finder — hydrated by script.js from the
+               build-stamped __HERO_PLANS__ blob; hidden without JS. -->
+          <div class="finder" id="heroFinder" hidden>
+            <div class="finder__cats" role="group" aria-label="בחירת קטגוריה להשוואה מהירה">
+              <button type="button" class="finder__cat is-active" data-cat="cellular">סלולר</button>
+              <button type="button" class="finder__cat" data-cat="internet">אינטרנט</button>
+              <button type="button" class="finder__cat" data-cat="tv">טלוויזיה</button>
+              <button type="button" class="finder__cat" data-cat="triple">משולבת</button>
+            </div>
+            <label class="finder__bill" for="finderBill">
+              <span>כמה אתם משלמים היום?</span>
+              <output id="finderBillOut" dir="ltr">₪60</output>
+            </label>
+            <input type="range" id="finderBill" min="20" max="200" step="5" value="60" aria-label="התשלום החודשי הנוכחי שלכם" />
+            <div class="finder__results" id="finderResults" aria-live="polite"></div>
+            <p class="finder__save" id="finderSave" aria-live="polite"></p>
+          </div>
+
+        </div>
+        <div class="hero__visual">
           <p class="hero__launch-prompt">איזה שירות בא לכם להוזיל?</p>
           <ul class="hero__launch" aria-label="קטגוריות להשוואה">
             <li><a class="launch-tile" href="cellular.html" style="--tf:#22C55E;--tt:#0B7A38;--td:#0B5E2C" aria-label="סלולר — 59 מסלולים, מ-₪11 לחודש">
@@ -292,26 +312,6 @@
               <li><a href="abroad.html"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2.5 3 10l6.5 2.5L12 19l2.5-6.5 7-10z"/><path d="m9.5 12.5 3-3"/></svg>חבילות חו״ל</a></li>
             </ul>
           </div>
-
-        </div>
-        <div class="hero__visual">
-          <div class="hero-card reveal" aria-label="נתוני ההשוואה של SWITCHY">
-            <div class="hero-card__head">
-              <span>חיסכון ממוצע בשנה</span>
-              <b data-count-to="1188" data-count-prefix="₪" data-count-dur="2000">₪1,188</b>
-            </div>
-            <div class="hero-card__rows">
-              <div class="hero-card__row"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg> סלולר <b dir="ltr">₪11+</b></div>
-              <div class="hero-card__row"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 2.6 15.4 0 18M12 3c-2.6 2.6-2.6 15.4 0 18"/></svg> אינטרנט סיב 1000Mb <b dir="ltr">₪39+</b></div>
-              <div class="hero-card__row"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.5 9 4.5-9 4.5-9-4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/></svg> חבילה משולבת <b dir="ltr">₪119+</b></div>
-            </div>
-            <ul class="hero-card__stats">
-              <li><b data-count-to="120" data-count-suffix="+">120+</b><span>מסלולים</span></li>
-              <li><b data-count-to="18">18</b><span>ספקים</span></li>
-              <li><b data-count-to="5">5</b><span>קטגוריות</span></li>
-            </ul>
-            <p class="hero-card__fine">* הערכה לפי מעבר ממוצע — החיסכון המדויק מחושב אישית. <a href="terms.html">תנאי שימוש</a></p>
-          </div>
         </div>
         </div>
         </div>
@@ -328,6 +328,11 @@
         <span class="trust__item"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg>ליווי אנושי במעבר</span>
       </div>
     </section>
+
+    <!-- ── Deal of the day ticker (items stamped by build.js) ──────────── -->
+    <div class="ticker" id="dealTicker" aria-label="העסקאות הזולות היום">
+      <div class="container ticker__inner"><!--DEALS:START--><a class="ticker__item" href="deals.html"><b>סלולר</b> הכי זול היום: הוט מובייל · <b dir="ltr">₪11</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html"><b>אינטרנט</b> הכי זול היום: פרטנר · <b dir="ltr">₪39</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html"><b>טלוויזיה</b> הכי זול היום: STING TV · <b dir="ltr">₪49</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html"><b>חבילה משולבת</b> הכי זול היום: NextTV · <b dir="ltr">₪119</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><!--DEALS:END--></div>
+    </div>
 
     <!-- ── Providers strip ──────────────────────────────────────────────── -->
     <section class="providers" aria-label="חברות התקשורת">
@@ -683,6 +688,21 @@
       </div>
     </section>
 
+    <!-- ── Hot in the community (hydrated by script.js; hidden on failure) ── -->
+    <section class="section home-community" aria-label="חם בקהילה" hidden>
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">הקהילה שלנו</span>
+          <h2>חם בקהילה עכשיו</h2>
+          <p>שאלות, טיפים וחוויות אמיתיות מאנשים שכבר עברו ספק.</p>
+        </header>
+        <div class="home-feed" id="homeFeed"></div>
+        <div class="reveal" style="text-align:center;margin-top:28px">
+          <a class="btn btn--ghost btn--lg" href="/community">הצטרפו לדיון ←</a>
+        </div>
+      </div>
+    </section>
+
     <!-- ── Top guides ───────────────────────────────────────────────────── -->
     <section class="section" id="guides" aria-label="מדריכים מובילים">
       <div class="container">
@@ -790,6 +810,7 @@
     </section>
 
     <!-- ── Final CTA ────────────────────────────────────────────────────── -->
+    <div class="wave-sep" aria-hidden="true"><svg viewBox="0 0 1440 64" preserveAspectRatio="none"><path d="M0 40 C240 8 480 8 720 32 C960 56 1200 56 1440 24 L1440 64 L0 64 Z"/></svg></div>
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>מוכנים להפסיק לשלם יותר מדי?</h2>
@@ -931,7 +952,8 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
+  <script>window.__HERO_PLANS__={"cellular":[{"p":"הוט מובייל","n":"20GB Data Only","pr":11,"a":null,"net":"4G"},{"p":"019 מובייל","n":"SIM Data 2GB","pr":12,"a":null,"net":"4G"},{"p":"רמי לוי","n":"זול להיות בקשר כשר","pr":15,"a":null,"net":"4G"},{"p":"רמי לוי","n":"Max כשר","pr":17,"a":null,"net":"4G"},{"p":"019 מובייל","n":"לכל החיים 12GB","pr":20,"a":null,"net":"4G"},{"p":"הוט מובייל","n":"150GB Data Only","pr":22,"a":null,"net":"4G"},{"p":"019 מובייל","n":"בול בפוני 30GB","pr":22,"a":null,"net":"4G"},{"p":"Xphone","n":"מחוברים","pr":23,"a":null,"net":"4G"}],"internet":[{"p":"פרטנר","n":"Fiber 1000Mb","pr":39,"a":159,"net":"סיב אופטי"},{"p":"גילת","n":"1GB מבצע אונליין","pr":49,"a":95,"net":"סיב אופטי"},{"p":"בזק","n":"אינטרנט 100 מגה (נחושת)","pr":65,"a":158,"net":"כבלים"},{"p":"פרטנר","n":"Fiber 600Mb","pr":69,"a":100,"net":"סיב אופטי"},{"p":"גילת","n":"1GB שנה","pr":79,"a":null,"net":"סיב אופטי"},{"p":"CCC","n":"דאבל 40 מגה (נחושת)","pr":80,"a":null,"net":"כבלים"},{"p":"CCC","n":"דאבל 100 מגה (נחושת)","pr":85,"a":null,"net":"כבלים"},{"p":"גולן טלקום","n":"אינטרנט סיבים משתלם","pr":89,"a":null,"net":"סיב אופטי"}],"tv":[{"p":"STING TV","n":"HBO Max Standard","pr":49,"a":150,"net":"סטרימינג"},{"p":"STING TV","n":"דיסני+","pr":49,"a":150,"net":"סטרימינג"},{"p":"STING TV","n":"מבית yes","pr":49,"a":null,"net":"סטרימינג"},{"p":"yes","n":"Sting+ by yes","pr":49,"a":null,"net":"סטרימינג"},{"p":"סלקום","n":"סלקום TV + Netflix","pr":69,"a":null,"net":"סטרימינג"},{"p":"NextTV","n":"אפליקציית Next TV","pr":70,"a":null,"net":"סטרימינג"},{"p":"HOT","n":"רק טלוויזיה","pr":89,"a":null,"net":"כבלים"},{"p":"פרטנר","n":"Partner TV + ספורט","pr":95,"a":null,"net":"סטרימינג"}],"triple":[{"p":"NextTV","n":"אינטרנט סיבים + TV 1GB","pr":119,"a":null,"net":"סיב אופטי"},{"p":"גולן טלקום","n":"טריפל המושלם","pr":139,"a":null,"net":"סיב אופטי"},{"p":"STING TV","n":"Sting+Fiber HBO Max","pr":149,"a":259,"net":"סיב אופטי"},{"p":"yes","n":"Sting+Fiber by yes","pr":149,"a":234,"net":"סיב אופטי"},{"p":"סלקום","n":"טריפל 1GB מונדיאל (מקרן)","pr":159,"a":null,"net":"סיב אופטי"},{"p":"NextTV","n":"אינטרנט סיבים + TV 2GB","pr":164,"a":null,"net":"סיב אופטי"},{"p":"HOT","n":"טריפל מונדיאל עד 1000Mb","pr":169,"a":null,"net":"סיב אופטי"},{"p":"סלקום","n":"טריפל 2.5GB","pr":179,"a":199,"net":"סיב אופטי"}]};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=5a21c6db" defer></script>
+  <script src="script.js?v=7906b98f" defer></script>
 </body>
 </html>

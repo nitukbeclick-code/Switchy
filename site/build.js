@@ -216,6 +216,57 @@ function readPlansFromDbSync() {
   }
 }
 
+// ── Community provider ratings (LIVE, fail-soft) ─────────────────────────────
+// Same isolated-child REST pattern as readPlansFromDbSync: pull the public
+// provider_reviews rows (anon SELECT, RLS-gated) and aggregate to
+// { provider: { avg, count } }. ANY failure → null, and provider pages simply
+// render without a rating row / AggregateRating node — never fabricated.
+function readProviderRatingsSync() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  const child = `
+    const url = ${JSON.stringify(url)}.replace(/\\/$/, '') + '/rest/v1/provider_reviews?select=provider,overall';
+    const key = ${JSON.stringify(key)};
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 8000);
+    fetch(url, {
+      cache: 'no-store',
+      signal: ac.signal,
+      headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' },
+    })
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((rows) => { clearTimeout(t); process.stdout.write(JSON.stringify(rows)); })
+      .catch((e) => { clearTimeout(t); process.stderr.write(String(e && e.message || e)); process.exit(1); });
+  `;
+  try {
+    const out = require('node:child_process').execFileSync(process.execPath, ['-e', child], {
+      encoding: 'utf8', timeout: 15000, maxBuffer: 8 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const rows = JSON.parse(out);
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const agg = {};
+    for (const r of rows) {
+      const prov = r && r.provider;
+      const overall = Number(r && r.overall);
+      if (!prov || !Number.isFinite(overall) || overall < 1 || overall > 5) continue;
+      (agg[prov] = agg[prov] || { sum: 0, count: 0 }).sum += overall;
+      agg[prov].count += 1;
+    }
+    const out2 = {};
+    for (const [prov, a] of Object.entries(agg)) {
+      if (a.count > 0) out2[prov] = { avg: Math.round((a.sum / a.count) * 10) / 10, count: a.count };
+    }
+    return Object.keys(out2).length ? out2 : null;
+  } catch {
+    return null;
+  }
+}
+const PROVIDER_RATINGS = readProviderRatingsSync();
+console.log(PROVIDER_RATINGS
+  ? `Community ratings: LIVE (${Object.keys(PROVIDER_RATINGS).length} providers rated)`
+  : 'Community ratings: none available (provider pages render without stars)');
+
 // Build the in-memory `catalogue` (SAME shape as data/plans.json): LIVE plans
 // when the DB read yields ≥1 valid normalised plan, else the bundled snapshot.
 // `CATALOGUE_SOURCE` records which path won ('live' | 'bundled') so the build can
@@ -2854,6 +2905,97 @@ ${footer}
 `;
 }
 
+// ── Deals page — today's cheapest per category + promos about to expire ─────
+// 100%% derived from the live catalogue on every rebuild; the homepage deal
+// ticker links here. "Ending promos" = plans whose after-promo price jumps the
+// most (the honest angle: know the jump BEFORE you sign).
+function dealsPage() {
+  const url = `${SITE}/deals.html`;
+  const monthly = catalogue.plans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const bestPer = categories
+    .map((c) => {
+      const list = monthly.filter((p) => p.cat === c.slug)
+        .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price));
+      return list[0] ? { cat: c, plan: list[0] } : null;
+    })
+    .filter(Boolean);
+  const bestCards = bestPer.map(({ cat, plan }, i) => `
+      <div>
+        <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">${esc(cat.name)}</span></header>
+        ${planCardHtml(plan, true)}
+      </div>`).join('\n');
+  const jumps = monthly
+    .filter((p) => p.after && p.after > p.price)
+    .sort((a, b) => (b.after - b.price) - (a.after - a.price))
+    .slice(0, 6);
+  const jumpCards = jumps.map((p) => planCardHtml(p)).join('\n        ');
+  const dealsJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'העסקאות של היום', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: 'העסקאות הזולות של היום', url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      temporalCoverage: CATALOGUE_MONTH,
+      mainEntity: plansItemListJsonLd(bestPer.map((b) => b.plan), url, 'העסקאות של היום') },
+  ] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('העסקאות של היום — הזול ביותר בכל קטגוריה | SWITCHY', `המסלול הזול ביותר היום בכל קטגוריה — סלולר, אינטרנט, טלוויזיה וחבילות — ישירות מהקטלוג המתעדכן, כולל המבצעים שעומדים להתייקר הכי הרבה.`, url, dealsJsonLd, false, 'website')}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+      <div class="container">
+        ${crumbsHtml([['דף הבית', 'index.html'], ['העסקאות של היום', null]])}
+        <span class="pill pill--ico">${iconFor('✨')} מתעדכן בכל רענון קטלוג · ${esc(BUILD_DATE_HE)}</span>
+        <h1>העסקאות של <span class="hl">היום</span></h1>
+        <p>המסלול הזול ביותר בכל קטגוריה, ישר מהקטלוג — בלי כוכביות. למטה: המבצעים שקופצים הכי הרבה כשהם נגמרים, כדי שתדעו לפני שאתם חותמים.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#best">לעסקאות${chev()}</a>
+          <a class="hero__link hero__link--ink" href="plans.html">לכל המחירון</a>
+        </div>
+        ${heroTrustLine()}
+      </div>
+    </section>
+
+    <section class="section" id="best">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">הזול ביותר היום</span><h2>אלוף המחיר בכל קטגוריה</h2></header>
+        <div class="plan-grid plan-grid--featured">
+${bestCards}
+        </div>
+      </div>
+    </section>
+${jumps.length ? `
+    <section class="section section--alt" id="jumps">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">שקיפות</span><h2>המבצעים שמתייקרים הכי הרבה</h2><p>המחיר שאחרי המבצע כבר כאן — אלה המסלולים עם הקפיצה הגדולה ביותר.</p></header>
+        <div class="plan-grid">
+        ${jumpCards}
+        </div>
+      </div>
+    </section>` : ''}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>רוצים שנתפוס לכם את העסקה?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${RT_SRC}" defer></script>
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
 function plansPage() {
   const url = `${SITE}/plans.html`;
   const filterBtns = [['all', 'הכל'], ...categories.map((c) => [c.slug, c.name])]
@@ -3034,6 +3176,26 @@ function providerPage(name, plans) {
   // at this entity by @id so engines resolve our provider page to the
   // authoritative provider. Mirrors the web app's provider Organization nodes.
   const provOrg = providerOrgNode(name);
+  // Community rating — visible stars + schema.org AggregateRating, ONLY when
+  // real reviews exist (LIVE read; fail-soft). ratingValue mirrors the visible
+  // figure exactly so the SERP stars can never diverge from the page.
+  const rating = PROVIDER_RATINGS && PROVIDER_RATINGS[name];
+  if (rating) {
+    provOrg.aggregateRating = {
+      '@type': 'AggregateRating',
+      ratingValue: rating.avg,
+      reviewCount: rating.count,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
+  const ratingHtml = rating
+    ? `\n        <p class="prov-rating" aria-label="דירוג קהילה: ${rating.avg} מתוך 5, לפי ${rating.count} ביקורות">
+          <span class="prov-rating__stars" aria-hidden="true" style="--fill:${Math.round((rating.avg / 5) * 100)}%">★★★★★<span class="prov-rating__on">★★★★★</span></span>
+          <b>${rating.avg}</b> · ${rating.count} ביקורות מהקהילה
+          <a href="/community">כתבו ביקורת ←</a>
+        </p>`
+    : '';
   const provGraph = [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
@@ -3062,7 +3224,7 @@ ${nav}
         <div class="provider-hero__lockup">
           ${providerLogo(name, 84)}
           <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
-        </div>
+        </div>${ratingHtml}
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
         <ul class="stat-band" aria-label="נתוני ${esc(name)} — מהקטלוג">
           <li><b data-count-to="${plans.length}">${plans.length}</b> מסלולים</li>
@@ -3841,12 +4003,23 @@ ${navNoCta}
           <a class="btn btn--primary btn--lg" href="app.html">להצטרף ולפרסם — הורידו את האפליקציה</a>
           <a class="btn btn--ghost btn--lg" href="#ratings">לדירוגי הספקים ↓</a>
         </div>
+        <ul class="community-trust" aria-label="אמון ואבטחה בקהילה">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.2 8.4-7 10-3.8-1.6-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>קהילה מנוהלת — תוכן פוגעני מוסר</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="8" r="4"/></svg>פרסום רק ממשתמשים מחוברים באפליקציה</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>חיבור מוצפן (HTTPS)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>אפשר לפרסם בעילום שם</li>
+        </ul>
       </div>
     </section>
 
     <section class="section community">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">הצ׳אט הקהילתי</span><h2>מה מדברים עכשיו בקהילה</h2><p>פוסטים אחרונים מהקהילה. לפרסום, תגובות ושיתוף תמונה — הצטרפו דרך האפליקציה.</p></header>
+        <div class="community-stats" id="communityStats" hidden aria-label="נתוני הקהילה בזמן אמת">
+          <div class="community-stats__item"><b id="statPosts">—</b><span>דיונים פעילים</span></div>
+          <div class="community-stats__item"><b id="statReviews">—</b><span>ביקורות על ספקים</span></div>
+          <div class="community-stats__item"><b id="statProviders">—</b><span>ספקים מדורגים</span></div>
+        </div>
         <div class="community__filter" role="group" aria-label="סינון לפי ערוץ">
           ${chanBtns}
         </div>
@@ -3869,6 +4042,26 @@ ${navNoCta}
         <div id="ratingsSummary" class="ratings" aria-live="polite" aria-busy="true">
           <p class="booking__note">טוען דירוגים…</p>
         </div>
+      </div>
+    </section>
+
+    <section class="section community-rules" aria-label="כללי הקהילה">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">שקיפות ואמון</span><h2>כללי הקהילה</h2><p>הקהילה מנוהלת כדי שתישאר מועילה ובטוחה. אלה הכללים שכולנו שומרים עליהם.</p></header>
+        <div class="rules-grid">
+          <div class="rule-card reveal"><b>כבוד הדדי</b><p>מתווכחים על מסלולים, לא על אנשים. בלי עלבונות ובלי הטרדות.</p></div>
+          <div class="rule-card reveal"><b>בלי פרטים אישיים</b><p>לא מפרסמים טלפון, כתובת או מספר לקוח — גם לא בצילומי מסך של חשבוניות.</p></div>
+          <div class="rule-card reveal"><b>בלי ספאם ופרסום</b><p>נציגי ספקים וקידום עסקי אינם מותרים בפיד. תוכן שיווקי מוסר.</p></div>
+          <div class="rule-card reveal"><b>ביקורות מניסיון אמיתי</b><p>מדרגים רק ספק שהייתם לקוחות שלו. ביקורות מזויפות נמחקות.</p></div>
+        </div>
+        <p class="rules-note">ראיתם תוכן שמפר את הכללים? <a href="mailto:hello@switchy-ai.com?subject=${encodeURIComponent('דיווח על תוכן בקהילה')}">דווחו לנו</a> ונטפל בהקדם. הפעילות כפופה ל<a href="terms.html">תנאי השימוש</a> ול<a href="privacy.html">מדיניות הפרטיות</a>.</p>
+      </div>
+    </section>
+
+    <section class="section community-leaders" aria-label="מובילי הקהילה" hidden>
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כל הכבוד</span><h2>מובילי הקהילה</h2><p>מי שתרמו הכי הרבה שאלות, תשובות וטיפים.</p></header>
+        <ol class="leaders" id="communityLeaders"></ol>
       </div>
     </section>
   </main>
@@ -4783,6 +4976,7 @@ fs.writeFileSync(path.join(__dirname, 'faq.html'), faqPage());
 fs.writeFileSync(path.join(__dirname, 'glossary.html'), glossaryPage());
 fs.writeFileSync(path.join(__dirname, 'how-it-works.html'), howItWorksPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
+fs.writeFileSync(path.join(__dirname, 'deals.html'), dealsPage());
 fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
 fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
 fs.writeFileSync(path.join(__dirname, 'comparisons.html'), comparisonsHubPage());
@@ -4865,10 +5059,22 @@ const llmsTxt = [
   `- [כל ההשוואות / Comparisons](${SITE}/comparisons.html)`,
   `- [ספקים / Providers](${SITE}/providers.html)`,
   `- [כל המסלולים / Plans](${SITE}/plans.html)`,
+  `- [העסקאות של היום / Deals](${SITE}/deals.html)`,
   `- [מדריכים / Guides](${SITE}/guides.html)`,
   `- [מילון מונחים / Glossary](${SITE}/glossary.html)`,
   `- [שאלות נפוצות / FAQ](${SITE}/faq.html)`,
   `- [איך זה עובד / How it works](${SITE}/how-it-works.html)`,
+  '',
+  "## העסקאות של היום (Today's cheapest — live catalogue prices)",
+  ...categories.map((c) => {
+    const best = catalogue.plans
+      .filter((p) => p.cat === c.slug && (!p.priceUnit || p.priceUnit === 'month'))
+      .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price))[0];
+    return best
+      ? `- ${c.name}: ${best.provider} — ${best.plan} — ₪${best.price}/חודש${best.after ? ` (אחרי מבצע: ₪${best.after})` : ''}`
+      : null;
+  }).filter(Boolean),
+  `- [כל העסקאות של היום / Today's deals](${SITE}/deals.html)`,
   '',
   '## קטגוריות (Categories)',
   ...llmCategoryLines,
@@ -4925,6 +5131,7 @@ const BUILD_DATE = isoDate(Date.now());
 const locs = [
   { loc: `${SITE}/`, lastmod: CATALOGUE_DATE, priority: '1.0', changefreq: 'daily', images: [`${SITE}/og-image.png`] },
   { loc: `${SITE}/plans.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' },
+  { loc: `${SITE}/deals.html`, lastmod: CATALOGUE_DATE, priority: '0.85', changefreq: 'daily' },
   { loc: `${SITE}/providers.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/compare.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/comparisons.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
@@ -5016,6 +5223,38 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
 
   // 1) Cache-busting hashes — rewrite ANY existing ?v=<hash> on the styles.css /
   //    script.js refs to the current fingerprints (idempotent; a no-op when equal).
+  // 0) Hero finder data — a TRIMMED per-category blob (8 cheapest monthly plans
+  //    per category, minimal fields, ~4-6KB) so the homepage "answer in 10
+  //    seconds" widget works instantly with zero network. Rewritten in place on
+  //    every build (same contract as the ?v= hashes) so prices track the
+  //    catalogue. The deal ticker items are refreshed the same way.
+  const FINDER_CATS = ['cellular', 'internet', 'tv', 'triple'];
+  const heroPlans = {};
+  for (const cat of FINDER_CATS) {
+    heroPlans[cat] = catalogue.plans
+      .filter((p) => p.cat === cat && (!p.priceUnit || p.priceUnit === 'month'))
+      .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price))
+      .slice(0, 8)
+      .map((p) => ({ p: p.provider, n: p.plan, pr: p.price, a: p.after || null, net: p.net || '' }));
+  }
+  const heroBlob = `<script>window.__HERO_PLANS__=${jsonForScript(heroPlans)};</script>`;
+  if (/<script>window\.__HERO_PLANS__=.*?<\/script>/.test(html)) {
+    html = html.replace(/<script>window\.__HERO_PLANS__=.*?<\/script>/, heroBlob);
+  } else {
+    notes.push('WARN: no __HERO_PLANS__ placeholder found in index.html');
+  }
+  const dealItems = FINDER_CATS.map((cat) => {
+    const best = heroPlans[cat] && heroPlans[cat][0];
+    if (!best) return '';
+    const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת' }[cat];
+    return `<a class="ticker__item" href="deals.html"><b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a>`;
+  }).filter(Boolean).join('');
+  if (/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/.test(html)) {
+    html = html.replace(/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/, `<!--DEALS:START-->${dealItems}<!--DEALS:END-->`);
+  } else {
+    notes.push('WARN: no DEALS markers found in index.html');
+  }
+
   const cssMatched = /href="styles\.css\?v=[0-9a-f]+"/.test(html);
   const jsMatched = /src="script\.js\?v=[0-9a-f]+"/.test(html);
   const rtMatched = /src="translate-runtime\.js\?v=[0-9a-f]+"/.test(html);

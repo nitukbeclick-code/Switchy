@@ -475,6 +475,12 @@ const catHueStyle = (slug) => {
   return h ? ` style="--tf:${h[0]};--tt:${h[1]}"` : '';
 };
 
+// Conversion wave — the ONE reusable Zoom invitation line. Dropped under every
+// decision point (jump-card, provider comparison, 404) so the face-to-face
+// closing channel is always a click away. Honest copy only: free, 30 min,
+// no commitment.
+const zoomCta = (txt) => `<a class="zoom-cta" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg><span>${txt} <b>פגישת Zoom חינם, בלי התחייבות</b> ←</span></a>`;
+
 // D2 — "today vs after" live promo-jump card for a category hero. Picks the
 // REAL monthly plan with the biggest advertised after-promo jump and draws two
 // proportional bars (fill animates via the standard .reveal `in` class). If the
@@ -1738,6 +1744,7 @@ ${nav}
           ${promoJumpCard(c, catPlans) || `<figure class="app-shot app-shot--hero">
             <img src="assets/app/shot-results.webp" alt="${esc(`אפליקציית SWITCHY — השוואת מסלולי ${c.name} עם ציון התאמה וחיסכון`)}" width="390" height="844" loading="lazy" decoding="async" />
           </figure>`}
+          ${zoomCta('נראה מסובך? נעבור על זה יחד —')}
         </div>
       </div>
     </section>
@@ -2958,6 +2965,7 @@ ${navNoCta}
           <a class="btn btn--primary btn--lg" href="index.html#heroFinder">בדקו כמה תוכלו לחסוך${chev()}</a>
           <a class="btn btn--ghost btn--lg" href="plans.html">כל המסלולים</a>
         </div>
+        <div style="max-width:560px;margin:18px auto 0">${zoomCta('הלכתם לאיבוד? נמצא את המסלול יחד —')}</div>
       </div>
     </section>
     <section class="section">
@@ -3218,7 +3226,7 @@ function providerPage(name, plans) {
       return `      <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">${esc(c.name)}</span><h2>${esc(name)} ${esc(c.name)} — המסלולים הזולים</h2></header>${table}`;
     })
     .filter(Boolean)
-    .join('\n');
+    .join('\n') + `\n      <div class="container" style="max-width:640px">${zoomCta(`מתלבטים לגבי ${esc(name)}? נשווה יחד —`)}</div>`;
   // Per-category internal links into the matching comparison hub — lets a visitor
   // (and a crawler) move from this provider to the broader "all providers in X"
   // page, deepening the internal link graph rather than dead-ending here.
@@ -4215,6 +4223,7 @@ ${navNoCta}
         <span class="pill pill--ico">${iconFor('🎥')} פגישת Zoom · חינם · ללא התחייבות</span>
         <h1>תיאום <span class="hl">פגישת ייעוץ</span> בווידאו</h1>
         <p>נציג SWITCHY יעבור איתכם, פנים מול פנים בזום, על המסלולים שלכם — ויראה בדיוק איפה אפשר לחסוך. בחרו ספק, יום ושעה; <strong>קישור ה-Zoom יישלח למייל</strong> מיד לאחר שנציג יאשר את הפגישה.</p>
+        <p class="book-proof">🎥 30 דקות · חינם לגמרי · הפגישה לא מחייבת כלום — יוצאים ממנה עם תמונה ברורה של החיסכון</p>
       </div>
     </section>
 

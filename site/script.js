@@ -472,6 +472,16 @@
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם ✦';
       }
       toast('תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם', 'success');
+      // Hot-moment Zoom upsell: right after a successful lead, offer to lock a
+      // face-to-face meeting now instead of waiting for the callback.
+      if (!document.querySelector('.zoom-upsell')) {
+        const up = document.createElement('a');
+        up.className = 'zoom-upsell';
+        up.href = 'book.html';
+        up.innerHTML = '<b>רוצים להקדים?</b> קבעו עכשיו פגישת Zoom חינם עם נציג — 30 דק׳, פנים מול פנים, בלי התחייבות <span aria-hidden="true">←</span>';
+        form.insertAdjacentElement('afterend', up);
+        track('zoom_upsell_shown', { source: location.pathname });
+      }
       showReferralShare();
     });
     // lead_form_start — fires once, the moment the visitor first engages the form.
@@ -972,8 +982,15 @@
   if (form && window.matchMedia('(max-width: 720px)').matches) {
     const stickyBar = document.createElement('div');
     stickyBar.className = 'sticky-cta';
-    stickyBar.innerHTML = '<button type="button" class="btn btn--primary">קבלו השוואה חינם ←</button>';
+    stickyBar.innerHTML = '<button type="button" class="btn btn--primary">קבלו השוואה חינם ←</button>' +
+      // Second thumb-reach action: the Zoom meeting (the closing channel) is
+      // always one tap away on mobile.
+      '<a class="sticky-cta__zoom" href="book.html" aria-label="תיאום פגישת Zoom חינם עם נציג">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg></a>';
     document.body.appendChild(stickyBar);
+    stickyBar.querySelector('.sticky-cta__zoom').addEventListener('click', () => {
+      track('cta_click', { location: 'sticky', label: 'zoom', source: location.pathname });
+    });
     const stickyBtn = stickyBar.querySelector('button');
     stickyBtn.addEventListener('click', () => {
       // Canonical CTA-click event, matching the web app's StickyLeadCta
@@ -2887,6 +2904,7 @@
           <a class="btn btn--primary" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=${encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan)}">מעוניין/ת — דברו איתי בוואטסאפ ←</a>
           ${ps ? `<a class="btn btn--ghost" href="provider-${esc(ps)}.html">כל מסלולי ${esc(p.provider)}</a>` : ''}
         </div>
+        <a class="zoom-cta" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg><span>רוצים לעבור על המסלול יחד עם נציג? <b>פגישת Zoom חינם, בלי התחייבות</b> ←</span></a>
         ${p.updatedAt ? `<p class="pmodal__upd">המידע נאסף מהאתרים הרשמיים · עודכן ${esc(p.updatedAt)}</p>` : ''}`;
     };
 
@@ -3467,6 +3485,62 @@
       var section = host.closest('.community-leaders');
       if (section) section.hidden = false;
     }).catch(function () { /* stay hidden */ });
+  })();
+
+  // ── (18) MEETING NUDGE — one respectful Zoom prompt per week ───────────────
+  // Deep-scroll (65%) on category/provider pages, or desktop exit-intent, shows
+  // a single dismissible glass card inviting a free Zoom meeting. Hard caps:
+  // once per 7 days (localStorage), never after visiting book.html, honest copy,
+  // instant exit. No dark patterns.
+  (() => {
+    // Visiting the booking page at all silences the nudge for good.
+    if (/book\.html/.test(location.pathname)) {
+      try { localStorage.setItem('switchy-booked', '1'); } catch (_) { /* private mode */ }
+      return;
+    }
+    const isTarget = /(cellular|internet|tv|triple|abroad|provider-|plans|deals)/.test(location.pathname) || document.querySelector('.lead-hero--cat');
+    if (!isTarget) return;
+    const KEY = 'switchy-meet-nudge';
+    const now = Date.now();
+    try {
+      if (localStorage.getItem('switchy-booked') === '1') return;
+      const last = Number(localStorage.getItem(KEY) || 0);
+      if (now - last < 7 * 24 * 60 * 60 * 1000) return;
+    } catch (_) { return; }
+    let shown = false;
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      try { localStorage.setItem(KEY, String(now)); } catch (_) { /* private mode */ }
+      const el = document.createElement('div');
+      el.className = 'meet-nudge';
+      el.setAttribute('role', 'complementary');
+      el.setAttribute('aria-label', 'הזמנה לפגישת ייעוץ בזום');
+      el.innerHTML =
+        '<button type="button" class="meet-nudge__x" aria-label="סגירת ההצעה">✕</button>' +
+        '<div class="meet-nudge__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg></div>' +
+        '<p><b>מתלבטים בין מסלולים?</b> נציג עובר איתכם על הכול בפגישת Zoom חינם של 30 דק׳ — פנים מול פנים, בלי התחייבות.</p>' +
+        '<a class="btn btn--primary" href="book.html">קבעו פגישה ←</a>';
+      document.body.appendChild(el);
+      el.querySelector('.meet-nudge__x').addEventListener('click', () => el.remove());
+      el.querySelector('a').addEventListener('click', () => track('cta_click', { location: 'nudge', label: 'zoom', source: location.pathname }));
+      track('meet_nudge_shown', { source: location.pathname });
+    };
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking || shown) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const h = document.documentElement;
+        if (h.scrollHeight > h.clientHeight && (window.scrollY + h.clientHeight) / h.scrollHeight > 0.65) show();
+        ticking = false;
+      });
+    }, { passive: true });
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      document.addEventListener('mouseout', (e) => {
+        if (!shown && !e.relatedTarget && e.clientY <= 0) show();
+      });
+    }
   })();
 
   // ── (17) CATEGORY QUICK FILTERS — sticky chips + live result count ─────────

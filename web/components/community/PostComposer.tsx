@@ -404,7 +404,7 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
                       setProviderName(null);
                     }}
                     disabled={busy}
-                    className="interactive press -me-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-accent-text ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                    className="interactive press relative before:absolute before:-inset-2.5 before:content-[''] -me-1 inline-flex h-6 w-6 items-center justify-center rounded-full text-accent-text ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
                     aria-label="הסרת תיוג הספק"
                   >
                     <span aria-hidden="true">✕</span>
@@ -444,7 +444,7 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
                   type="button"
                   onClick={removeMedia}
                   disabled={busy}
-                  className="interactive press mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                  className="interactive press relative before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
                   aria-label="הסרת המדיה שצורפה"
                 >
                   <span aria-hidden="true">✕</span>
@@ -461,7 +461,7 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
                   type="button"
                   onClick={removeExtras}
                   disabled={busy}
-                  className="interactive press mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
+                  className="interactive press relative before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-50"
                   aria-label="הסרת התמונות הנוספות שצורפו"
                 >
                   <span aria-hidden="true">✕</span>

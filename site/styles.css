@@ -1336,7 +1336,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .lead-hero .hero__cta { justify-content: center; }
 .feature--check .feature__icon { font-weight: 900; }
 .crumbs { font-size: 14px; color: var(--muted); margin-bottom: 18px; }
-.crumbs a { color: var(--green); font-weight: 600; }
+.crumbs a { color: var(--green); font-weight: 600; text-decoration: underline; }
 
 /* ── Guides / articles (generated) ───────────────────────────────────── */
 .article-hero { padding: 44px 0 4px; }
@@ -3604,10 +3604,18 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); box-shadow: 0 10px 24px -10
 }
 
 /* Dots — one per snap page; the active dot stretches to a pill. */
-.carousel__dots { display: flex; justify-content: center; gap: 7px; margin-top: 14px; }
+.carousel__dots { display: flex; justify-content: center; gap: 16px; margin-top: 14px; }
 .carousel__dot {
+  position: relative;
   width: 8px; height: 8px; border-radius: 999px; border: 0; padding: 0; cursor: pointer;
   background: var(--ink-200); transition: width .22s var(--ease), background .22s;
+}
+/* Enlarge the tap target without changing the visible 8px dot: a centered,
+   transparent 24px overlay (WCAG 2.5.8 AA). Paired with the 16px row gap so
+   adjacent targets touch but never intersect (no mis-routed taps between dots). */
+.carousel__dot::before {
+  content: ""; position: absolute; inset: 0; margin: auto;
+  width: 24px; height: 24px;
 }
 .carousel__dot:hover { background: var(--ink-400); }
 .carousel__dot:focus-visible { outline: none; box-shadow: var(--ring-flush); }

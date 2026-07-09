@@ -188,14 +188,14 @@ export default async function Cellular5gPage() {
               href="/book"
               location="category-hero"
               label="consult"
-              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
             >
               או דברו עם יועץ
             </TrackedCtaLink>
           </div>
           {minFeatured !== undefined && total5G > 0 ? (
             <p
-              className="sw-reveal mt-8 text-sm text-white/70"
+              className="sw-reveal mt-8 text-sm text-white/85"
               style={{ animationDelay: "150ms" }}
             >
               {total5G} מסלולי 5G · החל מ-

@@ -563,9 +563,9 @@ export default function CommunityFeed() {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   const tabBtn =
-    "interactive press whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "interactive press whitespace-nowrap rounded-full border min-h-11 px-3.5 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
   const sortBtn =
-    "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "rounded-lg min-h-11 px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   // In search mode we show the results list instead of the feed; the trending
   // strip is hidden so search stays the focus.
@@ -605,7 +605,7 @@ export default function CommunityFeed() {
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
               href="/community-guidelines"
-              className="text-sm font-medium text-accent-text underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="text-sm font-medium text-accent-text underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               כללי הקהילה
             </Link>

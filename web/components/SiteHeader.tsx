@@ -82,7 +82,8 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         {/* Brand wordmark → home (RTL start = right edge). */}
         <Link
           href="/"
-          className="group flex items-center gap-2 font-display text-lg font-bold tracking-tight text-ink transition-colors hover:text-accent"
+          aria-label="Switchy AI — דף הבית"
+          className="group flex min-h-11 min-w-11 items-center gap-2 font-display text-lg font-bold tracking-tight text-ink transition-colors hover:text-accent"
         >
           {/* Single brand lockup: the spark mark + "Switchy AI" as ONE LTR unit
               (dir isolate) so RTL bidi can never reorder it into "AI Switchy". */}

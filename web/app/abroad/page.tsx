@@ -193,14 +193,14 @@ export default async function AbroadLandingPage() {
               href="/book"
               location="category-hero"
               label="consult"
-              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
             >
               או דברו עם יועץ
             </TrackedCtaLink>
           </div>
           {minFeatured !== undefined ? (
             <p
-              className="nums-tabular sw-reveal mt-8 text-sm text-white/70"
+              className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
               style={{ animationDelay: "150ms" }}
             >
               {all.length} חבילות · החל מ-

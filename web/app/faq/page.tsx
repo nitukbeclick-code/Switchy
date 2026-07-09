@@ -198,7 +198,7 @@ export default function FaqPage() {
                 href="/book"
                 location="faq-hero"
                 label="consult"
-                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+                className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
               >
                 או דברו עם יועץ
               </TrackedCtaLink>
@@ -206,7 +206,7 @@ export default function FaqPage() {
             {/* Trust band — the honest count of visible Q&A (real, no fabricated
                 figure). tabular-nums column-aligns the digit (parity with home). */}
             <p
-              className="nums-tabular sw-reveal mt-8 text-sm text-white/70"
+              className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
               style={{ animationDelay: "150ms" }}
             >
               <span className="font-display font-bold text-white">

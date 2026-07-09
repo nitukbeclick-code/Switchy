@@ -873,7 +873,7 @@ function planCardHtml(p, best) {
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
-          <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
+          <a class="plan__compare" role="button" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
           <button type="button" class="plan__watch" data-watch="${esc(p.id || '')}" data-watch-name="${esc(`${p.provider} ${p.plan}`)}" title="עקבו אחרי המסלול — עדכון במייל כשהמחיר יורד" aria-label="${esc(`קבלו עדכון במייל כשהמחיר של ${p.provider} ${p.plan} יורד`)}" aria-pressed="false">${svgIcon('bell')}</button>
         </div>
         <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול${chev(true)}</button>

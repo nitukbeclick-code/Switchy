@@ -220,7 +220,7 @@ export default function SwitchKitPage() {
               href="/compare"
               location="hero"
               label="compare"
-              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
             >
               או עברו להשוואת כל המסלולים
             </TrackedCtaLink>
@@ -228,7 +228,7 @@ export default function SwitchKitPage() {
           {/* Trust band — REAL catalogue counts; the entry price carries the green
               VALUE emphasis (text-accent on ink), NOT a button. */}
           <p
-            className="sw-reveal mt-8 text-sm text-white/70"
+            className="sw-reveal mt-8 text-sm text-white/85"
             style={{ animationDelay: "150ms" }}
           >
             {planCount} מסלולים · {providerCount} ספקים

@@ -109,7 +109,7 @@ export default function ReferralPage() {
               {/* SECONDARY — quiet white text link, no fill, no glow. */}
               <Link
                 href="/compare"
-                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+                className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
               >
                 או השוו מסלולים בעצמכם
               </Link>

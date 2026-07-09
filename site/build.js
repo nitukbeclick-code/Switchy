@@ -488,11 +488,12 @@ const catHueStyle = (slug) => {
 // no commitment.
 const zoomCta = (txt) => `<a class="zoom-cta" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg><span>${txt} <b>פגישת Zoom חינם, בלי התחייבות</b> ←</span></a>`;
 
-// D2 — "today vs after" live promo-jump card for a category hero. Picks the
-// REAL monthly plan with the biggest advertised after-promo jump and draws two
-// proportional bars (fill animates via the standard .reveal `in` class). If the
-// category has no meaningful jump, returns null and the hero keeps the app shot.
-function promoJumpCard(c, catPlans) {
+// D2 — "today vs after" live promo-jump card for a hero. Picks the REAL
+// monthly plan with the biggest advertised after-promo jump from the given
+// plan set and draws two proportional bars (fill animates via the standard
+// .reveal `in` class). Returns null when the set has no meaningful jump —
+// callers then keep their centered hero (or the category app shot).
+function promoJumpCard(catPlans) {
   const candidates = (catPlans || []).filter((p) =>
     (!p.priceUnit || p.priceUnit === 'month') && p.after && (p.after - p.price) >= 20);
   if (!candidates.length) return null;
@@ -512,10 +513,12 @@ function promoJumpCard(c, catPlans) {
 
 // Split-hero body: when mediaHtml is truthy the hero becomes the two-column
 // grid the category pages use; otherwise the centered single container.
-// Callers must also add 'lead-hero--split' to the section class when media exists.
+// heroSplit() supplies the matching section-class token so the class and the
+// grid can never drift apart at a call site.
 const heroBody = (textHtml, mediaHtml) => mediaHtml
   ? `<div class="container lead-hero__grid"><div class="lead-hero__text">${textHtml}</div><div class="lead-hero__media">${mediaHtml}</div></div>`
   : `<div class="container">${textHtml}</div>`;
+const heroSplit = (mediaHtml) => (mediaHtml ? ' lead-hero--split' : '');
 
 const categories = [
   {
@@ -697,9 +700,12 @@ function providerLogo(name, size = 36, eager = false) {
   const file = LOGO_FILE[providerSlug(name)];
   if (file) {
     // width/height attrs give the browser the intrinsic ratio before CSS
-    // loads, so lazy-loaded logos can't shift layout (CLS). `eager` is for
-    // above-the-fold hero lockups (LCP candidates) — skip lazy-loading there.
-    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="" width="${size}" height="${size}" ${eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async"></span>`;
+    // loads, so lazy-loaded logos can't shift layout (CLS). `eager` (truthy)
+    // skips lazy-loading for above-the-fold logos; pass 'lcp' to ALSO stamp
+    // fetchpriority="high" — reserve that for the one true LCP candidate per
+    // page (two high-priority hints on one page cancel each other out).
+    const load = eager ? `loading="eager"${eager === 'lcp' ? ' fetchpriority="high"' : ''}` : 'loading="lazy"';
+    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="" width="${size}" height="${size}" ${load} decoding="async"></span>`;
   }
   let color = '#0F766E';
   let initials = name.trim().slice(0, 2);
@@ -1741,9 +1747,7 @@ ${nav}
   <main id="main">
     <section class="lead-hero lead-hero--split lead-hero--cat"${catHueStyle(c.slug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
-      <div class="container lead-hero__grid">
-        <div class="lead-hero__text">
-          ${crumbsHtml([['דף הבית', 'index.html'], [c.name, null]])}
+      ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], [c.name, null]])}
           <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
           <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
           <p>${esc(c.intro)}</p>
@@ -1753,15 +1757,11 @@ ${nav}
             ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="hero__link hero__link--ink" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="hero__link hero__link--ink" href="how-it-works.html">איך זה עובד?</a>'}
           </div>
           <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-          ${heroStats}
-        </div>
-        <div class="lead-hero__media" aria-hidden="false">
-          ${promoJumpCard(c, catPlans) || `<figure class="app-shot app-shot--hero">
+          ${heroStats}`,
+    `${promoJumpCard(catPlans) || `<figure class="app-shot app-shot--hero">
             <img src="assets/app/shot-results.webp" alt="${esc(`אפליקציית SWITCHY — השוואת מסלולי ${c.name} עם ציון התאמה וחיסכון`)}" width="390" height="844" loading="eager" fetchpriority="high" decoding="async" />
           </figure>`}
-          ${zoomCta('נראה מסובך? נעבור על זה יחד —')}
-        </div>
-      </div>
+          ${zoomCta('נראה מסובך? נעבור על זה יחד —')}`)}
     </section>
 
     <section class="providers providers--band" aria-label="ספקים">
@@ -3323,18 +3323,18 @@ function providerPage(name, plans) {
   // Split hero when this provider has a real promo-jump example among its own
   // plans. NOTE: the hero keeps the --brand identity strip (provider hue system)
   // — never catHueStyle() here; the two hue sources don't mix.
-  const jump = promoJumpCard(null, plans);
+  const jump = promoJumpCard(plans);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(`כל המסלולים של ${name} — מחירים והשוואה | SWITCHY`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים ותכונות ומצאו את המשתלם ביותר.`, url, jsonld, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--provider" style="--brand:${providerBrandColor(name)}">
+    <section class="lead-hero${heroSplit(jump)} lead-hero--provider" style="--brand:${providerBrandColor(name)}">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [name, null]])}
         <div class="provider-hero__lockup">
-          ${providerLogo(name, 84, true)}
+          ${providerLogo(name, 84, 'lcp')}
           <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
         </div>${ratingHtml}
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
@@ -4013,14 +4013,14 @@ function collectionPage(col) {
   const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');
   // Live "today vs after" card from this collection's own plans — when one
   // exists the hero goes split (category-page language); otherwise centered.
-  const jump = promoJumpCard(col, shown);
+  const jump = promoJumpCard(shown);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(col.title, col.desc, url, extraJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--cat"${catHueStyle(col.catSlug)}>
+    <section class="lead-hero${heroSplit(jump)} lead-hero--cat"${catHueStyle(col.catSlug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [col.h1, null]])}
         <span class="pill pill--ico">${iconFor((categories.find((c) => c.slug === col.catSlug) || {}).icon || '💸')} ${esc(col.eyebrow)} · השוואה חינם · בלי התחייבות</span>
@@ -4415,8 +4415,6 @@ ${nav}
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
           <p id="calcOut" class="calc-card__out" role="status" aria-live="polite"></p>
-          <div id="calcChart" class="calc-chart" data-chart="savings" hidden></div>
-          <a id="calcCta" class="btn btn--primary btn--lg btn--block calc-card__cta" href="#cta" hidden>בדקו אילו מסלולים חוסכים לכם את זה${chev()}</a>
           <p class="calc-card__fine">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div class="section__cta">
@@ -4668,14 +4666,14 @@ function versusPage(v) {
   const versusJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, collection] });
   // Split hero when either side yields a real promo-jump example (same
   // category-page language); the card is picked across BOTH sides' plans.
-  const jump = promoJumpCard(null, [...a.matched, ...b.matched]);
+  const jump = promoJumpCard([...a.matched, ...b.matched]);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(v.title, v.desc, url, versusJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--cat"${catHueStyle(v.catSlug)}>
+    <section class="lead-hero${heroSplit(jump)} lead-hero--cat"${catHueStyle(v.catSlug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], [v.catName, `${v.catSlug}.html`], [v.h1, null]])}
         <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
@@ -4941,14 +4939,14 @@ ${cards}
   const providerVsLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, collection] });
   // Split hero when either provider yields a real promo-jump example — picked
   // across BOTH providers' plans in this category.
-  const jump = promoJumpCard(null, [...a.plans, ...b.plans]);
+  const jump = promoJumpCard([...a.plans, ...b.plans]);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(title, desc, url, providerVsLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--cat"${catHueStyle(catSlug)}>
+    <section class="lead-hero${heroSplit(jump)} lead-hero--cat"${catHueStyle(catSlug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], [catName, `${catSlug}.html`], [h1, null]])}
         <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>

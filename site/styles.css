@@ -796,7 +796,6 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 /* Layout utilities — replace repeated inline styles stamped by build.js templates. */
 .section__cta { text-align: center; margin-top: 20px; }
 .providers__row--center { justify-content: center; }
-.calc-card__cta { margin-top: 14px; }
 
 /* Steps */
 .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: s; position: relative; }
@@ -1313,8 +1312,10 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .lead-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(34px, 5.4vw, 66px); font-weight: 900; color: var(--green-d); letter-spacing: -1.6px; line-height: 1.04; }
 .lead-hero h1 .hl { color: var(--green); }
 /* Category pages carry their hue (--tf/--tt stamped by build.js): the headline
-   highlight and the hero pill speak the category colour — instant orientation. */
-.lead-hero--cat { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent 280px); }
+   highlight and the hero pill speak the category colour — instant orientation.
+   One shared wash + pill ruleset serves both hero families; --hue-stop tunes
+   the gradient reach to the hero's height (lead-hero is taller). */
+.lead-hero--cat, .article-hero--hued { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent var(--hue-stop, 280px)); }
 /* Provider pages: the provider's OWN brand colour (never remapped) as a thin
    identity strip on the top edge + a whisper wash behind the lockup. */
 .lead-hero--provider { position: relative; }
@@ -1324,12 +1325,13 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 }
 .lead-hero--provider .provider-hero__lockup .plogo { box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--brand, var(--accent)) 55%, transparent); }
 .lead-hero--cat h1 .hl { color: var(--tt, var(--green)); }
-.lead-hero--cat .pill {
+.lead-hero--cat .pill, .article-hero--hued .pill {
   background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent);
   color: var(--tt, var(--accent-ink));
 }
 :root[data-theme="dark"] .lead-hero--cat h1 .hl,
-:root[data-theme="dark"] .lead-hero--cat .pill { color: var(--tf, var(--accent)); }
+:root[data-theme="dark"] .lead-hero--cat .pill,
+:root[data-theme="dark"] .article-hero--hued .pill { color: var(--tf, var(--accent)); }
 .lead-hero p { color: var(--muted); font-size: 18px; margin: 16px auto 26px; max-width: 38em; }
 .lead-hero .hero__cta { justify-content: center; }
 .feature--check .feature__icon { font-weight: 900; }
@@ -1341,13 +1343,13 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .article-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(27px, 3.8vw, 44px); font-weight: 900; color: var(--green-d); letter-spacing: -.4px; max-width: 17em; }
 .article-meta { color: var(--muted); font-size: 14px; margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
 /* Hued article hero — brings the guide/hub pages into the category-hue
-   language. --decor = containment only (legal pages, neutral); --hued adds
-   the category wash + tinted pill; no inline --tf -> green fallback. */
+   language. --decor = containment only (legal pages, neutral); --hued opts in
+   to the SHARED wash + pill ruleset defined with .lead-hero--cat above (the
+   article hero is shorter, so its wash stops earlier via --hue-stop); no
+   inline --tf -> green fallback. */
 .article-hero--decor, .article-hero--hued { position: relative; overflow: hidden; }
 .article-hero--decor .container, .article-hero--hued .container { position: relative; z-index: 1; }
-.article-hero--hued { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent 240px); padding-bottom: 18px; }
-.article-hero--hued .pill { background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent); color: var(--tt, var(--accent-ink)); }
-:root[data-theme="dark"] .article-hero--hued .pill { color: var(--tf, var(--accent)); }
+.article-hero--hued { --hue-stop: 240px; padding-bottom: 18px; }
 .prose { max-width: 760px; margin: 0 auto; }
 .prose > p { font-size: 17px; color: var(--ink-700); margin: 0 0 20px; line-height: 1.8; }
 .prose h2 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 25px; color: var(--green-d); margin: 36px 0 12px; }
@@ -3257,6 +3259,7 @@ h1 { letter-spacing: -.02em; }
   .lead-hero__media { order: -1; }
   .lead-hero--split { text-align: center; }
   .lead-hero--split .hero__cta { justify-content: center; }
+  .lead-hero--split .provider-hero__lockup { align-items: center; }
   .app-shot--hero { max-width: 280px; }
 }
 
@@ -3509,6 +3512,9 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); box-shadow: 0 10px 24px -10
    never recoloured (the mark keeps its own colours via .plogo--img). Wraps to a
    stacked lockup on phones so the H1 never gets squeezed beside the 64px mark. */
 .provider-hero__lockup { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-bottom: 4px; }
+/* In the split hero the text column is start-aligned — the lockup must follow,
+   or the logo floats centered above start-aligned crumbs/copy. */
+.lead-hero--split .provider-hero__lockup { align-items: flex-start; }
 .provider-hero__lockup .plogo {
   flex: none; box-shadow: var(--glint), var(--shadow); border-radius: var(--radius-sm);
 }
@@ -4133,14 +4139,16 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
    Automatic counterparts to the manual a11y-widget toggles: users who set an
    OS-level preference get the adaptation with zero clicks. Mirrors the
    :root.a11y-contrast ruleset above (the manual toggle still works — these
-   simply apply the same treatment when the OS asks for it). */
+   simply apply the same treatment when the OS asks for it). Selectors are
+   :root-prefixed so they outrank class-qualified `text-decoration: none`
+   rules (.nav__links a, .chip, .plan__cta …), same as the manual toggle. */
 @media (prefers-contrast: more) {
   :root { --ink: #000; --muted: #1a1a1a; --line: #000; }
-  body { background: #fff; }
+  :root body { background: #fff; }
   :root[data-theme="dark"] { --ink: #fff; --muted: #eaeaea; --line: #fff; }
   :root[data-theme="dark"] body { background: #000; }
-  a { text-decoration: underline; }
-  .btn, .card, .feature { border: 2px solid currentColor; }
+  :root a { text-decoration: underline; }
+  :root .btn, :root .card, :root .feature { border: 2px solid currentColor; }
 }
 
 /* Windows High Contrast / forced-colors: the UA strips backgrounds, so glass

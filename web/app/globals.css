@@ -206,6 +206,10 @@ body {
   font-family: var(--font-assistant), system-ui, sans-serif;
   /* RTL is set on <html dir="rtl">; ensure logical defaults read correctly. */
   text-align: start;
+  /* Break long unbreakable tokens (bare URLs, emails, IDs) instead of forcing
+     horizontal page scroll on narrow screens. Inherited, so it covers body text
+     everywhere; only affects words that would otherwise overflow their box. */
+  overflow-wrap: break-word;
 }
 
 /* In @layer base so text-color utilities (e.g. the hero's text-white on the

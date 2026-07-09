@@ -459,6 +459,13 @@ const heroDecor = () =>
         </g>
       </svg>`;
 
+// ── Hue sources: there are exactly TWO, and they never mix ───────────────────
+// 1. CAT_HUES → --tf/--tt via catHueStyle(): CATEGORY voice — hero washes,
+//    pills and headline highlights on any category-flavoured page.
+// 2. providerBrandColor() → --brand: PROVIDER identity — the thin brand strip
+//    on provider pages only. Never remapped to the site palette, and never
+//    combined with --tf/--tt on the same hero.
+//
 // Per-category hue pair [fill, deep] — the one place the palette opens up
 // beyond green(action)/amber(value): CATEGORY IDENTITY. Stamped inline as
 // --tf/--tt so CSS can tint icons, pills and headline highlights per category.
@@ -494,7 +501,7 @@ function promoJumpCard(c, catPlans) {
   const diff = p.after - p.price;
   return `<div class="jump-card reveal" role="img" aria-label="${esc(`דוגמה אמיתית מהקטלוג: ${p.provider} ${p.plan} — ₪${p.price} היום, ₪${p.after} אחרי המבצע (הפרש ₪${diff} בחודש)`)}">
             <p class="jump-card__title">ככה נראה מבצע שנגמר</p>
-            <p class="jump-card__plan">${providerLogo(p.provider, 24)} ${esc(p.provider)} · ${esc(p.plan)}</p>
+            <p class="jump-card__plan">${providerLogo(p.provider, 24, true)} ${esc(p.provider)} · ${esc(p.plan)}</p>
             <div class="jump-card__bars" aria-hidden="true">
               <div class="jump-bar"><span>היום</span><i style="--w:${todayPct}%"></i><b dir="ltr">₪${p.price}</b></div>
               <div class="jump-bar jump-bar--after"><span>אחרי המבצע</span><i style="--w:100%"></i><b dir="ltr">₪${p.after}</b></div>
@@ -502,6 +509,13 @@ function promoJumpCard(c, catPlans) {
             <p class="jump-card__note">הפרש של <b dir="ltr">₪${diff}</b> בחודש — בדיוק בשביל זה יש לנו התראת חידוש.</p>
           </div>`;
 }
+
+// Split-hero body: when mediaHtml is truthy the hero becomes the two-column
+// grid the category pages use; otherwise the centered single container.
+// Callers must also add 'lead-hero--split' to the section class when media exists.
+const heroBody = (textHtml, mediaHtml) => mediaHtml
+  ? `<div class="container lead-hero__grid"><div class="lead-hero__text">${textHtml}</div><div class="lead-hero__media">${mediaHtml}</div></div>`
+  : `<div class="container">${textHtml}</div>`;
 
 const categories = [
   {
@@ -679,12 +693,13 @@ function providerBrandColor(name) {
   return '#0F766E';
 }
 
-function providerLogo(name, size = 36) {
+function providerLogo(name, size = 36, eager = false) {
   const file = LOGO_FILE[providerSlug(name)];
   if (file) {
     // width/height attrs give the browser the intrinsic ratio before CSS
-    // loads, so lazy-loaded logos can't shift layout (CLS).
-    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="" width="${size}" height="${size}" loading="lazy" decoding="async"></span>`;
+    // loads, so lazy-loaded logos can't shift layout (CLS). `eager` is for
+    // above-the-fold hero lockups (LCP candidates) — skip lazy-loading there.
+    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="" width="${size}" height="${size}" ${eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async"></span>`;
   }
   let color = '#0F766E';
   let initials = name.trim().slice(0, 2);
@@ -1700,17 +1715,17 @@ function page(c) {
     <section class="section" aria-label="השוואות ראש בראש">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">ראש בראש</span><h2>השוואות פופולריות ב${esc(c.name)}</h2></header>
-        <div class="providers__row" style="justify-content:center">
+        <div class="providers__row providers__row--center">
           ${versChips.join('\n          ')}
         </div>
-        <div style="text-align:center;margin-top:16px"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות${chev()}</a></div>
+        <div class="section__cta"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות${chev()}</a></div>
       </div>
     </section>` : '';
   const colsStrip = cols.length ? `
     <section class="section" aria-label="אוספים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">קיצורי דרך</span><h2>אוספים פופולריים ב${esc(c.name)}</h2></header>
-        <div class="providers__row" style="justify-content:center">
+        <div class="providers__row providers__row--center">
           ${cols.map((col) => `<a class="chip" href="${col.slug}.html">${esc(col.h1)}</a>`).join('\n          ')}
         </div>
       </div>
@@ -1742,7 +1757,7 @@ ${nav}
         </div>
         <div class="lead-hero__media" aria-hidden="false">
           ${promoJumpCard(c, catPlans) || `<figure class="app-shot app-shot--hero">
-            <img src="assets/app/shot-results.webp" alt="${esc(`אפליקציית SWITCHY — השוואת מסלולי ${c.name} עם ציון התאמה וחיסכון`)}" width="390" height="844" loading="lazy" decoding="async" />
+            <img src="assets/app/shot-results.webp" alt="${esc(`אפליקציית SWITCHY — השוואת מסלולי ${c.name} עם ציון התאמה וחיסכון`)}" width="390" height="844" loading="eager" fetchpriority="high" decoding="async" />
           </figure>`}
           ${zoomCta('נראה מסובך? נעבור על זה יחד —')}
         </div>
@@ -2183,6 +2198,11 @@ function calloutHtml(field, isTip) {
 
 function articlePage(g) {
   const url = `${SITE}/${g.slug}.html`;
+  // Category context, hoisted once — the hued hero, the article CTA and the
+  // top-plans block below all key off it. catHueStyle(null) returns '' so
+  // general (uncategorised) guides fall back to var(--accent) in CSS.
+  const catSlug = guideCatToSlug[g.cat] || null;
+  const catIcon = (categories.find((c) => c.slug === catSlug) || {}).icon || '📖';
   // Each section gets a stable ASCII anchor id (sec-N) so the auto TOC can deep-
   // link to it without slugifying Hebrew headings into something fragile.
   const body = g.sections.map((s, i) => {
@@ -2227,11 +2247,13 @@ ${head(g.title, g.desc, url, articleJsonLd(g))}
 ${navNoCta}
   <main id="main">
     <article>
-      <section class="article-hero">
+      <section class="article-hero article-hero--hued"${catHueStyle(catSlug)}>
+        <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
         <div class="container">
           ${crumbsHtml([['דף הבית', 'index.html'], ['מדריכים', 'guides.html'], [g.cat, null]])}
+          <span class="pill pill--ico">${iconFor(catIcon)} ${esc(g.cat)}</span>
           <h1>${esc(g.h1)}</h1>
-          <div class="article-meta"><span>${esc(g.cat)}</span><span>· ${dateHe}</span><span>· ${g.read} דק׳ קריאה</span></div>
+          <div class="article-meta"><span>${dateHe}</span><span>· ${g.read} דק׳ קריאה</span></div>
         </div>
       </section>
       <section class="section">
@@ -2244,7 +2266,6 @@ ${toc}${body}
             <h3>רוצים לראות כמה תחסכו בפועל?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
             ${(() => {
-              const catSlug = guideCatToSlug[g.cat];
               const href = catSlug ? `${catSlug}.html` : 'plans.html';
               const label = catSlug ? `השוו מסלולי ${g.cat}` : 'ראו את כל המסלולים';
               return `<a class="btn btn--inverse btn--lg" href="${href}">${esc(label)}${chev()}</a>`;
@@ -2253,7 +2274,6 @@ ${toc}${body}
         </div>
       </section>
 ${faqSection}${(() => {
-    const catSlug = guideCatToSlug[g.cat];
     const topPlans = catSlug ? (plansByCat[catSlug] || []).slice(0, 3) : [];
     if (!topPlans.length) return '';
     const catPageName = g.cat;
@@ -2264,8 +2284,8 @@ ${faqSection}${(() => {
           <div class="plan-grid plan-grid--featured">
 ${topPlans.map((p) => planCardHtml(p, false)).join('\n')}
           </div>
-          <div style="text-align:center;margin-top:20px">
-            <a class="btn btn--ghost" href="${catPageHref}">לכל מסלולי ה${esc(catPageName)} ←</a>
+          <div class="section__cta">
+            <a class="btn btn--ghost" href="${catPageHref}">לכל מסלולי ה${esc(catPageName)}${chev()}</a>
           </div>
         </div>
       </section>
@@ -2363,7 +2383,8 @@ ${head('מדריכים — איך לחסוך על תקשורת | SWITCHY', `${gu
 <body id="top">
 ${navNoCta}
   <main id="main">
-    <section class="article-hero">
+    <section class="article-hero article-hero--hued">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], ['מדריכים', null]])}
         <h1>מדריכים — איך לא לשלם יותר מדי</h1>
@@ -2490,7 +2511,8 @@ ${head('שאלות נפוצות על מעבר ספק תקשורת, סלולר, �
 <body id="top">
 ${navNoCta}
   <main id="main">
-    <section class="article-hero">
+    <section class="article-hero article-hero--hued">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], ['שאלות נפוצות', null]])}
         <h1>שאלות נפוצות</h1>
@@ -2913,7 +2935,8 @@ ${head(p.title, p.desc, url, staticJsonLd, false, 'website')}
 <body id="top">
 ${navNoCta}
   <main id="main">
-    <section class="article-hero">
+    <section class="article-hero article-hero--decor">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], [p.h1, null]])}
         <h1>${esc(p.h1)}</h1>
@@ -3297,18 +3320,21 @@ function providerPage(name, plans) {
   ];
   if (provAggOffer) provGraph.push(provAggOffer);
   const jsonld = jsonForScript({ '@context': 'https://schema.org', '@graph': provGraph });
+  // Split hero when this provider has a real promo-jump example among its own
+  // plans. NOTE: the hero keeps the --brand identity strip (provider hue system)
+  // — never catHueStyle() here; the two hue sources don't mix.
+  const jump = promoJumpCard(null, plans);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(`כל המסלולים של ${name} — מחירים והשוואה | SWITCHY`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים ותכונות ומצאו את המשתלם ביותר.`, url, jsonld, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero lead-hero--provider" style="--brand:${providerBrandColor(name)}">
+    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--provider" style="--brand:${providerBrandColor(name)}">
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
-      <div class="container">
-        ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [name, null]])}
+      ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [name, null]])}
         <div class="provider-hero__lockup">
-          ${providerLogo(name, 84)}
+          ${providerLogo(name, 84, true)}
           <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
         </div>${ratingHtml}
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
@@ -3321,8 +3347,7 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם${chev()}</a>
           <a class="hero__link hero__link--ink" href="plans.html">לכל החבילות</a>
         </div>
-        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-      </div>
+        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>`, jump)}
     </section>
 ${provTables}
     <section class="section" id="plans">
@@ -3986,16 +4011,18 @@ function collectionPage(col) {
   if (colAggOffer) graph.push(colAggOffer);
   const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
   const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');
+  // Live "today vs after" card from this collection's own plans — when one
+  // exists the hero goes split (category-page language); otherwise centered.
+  const jump = promoJumpCard(col, shown);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(col.title, col.desc, url, extraJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
+    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--cat"${catHueStyle(col.catSlug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
-      <div class="container">
-        ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [col.h1, null]])}
+      ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', 'plans.html'], [col.h1, null]])}
         <span class="pill pill--ico">${iconFor((categories.find((c) => c.slug === col.catSlug) || {}).icon || '💸')} ${esc(col.eyebrow)} · השוואה חינם · בלי התחייבות</span>
         <h1>${esc(col.h1)}</h1>
         <p>${esc(col.intro)}</p>
@@ -4004,8 +4031,7 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
           <a class="hero__link hero__link--ink" href="${col.catSlug}.html">לכל מסלולי ה${esc(col.catName)}</a>
         </div>
-        ${heroTrustLine()}
-      </div>
+        ${heroTrustLine()}`, jump)}
     </section>
 
     <section class="section" id="plans">
@@ -4353,7 +4379,7 @@ ${head(title, desc, url, extraJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
+    <section class="lead-hero lead-hero--cat"${catHueStyle(c.slug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], [c.name, `${c.slug}.html`], ['מחשבון חיסכון', null]])}
@@ -4390,10 +4416,10 @@ ${nav}
           </div>
           <p id="calcOut" class="calc-card__out" role="status" aria-live="polite"></p>
           <div id="calcChart" class="calc-chart" data-chart="savings" hidden></div>
-          <a id="calcCta" class="btn btn--primary btn--lg btn--block" href="#cta" hidden style="margin-top:14px">בדקו אילו מסלולים חוסכים לכם את זה${chev()}</a>
+          <a id="calcCta" class="btn btn--primary btn--lg btn--block calc-card__cta" href="#cta" hidden>בדקו אילו מסלולים חוסכים לכם את זה${chev()}</a>
           <p class="calc-card__fine">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
-        <div style="text-align:center;margin-top:22px">
+        <div class="section__cta">
           <a class="btn btn--ghost btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)}${chev()}</a>
         </div>
       </div>
@@ -4501,7 +4527,8 @@ ${head(title, desc, url, glossaryJsonLd, false, 'website')}
 <body id="top">
 ${navNoCta}
   <main id="main">
-    <section class="article-hero">
+    <section class="article-hero article-hero--hued">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], ['מילון מונחים', null]])}
         <h1>מילון מונחי תקשורת</h1>
@@ -4524,7 +4551,7 @@ ${cards}
     <section class="section section--alt" aria-label="קטגוריות">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">להשוואה מלאה</span><h2>בחרו קטגוריה</h2></header>
-        <div class="providers__row" style="justify-content:center">
+        <div class="providers__row providers__row--center">
           ${catChips}
         </div>
       </div>
@@ -4609,7 +4636,7 @@ function versusSideHtml(side, catSlug, sideKey) {
   // `sideKey` (e.g. 'a'/'b') keeps each table's id unique on the page (the labels
   // are Hebrew and would collapse to an empty ASCII slug → duplicate ids).
   const table = comparisonTable(matched.slice(0, 6), catSlug, `vs-${sideKey}`);
-  const colLink = side.collection ? `<a class="btn btn--ghost" href="${esc(side.collection)}">לכל המסלולים בקטגוריה ←</a>` : '';
+  const colLink = side.collection ? `<a class="btn btn--ghost" href="${esc(side.collection)}">לכל המסלולים בקטגוריה${chev()}</a>` : '';
   return { matched, html: `
     <section class="section" aria-label="${esc(side.label)}">
       <div class="container">
@@ -4617,7 +4644,7 @@ function versusSideHtml(side, catSlug, sideKey) {
         <div class="plan-grid plan-grid--featured">
 ${matched.slice(0, 3).map((p) => planCardHtml(p, false)).join('\n')}
         </div>
-${colLink ? `        <div style="text-align:center;margin-top:18px">${colLink}</div>` : ''}
+${colLink ? `        <div class="section__cta">${colLink}</div>` : ''}
       </div>
     </section>${table}` };
 }
@@ -4639,16 +4666,18 @@ function versusPage(v) {
     isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
     ...(allShown.length ? { mainEntity: plansItemListJsonLd(allShown, url, v.h1) } : {}) };
   const versusJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, collection] });
+  // Split hero when either side yields a real promo-jump example (same
+  // category-page language); the card is picked across BOTH sides' plans.
+  const jump = promoJumpCard(null, [...a.matched, ...b.matched]);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(v.title, v.desc, url, versusJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
+    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--cat"${catHueStyle(v.catSlug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
-      <div class="container">
-        ${crumbsHtml([['דף הבית', 'index.html'], [v.catName, `${v.catSlug}.html`], [v.h1, null]])}
+      ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], [v.catName, `${v.catSlug}.html`], [v.h1, null]])}
         <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
         <h1>${esc(v.h1)}</h1>
         <p>${esc(v.intro)}</p>
@@ -4657,13 +4686,12 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
           <a class="hero__link hero__link--ink" href="${v.catSlug}.html">לכל מסלולי ה${esc(v.catName)}</a>
         </div>
-        ${heroTrustLine()}
-      </div>
+        ${heroTrustLine()}`, jump)}
     </section>
 
     <section class="section section--alt" aria-label="המסקנה">
       <div class="container">
-        <div class="prose" style="max-width:760px;margin:0 auto">
+        <div class="prose">
           <div class="tldr"><b>השורה התחתונה:</b> ${esc(v.verdict)}</div>
         </div>
       </div>
@@ -4883,7 +4911,7 @@ ${rows.map(([label, av, bv, winner]) => `              <tr><td data-th="קריט
         <div class="plan-grid plan-grid--featured">
 ${cards}
         </div>
-        <div style="text-align:center;margin-top:18px"><a class="btn btn--ghost" href="provider-${providerSlug(S.provider)}.html">לכל המסלולים של ${esc(S.provider)} ←</a></div>
+        <div class="section__cta"><a class="btn btn--ghost" href="provider-${providerSlug(S.provider)}.html">לכל המסלולים של ${esc(S.provider)}${chev()}</a></div>
       </div>
     </section>${table}`;
   };
@@ -4895,7 +4923,7 @@ ${cards}
     <section class="section section--alt" aria-label="השוואות נוספות">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">עוד ראש בראש</span><h2>השוואות נוספות ב${esc(catName)}</h2></header>
-        <div class="providers__row" style="justify-content:center">
+        <div class="providers__row providers__row--center">
           ${siblings.map((x) => `<a class="chip" href="${x.slug}.html">${svgIcon('scale')} ${esc(x.a.provider)} מול ${esc(x.b.provider)}</a>`).join('\n          ')}
         </div>
       </div>
@@ -4911,16 +4939,18 @@ ${cards}
     about: [{ '@type': 'Brand', name: a.provider }, { '@type': 'Brand', name: b.provider }],
     ...(allShown.length ? { mainEntity: plansItemListJsonLd(allShown, url, h1) } : {}) };
   const providerVsLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, collection] });
+  // Split hero when either provider yields a real promo-jump example — picked
+  // across BOTH providers' plans in this category.
+  const jump = promoJumpCard(null, [...a.plans, ...b.plans]);
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(title, desc, url, providerVsLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
+    <section class="lead-hero${jump ? ' lead-hero--split' : ''} lead-hero--cat"${catHueStyle(catSlug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
-      <div class="container">
-        ${crumbsHtml([['דף הבית', 'index.html'], [catName, `${catSlug}.html`], [h1, null]])}
+      ${heroBody(`${crumbsHtml([['דף הבית', 'index.html'], [catName, `${catSlug}.html`], [h1, null]])}
         <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
         <h1>${esc(a.provider)} מול <span class="hl">${esc(b.provider)}</span></h1>
         <p>השוואה אמיתית של מסלולי ה${esc(catName)} של ${esc(a.provider)} ו${esc(b.provider)} — מחיר, כמות מסלולים, 5G והתחייבות — עם המסלולים הזולים בכל צד.</p>
@@ -4929,13 +4959,12 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו${chev()}</a>
           <a class="hero__link hero__link--ink" href="${catSlug}.html">לכל מסלולי ה${esc(catName)}</a>
         </div>
-        ${heroTrustLine()}
-      </div>
+        ${heroTrustLine()}`, jump)}
     </section>
 
     <section class="section section--alt" aria-label="המסקנה">
       <div class="container">
-        <div class="prose" style="max-width:760px;margin:0 auto">
+        <div class="prose">
           <div class="tldr"><b>השורה התחתונה:</b> ${providerVsVerdict(v)}</div>
         </div>
       </div>
@@ -4990,7 +5019,7 @@ function comparisonsHubPage() {
     return `      <section class="section${vs.length || pvs.length ? '' : ''}" aria-label="${esc(c.name)}">
         <div class="container">
           <header class="section__head reveal"><span class="eyebrow">${iconFor(c.icon)} ${esc(c.name)}</span><h2>השוואות ב${esc(c.name)}</h2><p><a href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a></p></header>
-          <div class="providers__row" style="justify-content:center">
+          <div class="providers__row providers__row--center">
           ${[topicLinks, provLinks].filter(Boolean).join('\n          ')}
           </div>
         </div>

@@ -1,8 +1,9 @@
 /* ╔══════════════════════════════════════════════════════════════════════╗
-   ║  חוסך — landing site styles. Brand: white glass + black ink.           ║
-   ║  Ink #111827 (CTAs/accents/borders), charcoal #374151, light-grey      ║
-   ║  highlight #E5E7EB, glass-white #F5F7F8. Formal, editorial, mono.      ║
-   ║  Fonts: Rubik (display) + Assistant (body). RTL.                       ║
+   ║  SWITCHY site styles. Brand: glass-white + ink base; GREEN --accent    ║
+   ║  #16A34A = ACTION (CTAs, links, focus, active nav); AMBER --value =    ║
+   ║  VALUE (savings, best-value); 5 category hues via inline --tf/--tt     ║
+   ║  (CAT_HUES, build.js) + green fallback; ink hero/CTA cards stay ink.   ║
+   ║  Rubik (display) + Assistant (body). RTL. Dark: [data-theme="dark"].   ║
    ╚══════════════════════════════════════════════════════════════════════╝ */
 
 :root {
@@ -792,6 +793,10 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 }
 .section__head--start h2::after, .section__head[style*="text-align:right"] h2::after { margin-inline: 0; }
 .section__head p { color: var(--muted); margin-top: 14px; font-size: var(--fs-lead); line-height: 1.65; }
+/* Layout utilities — replace repeated inline styles stamped by build.js templates. */
+.section__cta { text-align: center; margin-top: 20px; }
+.providers__row--center { justify-content: center; }
+.calc-card__cta { margin-top: 14px; }
 
 /* Steps */
 .steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: s; position: relative; }
@@ -1335,6 +1340,14 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .article-hero { padding: 44px 0 4px; }
 .article-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(27px, 3.8vw, 44px); font-weight: 900; color: var(--green-d); letter-spacing: -.4px; max-width: 17em; }
 .article-meta { color: var(--muted); font-size: 14px; margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+/* Hued article hero — brings the guide/hub pages into the category-hue
+   language. --decor = containment only (legal pages, neutral); --hued adds
+   the category wash + tinted pill; no inline --tf -> green fallback. */
+.article-hero--decor, .article-hero--hued { position: relative; overflow: hidden; }
+.article-hero--decor .container, .article-hero--hued .container { position: relative; z-index: 1; }
+.article-hero--hued { background: linear-gradient(180deg, color-mix(in srgb, var(--tf, var(--accent)) 7%, transparent), transparent 240px); padding-bottom: 18px; }
+.article-hero--hued .pill { background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent); color: var(--tt, var(--accent-ink)); }
+:root[data-theme="dark"] .article-hero--hued .pill { color: var(--tf, var(--accent)); }
 .prose { max-width: 760px; margin: 0 auto; }
 .prose > p { font-size: 17px; color: var(--ink-700); margin: 0 0 20px; line-height: 1.8; }
 .prose h2 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 25px; color: var(--green-d); margin: 36px 0 12px; }

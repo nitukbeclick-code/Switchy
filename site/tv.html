@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=f314755c" />
+  <link rel="stylesheet" href="styles.css?v=51a4b812" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -184,14 +184,13 @@
         <div class="lead-hero__media" aria-hidden="false">
           <div class="jump-card reveal" role="img" aria-label="דוגמה אמיתית מהקטלוג: STING TV HBO Max Standard — ₪49 היום, ₪150 אחרי המבצע (הפרש ₪101 בחודש)">
             <p class="jump-card__title">ככה נראה מבצע שנגמר</p>
-            <p class="jump-card__plan"><span class="plogo plogo--img" style="width:24px;height:24px"><img src="assets/logos/sting-tv.png" alt="" width="24" height="24" loading="lazy" decoding="async"></span> STING TV · HBO Max Standard</p>
+            <p class="jump-card__plan"><span class="plogo plogo--img" style="width:24px;height:24px"><img src="assets/logos/sting-tv.png" alt="" width="24" height="24" loading="eager" fetchpriority="high" decoding="async"></span> STING TV · HBO Max Standard</p>
             <div class="jump-card__bars" aria-hidden="true">
               <div class="jump-bar"><span>היום</span><i style="--w:33%"></i><b dir="ltr">₪49</b></div>
               <div class="jump-bar jump-bar--after"><span>אחרי המבצע</span><i style="--w:100%"></i><b dir="ltr">₪150</b></div>
             </div>
             <p class="jump-card__note">הפרש של <b dir="ltr">₪101</b> בחודש — בדיוק בשביל זה יש לנו התראת חידוש.</p>
           </div>
-          <a class="zoom-cta" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg><span>נראה מסובך? נעבור על זה יחד — <b>פגישת Zoom חינם, בלי התחייבות</b> ←</span></a>
         </div>
       </div>
     </section>
@@ -238,18 +237,7 @@
     <section class="section" id="plans">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">9 מסלולים</span><h2>כל המסלולים — בפירוט מלא</h2><p>אותם מסלולים כמו בטבלה, עם כל הפרטים וכפתור פנייה ישיר.</p><p class="data-fresh" role="note" style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:999px;font-size:.82rem;font-weight:600;opacity:.85"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 22%,transparent)"></span>מחירים עודכנו <time datetime="2026-06-21">21.06.2026</time></p></header>
-        <div class="cat-filters" id="catFilters" role="group" aria-label="סינון מסלולים">
-          <div class="cat-filters__chips">
-            <button type="button" class="flag-chip" data-flag="haspromo" aria-pressed="false">במבצע</button>
-            <button type="button" class="flag-chip" data-flag="nocommit" aria-pressed="false">ללא התחייבות</button>
-            
-            
-          </div>
-          <label class="cat-filters__price" for="catMaxPrice">עד&nbsp;₪<input type="number" id="catMaxPrice" min="0" inputmode="numeric" placeholder="—" aria-label="מחיר מקסימלי בשקלים" /></label>
-          <span class="cat-filters__count" id="catCount" aria-live="polite">מציג את כל 9 המסלולים</span>
-          <button type="button" class="linklike cat-filters__clear" id="catClear" hidden>נקו הכול</button>
-        </div>
-        <div class="plan-grid" id="catPlanGrid" data-total="9">
+        <div class="plan-grid">
       <article class="plan plan--best plan--budget plan--hasjump" data-cat="tv" data-text="sting tv hbo max standard ~70 ערוצים hbo max 40,000+ vod ~70 1 40,000+" data-price="49" data-after="150" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="sting-tv" data-id="tv_stingtv_hbo-max-standard">
         <span class="plan__badge">המחיר הנמוך ביותר</span>
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/sting-tv.png" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-sting-tv.html">STING TV</a></span><span class="plan__score plan__score--best" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">90</span><span class="plan__score-lbl">ציון ערך</span></span></div>
@@ -377,25 +365,15 @@
         <button type="button" class="plan__more" data-plan-more="tv_hot_sport" aria-haspopup="dialog" aria-label="כל הפרטים על HOT רק טלוויזיה + ספורט"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
-        <p class="cat-filters__empty" id="catEmpty" hidden>אין מסלולים שמתאימים לסינון — נסו להסיר פילטר.</p>
       </div>
     </section>
 
 
-    <section class="section" aria-label="השוואות ראש בראש">
-      <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">ראש בראש</span><h2>השוואות פופולריות בטלוויזיה</h2></header>
-        <div class="providers__row" style="justify-content:center">
-          <a class="chip" href="sting-tv-vs-hot-tv.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> STING TV מול HOT</a>
-        </div>
-        <div style="text-align:center;margin-top:16px"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a></div>
-      </div>
-    </section>
 
     <section class="section" aria-label="אוספים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">קיצורי דרך</span><h2>אוספים פופולריים בטלוויזיה</h2></header>
-        <div class="providers__row" style="justify-content:center">
+        <div class="providers__row providers__row--center">
           <a class="chip" href="tv-streaming-included.html">טלוויזיה עם סטרימינג כלול</a>
         </div>
       </div>
@@ -599,6 +577,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=ba9b2578" defer></script>
+  <script src="script.js?v=b128ad2f" defer></script>
 </body>
 </html>

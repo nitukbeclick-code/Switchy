@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.css?v=f314755c" />
+  <link rel="stylesheet" href="styles.css?v=51a4b812" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -183,9 +183,8 @@
         </div>
         <div class="lead-hero__media" aria-hidden="false">
           <figure class="app-shot app-shot--hero">
-            <img src="assets/app/shot-results.webp" alt="אפליקציית SWITCHY — השוואת מסלולי חבילות חו״ל עם ציון התאמה וחיסכון" width="390" height="844" loading="lazy" decoding="async" />
+            <img src="assets/app/shot-results.webp" alt="אפליקציית SWITCHY — השוואת מסלולי חבילות חו״ל עם ציון התאמה וחיסכון" width="390" height="844" loading="eager" fetchpriority="high" decoding="async" />
           </figure>
-          <a class="zoom-cta" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg><span>נראה מסובך? נעבור על זה יחד — <b>פגישת Zoom חינם, בלי התחייבות</b> ←</span></a>
         </div>
       </div>
     </section>
@@ -232,18 +231,7 @@
     <section class="section" id="plans">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">11 מסלולים</span><h2>כל המסלולים — בפירוט מלא</h2><p>אותם מסלולים כמו בטבלה, עם כל הפרטים וכפתור פנייה ישיר.</p><p class="data-fresh" role="note" style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:999px;font-size:.82rem;font-weight:600;opacity:.85"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 22%,transparent)"></span>מחירים עודכנו <time datetime="2026-06-21">21.06.2026</time></p></header>
-        <div class="cat-filters" id="catFilters" role="group" aria-label="סינון מסלולים">
-          <div class="cat-filters__chips">
-            <button type="button" class="flag-chip" data-flag="haspromo" aria-pressed="false">במבצע</button>
-            <button type="button" class="flag-chip" data-flag="nocommit" aria-pressed="false">ללא התחייבות</button>
-            
-            
-          </div>
-          <label class="cat-filters__price" for="catMaxPrice">עד&nbsp;₪<input type="number" id="catMaxPrice" min="0" inputmode="numeric" placeholder="—" aria-label="מחיר מקסימלי בשקלים" /></label>
-          <span class="cat-filters__count" id="catCount" aria-live="polite">מציג את כל 11 המסלולים</span>
-          <button type="button" class="linklike cat-filters__clear" id="catClear" hidden>נקו הכול</button>
-        </div>
-        <div class="plan-grid" id="catPlanGrid" data-total="11">
+        <div class="plan-grid">
       <article class="plan plan--best plan--budget" data-cat="abroad" data-text="019 מובייל תעריף לדקה — אירופה ₪0.99 לדקה באירופה ₪1.90 לmb גלישה ללא מנוי חודשי מתאים לנסיעות קצרות " data-price="1" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="019mobile" data-id="ab_019">
         <span class="plan__badge">המחיר הנמוך ביותר</span>
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/019mobile.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-019mobile.html">019 מובייל</a></span><span class="plan__score plan__score--best" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">64</span><span class="plan__score-lbl">ציון ערך</span></span></div>
@@ -399,27 +387,15 @@
         <button type="button" class="plan__more" data-plan-more="ab_partner_3g" aria-haspopup="dialog" aria-label="כל הפרטים על פרטנר World Pack 3GB חודשי"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
         </div>
-        <p class="cat-filters__empty" id="catEmpty" hidden>אין מסלולים שמתאימים לסינון — נסו להסיר פילטר.</p>
       </div>
     </section>
 
 
-    <section class="section" aria-label="השוואות ראש בראש">
-      <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">ראש בראש</span><h2>השוואות פופולריות בחבילות חו״ל</h2></header>
-        <div class="providers__row" style="justify-content:center">
-          <a class="chip" href="airalo-vs-019mobile-abroad.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Airalo eSIM מול 019 מובייל</a>
-          <a class="chip" href="airalo-vs-partner-abroad.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Airalo eSIM מול פרטנר</a>
-          <a class="chip" href="019mobile-vs-partner-abroad.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול פרטנר</a>
-        </div>
-        <div style="text-align:center;margin-top:16px"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a></div>
-      </div>
-    </section>
 
     <section class="section" aria-label="אוספים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">קיצורי דרך</span><h2>אוספים פופולריים בחבילות חו״ל</h2></header>
-        <div class="providers__row" style="justify-content:center">
+        <div class="providers__row providers__row--center">
           <a class="chip" href="esim-abroad.html">חבילות eSIM לחו״ל</a>
           <a class="chip" href="abroad-daily.html">חבילות חו״ל יומיות</a>
         </div>
@@ -624,6 +600,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.js?v=d58a2b81" defer></script>
-  <script src="script.js?v=ba9b2578" defer></script>
+  <script src="script.js?v=b128ad2f" defer></script>
 </body>
 </html>

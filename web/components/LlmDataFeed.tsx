@@ -17,6 +17,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { llmDataFeed, type LlmDataFeed as LlmDataFeedPayload, type LlmFeedMeta } from "@/lib/aeo";
+import { safeJsonForScript } from "@/lib/safe-json";
 import type { Plan } from "@/lib/types";
 
 export type LlmDataFeedProps =
@@ -50,9 +51,11 @@ export default function LlmDataFeed(props: LlmDataFeedProps) {
     <script
       id={id}
       type="application/json"
-      // application/json is inert data (never executed); this is the standard
-      // pattern for embedding a machine-readable payload in the HTML.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(payload) }}
+      // application/json is inert data (never executed), but a raw `</script>`
+      // in a string would still close this block, so escape defensively — the
+      // payload is built from catalogue data today, but this keeps the sink safe
+      // regardless of source. safeJsonForScript keeps the JSON valid.
+      dangerouslySetInnerHTML={{ __html: safeJsonForScript(payload) }}
     />
   );
 }

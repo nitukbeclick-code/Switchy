@@ -1666,6 +1666,14 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  // User-supplied URLs (avatars, post media) go into src attributes — escaping
+  // alone won't neutralise a javascript:/data:text URL there. Allow only plain
+  // https or inline images; anything else renders as no media at all.
+  const safeMediaUrl = (u) => {
+    const s = String(u == null ? '' : u).trim();
+    return (/^https:\/\//i.test(s) || /^data:image\//i.test(s)) ? s : '';
+  };
+
   // Hebrew relative time — "לפני N דקות/שעות/ימים", falling back to a date.
   const relTimeHe = (iso) => {
     const t = Date.parse(iso);
@@ -1692,15 +1700,26 @@
     const ratingsHost = $('ratingsSummary');
     if (!feed && !ratingsHost) return; // not on this page
 
+    // Live community stats strip — ships hidden and only reveals once a real
+    // number lands (fail-soft: no data, no strip; nothing is fabricated).
+    const statsBox = $('communityStats');
+    const setStat = (id, txt) => {
+      const el = $(id);
+      if (!el || !txt) return;
+      el.textContent = txt;
+      if (statsBox) statsBox.hidden = false;
+    };
+
     // Channel chip for a post (falls back to "כללי" when unset).
     const channelChip = (ch) =>
       '<span class="post-card__channel">' + escHtmlS(ch || 'כללי') + '</span>';
 
     const mediaHtml = (type, url) => {
-      if (type !== 'image' || !url) return '';
+      const safe = type === 'image' ? safeMediaUrl(url) : '';
+      if (!safe) return '';
       // Only the safe URL forms; escape the attribute. The img is decorative
       // context for the post body, so alt stays empty.
-      return '<div class="post-card__media"><img src="' + escHtmlS(url) +
+      return '<div class="post-card__media"><img src="' + escHtmlS(safe) +
         '" alt="" loading="lazy" decoding="async"></div>';
     };
 
@@ -1737,8 +1756,9 @@
       const card = document.createElement('article');
       card.className = 'post-card';
       card.id = 'post-' + String(post.id);
-      const avatar = post.avatar
-        ? '<img class="post-card__avatar" src="' + escHtmlS(post.avatar) + '" alt="" loading="lazy" decoding="async">'
+      const avatarUrl = safeMediaUrl(post.avatar);
+      const avatar = avatarUrl
+        ? '<img class="post-card__avatar" src="' + escHtmlS(avatarUrl) + '" alt="" loading="lazy" decoding="async">'
         : '<span class="post-card__avatar post-card__avatar--ph" aria-hidden="true">' +
             escHtmlS((post.author || '?').trim().charAt(0) || '?') + '</span>';
       const repliesId = 'replies-' + escHtmlS(String(post.id));
@@ -1757,6 +1777,10 @@
           encodeURIComponent('מהקהילה של SWITCHY: "' + String(post.body || '').slice(0, 120) + '" — ' +
             'https://switchy-ai.com/community.html#post-' + String(post.id)) + '">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> שיתוף</a>' +
+        '<a class="post-card__report" aria-label="דיווח על תוכן בעייתי בפוסט הזה" href="mailto:hello@switchy-ai.com?subject=' +
+          encodeURIComponent('דיווח על פוסט בקהילה #' + String(post.id)) + '&body=' +
+          encodeURIComponent('אני מדווח/ת על הפוסט: https://switchy-ai.com/community.html#post-' + String(post.id) + '\nהסיבה: ') + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V4"/><path d="M4 4h13l-2.5 4L17 12H4"/></svg> דיווח</a>' +
         '</div>' +
         '<div class="post-card__replies" id="' + repliesId + '" hidden></div>';
 
@@ -1839,6 +1863,7 @@
           const posts = await sbRest('community_posts?select=id,author,avatar,channel,body,media_type,media_url,created_at' +
             '&is_flagged=eq.false&order=created_at.desc&limit=30');
           allPosts = Array.isArray(posts) ? posts : [];
+          if (allPosts.length) setStat('statPosts', allPosts.length >= 30 ? '30+' : String(allPosts.length));
           buildFilter();
           paintFeed();
         } catch (_) {
@@ -1874,6 +1899,9 @@
           const rows = await sbRest('provider_rating_summary?select=*');
           const summary = Array.isArray(rows) ? rows.slice() : [];
           summary.sort((a, b) => (Number(b.avg_stars) || 0) - (Number(a.avg_stars) || 0));
+          const totalReviews = summary.reduce((n, r) => n + (Number(r.review_count) || 0), 0);
+          if (totalReviews) setStat('statReviews', String(totalReviews));
+          if (summary.length) setStat('statProviders', String(summary.length));
           if (!summary.length) {
             ratingsHost.innerHTML = '<p class="ratings__empty">אין עדיין מספיק דירוגים — דרגו ספקים באפליקציה.</p>';
           } else {

@@ -4003,12 +4003,23 @@ ${navNoCta}
           <a class="btn btn--primary btn--lg" href="app.html">להצטרף ולפרסם — הורידו את האפליקציה</a>
           <a class="btn btn--ghost btn--lg" href="#ratings">לדירוגי הספקים ↓</a>
         </div>
+        <ul class="community-trust" aria-label="אמון ואבטחה בקהילה">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 5-3.2 8.4-7 10-3.8-1.6-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>קהילה מנוהלת — תוכן פוגעני מוסר</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="8" r="4"/></svg>פרסום רק ממשתמשים מחוברים באפליקציה</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>חיבור מוצפן (HTTPS)</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>אפשר לפרסם בעילום שם</li>
+        </ul>
       </div>
     </section>
 
     <section class="section community">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">הצ׳אט הקהילתי</span><h2>מה מדברים עכשיו בקהילה</h2><p>פוסטים אחרונים מהקהילה. לפרסום, תגובות ושיתוף תמונה — הצטרפו דרך האפליקציה.</p></header>
+        <div class="community-stats" id="communityStats" hidden aria-label="נתוני הקהילה בזמן אמת">
+          <div class="community-stats__item"><b id="statPosts">—</b><span>דיונים פעילים</span></div>
+          <div class="community-stats__item"><b id="statReviews">—</b><span>ביקורות על ספקים</span></div>
+          <div class="community-stats__item"><b id="statProviders">—</b><span>ספקים מדורגים</span></div>
+        </div>
         <div class="community__filter" role="group" aria-label="סינון לפי ערוץ">
           ${chanBtns}
         </div>
@@ -4031,6 +4042,19 @@ ${navNoCta}
         <div id="ratingsSummary" class="ratings" aria-live="polite" aria-busy="true">
           <p class="booking__note">טוען דירוגים…</p>
         </div>
+      </div>
+    </section>
+
+    <section class="section community-rules" aria-label="כללי הקהילה">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">שקיפות ואמון</span><h2>כללי הקהילה</h2><p>הקהילה מנוהלת כדי שתישאר מועילה ובטוחה. אלה הכללים שכולנו שומרים עליהם.</p></header>
+        <div class="rules-grid">
+          <div class="rule-card reveal"><b>כבוד הדדי</b><p>מתווכחים על מסלולים, לא על אנשים. בלי עלבונות ובלי הטרדות.</p></div>
+          <div class="rule-card reveal"><b>בלי פרטים אישיים</b><p>לא מפרסמים טלפון, כתובת או מספר לקוח — גם לא בצילומי מסך של חשבוניות.</p></div>
+          <div class="rule-card reveal"><b>בלי ספאם ופרסום</b><p>נציגי ספקים וקידום עסקי אינם מותרים בפיד. תוכן שיווקי מוסר.</p></div>
+          <div class="rule-card reveal"><b>ביקורות מניסיון אמיתי</b><p>מדרגים רק ספק שהייתם לקוחות שלו. ביקורות מזויפות נמחקות.</p></div>
+        </div>
+        <p class="rules-note">ראיתם תוכן שמפר את הכללים? <a href="mailto:hello@switchy-ai.com?subject=${encodeURIComponent('דיווח על תוכן בקהילה')}">דווחו לנו</a> ונטפל בהקדם. הפעילות כפופה ל<a href="terms.html">תנאי השימוש</a> ול<a href="privacy.html">מדיניות הפרטיות</a>.</p>
       </div>
     </section>
 

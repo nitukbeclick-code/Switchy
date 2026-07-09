@@ -3564,6 +3564,62 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .post-card__share svg { width: 16px; height: 16px; }
 .post-card__share:hover { text-decoration: underline; }
+.post-card__report {
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px;
+  color: var(--ink-400); text-decoration: none; min-height: 44px; margin-inline-start: auto;
+}
+.post-card__report svg { width: 15px; height: 15px; }
+.post-card__report:hover { color: #B91C1C; text-decoration: underline; }
+:root[data-theme="dark"] .post-card__report:hover { color: #F87171; }
+
+/* ── Community trust & safety ──────────────────────────────────────────────
+   Hero badge row, live stats strip (hidden until real numbers land) and the
+   rules cards — the "professional & safe" layer of community.html. */
+.community-trust {
+  list-style: none; display: flex; flex-wrap: wrap; gap: 8px 18px;
+  margin: 22px 0 0; padding: 0;
+}
+.community-trust li {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 600; color: var(--ink-600);
+  background: color-mix(in srgb, var(--white) 62%, transparent);
+  border: 1px solid var(--ink-100); border-radius: 999px; padding: 7px 14px;
+}
+.community-trust li svg { width: 16px; height: 16px; color: var(--accent-d); flex: 0 0 auto; }
+:root[data-theme="dark"] .community-trust li { background: rgba(28,36,46,.55); border-color: rgba(255,255,255,.1); }
+
+.community-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  max-width: 640px; margin: 0 auto 22px;
+}
+.community-stats[hidden] { display: none; } /* display:grid would otherwise beat the UA [hidden] rule */
+.community-stats__item {
+  text-align: center; padding: 14px 10px; border-radius: var(--radius);
+  background: var(--white); border: 1px solid var(--ink-100); box-shadow: var(--shadow-sm);
+}
+.community-stats__item b {
+  display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  font-weight: 800; font-size: 26px; color: var(--ink-900); font-variant-numeric: tabular-nums;
+}
+.community-stats__item span { font-size: 12.5px; color: var(--muted); }
+:root[data-theme="dark"] .community-stats__item { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+
+.rules-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.rule-card {
+  background: var(--white); border: 1px solid var(--ink-100); border-radius: var(--radius);
+  padding: 18px 16px; box-shadow: var(--shadow-sm);
+}
+.rule-card b { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 15.5px; color: var(--ink-900); margin-bottom: 6px; }
+.rule-card p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-600); }
+:root[data-theme="dark"] .rule-card { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+.rules-note { text-align: center; margin: 20px auto 0; max-width: 60ch; font-size: 14px; color: var(--ink-600); }
+.rules-note a { color: var(--accent-ink); font-weight: 700; }
+@media (max-width: 900px) { .rules-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) {
+  .rules-grid { grid-template-columns: 1fr; }
+  .community-stats { gap: 8px; }
+  .community-stats__item b { font-size: 21px; }
+}
 
 /* Ticker items are links into the deals page. */
 a.ticker__item { text-decoration: none; color: var(--ink-700); }

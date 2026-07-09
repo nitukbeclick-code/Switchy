@@ -579,13 +579,18 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
    div in index.html, kept outside the panel so its blur never touches the copy).
    Opacities are whisper-level (≤.16 at source, blurred) so the panel stays the
    star; dark mode inherits via the flipped --accent token. */
-.hero__aurora { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero__aurora {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  /* Third, static wash — a soft violet counterpoint so the hero isn't a
+     single-hue field (the two animated washes are green + sky). */
+  background: radial-gradient(560px 380px at 22% 78%, rgba(129,140,248,.10), transparent 72%);
+}
 .hero__aurora::before, .hero__aurora::after {
   content: ""; position: absolute; border-radius: 50%; filter: blur(72px);
 }
 .hero__aurora::before {
   width: 620px; height: 440px; top: -180px; inset-inline-start: -140px;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 17%, transparent), transparent 72%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 22%, transparent), transparent 72%);
   animation: aurora-a 17s var(--ease) infinite alternate;
 }
 .hero__aurora::after {
@@ -644,20 +649,23 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .launch-tile:hover {
   transform: translateY(-4px);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  border-color: color-mix(in srgb, var(--tf, var(--accent)) 55%, var(--line));
   box-shadow: var(--glint), var(--shadow);
 }
-.launch-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.launch-tile:focus-visible { outline: 3px solid var(--tf, var(--accent)); outline-offset: 3px; }
+/* Each tile speaks its category hue (--tf/--tt stamped inline in index.html). */
 .launch-tile__ico {
   width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
-  background: var(--accent-t); box-shadow: inset 0 0 0 1px rgba(22,163,74,.18);
+  background: color-mix(in srgb, var(--tf, var(--accent)) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tf, var(--accent)) 24%, transparent);
 }
-.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--accent-d); }
-:root[data-theme="dark"] .launch-tile__ico svg { stroke: var(--accent); }
+.launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--tt, var(--accent-d)); }
+:root[data-theme="dark"] .launch-tile__ico svg { stroke: var(--tf, var(--accent)); }
 .launch-tile__body { margin-top: auto; padding-top: 14px; }
 .launch-tile__name { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
 .launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: var(--muted); }
-.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--accent-t); color: var(--accent-ink); font-weight: 800; font-size: 12.5px; }
+.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tf, var(--accent)) 15%, transparent); color: var(--tt, var(--accent-ink)); font-weight: 800; font-size: 12.5px; }
+:root[data-theme="dark"] .launch-tile__price { color: var(--tf, var(--accent)); }
 
 /* "קטגוריות נוספות" chip row. */
 .hero__more { margin-top: 16px; }
@@ -1233,6 +1241,15 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 }
 .lead-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(34px, 5.4vw, 66px); font-weight: 900; color: var(--green-d); letter-spacing: -1.6px; line-height: 1.04; }
 .lead-hero h1 .hl { color: var(--green); }
+/* Category pages carry their hue (--tf/--tt stamped by build.js): the headline
+   highlight and the hero pill speak the category colour — instant orientation. */
+.lead-hero--cat h1 .hl { color: var(--tt, var(--green)); }
+.lead-hero--cat .pill {
+  background: color-mix(in srgb, var(--tf, var(--accent)) 13%, transparent);
+  color: var(--tt, var(--accent-ink));
+}
+:root[data-theme="dark"] .lead-hero--cat h1 .hl,
+:root[data-theme="dark"] .lead-hero--cat .pill { color: var(--tf, var(--accent)); }
 .lead-hero p { color: var(--muted); font-size: 18px; margin: 16px auto 26px; max-width: 38em; }
 .lead-hero .hero__cta { justify-content: center; }
 .feature--check .feature__icon { font-weight: 900; }
@@ -1609,8 +1626,21 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 
 /* ── Line icons (replace emoji; inherit ink via currentColor) ─────────────── */
 .ico { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex: none; }
-.cat__icon { color: var(--green); line-height: 0; }
+/* Category hue (--tf fill / --tt deep, stamped by build.js) tints the icon chip
+   and the "go" cue — each category gets its own colour voice, action stays green. */
+.cat { --tf: var(--accent); --tt: var(--accent-d); }
+.cat__icon { color: var(--tt); line-height: 0; }
 .cat__icon .ico { width: 34px; height: 34px; }
+.cat__icon .ico, .cat__icon svg {
+  background: color-mix(in srgb, var(--tf) 13%, transparent);
+  border-radius: 14px; padding: 9px; width: 52px; height: 52px; box-sizing: border-box;
+}
+:root[data-theme="dark"] .cat__icon { color: var(--tf); }
+.cat .cat__go { color: var(--tt); }
+:root[data-theme="dark"] .cat .cat__go { color: var(--tf); }
+@media (hover: hover) and (pointer: fine) {
+  .cat:hover { border-color: color-mix(in srgb, var(--tf) 55%, var(--line)); }
+}
 .feature__icon { color: #fff; }
 .feature__icon .ico { width: 28px; height: 28px; }
 .feature--check .feature__icon { color: var(--green-d); }

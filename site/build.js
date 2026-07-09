@@ -459,6 +459,22 @@ const heroDecor = () =>
         </g>
       </svg>`;
 
+// Per-category hue pair [fill, deep] — the one place the palette opens up
+// beyond green(action)/amber(value): CATEGORY IDENTITY. Stamped inline as
+// --tf/--tt so CSS can tint icons, pills and headline highlights per category.
+// Never applied to plan CTAs (those stay action-green) or provider brands.
+const CAT_HUES = {
+  cellular: ['#22C55E', '#0B7A38'],
+  internet: ['#38BDF8', '#0369A1'],
+  tv: ['#818CF8', '#4338CA'],
+  triple: ['#FBBF24', '#B45309'],
+  abroad: ['#FB7185', '#BE123C'],
+};
+const catHueStyle = (slug) => {
+  const h = CAT_HUES[slug];
+  return h ? ` style="--tf:${h[0]};--tt:${h[1]}"` : '';
+};
+
 const categories = [
   {
     slug: 'cellular', name: 'סלולר', icon: '📱',
@@ -1665,7 +1681,7 @@ ${head(c.title, c.desc, url, jsonLd(c), false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero lead-hero--split">
+    <section class="lead-hero lead-hero--split lead-hero--cat"${catHueStyle(c.slug)}>
       <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container lead-hero__grid">
         <div class="lead-hero__text">
@@ -2484,7 +2500,7 @@ function howItWorksPage() {
     const fromTxt = cheapest
       ? `${set.length} מסלולים · החל מ-₪${cheapest.price}${(!cheapest.priceUnit || cheapest.priceUnit === 'month') ? '/חודש' : ''}`
       : `${list.length} מסלולים`;
-    return `          <a class="cat reveal" href="${c.slug}.html">
+    return `          <a class="cat reveal" href="${c.slug}.html"${catHueStyle(c.slug)}>
             <span class="cat__icon" aria-hidden="true">${iconFor(c.icon)}</span>
             <h3>${esc(c.name)}</h3>
             <p>${esc(c.intro)}</p>

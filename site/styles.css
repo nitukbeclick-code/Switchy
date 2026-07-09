@@ -3543,6 +3543,34 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 .plan__compare.is-in { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
 .plan__compare.is-in:hover { background: var(--accent-d); }
 
+/* Per-plan price-watch bell — same footprint as the compare icon. */
+.plan__watch {
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--cream); cursor: pointer;
+  color: var(--ink-700); padding: 0; transition: border-color .15s, background .15s, transform .15s; flex-shrink: 0;
+}
+.plan__watch svg { width: 17px; height: 17px; }
+.plan__watch:hover { border-color: var(--accent); background: var(--accent-t); transform: scale(1.07); }
+.plan__watch:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.plan__watch.is-on { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
+.plan__watch.is-on:hover { background: var(--accent-d); }
+
+/* Watch dialog — rides the shared .pmodal chrome; only the form bits are custom. */
+.watch-modal__panel { max-width: 440px; }
+.watch-modal__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 20px; margin: 0 24px 6px 0; color: var(--ink-900); }
+.watch-modal__lead { margin: 0 0 14px; font-size: 14.5px; line-height: 1.6; color: var(--ink-600); }
+.watch-modal__form { display: flex; flex-direction: column; gap: 12px; }
+.watch-modal__email {
+  width: 100%; min-height: 48px; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid var(--ink-200); background: var(--white); font: inherit; color: var(--ink-900);
+}
+.watch-modal__email:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.watch-modal__email[aria-invalid="true"] { border-color: #B91C1C; }
+.watch-modal__consent { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; color: var(--ink-600); cursor: pointer; }
+.watch-modal__consent input { margin-top: 3px; accent-color: var(--accent); }
+.watch-modal__note { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
+:root[data-theme="dark"] .watch-modal__email { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.14); }
+
 /* ── Home community strip + post share ─────────────────────────────────────── */
 .home-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 .home-post {

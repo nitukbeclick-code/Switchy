@@ -5,7 +5,7 @@
 //   deno task test
 
 import { assert, assertEquals, assertFalse } from "@std/assert";
-import { EMAIL_RE, type InsertResult, shouldWelcome } from "../site-subscribe/lib.ts";
+import { EMAIL_RE, type InsertResult, sanitizeTopic, shouldWelcome } from "../site-subscribe/lib.ts";
 
 // ── EMAIL_RE: pragmatic RFC-ish email gate ────────────────────────────────────
 
@@ -50,4 +50,34 @@ Deno.test("shouldWelcome is exhaustive over InsertResult", () => {
   const all: InsertResult[] = ["inserted", "exists", "error"];
   // Exactly one of the three outcomes triggers a welcome send.
   assertEquals(all.filter(shouldWelcome), ["inserted"]);
+});
+
+// ── sanitizeTopic: the per-plan price-watch tag ───────────────────────────────
+
+Deno.test("sanitizeTopic keeps well-formed plan tags", () => {
+  for (const ok of [
+    "plan:cellular-golan-unlimited",
+    "plan:internet_bezeq.fiber-1000",
+    "plan:tv yes extra",
+    "מסלול:סלולר גולן",
+  ]) {
+    assertEquals(sanitizeTopic(ok), ok);
+  }
+});
+
+Deno.test("sanitizeTopic collapses malformed input to plain signup", () => {
+  for (const bad of [
+    "", null, undefined, 42,
+    "a".repeat(81), // over the length cap
+    "plan:<script>alert(1)</script>",
+    "plan:x\ny", // newline
+    'plan:"quoted"',
+    "plan:{json}",
+  ]) {
+    assertEquals(sanitizeTopic(bad), "");
+  }
+});
+
+Deno.test("sanitizeTopic trims surrounding whitespace", () => {
+  assertEquals(sanitizeTopic("  plan:abc  "), "plan:abc");
 });

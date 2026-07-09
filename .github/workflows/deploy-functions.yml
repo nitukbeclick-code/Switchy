@@ -28,6 +28,7 @@ on:
           - notify-lead
           - telegram-user-webhook
           - site-ai-chat
+          - site-subscribe
           - savings-watch
           - telegram-webhook
           - renewal-reminders

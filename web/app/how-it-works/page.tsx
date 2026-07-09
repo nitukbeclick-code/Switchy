@@ -205,7 +205,7 @@ export default function HowItWorksPage() {
                 href="/book"
                 location="how-it-works-hero"
                 label="book"
-                className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+                className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
               >
                 או דברו עם יועץ
               </TrackedCtaLink>

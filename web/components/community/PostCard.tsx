@@ -110,7 +110,7 @@ function renderBody(body: string): React.ReactNode {
         <Link
           key={`s${key++}`}
           href={`/providers/${s.slug}`}
-          className="font-medium text-accent-text underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="font-medium text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {text}
         </Link>,
@@ -576,7 +576,7 @@ export default function PostCard({
             <span aria-hidden="true">·</span>
             <Link
               href={`/community/post/${post.id}`}
-              className="text-muted underline-offset-2 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="text-muted underline underline-offset-2 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               aria-label="קישור לפוסט"
             >
               קישור

@@ -257,7 +257,7 @@ export default function MarketPulsePage() {
                   href="/book"
                   location="hero"
                   label="consult"
-                  className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+                  className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
                 >
                   או דברו עם יועץ
                 </TrackedCtaLink>
@@ -266,7 +266,7 @@ export default function MarketPulsePage() {
             {/* Trust band — REAL catalogue counts; the entry price carries the
                 green VALUE emphasis (text-accent), never a button. */}
             <p
-              className="sw-reveal mt-8 text-sm text-white/70"
+              className="sw-reveal mt-8 text-sm text-white/85"
               style={{ animationDelay: "150ms" }}
             >
               {planCount.toLocaleString("he-IL")} מסלולים · {providers.length}{" "}

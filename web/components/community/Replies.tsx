@@ -208,7 +208,7 @@ function ReplyItem({
   }, [saving, draft, body, reply.id]);
 
   const smallBtn =
-    "rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
+    "inline-flex min-h-11 items-center justify-center rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
 
   return (
     <div
@@ -312,7 +312,7 @@ function ReplyItem({
               className={
                 isAccepted
                   ? smallBtn
-                  : "rounded-lg px-2 py-1 text-xs font-semibold text-accent-text transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  : "inline-flex min-h-11 items-center justify-center rounded-lg px-2 py-1 text-xs font-semibold text-accent-text transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               }
               aria-pressed={isAccepted}
               aria-label={isAccepted ? "ביטול בחירת התשובה" : "בחירת התגובה כתשובה הטובה ביותר"}

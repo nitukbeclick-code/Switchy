@@ -171,7 +171,7 @@ export default function PlanCard({
         <Link
           href={`/plans/${plan.id}`}
           aria-label={`לפרטים מלאים על ${plan.plan} מ${plan.provider}`}
-          className="interactive inline-block rounded-sm font-display text-base font-semibold tracking-tight text-ink underline-offset-4 transition-colors hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive inline-block rounded-sm font-display text-base font-semibold tracking-tight text-ink underline underline-offset-4 transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {plan.plan}
         </Link>
@@ -209,7 +209,7 @@ export default function PlanCard({
           carries fine-lines NOT already shown as perks. */}
       {extraFineLines(d).length > 0 ? (
         <details className="group mt-3">
-          <summary className="interactive flex cursor-pointer list-none items-center gap-1 rounded-md text-[13px] font-semibold text-accent-text marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <summary className="interactive flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md text-[13px] font-semibold text-accent-text marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
             אותיות קטנות
             <Icon
               name="chevron"
@@ -233,7 +233,7 @@ export default function PlanCard({
       <Link
         href={`/plans/${plan.id}`}
         aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
-        className="interactive press mt-auto inline-flex items-center gap-1 self-start rounded-lg pt-3 text-[13px] font-semibold text-accent-text underline-offset-4 transition-colors hover:text-accent-hover hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="interactive press mt-auto inline-flex items-center gap-1 self-start rounded-lg pt-3 text-[13px] font-semibold text-accent-text underline underline-offset-4 transition-colors hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         פרטים מלאים
         <Icon name="chevron" size={14} aria-hidden="true" />

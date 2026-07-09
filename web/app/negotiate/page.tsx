@@ -203,7 +203,7 @@ export default function NegotiatePage() {
               href="/book"
               location="hero"
               label="consult"
-              className="interactive text-sm text-white/70 underline-offset-4 hover:underline"
+              className="interactive text-sm text-white/85 underline-offset-4 hover:underline"
             >
               או דברו עם יועץ
             </TrackedCtaLink>
@@ -211,7 +211,7 @@ export default function NegotiatePage() {
           {/* Trust band — REAL catalogue counts; the market-floor entry price
               carries the green VALUE emphasis (text-accent), NOT a button. */}
           <p
-            className="sw-reveal mt-8 text-sm text-white/70"
+            className="sw-reveal mt-8 text-sm text-white/85"
             style={{ animationDelay: "150ms" }}
           >
             {planCount} מסלולים · {providerCount} ספקים

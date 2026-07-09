@@ -216,7 +216,7 @@ export default function CategoryLanding({
         {hasPlans ? <PriceCaveat className="mt-3" /> : null}
         <Link
           href={comparePath}
-          className="interactive mt-6 inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-hover"
+          className="interactive mt-6 inline-flex items-center gap-1 font-medium text-accent-text underline underline-offset-4 hover:text-accent-hover"
         >
           {`לכל מסלולי ${titleHe}`}
           <Icon name="chevron" size={16} aria-hidden="true" />
@@ -239,7 +239,7 @@ export default function CategoryLanding({
                 <li key={sub.href}>
                   <Link
                     href={sub.href}
-                    className="interactive inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-hover"
+                    className="interactive inline-flex items-center gap-1 font-medium text-accent-text underline underline-offset-4 hover:text-accent-hover"
                     style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
                   >
                     {sub.label}
@@ -263,7 +263,7 @@ export default function CategoryLanding({
           רוצים להבין לעומק לפני שמשווים?{" "}
           <Link
             href="/guides"
-            className="interactive font-medium text-accent-text hover:text-accent-hover"
+            className="interactive font-medium text-accent-text underline underline-offset-4 hover:text-accent-hover"
           >
             מדריכים: איך עוברים ספק, בוחרים מסלול וחוסכים
           </Link>

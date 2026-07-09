@@ -377,7 +377,7 @@ export default function NotificationsBell() {
                 type="button"
                 onClick={closeMenu}
                 aria-label="סגירת ההתראות"
-                className="interactive press -me-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                className="interactive press -me-1.5 flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 <CloseGlyph />
               </button>

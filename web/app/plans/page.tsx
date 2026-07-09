@@ -211,7 +211,7 @@ export default async function PlansPricingPage() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <header className="mt-4">
-        <p className="sw-reveal text-xs font-semibold uppercase tracking-wide text-accent-text">
+        <p className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
           מחירון מלא
         </p>
         <h1

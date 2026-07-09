@@ -186,7 +186,14 @@ export default function WalletClient({ categories }: WalletClientProps) {
           <Icon name="spark" size={16} className="text-value-text" aria-hidden />
           חיסכון שנתי פוטנציאלי (מוערך)
         </p>
-        <p className="mt-1.5 font-display text-5xl font-extrabold leading-none tracking-tight text-value-text sm:text-6xl">
+        <p
+          className={[
+            "mt-1.5 font-display font-extrabold leading-none tracking-tight",
+            totalSaving > 0
+              ? "text-5xl text-value-text sm:text-6xl"
+              : "text-3xl text-muted",
+          ].join(" ")}
+        >
           {totalSaving > 0 ? ilsStat(totalSaving) : "₪0"}
         </p>
         {totalSaving > 0 ? (
@@ -221,6 +228,10 @@ export default function WalletClient({ categories }: WalletClientProps) {
                     )} בשנה`}
                   >
                     חיסכון מוערך {ilsStat(r.saving)}/שנה
+                  </span>
+                ) : r.bill > 0 ? (
+                  <span className="text-xs text-muted">
+                    כבר במחיר מצוין — אין חיסכון מוערך כרגע
                   </span>
                 ) : null}
               </div>
@@ -257,7 +268,9 @@ export default function WalletClient({ categories }: WalletClientProps) {
                     {r.cheapestProvider} — {r.cheapestPlan}
                   </span>{" "}
                   החל מ־
-                  <span className="font-semibold">{ilsStat(r.cheapestPrice)}</span>{" "}
+                  <span className="font-semibold text-value-text">
+                    {ilsStat(r.cheapestPrice)}
+                  </span>{" "}
                   לחודש.
                 </p>
               </div>

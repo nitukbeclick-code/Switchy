@@ -19,7 +19,7 @@ import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
-import { ils } from "@/lib/format";
+import { priceText } from "@/lib/plan-display";
 import { plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
@@ -67,9 +67,14 @@ export default async function TripleLandingPage() {
   // lowest headline price among the SAME featured `plans` CategoryLanding renders,
   // so the two figures can never disagree. Undefined ⇒ no fabricated number shown.
   const pricedFeatured = plans.filter((p) => typeof p.price === "number");
-  const minFeatured = pricedFeatured.length
-    ? Math.min(...pricedFeatured.map((p) => p.price))
+  // Render the floor with priceText — the SAME decimal-preserving helper the
+  // featured ComparisonTable rows use — so the hero's "מ-₪X" equals the cheapest
+  // table row and never rounds a ₪10.90 plan UP to ₪11 (which would understate the
+  // deal and drift from the catalogue). Undefined ⇒ no fabricated number shown.
+  const cheapestFeatured = pricedFeatured.length
+    ? pricedFeatured.reduce((a, b) => (b.price < a.price ? b : a))
     : undefined;
+  const minFeaturedText = cheapestFeatured ? priceText(cheapestFeatured) : undefined;
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -154,10 +159,10 @@ export default async function TripleLandingPage() {
         <div className="mx-auto max-w-2xl">
           <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-white sm:text-6xl">
             חבילות משולבות
-            {minFeatured !== undefined ? (
+            {minFeaturedText !== undefined ? (
               <>
                 {" "}
-                <span className="text-[#4ade80]">מ-{ils(minFeatured)} לחודש.</span>
+                <span className="text-[#4ade80]">מ-₪{minFeaturedText} לחודש.</span>
               </>
             ) : null}
           </h1>
@@ -189,14 +194,14 @@ export default async function TripleLandingPage() {
               או דברו עם יועץ
             </TrackedCtaLink>
           </div>
-          {minFeatured !== undefined ? (
+          {minFeaturedText !== undefined ? (
             <p
               className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
               style={{ animationDelay: "150ms" }}
             >
               {all.length} מסלולים · החל מ-
               <span className="font-display font-bold text-[#4ade80]">
-                {ils(minFeatured)}
+                ₪{minFeaturedText}
               </span>{" "}
               לחודש
             </p>

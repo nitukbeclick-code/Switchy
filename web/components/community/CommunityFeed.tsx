@@ -565,7 +565,7 @@ export default function CommunityFeed() {
   const tabBtn =
     "interactive press whitespace-nowrap rounded-full border min-h-11 px-3.5 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
   const sortBtn =
-    "rounded-lg min-h-11 px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "interactive press rounded-lg min-h-11 px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   // In search mode we show the results list instead of the feed; the trending
   // strip is hidden so search stays the focus.
@@ -792,9 +792,21 @@ export default function CommunityFeed() {
               <PostSkeleton />
             </div>
           ) : results.length === 0 ? (
-            <p className="bento p-8 text-center text-sm text-muted">
-              לא נמצאו תוצאות לחיפוש.
-            </p>
+            <div className="bento p-8 text-center">
+              <p className="text-base font-semibold text-ink">
+                לא נמצאו תוצאות לחיפוש
+              </p>
+              <p className="mt-1 text-sm text-muted">
+                נסו מונח חיפוש אחר, או נקו את החיפוש כדי לחזור לפיד.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                ניקוי החיפוש
+              </button>
+            </div>
           ) : (
             <ul className="stagger flex list-none flex-col gap-4 p-0">
               {results.map((post) => (
@@ -849,6 +861,18 @@ export default function CommunityFeed() {
                   ? "היו הראשונים לשתף חוויה, לשאול שאלה או להמליץ על ספק."
                   : `אין עדיין פוסטים בערוץ "${tab}". פתחו את השיחה.`}
             </p>
+            {(unanswered || tab !== ALL_CHANNEL) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (unanswered) setUnanswered(false);
+                  else setTab(ALL_CHANNEL);
+                }}
+                className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                {unanswered ? "הצגת כל הפוסטים" : "חזרה לכל הערוצים"}
+              </button>
+            )}
           </div>
         ) : (
           <ul className="stagger flex list-none flex-col gap-4 p-0">

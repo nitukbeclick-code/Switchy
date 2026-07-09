@@ -3780,6 +3780,32 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .post-card__report svg { width: 15px; height: 15px; }
 
+/* ── Live price-drop chip + finder savings meter ──────────────────────────── */
+.plan__drop {
+  position: absolute; top: -10px; inset-inline-end: 14px; z-index: 2;
+  background: var(--value-t); color: var(--value-ink);
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 11px;
+  padding: 4px 11px; border-radius: 999px; box-shadow: 0 6px 14px rgba(180,83,9,.22);
+  transition: opacity .24s cubic-bezier(.23,1,.32,1), transform .24s cubic-bezier(.23,1,.32,1);
+  @starting-style { opacity: 0; transform: translateY(4px); }
+}
+.finder__meter {
+  position: relative; height: 7px; margin-top: 10px; border-radius: 999px;
+  background: var(--ink-100); overflow: hidden;
+}
+.finder__meter i {
+  position: absolute; inset: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--value), var(--value-d));
+  transform: scaleX(0); transform-origin: right center; /* RTL fill */
+  transition: transform .45s cubic-bezier(.23,1,.32,1);
+}
+.finder__meter-tick { /* the "great savings" mark at ₪600 of the ₪1,500 scale */
+  position: absolute; top: -2px; bottom: -2px; inset-inline-start: 60%; width: 2px;
+  background: color-mix(in srgb, var(--ink-400) 55%, transparent); border-radius: 1px;
+}
+.finder__meter.is-great i { background: linear-gradient(90deg, var(--accent), var(--accent-d)); }
+@media (prefers-reduced-motion: reduce) { .finder__meter i, .plan__drop { transition: none; } }
+
 /* ── Conversion wave — the Zoom closing channel everywhere ────────────────── */
 .zoom-cta {
   display: flex; align-items: center; gap: 10px; margin-top: 14px;

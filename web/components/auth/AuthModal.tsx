@@ -305,7 +305,7 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
               setError(null);
               setInfo(null);
             }}
-            className="font-semibold text-accent-text underline"
+            className="inline-block px-1.5 py-1 font-semibold text-accent-text underline"
           >
             {mode === "signin" ? "הרשמה" : "התחברות"}
           </button>

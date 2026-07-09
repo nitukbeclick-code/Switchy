@@ -3238,4 +3238,81 @@
       items[i].classList.add('is-on');
     }, 6000);
   })();
+
+  // ── (12) COMPARE TRAY — "add to compare" everywhere ─────────────────────────
+  // The scale icon on every plan card becomes a TOGGLE into a persistent
+  // (localStorage) tray of up to 3 plans; a sticky bottom bar deep-links to
+  // compare.html?p0&p1&p2 (already supported there). Without JS the icon stays
+  // a plain link that opens compare preselected with that one plan.
+  (function () {
+    var links = Array.from(document.querySelectorAll('.plan__compare'));
+    var KEY = 'switchy-cmp';
+    var read = function () {
+      try { var v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v.slice(0, 3) : []; }
+      catch (_) { return []; }
+    };
+    var write = function (list) { try { localStorage.setItem(KEY, JSON.stringify(list.slice(0, 3))); } catch (_) {} };
+    var idOf = function (a) {
+      try { return new URLSearchParams((a.getAttribute('href') || '').split('?')[1] || '').get('p0'); }
+      catch (_) { return null; }
+    };
+
+    // compare.html: with no explicit ?p0 in the URL, prefill from the tray.
+    if (/compare\.html$/.test(location.pathname) || location.pathname === '/compare') {
+      if (!new URLSearchParams(location.search).get('p0')) {
+        var tray0 = read();
+        if (tray0.length) {
+          var picks = ['cmp0', 'cmp1', 'cmp2'].map(function (id) { return document.getElementById(id); });
+          tray0.forEach(function (id, i) {
+            if (picks[i] && picks[i].querySelector('option[value="' + CSS.escape(id) + '"]')) {
+              picks[i].value = id;
+              picks[i].dispatchEvent(new Event('change'));
+            }
+          });
+        }
+      }
+    }
+    if (!links.length) return;
+
+    var bar = document.createElement('div');
+    bar.className = 'cmp-tray';
+    bar.setAttribute('role', 'region');
+    bar.setAttribute('aria-label', 'מסלולים שנבחרו להשוואה');
+    bar.innerHTML = '<span class="cmp-tray__count"></span>' +
+      '<a class="btn btn--primary btn--sm cmp-tray__go" href="compare.html">השוו עכשיו ←</a>' +
+      '<button type="button" class="cmp-tray__clear" aria-label="ניקוי הבחירה">✕</button>';
+    document.body.appendChild(bar);
+    var countEl = bar.querySelector('.cmp-tray__count');
+    var goEl = bar.querySelector('.cmp-tray__go');
+
+    function sync() {
+      var tray = read();
+      links.forEach(function (a) {
+        var on = tray.indexOf(idOf(a)) !== -1;
+        a.classList.toggle('is-in', on);
+        a.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      if (!tray.length) { bar.classList.remove('is-on'); return; }
+      countEl.textContent = tray.length === 1 ? 'מסלול אחד נבחר להשוואה' : tray.length + ' מסלולים נבחרו להשוואה';
+      var qs = tray.map(function (id, i) { return 'p' + i + '=' + encodeURIComponent(id); }).join('&');
+      goEl.setAttribute('href', 'compare.html?' + qs);
+      bar.classList.add('is-on');
+    }
+    links.forEach(function (a) {
+      var id = idOf(a);
+      if (!id) return;
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        var tray = read();
+        var at = tray.indexOf(id);
+        if (at !== -1) tray.splice(at, 1);
+        else { if (tray.length >= 3) tray.shift(); tray.push(id); }
+        write(tray);
+        sync();
+        if (typeof track === 'function') { try { track('compare_tray_toggle', { plan: id, size: tray.length }); } catch (_) {} }
+      });
+    });
+    bar.querySelector('.cmp-tray__clear').addEventListener('click', function () { write([]); sync(); });
+    sync();
+  })();
 })();

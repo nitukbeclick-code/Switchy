@@ -3518,3 +3518,27 @@ a.chip:active { transform: translateY(0) scale(.97); }
   position: absolute; inset: 0; overflow: hidden; color: var(--accent);
   width: var(--fill, 0%); white-space: nowrap;
 }
+
+/* ── Compare TRAY — sticky bottom bar for the cross-page compare picker ────── */
+.cmp-tray {
+  position: fixed; inset-inline: 0; bottom: 14px; z-index: 1090;
+  width: fit-content; max-width: calc(100vw - 24px); margin-inline: auto;
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 12px 10px 18px; border-radius: 999px;
+  background: color-mix(in srgb, var(--white) 92%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line); box-shadow: var(--glint), var(--shadow-lg);
+  opacity: 0; transform: translateY(16px); pointer-events: none;
+  transition: opacity .22s var(--ease), transform .22s var(--ease);
+}
+.cmp-tray.is-on { opacity: 1; transform: none; pointer-events: auto; }
+/* While the cookie banner is up, the tray rides above it instead of underneath. */
+body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
+.cmp-tray__count { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-800); white-space: nowrap; }
+.cmp-tray__clear { background: none; border: 0; cursor: pointer; color: var(--ink-400); font-size: 15px; width: 32px; height: 32px; border-radius: 50%; }
+.cmp-tray__clear:hover { background: var(--mint); color: var(--ink-800); }
+.cmp-tray__clear:focus-visible { outline: none; box-shadow: var(--ring-flush); }
+@media (prefers-reduced-motion: reduce) { .cmp-tray { transition: none; } }
+/* The scale icon reflects tray membership. */
+.plan__compare.is-in { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
+.plan__compare.is-in:hover { background: var(--accent-d); }

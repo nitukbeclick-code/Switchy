@@ -299,7 +299,7 @@ a:not([class]):focus-visible { border-radius: 6px; box-shadow: var(--ring-flush)
 /* ── Scroll progress bar (injected by script.js) ─────────────────────────── */
 .scroll-progress {
   position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60; transform-origin: right center;
-  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--ink-800), var(--ink-500));
+  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--accent-d), var(--accent)); /* brand progress, not a stray ink hairline */
   will-change: transform; pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) { .scroll-progress { display: none; } }
@@ -753,7 +753,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .steps::before {
   content: ""; position: absolute; z-index: 0;
   top: calc(28px + 22px); height: 2px; inset-inline: 16%;
-  background: linear-gradient(90deg, transparent, var(--accent-t) 12%, var(--accent-t) 88%, transparent);
+  background: linear-gradient(90deg, transparent, var(--ink-200) 12%, var(--ink-200) 88%, transparent);
   pointer-events: none;
 }
 .step { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 24px; position: relative; z-index: 1; }
@@ -1266,7 +1266,10 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 /* .guide-card:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 /* The whole card is an <a> — give it the focus ring + the same lift as hover. */
 .guide-card:focus-visible { box-shadow: var(--ring), var(--shadow); border-color: var(--accent); transform: translateY(-4px); }
-.guide-card .tag-cat { align-self: flex-start; background: var(--accent-t); color: var(--accent-ink); font-weight: 700; font-size: 12px; padding: 4px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s; }
+/* Category tag on guide cards — quiet ink chip; a row of identical green pills
+   said nothing (UX audit). The card's hover state carries the green instead. */
+.guide-card .tag-cat { align-self: flex-start; background: var(--mint); color: var(--ink-600); border: 1px solid var(--line); font-weight: 700; font-size: 12px; padding: 3px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s, border-color .18s; }
+.guide-card:hover .tag-cat { background: var(--accent-t); color: var(--accent-ink); border-color: transparent; }
 .guide-card h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin-bottom: 8px; line-height: 1.32; transition: color .15s; }
 .guide-card:hover h3, .guide-card:focus-visible h3 { color: var(--accent-ink); }
 .guide-card p { color: var(--muted); flex: 1; line-height: 1.6; }
@@ -1335,7 +1338,9 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 /* The site's most-repeated CTA (every plan card) — a real green tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */
-.plan__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+/* flex-wrap keeps a long CTA from spilling past the card edge — the icons drop
+   to a second row instead (the CTA itself never line-breaks mid-label). */
+.plan__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 /* Filled ACTION pill (was a bare text link) — the conversion CTA earns the
    brand gradient. White on --accent-d-range greens clears AA (5.0:1). */
 .plan__cta {
@@ -1343,6 +1348,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: #fff;
   text-decoration: none; padding: 10px 14px; min-height: 44px;
+  white-space: nowrap; /* the label must never wrap into two lines inside a card */
   border-radius: 12px;
   background: linear-gradient(165deg, #15803D, #126C34);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 16px -6px rgba(22,163,74,.45);
@@ -3567,7 +3573,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 /* Partial-fill stars: grey base + a green overlay clipped to --fill percent. */
 .prov-rating__stars { position: relative; font-size: 18px; letter-spacing: 2px; color: var(--ink-200); line-height: 1; }
 .prov-rating__on {
-  position: absolute; inset: 0; overflow: hidden; color: var(--accent);
+  position: absolute; inset: 0; overflow: hidden; color: var(--value); /* stars read as rating gold, not action green */
   width: var(--fill, 0%); white-space: nowrap;
 }
 

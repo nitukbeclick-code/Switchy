@@ -2048,7 +2048,8 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <meta name="description" content="${esc(desc)}" />
   <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />
   <style>.skip{position:absolute;inset-inline-start:0;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0;clip-path:inset(50%);white-space:nowrap}.skip:focus{clip-path:none}</style>
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#F7F9F8" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0B0F14" media="(prefers-color-scheme: dark)" />
   <link rel="canonical" href="${canonicalUrl(url)}" />
   <link rel="alternate" hreflang="he-IL" href="${canonicalUrl(url)}" />
   <link rel="alternate" hreflang="x-default" href="${canonicalUrl(url)}" />

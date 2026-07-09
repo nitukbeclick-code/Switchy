@@ -1957,7 +1957,7 @@
                 '</div>';
             }).join('');
           } catch (_) {
-            reviewsHost.innerHTML = '<p class="ratings__error">לא הצלחנו לטעון חוות דעת כרגע.</p>';
+            reviewsHost.innerHTML = ''; // the ratings block already shows the contained retry card — no second red line
           }
           reviewsHost.removeAttribute('aria-busy');
         })();

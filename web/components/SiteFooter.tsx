@@ -162,28 +162,28 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
           >
             <Link
               href="/privacy"
-              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-block rounded py-1 font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               פרטיות
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href="/terms"
-              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-block rounded py-1 font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               תנאי שימוש
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href="/accessibility"
-              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-block rounded py-1 font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               נגישות
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href="/transparency"
-              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="inline-block rounded py-1 font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               שקיפות
             </Link>

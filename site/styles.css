@@ -3745,6 +3745,32 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .post-card__report svg { width: 15px; height: 15px; }
 
+/* ── D2 — "today vs after" promo-jump card in category heroes ──────────────
+   Two proportional bars drawn from a REAL catalogue plan; the fill grows once
+   the card reveals (.in) — scaleX only, origin right for RTL. */
+.jump-card {
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  padding: 24px 22px; box-shadow: var(--glint), var(--shadow); max-width: 420px; margin-inline: auto;
+}
+.jump-card__title { margin: 0 0 4px; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 17px; color: var(--ink-900); }
+.jump-card__plan { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; font-size: 13.5px; color: var(--ink-600); }
+.jump-card__bars { display: grid; gap: 14px; }
+.jump-bar { display: grid; grid-template-columns: 84px 1fr 56px; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-600); }
+.jump-bar i {
+  display: block; height: 22px; border-radius: 7px; width: var(--w, 50%);
+  background: linear-gradient(90deg, var(--accent), var(--accent-d));
+  transform: scaleX(0); transform-origin: right center;
+  transition: transform .6s cubic-bezier(.23,1,.32,1) .15s;
+}
+.jump-bar--after i { background: linear-gradient(90deg, var(--value), var(--value-d)); transition-delay: .3s; }
+.jump-card.in .jump-bar i { transform: scaleX(1); }
+.jump-bar b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.jump-bar--after b { color: var(--value-ink); }
+.jump-card__note { margin: 16px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-600); }
+.jump-card__note b { color: var(--value-ink); }
+:root[data-theme="dark"] .jump-card { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+@media (prefers-reduced-motion: reduce) { .jump-bar i, .jump-bar--after i { transform: scaleX(1); transition: none; } }
+
 /* ── D1 micro-interactions (emil-design-eng) ───────────────────────────────
    Finder result rows are re-created on every category/slider change, so
    @starting-style gives a free staggered entrance; exit is instant (removal). */

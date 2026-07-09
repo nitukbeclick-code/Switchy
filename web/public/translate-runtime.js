@@ -212,9 +212,13 @@
   function applyRecord(rec, lang) {
     var m = memFor(lang);
     var t = m[rec.orig];
-    if (t == null) return;
-    if (rec.kind === "text") { rec.node.nodeValue = t; }
-    else { rec.el.setAttribute(rec.attr, t); }
+    // Unresolved strings fall back to the Hebrew ORIGINAL — never left as stale
+    // text from a previously-applied language. Pairs with translateRecords not
+    // caching fail-soft Hebrew echoes: a cold string shows Hebrew now and is
+    // re-attempted on the next visit (e.g. once the DB cache is warmed).
+    var v = t != null ? t : rec.orig;
+    if (rec.kind === "text") { rec.node.nodeValue = v; }
+    else { rec.el.setAttribute(rec.attr, v); }
   }
   function restoreAll() {
     for (var i = 0; i < records.length; i++) {
@@ -246,7 +250,15 @@
     var batches = chunk(need, 100);
     return Promise.all(batches.map(function (b) {
       return fetchTranslations(lang, b).then(function (res) {
-        for (var j = 0; j < b.length; j++) m[b[j]] = res[j] != null ? res[j] : b[j];
+        for (var j = 0; j < b.length; j++) {
+          var tr = res[j];
+          // Store ONLY a genuine translation. The edge fn echoes the Hebrew
+          // source for any string that failed its verify guards; caching that
+          // echo would freeze the string in Hebrew forever — leave it unresolved
+          // so it re-attempts next visit (e.g. once the DB cache is warmed).
+          if (tr != null && tr !== b[j]) m[b[j]] = tr;
+        }
+        apply(); // progressive paint: show each batch as it lands, not all-at-once
       }).catch(function () { /* keep Hebrew for this batch */ });
     })).then(function () { apply(); savePageCache(lang); });
   }
@@ -302,7 +314,7 @@
       "justify-content:center;padding:9px 16px;background:#0f1720;color:#eef2f5;font-size:13.5px;line-height:1.4}",
       ".swi18n-banner button{background:rgba(255,255,255,.14);color:#fff;border:0;",
       "border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:13px}",
-      ".swi18n-bar{position:fixed;inset-block-start:0;inset-inline:0;height:3px;z-index:2147483600;",
+      ".swi18n-bar{position:fixed;inset-block-start:0;inset-inline:0;height:4px;z-index:2147483600;",
       "background:linear-gradient(90deg,transparent,#16A34A,transparent);background-size:40% 100%;",
       "background-repeat:no-repeat;animation:swi18n-slide 1s linear infinite}",
       "@keyframes swi18n-slide{0%{background-position:-40% 0}100%{background-position:140% 0}}",
@@ -325,6 +337,14 @@
     document.body.appendChild(b);
   }
   function hideBar() { var b = document.getElementById("swi18n-bar"); if (b) b.remove(); }
+  // Mark the language triggers busy during an async switch — screen-reader signal
+  // + a styling hook — so a multi-second cold-language switch is not silent.
+  function setTriggersBusy(on) {
+    for (var i = 0; i < triggers.length; i++) {
+      if (on) triggers[i].setAttribute("aria-busy", "true");
+      else triggers[i].removeAttribute("aria-busy");
+    }
+  }
 
   // Legal / consent surfaces: the "Hebrew is binding" notice must be PRESENT and
   // NON-dismissible there (the user is about to take a legal action — consent,
@@ -375,7 +395,7 @@
       return;
     }
 
-    busy = true; showBar(); closeMenu();
+    busy = true; showBar(); setTriggersBusy(true); closeMenu();
     setDir(lang);
     // Fresh scan of the whole page for this switch (only when coming from Hebrew).
     if (current === SOURCE) { records = []; seenText = new WeakSet(); records = collect(document.body); }
@@ -384,7 +404,7 @@
     translateRecords(lang, records).then(function () {
       showBanner(lang); startObserver();
     }).catch(function () {}).then(function () {
-      busy = false; hideBar(); syncTriggers();
+      busy = false; hideBar(); setTriggersBusy(false); syncTriggers();
     });
   }
 

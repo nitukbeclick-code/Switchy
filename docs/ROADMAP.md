@@ -12,12 +12,12 @@
 
 | # | פריט | מצב | פירוט |
 |---|------|-----|--------|
-| 1.1 | 🔴 **התראות טלגרם על פעילות קהילה** | תשתית מוכנה, לא מחוברת | ליצור 3 Database Webhooks ‏(Insert) על `community_posts` / `community_replies` / `provider_reviews` → ‏`functions/v1/community-notify`, עם header ‏`x-webhook-secret` שנמשך מ-Vault ‏(`lead_webhook_secret`). דורש סשן עם ‏SUPABASE_ACCESS_TOKEN (ה-hosts כבר ב-allowlist) |
+| 1.1 | ✅ **התראות טלגרם על פעילות קהילה** | אומת חי 2026-07-09 | נמצא כבר מחובר בפרודקשן: 3 טריגרים ‏after-insert → ‏notify_community_on_insert ‏(pg_net + ‏Vault ‏lead_webhook_secret) → ‏community-notify. בדיקת E2E: פוסט בדיקה ← ‏HTTP 200 ← נוקה |
 | 1.2 | ✅ **דירוגי קהילה בעמודי הספק באתר** | בוצע 2026-07-09 | ‏build.js ימשוך `provider_reviews` (anon SELECT, אותו דפוס כמו הקטלוג החי) ויחתום ממוצע כוכבים + N ביקורות בעמוד כל ספק + ‏JSON-LD ‏AggregateRating → כוכבים בגוגל |
 | 1.3 | ✅ **פיד קהילה בעמוד הבית** | בוצע 2026-07-09 | רצועת "חם בקהילה עכשיו" — 3 הפוסטים האחרונים (fetch anon ב-JS, fail-soft) עם CTA "הצטרפו לדיון" |
 | 1.4 | ✅ **שיתוף פוסט לוואטסאפ** | בוצע 2026-07-09 | כפתור שיתוף על כל פוסט ב-community.js (‏wa.me + deep-link לפוסט) |
 | 1.5 | ✅ **לידרבורד תורמים** | בוצע 2026-07-09 | טאב "מובילי הקהילה" — ספירת פוסטים+תגובות למשתמש (query מצטבר), באדג'ים 🥇🥈🥉 |
-| 1.6 | 🟡 **מודרציה עצמית** | בינוני | כפתור "דווח" (טבלת reports + התראת טלגרם לצוות דרך notify-lead) + מחיקת פוסט ע"י הכותב. דורש migration קטן — אריץ כשיש גישת SQL |
+| 1.6 | 🟡 **מודרציה עצמית** | טבלת ה-reports כבר קיימת בפרודקשן (נבדק 2026-07-09) | נשאר רק צד ה-UI באפליקציה/אתר לכפתור "דווח" ומחיקה-עצמית — לא דורש migration |
 | 1.7 | 🔴 **טלגרם דו-כיווני עם AI** | קיים חלקית | ‏telegram-user-webhook קיים — לחבר ל-Gemini (כמו support-agent) כדי שהבוט יענה תשובות אמיתיות |
 
 ## גל 2 — המוצר באתר
@@ -29,9 +29,9 @@
 | 2.3 | ✅ **עמוד "עסקאות היום"** | בוצע 2026-07-09 (deals.html) | ‏deals.html נבנה ב-build מהקטלוג: הזול בכל קטגוריה + הקפיצות הקרובות (after-price) — מזין את ה-ticker הקיים |
 | 2.4 | ✅ **מצב חכם ל-hero-finder** | בוצע 2026-07-09 | לזכור קטגוריה+סכום אחרונים ב-localStorage; ‏deep-link ‏`/#finder=internet&bill=120` לשיתוף |
 
-## גל 3 — תשתית Supabase (ממתין לך 🔴)
+## גל 3 — תשתית Supabase — ✅ אומת חי (2026-07-09, דרך מחבר ה-MCP; לא נדרש טוקן)
 
-הרשימה מהסשנים הקודמים — דורשת סשן חדש עם ‏SUPABASE_ACCESS_TOKEN:
+נבדק מול הפרודקשן: ה-webhooks חיים (1.1), ‏meetings_guard כולל 4 שעות + ‏gcal_event_id, ‏get_lead_notify_config כולל את מפתחות Google ב-whitelist, כל ה-secrets ב-Vault (כולל ‏google_service_account_key/‏calendar_id/‏zoom_*), ‏cron פעיל (9 משימות). הרשימה המקורית:
 1. ‏3 ה-webhooks של הקהילה (ראה 1.1).
 2. הרצת ‏`meetings_guard()` המעודכן: מינימום 4 שעות + הגבלת 7 ספקים + עמודת
    ‏`gcal_event_id` + הוספת ‏`google_service_account_key`/`google_calendar_id`

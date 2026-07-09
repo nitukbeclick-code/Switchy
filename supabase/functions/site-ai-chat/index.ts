@@ -54,6 +54,7 @@ import { runAgent } from "../_shared/agent.ts";
 import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
 import { lookupOpenLead } from "../_shared/leadlookup.ts";
 import { type BillHint, extractBillHint, MAX_BILL_BASE64_LEN, parseImage } from "../_shared/bill.ts";
+import { chunkText, sseFrame } from "../_shared/sse.ts";
 import {
   appendTurn,
   asChatTurns,
@@ -430,12 +431,51 @@ async function handle(req: Request): Promise<Response> {
   // Best-effort rate-limit audit row, never blocks the reply.
   insertRow("chat_messages", { ip: ip || null }).catch(() => {});
 
-  const out: Record<string, unknown> = { reply: finalReply };
-  if (offerLead) out.offerLead = true;
-  if (leadCaptured || leadCapturedByTool) out.leadCaptured = true;
-  if (contextTruncated) out.contextTruncated = true;
-  if (sessionId) out.sessionId = sessionId;
-  return json(req, out);
+  // Response metadata (identical set for the buffered + streamed paths).
+  const meta: Record<string, unknown> = {};
+  if (offerLead) meta.offerLead = true;
+  if (leadCaptured || leadCapturedByTool) meta.leadCaptured = true;
+  if (contextTruncated) meta.contextTruncated = true;
+  if (sessionId) meta.sessionId = sessionId;
+
+  // ── Flag-gated streaming (opt-in via ?stream=1) ────────────────────────────
+  // The buffered JSON path below is the DEFAULT and byte-identical to before —
+  // nothing streams unless a client explicitly asks. Streaming delivers the SAME
+  // already-computed reply as progressive `token` events + a trailing `meta`/
+  // `done`, so the honesty rails and the metadata contract are unchanged; only the
+  // transport differs. (Real time-to-first-token streaming is a later, live-
+  // verified upgrade that swaps the chunk SOURCE — this transport stays.)
+  let wantsStream = false;
+  try {
+    wantsStream = new URL(req.url).searchParams.get("stream") === "1";
+  } catch { /* malformed URL → buffered default */ }
+
+  if (wantsStream) {
+    const enc = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        try {
+          for (const c of chunkText(finalReply)) {
+            controller.enqueue(enc.encode(sseFrame("token", { text: c })));
+          }
+          controller.enqueue(enc.encode(sseFrame("meta", meta)));
+          controller.enqueue(enc.encode(sseFrame("done", {})));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        ...corsHeaders(req),
+      },
+    });
+  }
+
+  return json(req, { reply: finalReply, ...meta });
 }
 
 // Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).

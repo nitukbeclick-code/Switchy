@@ -21,7 +21,7 @@
 // restored afterwards (no global leak, no network, no port).
 // Run from supabase/functions/:  deno task test
 
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 import { captureServeHandler, jsonResponse, withFetchStub } from "./_capture_handler.ts";
 
 // ── Test rig ──────────────────────────────────────────────────────────────────
@@ -321,6 +321,96 @@ Deno.test("HARDEN: an oversize message is rejected (400) BEFORE any AI work — 
         u.includes("openrouter.ai")
       ),
       "no paid provider hit for an over-cap payload",
+    );
+  });
+});
+
+// ── Phase 3: flag-gated SSE streaming (opt-in via ?stream=1) ────────────────────
+// The buffered JSON path is the DEFAULT; ?stream=1 delivers the SAME reply as SSE
+// token/meta/done frames. Providers are stubbed down here, so the streamed content
+// is the hard-fallback reply — proving the transport works regardless of which
+// degradation tier produced the reply, and that the metadata (sessionId) rides the
+// trailing `meta` event exactly like the JSON path's field.
+
+Deno.test("?stream=1 returns an SSE stream of token/meta/done frames (metadata in the trailer)", async () => {
+  await withFetchStub(rig(), async () => {
+    const r = await Promise.resolve(handler(new Request("https://edge/site-ai-chat?stream=1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "cf-connecting-ip": "203.0.113.7" },
+      body: JSON.stringify({ message: "מה הכי זול בסלולר?", sessionId: "sess-streamAA1" }),
+    })));
+    assertEquals(r.status, 200);
+    assert((r.headers.get("content-type") ?? "").includes("text/event-stream"), "SSE content-type");
+    const text = await r.text();
+    assertStringIncludes(text, "event: token");
+    assertStringIncludes(text, "event: meta");
+    assertStringIncludes(text, "event: done");
+    // The echoed sessionId rides the trailing meta event (same metadata as JSON).
+    assertStringIncludes(text, "sess-streamAA1");
+  });
+});
+
+Deno.test("without ?stream=1 the response stays buffered JSON (streaming is strictly opt-in)", async () => {
+  await withFetchStub(rig(), async () => {
+    const r = await post({ message: "מה הכי זול בסלולר?", sessionId: "sess-bufferAA1" });
+    assertEquals(r.status, 200);
+    assertFalse((r.headers.get("content-type") ?? "").includes("text/event-stream"));
+    const body = await r.json();
+    assert(typeof body.reply === "string" && body.reply.length > 0);
+  });
+});
+
+// ── PR4: the in-chat bill photo is COST-GUARDED (paid Gemini Vision) ─────────────
+// A ledger row is written to bill_analyses immediately BEFORE a Vision call, so
+// "no ledger row" is a sound proxy for "no paid Vision call". These pin the two
+// guards: the ~6MB size ceiling and the strict per-IP daily Vision cap.
+
+// rig + an explicit bill_analyses SELECT stub (the Vision daily-cap read) returning
+// `visionRows` synthetic rows. Placed FIRST so it wins over rig's generic /rest/v1/
+// handler for that URL; the ledger INSERT (no ?select) still falls through + records.
+function imageRig(visionRows: number, writes: string[]) {
+  return [
+    {
+      match: (u: string) => u.includes("/rest/v1/bill_analyses?select=id"),
+      respond: () => jsonResponse(Array.from({ length: visionRows }, (_, i) => ({ id: `b${i}` }))),
+    },
+    ...rig(0, writes),
+  ];
+}
+
+Deno.test("an OVERSIZED in-chat image is size-guarded — no Vision ledger row (⟹ no paid Vision)", async () => {
+  const writes: string[] = [];
+  await withFetchStub(imageRig(0, writes), async () => {
+    // > MAX_BILL_BASE64_LEN (~6MB); the message itself stays under MAX_INPUT_LEN.
+    const bigImage = "data:image/jpeg;base64," + "A".repeat(6 * 1024 * 1024 + 10);
+    const r = await post({ message: "בדוק לי את החשבון", imageBase64: bigImage });
+    assertEquals(r.status, 200);
+    await r.body?.cancel();
+    assertFalse(writes.some((u) => u.includes("/rest/v1/bill_analyses")), "oversized image: no ledger row");
+  });
+});
+
+Deno.test("an over-cap IP is Vision-rate-limited — no ledger row for a valid in-chat image", async () => {
+  const writes: string[] = [];
+  // 3 prior bill_analyses rows today ⇒ CHAT_VISION_DAILY_LIMIT reached ⇒ skip Vision.
+  await withFetchStub(imageRig(3, writes), async () => {
+    const r = await post({ message: "בדוק לי את החשבון", imageBase64: "data:image/jpeg;base64,AAAABBBBCCCC" });
+    assertEquals(r.status, 200);
+    await r.body?.cancel();
+    assertFalse(writes.some((u) => u.includes("/rest/v1/bill_analyses")), "over-cap: no ledger row / no Vision");
+  });
+});
+
+Deno.test("a valid in-chat image UNDER the cap writes the Vision ledger row (the OCR path fires)", async () => {
+  const writes: string[] = [];
+  await withFetchStub(imageRig(0, writes), async () => {
+    const r = await post({ message: "בדוק לי את החשבון", imageBase64: "data:image/jpeg;base64,AAAABBBBCCCC" });
+    assertEquals(r.status, 200); // Vision is stubbed to 503 ⇒ fail-soft to a buffered reply
+    await r.body?.cancel();
+    // The ledger INSERT (POST, no ?select) is the cost-guard record written before Vision.
+    assert(
+      writes.some((u) => u.includes("/rest/v1/bill_analyses") && !u.includes("select")),
+      "under-cap image: a ledger row is written before the Vision attempt",
     );
   });
 });

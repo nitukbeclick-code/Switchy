@@ -52,7 +52,8 @@ const MAX_IMAGE_DATAURL_LEN = 6 * 1024 * 1024;
 
 const GREETING =
   "היי! אני Switchy AI 🤖 אפשר לשאול אותי על מסלולי סלולר, אינטרנט, טלוויזיה, " +
-  "חבילות משולבות וחבילות לחו״ל — ואני אעזור למצוא מה משתלם. במה אפשר לעזור?";
+  "חבילות משולבות וחבילות לחו״ל — ואפשר גם לצרף תמונה של החשבון 📎 ואבדוק אם יש איפה לחסוך. " +
+  "במה אפשר לעזור?";
 
 /** Read or mint a session id (sessionStorage, fail-soft). */
 function loadSessionId(): string {

@@ -10,7 +10,6 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/auth_service.dart';
 import '../../services/session_actions.dart';
-import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
@@ -980,13 +979,17 @@ class _TelegramRowState extends State<_TelegramRow> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
+      // Client-side Telegram sending was removed for security (no bot token in
+      // the app); delivery is server-side. "Test" now honestly reports whether
+      // this account is linked to a Telegram chat, which is what enables the
+      // server to deliver notifications.
       final appState = Provider.of<AppState>(context, listen: false);
-      final success = await TelegramService.testConnection(appState.userTelegramChatId);
+      final linked = appState.userTelegramChatId.isNotEmpty;
       if (!mounted) return;
-      if (success) {
-        AppSnackBar.success(context, 'ההודעה נשלחה בהצלחה!');
+      if (linked) {
+        AppSnackBar.success(context, 'הטלגרם שלך מחובר — התראות יישלחו מהשרת.');
       } else {
-        AppSnackBar.error(context, 'כשל בשליחת הודעה. אנא נסה שוב.');
+        AppSnackBar.error(context, 'הטלגרם אינו מחובר. חברו מחדש כדי לקבל התראות.');
       }
     } catch (e) {
       if (!mounted) return;

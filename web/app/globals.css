@@ -28,9 +28,13 @@
        • -text shades are for the SAME accent used as small text / inline links on
          a light surface, where 4.5:1 is required. The headline #16A34A green is
          only 3.30:1 on white — it FAILS as text. */
-  --accent: #16a34a; /* ACTION (green) — fills/CTAs/active nav/focus */
-  --accent-hover: #15803d; /* darker green for hover */
-  --accent-contrast: #ffffff; /* text on green */
+  /* Deepened from #16a34a so WHITE label text on a green fill jumps from 3.3:1
+     to ~4.4:1 — at/above AA for the bold CTA labels (3:1 large-text bar), and
+     matching the static site's .btn--primary deep green so the two surfaces read
+     as one system. Dark theme keeps its bright #4ade80. */
+  --accent: #15803d; /* ACTION (green) — fills/CTAs/active nav/focus */
+  --accent-hover: #126c34; /* darker green for hover */
+  --accent-contrast: #ffffff; /* text on green (now ≥4.5:1) */
   --accent-text: #0f7a37; /* green for text/links on light bg (≥4.5:1) */
   /* VALUE tier — mono-green brand: savings/win states use the SAME green system
      (fill #16A34A / AA text #15803D), never amber/orange. Token names kept so
@@ -255,14 +259,20 @@ h4 {
   }
 }
 
-a {
-  /* AA: link text on a light surface uses the text-grade green (≥4.5:1), not the
-     headline #16A34A fill green (3.30:1). */
-  color: var(--accent-text);
-  text-decoration: none;
-}
-a:hover {
-  color: var(--accent-hover);
+/* In @layer base so a link's own text-colour utility (e.g. text-accent-contrast
+   on a green CTA, text-foreground, text-white) OVERRIDES this default — an
+   UNLAYERED `a` rule beats every Tailwind utility layer and was forcing green
+   text onto white-label CTAs (green-on-green). Same fix already applied to the
+   headings rule above. Links with no colour utility still get the text-grade
+   green (≥4.5:1 on light), not the headline fill green. */
+@layer base {
+  a {
+    color: var(--accent-text);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--accent-hover);
+  }
 }
 
 /* Visible, accessible focus ring (green = focus, per brand). The fill green is

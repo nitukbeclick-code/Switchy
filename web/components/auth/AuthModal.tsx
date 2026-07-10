@@ -268,13 +268,13 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
               <label className="flex items-start gap-2">
                 <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-0.5 accent-[var(--accent)]" />
                 <span>
-                  קראתי ואני מסכים/ה ל<a href="/terms" target="_blank" className="text-accent-text underline">תנאי השימוש</a>
+                  קראתי ואני מסכים/ה ל<a href="/terms" target="_blank" rel="noopener noreferrer" className="text-accent-text underline">תנאי השימוש</a>
                 </span>
               </label>
               <label className="flex items-start gap-2">
                 <input type="checkbox" checked={privacy} onChange={(e) => setPrivacy(e.target.checked)} className="mt-0.5 accent-[var(--accent)]" />
                 <span>
-                  קראתי ואני מסכים/ה ל<a href="/privacy" target="_blank" className="text-accent-text underline">מדיניות הפרטיות</a>
+                  קראתי ואני מסכים/ה ל<a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-accent-text underline">מדיניות הפרטיות</a>
                 </span>
               </label>
               <label className="flex items-start gap-2">

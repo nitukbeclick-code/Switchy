@@ -123,7 +123,7 @@ function Media({ type, url }: { type: PostRow["media_type"]; url: string | null 
   if (!url) return null;
   if (type === "image") {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" loading="lazy" decoding="async" className="mt-3 max-h-96 w-full rounded-xl border border-border object-cover" />;
+    return <img src={url} alt="תמונה שצורפה לדיון בקהילה" loading="lazy" decoding="async" className="mt-3 max-h-96 w-full rounded-xl border border-border object-cover" />;
   }
   if (type === "audio") {
     return <audio controls src={url} className="mt-3 w-full" />;

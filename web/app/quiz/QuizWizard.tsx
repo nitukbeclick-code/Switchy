@@ -86,6 +86,7 @@ interface Answers {
   priority: string; // a PRIORITIES value
   lines: string; // a LINES value
   abroad: string; // an ABROAD value
+  currentBill: string; // OPTIONAL current monthly bill (₪) — for the honest saving estimate
 }
 
 const INITIAL: Answers = {
@@ -94,6 +95,7 @@ const INITIAL: Answers = {
   priority: "balanced",
   lines: "1",
   abroad: "no",
+  currentBill: "",
 };
 
 // "empty" is distinct from "error": the request succeeded but the formula found
@@ -191,6 +193,10 @@ export default function QuizWizard() {
           priority: answers.priority,
           lines: Number(answers.lines) || undefined,
           abroad: wantsAbroad,
+          // Optional: only sent when the user typed a positive bill. The server
+          // (posNum) rejects ""/0/negatives → hasBill stays false and no saving is
+          // ever fabricated. The saving itself is computed + clamped server-side.
+          currentBill: Number(answers.currentBill) || undefined,
           limit: 5,
         }),
       });
@@ -432,13 +438,38 @@ export default function QuizWizard() {
               />
             )}
             {step === 1 && (
-              <OptionGrid
-                name={`${groupId}-budget`}
-                labelledById={`${groupId}-legend`}
-                options={BUDGETS.map((b) => ({ value: b.value, label: b.label }))}
-                selected={answers.budget}
-                onSelect={(v) => setAnswer("budget", v)}
-              />
+              <>
+                <OptionGrid
+                  name={`${groupId}-budget`}
+                  labelledById={`${groupId}-legend`}
+                  options={BUDGETS.map((b) => ({ value: b.value, label: b.label }))}
+                  selected={answers.budget}
+                  onSelect={(v) => setAnswer("budget", v)}
+                />
+                {/* OPTIONAL current bill → the honest, server-computed saving
+                    estimate in the results (mirrors the /wallet input). Blank ⇒
+                    no saving shown; never a fabricated figure. */}
+                <div className="mt-5">
+                  <label
+                    htmlFor={`${groupId}-current-bill`}
+                    className="block text-sm font-medium text-foreground"
+                  >
+                    החשבון החודשי הנוכחי (₪) — אופציונלי, לחישוב חיסכון משוער
+                  </label>
+                  <input
+                    id={`${groupId}-current-bill`}
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={1}
+                    dir="ltr"
+                    placeholder="0"
+                    value={answers.currentBill}
+                    onChange={(e) => setAnswer("currentBill", e.target.value)}
+                    className="interactive mt-2 w-full max-w-[12rem] rounded-xl border border-border bg-surface px-3 py-2 text-end text-foreground placeholder:text-muted focus-visible:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  />
+                </div>
+              </>
             )}
             {step === 2 && (
               <OptionGrid
@@ -634,6 +665,12 @@ function Results({
           <p className="mt-1 text-sm text-muted">
             דירוג לפי ההעדפות שלך, מתוך הקטלוג האמיתי שלנו. ללא העדפת ספק.
           </p>
+          {hasBill && (
+            <p className="mt-1 text-xs text-muted">
+              החיסכון המוצג הוא הערכה לפי החשבון שהזנתם מול המסלול בקטלוג — חיסכון
+              בפועל תלוי בתנאי הספק ואינו מובטח.
+            </p>
+          )}
         </div>
         <button
           type="button"

@@ -136,6 +136,23 @@ describe("POST /api/recommend", () => {
     expect(json.matches.some((m) => m.annualSaving > 0)).toBe(true);
   });
 
+  it("never fabricates a saving for a zero / negative / non-numeric bill", async () => {
+    // The quiz sends currentBill only when positive, but the server must be the
+    // real gate: posNum rejects these, so hasBill stays false and every saving is 0.
+    for (const currentBill of [0, -50, "0", "abc"] as const) {
+      const res = await POST(
+        postJson({ category: "cellular", priority: "price", currentBill, limit: 10 }, {}),
+      );
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as {
+        hasBill: boolean;
+        matches: { annualSaving: number }[];
+      };
+      expect(json.hasBill).toBe(false);
+      expect(json.matches.every((m) => m.annualSaving === 0)).toBe(true);
+    }
+  });
+
   it("defaults the limit to 5 and clamps it to 10", async () => {
     const res = await POST(postJson({ category: "internet", limit: 999 }));
     const json = (await res.json()) as { matches: unknown[] };

@@ -8,6 +8,7 @@ import { render, screen } from "@testing-library/react";
 import {
   CONVERSATION_STATUS_META,
   ConversationStatusPill,
+  formatMinutes,
   LEAD_STATUS_META,
   StatusPill,
   when,
@@ -20,6 +21,17 @@ describe("CRM ui helpers", () => {
     expect(when("")).toBe("");
     expect(when("not-a-date")).toBe("");
     expect(when("2026-07-01T10:00:00Z")).not.toBe(""); // a real he-IL string
+  });
+
+  it("formatMinutes renders he-IL durations and is null-safe", () => {
+    expect(formatMinutes(null)).toBe("—");
+    expect(formatMinutes(undefined)).toBe("—");
+    expect(formatMinutes(-5)).toBe("—");
+    expect(formatMinutes(Infinity)).toBe("—");
+    expect(formatMinutes(0)).toBe("0 דק׳");
+    expect(formatMinutes(42)).toBe("42 דק׳");
+    expect(formatMinutes(60)).toBe("1 שע׳");
+    expect(formatMinutes(125)).toBe("2 שע׳ 5 דק׳");
   });
 
   it("LEAD_STATUS_META covers exactly the four pipeline stages", () => {

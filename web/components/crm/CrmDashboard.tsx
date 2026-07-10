@@ -9,10 +9,11 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
-import { type CrmOverview, type CrmPipeline, fetchCrmOverview } from "@/lib/crm-admin";
+import { type CrmOverview, type CrmPipeline, type CrmSla, fetchCrmOverview, fetchCrmSla } from "@/lib/crm-admin";
 import {
   BTN_GHOST,
   ConversationStatusPill,
+  formatMinutes,
   LEAD_STATUS_META,
   NoticeCard,
   StatCard,
@@ -69,15 +70,19 @@ function DashboardSkeleton() {
 
 export default function CrmDashboard() {
   const [data, setData] = useState<CrmOverview | null>(null);
+  const [sla, setSla] = useState<CrmSla | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
-    const d = await fetchCrmOverview();
+    // Overview drives the error/empty state; the SLA rollup is best-effort — if it
+    // fails we simply hide that section rather than blocking the whole dashboard.
+    const [d, sm] = await Promise.all([fetchCrmOverview(), fetchCrmSla()]);
     if (d) setData(d);
     else setError(true);
+    setSla(sm?.sla ?? null);
     setLoading(false);
   }, []);
 
@@ -122,6 +127,31 @@ export default function CrmDashboard() {
       </div>
 
       <PipelineBar pipeline={p} total={total} />
+
+      {sla && (
+        <section>
+          <h2 className="mb-3 font-display text-lg font-bold text-ink">מהירות טיפול (Speed-to-Lead)</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatCard
+              label="זמן תגובה חציוני"
+              value={formatMinutes(sla.medianResponseMinutes)}
+              hint={sla.responseSampleSize > 0 ? `מתוך ${he(sla.responseSampleSize)} לידים שטופלו` : "אין עדיין נתוני תגובה"}
+            />
+            <StatCard
+              label="ממתינים למענה"
+              value={he(sla.uncontacted)}
+              tone={sla.uncontacted > 0 ? "info" : "neutral"}
+              hint={sla.oldestUncontactedAt ? `הוותיק מ־${when(sla.oldestUncontactedAt)}` : "כל הלידים טופלו"}
+            />
+            <StatCard
+              label={`מעבר ל-SLA (${sla.slaHours} שע׳)`}
+              value={he(sla.breaching)}
+              tone={sla.breaching > 0 ? "danger" : "value"}
+              hint={sla.breaching > 0 ? "לידים חדשים שממתינים מעל הזמן" : "אין חריגות מה-SLA"}
+            />
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 font-display text-lg font-bold text-ink">שיחות אחרונות</h2>

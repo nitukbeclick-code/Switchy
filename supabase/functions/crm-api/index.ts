@@ -7,6 +7,7 @@
 //
 // Actions (see SHARED CONTRACT):
 //   overview            → pipeline counts + recent conversations
+//   slaMetrics          → speed-to-lead: median response + uncontacted/SLA-breach
 //   listConversations   → filtered conversation list
 //   getThread           → one conversation's contact + messages
 //   sendReply           → store an out/rep message, best-effort Graph send
@@ -33,6 +34,12 @@ import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
 import { requireAdmin } from "../_shared/admin.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 import { jlog } from "../_shared/log.ts";
+// Speed-to-lead metrics reuse the SAME shared sources as the Telegram digest/nudge
+// so the CRM never drifts from the team's push alerts: the first-response median
+// (medianMinutes) and the response-SLA window (SLA_HOURS). Both are pure/side-
+// effect-free (lead-digest/lib.ts is explicitly safe to import in isolation).
+import { medianMinutes } from "../_shared/digests.ts";
+import { SLA_HOURS } from "../lead-digest/lib.ts";
 import {
   auditDetail,
   clampLimit,
@@ -200,6 +207,39 @@ async function actOverview(): Promise<Response> {
   });
 
   return json({ pipeline, recent });
+}
+
+// slaMetrics {} → speed-to-lead health for the dashboard. Three real figures:
+//   • medianResponseMinutes — median (created_at → contacted_at) over the last 200
+//     contacted leads (median, not mean, so one very late reply can't skew it —
+//     matches the weekly report's medianContactMinutes).
+//   • uncontacted — leads still `new` with no contacted_at (awaiting first touch).
+//   • breaching — those uncontacted MORE than SLA_HOURS (the single most actionable
+//     number; identical threshold to the Telegram stale-lead nudge).
+// Nothing is fabricated: no contacted leads → median null; empty queue → 0.
+async function actSlaMetrics(): Promise<Response> {
+  const nowMs = Date.now();
+  const slaCutoff = q(new Date(nowMs - SLA_HOURS * 3_600_000).toISOString());
+  const [uncontacted, breaching, oldestRows, contactedRows] = await Promise.all([
+    countRows(`/rest/v1/leads?status=eq.new&contacted_at=is.null&select=id`),
+    countRows(`/rest/v1/leads?status=eq.new&contacted_at=is.null&created_at=lt.${slaCutoff}&select=id`),
+    fetchRows<Row>(`/rest/v1/leads?status=eq.new&contacted_at=is.null&order=created_at.asc&limit=1&select=created_at`),
+    fetchRows<Row>(`/rest/v1/leads?contacted_at=not.is.null&order=contacted_at.desc&limit=200&select=created_at,contacted_at`),
+  ]);
+  const oldestUncontactedAt = oldestRows && oldestRows.length ? (s(oldestRows[0].created_at) || null) : null;
+  const medianResponseMinutes = contactedRows
+    ? medianMinutes(contactedRows.map((r) => ({ created_at: s(r.created_at), contacted_at: s(r.contacted_at) })))
+    : null;
+  return json({
+    sla: {
+      slaHours: SLA_HOURS,
+      uncontacted,
+      breaching,
+      oldestUncontactedAt,
+      medianResponseMinutes,
+      responseSampleSize: contactedRows?.length ?? 0,
+    },
+  });
 }
 
 // listConversations {status?,search?,limit?} → enriched conversation list.
@@ -693,6 +733,8 @@ Deno.serve(async (req: Request) => {
     switch (action) {
       case "overview":
         return await actOverview();
+      case "slaMetrics":
+        return await actSlaMetrics();
       case "listConversations":
         return await actListConversations(body);
       case "getThread":

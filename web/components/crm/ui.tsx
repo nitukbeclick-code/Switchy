@@ -27,6 +27,17 @@ export function when(ts: string | null | undefined): string {
     : d.toLocaleString("he-IL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+/** A short he-IL duration from minutes ("42 דק׳", "2 שע׳ 5 דק׳"), or "—" for a
+ *  null/negative/non-finite value. Mirrors the edge formatMinutes (digests.ts). */
+export function formatMinutes(mins: number | null | undefined): string {
+  if (mins == null || !Number.isFinite(mins) || mins < 0) return "—";
+  const m = Math.round(mins);
+  if (m < 60) return `${m} דק׳`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r > 0 ? `${h} שע׳ ${r} דק׳` : `${h} שע׳`;
+}
+
 type Tone = "neutral" | "info" | "value" | "danger";
 
 // The single source of truth for how a lead stage is shown: Hebrew label + a tone

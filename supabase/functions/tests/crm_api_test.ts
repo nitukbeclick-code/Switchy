@@ -27,6 +27,7 @@ import {
   shapeMeeting,
   shapeMeetingDetail,
   shapeMeetingEvent,
+  shapeMember,
   shapeSellableLead,
   snippet,
   SNIPPET_LEN,
@@ -311,6 +312,42 @@ Deno.test("shapeSellableLead null-coerces an absent consent stamp (no fabricatio
   const d = shapeSellableLead({ id: "L2", name: "x", phone: "05200", status: "new" });
   assertEquals(d.consentShareAt, null);
   assertEquals(d.email, null);
+});
+
+// ── shapeMember (C.2 roles roster) ───────────────────────────────────────────
+
+Deno.test("shapeMember maps uid/role/grantedAt + the member's own name/email only", () => {
+  const d = shapeMember(
+    { uid: "u1", role: "rep", granted_at: "2026-07-10T10:00:00Z", updated_at: "2026-07-10T11:00:00Z" },
+    { name: "דנה", email: "d@x.com" },
+  );
+  assertEquals(d, {
+    uid: "u1",
+    role: "rep",
+    name: "דנה",
+    email: "d@x.com",
+    grantedAt: "2026-07-10T10:00:00Z",
+  });
+});
+
+Deno.test("shapeMember is an allowlist — a stray profile column (is_admin) can NEVER leak", () => {
+  const d = shapeMember(
+    { uid: "u2", role: "viewer", granted_at: "2026-07-10T10:00:00Z" },
+    // A profile object that accidentally carries privileged fields:
+    { name: "רן", email: "r@x.com", is_admin: true, phone: "0521111111" } as Record<string, unknown>,
+  );
+  const keys = Object.keys(d);
+  for (const leak of ["is_admin", "phone", "updated_at", "granted_by"]) {
+    assertFalse(keys.includes(leak), `${leak} must not appear in the member DTO`);
+  }
+  assertEquals(d.role, "viewer");
+});
+
+Deno.test("shapeMember null-coerces a missing profile (no fabrication)", () => {
+  const d = shapeMember({ uid: "u3", role: "rep", granted_at: null });
+  assertEquals(d.name, null);
+  assertEquals(d.email, null);
+  assertEquals(d.grantedAt, null);
 });
 
 // ── aggregateReps (per-rep leaderboard) ──────────────────────────────────────

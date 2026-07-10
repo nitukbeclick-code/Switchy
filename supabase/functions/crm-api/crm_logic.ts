@@ -391,3 +391,33 @@ export function shapeSellableLead(r: Record<string, unknown>): SellableLead {
     createdAt: emptyToNull(r.created_at),
   };
 }
+
+// ── CRM members (per-rep roles — C.2) ────────────────────────────────────────
+
+// The member fields the admin roles tab shows. uid + role + when granted, plus a
+// display name/email joined from the member's own profile (never any other PII).
+// ALLOWLIST: is_admin and every other profile column are deliberately NOT mapped,
+// so this DTO can only ever carry the member's identity + their CRM role.
+export interface MemberSummary {
+  uid: string;
+  role: string;
+  name: string | null;
+  email: string | null;
+  grantedAt: string | null;
+}
+
+/** Shape a `crm_members` row (+ the member's own profile, when available) into
+ *  the roles-tab DTO. `profile` is the caller-resolved {name,email} for this uid;
+ *  absent → null. Nothing else from the profile is exposed. */
+export function shapeMember(
+  r: Record<string, unknown>,
+  profile?: { name?: unknown; email?: unknown },
+): MemberSummary {
+  return {
+    uid: s(r.uid),
+    role: s(r.role),
+    name: profile ? emptyToNull(profile.name) : null,
+    email: profile ? emptyToNull(profile.email) : null,
+    grantedAt: emptyToNull(r.granted_at),
+  };
+}

@@ -115,7 +115,7 @@
 | # | פריט | מצב | פירוט |
 |---|------|-----|--------|
 | C.1 | ✅ **תצוגת לידים לשיתוף (קריאה-בלבד)** | בוצע 2026-07-10 (PR #140, באישור בעלים) | טאב "לידים לשיתוף": action `listSellableLeads` — **רק** לידים עם `consent_share_at` (מגן כפול: query `not.is.null` + `isSellable` מ-`lead-export/lib.ts`), allowlist DTO `shapeSellableLead` (ללא source_ip/notes — נבדק), **audit** לכל צפייה (`crm_lead_export`). **קריאה-בלבד** — לא דוחף לרוכש; ה-cron ה-secret-gated נשאר הנתיב היחיד לרוכש. הערה משפטית ב-UI (§7b/DPA באחריות הבעלים). |
-| C.2 | 🔴 **הרשאות ברמת נציג** | **תוכנית אבטחה בלבד** — [`docs/CRM_C2_ROLES_PLAN.md`](./CRM_C2_ROLES_PLAN.md) (2026-07-10) | היום יש רק `is_admin` (בינארי, fail-closed). הפרדת admin↔rep דורשת מודל הרשאות חדש — **סיכון הסלמת-הרשאות (self-elevation)**. התוכנית כתובה עם threat model + `requireRole` fail-closed + **צ'קליסט אימות פרוד** שחייב לעבור לפני כל קוד. **חסום** עד אישור בעלים מפורש + אימות הצ'קליסט. |
+| C.2 | 🟡 **הרשאות ברמת נציג** | **בסיס נבנה** — [`docs/CRM_C2_ROLES_PLAN.md`](./CRM_C2_ROLES_PLAN.md); אימות פרוד §6 עבר (2026-07-10) | טבלת `crm_members` ייעודית (option B: RLS-on, ללא policies ל-anon/authenticated, grants מבוטלים) + `requireCrmAccess` fail-closed (is_admin superset) + gating פר-action ב-crm-api + actions `listMembers`/`setMemberRole` (admin-only, audited, מסרב שינוי-עצמי) + טסטים. **T1 (self-elevation) סגור מבנית.** נותר: **rollout ע"י הבעלים** (החלת המיגרציה + פריסת crm-api) + **PR2: טאב "צוות והרשאות"** ב-web. |
 | C.3 | 🔴 **קמפיינים/תבניות WhatsApp יוצאות** | §30A consent gating | שליחה יזומה מרובה — חייב שער הסכמה שיווקי + אישור משפטי. |
 
 ---

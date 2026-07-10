@@ -102,7 +102,7 @@
 
 | # | פריט | מצב | פירוט |
 |---|------|-----|--------|
-| B.1 | 🟢 **טאב פגישות** | edge: actions חדשות (`listMeetings`/`getMeeting`/`setMeetingStatus`) על `meetings`+`meeting_events` · web: טאב חדש | ניהול פגישות Zoom כמו הלידים (allowlist DTO, audit). |
+| B.1 | ✅ **טאב פגישות** | בוצע 2026-07-10 (PR #127) | actions חדשות `listMeetings`/`getMeeting`/`setMeetingStatus` על `meetings`+`meeting_events` (allowlist DTO `shapeMeeting`/`shapeMeetingDetail`/`shapeMeetingEvent` — נבדקו; email/join_url רק בפירוט, gcal/tg-id לעולם לא). טאב "פגישות" חדש: רשימה מסוננת + מגירת פרטים (קישור Zoom + שינוי סטטוס + timeline). כל שינוי סטטוס מבוקר (`meeting_events` + `security_audit_log`). |
 | B.2 | ✅ **פעולות מרובות (bulk)** | בוצע 2026-07-10 (PR #126) | בחירה-מרובה בטבלת/כרטיסי הלידים (checkbox + "בחר הכול") → העברת שלב מרובה (יצירת-קשר/אבוד; `won` נשאר בזרימת המגירה). כל כתיבה = אותו `setLeadStatus` מבוקר, מפוזר בגלים חסומי-מקביליות (`lib/batch.ts` `runChunked`, נבדק). |
 | B.3 | 🟢 **תצוגת נציג + לידרבורד** | edge: אין (סינון `claimed_by`) · web | סינון לפי נציג + טבלת ביצועים מ-`lead_events` (סגירות/חיסכון לנציג). |
 | B.4 | 🟡 **עריכת `leads.notes`** | edge: action `setLeadNote` · web | עריכת שדה ההערה הראשי (בנוסף לציר-הזמן). דורש החלטה: לשמור היסטוריה? |

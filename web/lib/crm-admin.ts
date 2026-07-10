@@ -177,6 +177,83 @@ export async function claimCrmLead(leadId: string, rep: string): Promise<boolean
   return !!res?.ok;
 }
 
+// ── Meetings (Zoom bookings) ────────────────────────────────────────────────
+
+/** Meeting lifecycle status (mirrors crm_logic.MEETING_STATUSES / meetings.status). */
+export type MeetingStatus = "pending" | "confirmed" | "no_rep" | "cancelled" | "expired" | "completed";
+export const MEETING_STATUSES: readonly MeetingStatus[] = [
+  "pending",
+  "confirmed",
+  "no_rep",
+  "cancelled",
+  "expired",
+  "completed",
+];
+
+export interface CrmMeeting {
+  id: string;
+  name: string;
+  phone: string;
+  provider: string | null;
+  meetingDate: string | null;
+  slot: string | null;
+  startsAt: string | null;
+  status: string;
+  source: string | null;
+  claimedBy: string | null;
+}
+
+export interface CrmMeetingDetail {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  provider: string | null;
+  planId: string | null;
+  meetingDate: string | null;
+  slot: string | null;
+  startsAt: string | null;
+  status: string;
+  joinUrl: string | null;
+  zoomMeetingId: string | null;
+  notes: string | null;
+  source: string | null;
+  claimedBy: string | null;
+  claimedAt: string | null;
+  confirmedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface CrmMeetingEvent {
+  id: string;
+  event: string;
+  oldStatus: string | null;
+  newStatus: string | null;
+  actorName: string | null;
+  note: string | null;
+  createdAt: string | null;
+}
+
+/** Upcoming-first meeting list, optionally filtered to one status. */
+export function fetchCrmMeetings(opts?: { status?: MeetingStatus }): Promise<{ meetings: CrmMeeting[] } | null> {
+  return crmPost<{ meetings: CrmMeeting[] }>("listMeetings", {
+    ...(opts?.status ? { status: opts.status } : {}),
+  });
+}
+
+/** One meeting's full detail + its status timeline. */
+export function fetchCrmMeetingDetail(
+  meetingId: string,
+): Promise<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] } | null> {
+  return crmPost<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] }>("getMeeting", { meetingId });
+}
+
+/** Move a meeting to a new lifecycle status (server validates + audits). */
+export async function setCrmMeetingStatus(meetingId: string, status: MeetingStatus): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setMeetingStatus", { meetingId, status });
+  return !!res?.ok;
+}
+
 // ── WhatsApp inbox ────────────────────────────────────────────────────────────
 
 /** Conversation lifecycle status (mirrors crm_logic.CONVERSATION_STATUSES). */

@@ -17,6 +17,8 @@
 //   setContactStatus    → patch whatsapp_contacts.status
 //   setLeadStatus       → patch leads.status + lead_events audit row
 //   listLeads           → the lead pipeline
+//   listMeetings        → Zoom-booking list · getMeeting → detail + timeline
+//   setMeetingStatus    → patch meetings.status + meeting_events audit row
 //
 // takeOver/handBack flip whatsapp_conversations.bot_enabled — the single gate the
 // whatsapp-webhook checks before any AI auto-reply — and append a crm_events row
@@ -30,7 +32,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import { fetchRows, insertRow, logMeetingEvent, serviceFetch } from "../_shared/db.ts";
 import { requireAdmin } from "../_shared/admin.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 import { jlog } from "../_shared/log.ts";
@@ -49,9 +51,13 @@ import {
   eventPreview,
   LEAD_STATUSES,
   MAX_REPLY_LEN,
+  MEETING_STATUSES,
   s,
   shapeLeadDetail,
   shapeLeadEvent,
+  shapeMeeting,
+  shapeMeetingDetail,
+  shapeMeetingEvent,
   snippet,
 } from "./crm_logic.ts";
 
@@ -673,6 +679,57 @@ async function actClaimLead(b: Row, actorUid: string): Promise<Response> {
   return json({ ok: true });
 }
 
+// ── meetings (Zoom bookings) ───────────────────────────────────────────────
+
+// listMeetings {status?} → upcoming-first meeting list (light, PII-safe shape).
+async function actListMeetings(b: Row): Promise<Response> {
+  const status = s(b.status).trim();
+  if (status && !MEETING_STATUSES.has(status)) return json({ error: "סטטוס פגישה לא תקין" }, 400);
+  let path =
+    `/rest/v1/meetings?order=starts_at.desc.nullslast,created_at.desc&limit=200&select=id,name,phone,provider,meeting_date,slot,starts_at,status,source,claimed_by`;
+  if (status) path += `&status=eq.${q(status)}`;
+  const rows = await fetchRows<Row>(path);
+  if (rows === null) return json({ error: "שגיאה בטעינת הפגישות" }, 502);
+  return json({ meetings: rows.map(shapeMeeting) });
+}
+
+// getMeeting {meetingId} → one meeting's detail + its meeting_events timeline.
+// The ONE place richer meeting fields (email, join_url, notes) are exposed —
+// behind the admin gate, via service_role, through the allowlist shaper.
+async function actGetMeeting(b: Row): Promise<Response> {
+  const meetingId = s(b.meetingId).trim();
+  if (!meetingId) return json({ error: "meetingId חסר" }, 400);
+  const rows = await fetchRows<Row>(
+    `/rest/v1/meetings?id=eq.${q(meetingId)}&limit=1&select=id,name,phone,email,provider,plan_id,meeting_date,slot,starts_at,status,join_url,zoom_meeting_id,notes,source,claimed_by,claimed_at,confirmed_at,created_at`,
+  );
+  if (rows === null) return json({ error: "שגיאה בטעינת הפגישה" }, 502);
+  if (!rows.length) return json({ error: "פגישה לא נמצאה" }, 404);
+  const events = await fetchRows<Row>(
+    `/rest/v1/meeting_events?meeting_id=eq.${q(meetingId)}&order=created_at.desc&limit=50&select=id,event,old_status,new_status,actor_name,note,created_at`,
+  );
+  return json({ meeting: shapeMeetingDetail(rows[0]), events: (events ?? []).map(shapeMeetingEvent) });
+}
+
+// setMeetingStatus {meetingId,status} → patch meetings.status + meeting_events
+// audit row + Reg.13 security-audit. Same fail-closed validation as leads.
+async function actSetMeetingStatus(b: Row, actorUid: string): Promise<Response> {
+  const meetingId = s(b.meetingId).trim();
+  const status = s(b.status).trim();
+  if (!meetingId || !status) return json({ error: "meetingId/status חסרים" }, 400);
+  if (!MEETING_STATUSES.has(status)) return json({ error: "סטטוס פגישה לא תקין" }, 400);
+  const r = await serviceFetch(`/rest/v1/meetings?id=eq.${q(meetingId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+  if (!r || !r.ok) {
+    jlog({ at: "crm.setMeetingStatus", ok: false, status: r?.status });
+    return json({ error: "עדכון הפגישה נכשל" }, 502);
+  }
+  await logMeetingEvent({ meeting_id: meetingId, event: "status_change", new_status: status, actor_name: "CRM" });
+  await logAudit(actorUid, "crm_meeting_status", { meeting_id: meetingId, status });
+  return json({ ok: true });
+}
+
 // Exact row count via a ranged read (Range: 0-0) reading the Content-Range
 // header. PostgREST answers a ranged read with 206 Partial Content, which is a
 // 2xx so `r.ok` is true; anything else (or no creds) counts as 0.
@@ -759,6 +816,12 @@ Deno.serve(async (req: Request) => {
         return await actRecordSaving(body, admin.uid);
       case "claimLead":
         return await actClaimLead(body, admin.uid);
+      case "listMeetings":
+        return await actListMeetings(body);
+      case "getMeeting":
+        return await actGetMeeting(body);
+      case "setMeetingStatus":
+        return await actSetMeetingStatus(body, admin.uid);
       default:
         return json({ error: `פעולה לא מוכרת: ${action}` }, 400);
     }

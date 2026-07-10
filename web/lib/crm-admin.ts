@@ -179,6 +179,12 @@ export async function addCrmNote(leadId: string, note: string): Promise<boolean>
   return !!res?.ok;
 }
 
+/** Overwrite the lead's primary notes field (the edit is recorded on the timeline). */
+export async function setCrmLeadNote(leadId: string, note: string): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setLeadNote", { leadId, note });
+  return !!res?.ok;
+}
+
 /** The won-flow: record the real annual saving (₪/year) and close the lead (→ won). */
 export async function recordCrmSaving(leadId: string, annualSaving: number): Promise<boolean> {
   const res = await crmPost<{ ok?: boolean }>("recordSaving", { leadId, annualSaving });

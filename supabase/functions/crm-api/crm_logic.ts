@@ -7,6 +7,7 @@
 export const SNIPPET_LEN = 60;
 export const MAX_REPLY_LEN = 4000; // matches the body.slice cap on the stored row
 export const EVENT_PREVIEW_LEN = 80; // crm_events.preview cap — a short, PII-light snippet
+export const MAX_NOTE_LEN = 5000; // cap on the editable leads.notes field
 
 // Allowed status values, mirrored from the Flutter CRM DTOs (lib/services/
 // backend/backend.dart). Writes AND filter params are validated against these.

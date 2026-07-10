@@ -19,6 +19,7 @@ import {
   LEAD_STATUSES,
   type LeadStatus,
   recordCrmSaving,
+  setCrmLeadNote,
   setCrmLeadStatus,
 } from "@/lib/crm-admin";
 import CrmCallBrief from "./CrmCallBrief";
@@ -30,6 +31,7 @@ const EVENT_LABEL: Record<string, string> = {
   status_change: "שינוי סטטוס",
   claim: "שיוך לנציג",
   note: "הערה",
+  note_edit: "עריכת הערה",
   undo: "ביטול פעולה",
   saving: "חיסכון נרשם",
 };
@@ -59,6 +61,7 @@ export default function CrmLeadDrawer({
   const [notice, setNotice] = useState("");
   const { profile } = useAuth();
   const [note, setNote] = useState("");
+  const [mainNote, setMainNote] = useState("");
   const [savingInput, setSavingInput] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
@@ -75,6 +78,11 @@ export default function CrmLeadDrawer({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Keep the editable main-note field in sync with the loaded/saved value.
+  useEffect(() => {
+    setMainNote(data?.lead.notes ?? "");
+  }, [data?.lead.notes]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -300,14 +308,28 @@ export default function CrmLeadDrawer({
                 {lead.referrerCode && <Field label="קוד הפניה">{lead.referrerCode}</Field>}
               </dl>
 
-              {lead.notes && (
-                <section>
-                  <p className="mb-1 text-xs font-medium text-muted">הערות</p>
-                  <p className="whitespace-pre-wrap rounded-xl border border-border bg-surface p-3 text-sm text-foreground">
-                    {lead.notes}
-                  </p>
-                </section>
-              )}
+              <section className="space-y-1.5">
+                <label htmlFor="crm-main-note" className="text-xs font-medium text-muted">
+                  הערה ראשית
+                </label>
+                <textarea
+                  id="crm-main-note"
+                  value={mainNote}
+                  onChange={(e) => setMainNote(e.target.value)}
+                  rows={3}
+                  maxLength={5000}
+                  placeholder="הערה ראשית על הליד…"
+                  className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                />
+                <button
+                  type="button"
+                  disabled={actionBusy || mainNote === (lead.notes ?? "")}
+                  onClick={() => void runAction(() => setCrmLeadNote(leadId, mainNote), "ההערה נשמרה.")}
+                  className={`${BTN_GHOST} w-full`}
+                >
+                  שמור הערה ראשית
+                </button>
+              </section>
 
               <section>
                 <p className="mb-2 text-xs font-medium text-muted">הסכמות שיווק (§30A)</p>

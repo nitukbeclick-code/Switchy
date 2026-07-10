@@ -5,6 +5,7 @@
 
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import {
+  aggregateReps,
   auditDetail,
   clampLimit,
   contactName,
@@ -284,4 +285,39 @@ Deno.test("shapeContact leaves an unnamed contact's name blank (no fabrication)"
   assertEquals(c.name, "");
   assertEquals(c.leadId, null);
   assertEquals(c.lastMessageAt, null);
+});
+
+// ── aggregateReps (per-rep leaderboard) ──────────────────────────────────────
+
+Deno.test("aggregateReps counts per rep and sums saving from WON leads only", () => {
+  const reps = aggregateReps([
+    { claimed_by: "דנה", status: "won", actual_saving: 600 },
+    { claimed_by: "דנה", status: "won", actual_saving: 400 },
+    { claimed_by: "דנה", status: "contacted", actual_saving: 999 }, // not won → no saving
+    { claimed_by: "רון", status: "lost", actual_saving: 500 }, // lost → no saving
+    { claimed_by: "רון", status: "won", actual_saving: 300 },
+  ]);
+  const dana = reps.find((r) => r.rep === "דנה")!;
+  const ron = reps.find((r) => r.rep === "רון")!;
+  assertEquals(dana.claimed, 3);
+  assertEquals(dana.won, 2);
+  assertEquals(dana.totalSaving, 1000); // 600 + 400, NOT the contacted lead's 999
+  assertEquals(ron.claimed, 2);
+  assertEquals(ron.lost, 1);
+  assertEquals(ron.totalSaving, 300); // the lost lead's 500 is never counted
+  // Sorted by booked saving desc → דנה (1000) before רון (300).
+  assertEquals(reps[0].rep, "דנה");
+});
+
+Deno.test("aggregateReps ignores unclaimed rows and non-positive savings", () => {
+  const reps = aggregateReps([
+    { claimed_by: "", status: "won", actual_saving: 100 }, // no rep → skipped
+    { claimed_by: null, status: "won", actual_saving: 100 }, // no rep → skipped
+    { claimed_by: "יעל", status: "won", actual_saving: 0 }, // won but 0 → counted as won, saving 0
+    { claimed_by: "יעל", status: "won", actual_saving: -50 }, // negative → not summed
+  ]);
+  assertEquals(reps.length, 1);
+  assertEquals(reps[0].rep, "יעל");
+  assertEquals(reps[0].won, 2);
+  assertEquals(reps[0].totalSaving, 0);
 });

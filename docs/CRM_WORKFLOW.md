@@ -104,7 +104,7 @@
 |---|------|-----|--------|
 | B.1 | ✅ **טאב פגישות** | בוצע 2026-07-10 (PR #127) | actions חדשות `listMeetings`/`getMeeting`/`setMeetingStatus` על `meetings`+`meeting_events` (allowlist DTO `shapeMeeting`/`shapeMeetingDetail`/`shapeMeetingEvent` — נבדקו; email/join_url רק בפירוט, gcal/tg-id לעולם לא). טאב "פגישות" חדש: רשימה מסוננת + מגירת פרטים (קישור Zoom + שינוי סטטוס + timeline). כל שינוי סטטוס מבוקר (`meeting_events` + `security_audit_log`). |
 | B.2 | ✅ **פעולות מרובות (bulk)** | בוצע 2026-07-10 (PR #126) | בחירה-מרובה בטבלת/כרטיסי הלידים (checkbox + "בחר הכול") → העברת שלב מרובה (יצירת-קשר/אבוד; `won` נשאר בזרימת המגירה). כל כתיבה = אותו `setLeadStatus` מבוקר, מפוזר בגלים חסומי-מקביליות (`lib/batch.ts` `runChunked`, נבדק). |
-| B.3 | 🟢 **תצוגת נציג + לידרבורד** | edge: אין (סינון `claimed_by`) · web | סינון לפי נציג + טבלת ביצועים מ-`lead_events` (סגירות/חיסכון לנציג). |
+| B.3 | ✅ **תצוגת נציג + לידרבורד** | בוצע 2026-07-10 (PR #130) | action חדש `repLeaderboard` (אגרגציה `aggregateReps` pure+נבדקת: claimed/won/lost + חיסכון-שנרשם-אמיתי מלידי won בלבד). לוח-מובילים ב-Analytics; `claimedBy` נוסף ל-DTO של listLeads → עמודת "נציג" + סינון-נציג client-side + נציג ב-CSV. |
 | B.4 | 🟡 **עריכת `leads.notes`** | edge: action `setLeadNote` · web | עריכת שדה ההערה הראשי (בנוסף לציר-הזמן). דורש החלטה: לשמור היסטוריה? |
 | B.5 | ✅ **ניהול אנשי קשר (contacts)** | בוצע 2026-07-10 (PR #129) | action חדש `listContacts {status?,search?}` (allowlist `shapeContact` — נבדק; wa_id/עמודות פנימיות לא דולפות). טאב "אנשי קשר": רשימה מסוננת + חיפוש + בורר-סטטוס לכל שורה (מחזור-חיים 7 שלבים) דרך `setContactStatus` הקיים (מבוקר). |
 

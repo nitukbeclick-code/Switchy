@@ -136,6 +136,24 @@ export async function setCrmLeadStatus(leadId: string, status: LeadStatus): Prom
   return !!res?.ok;
 }
 
+/** Append a note to the lead's activity timeline. */
+export async function addCrmNote(leadId: string, note: string): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("addNote", { leadId, note });
+  return !!res?.ok;
+}
+
+/** The won-flow: record the real annual saving (₪/year) and close the lead (→ won). */
+export async function recordCrmSaving(leadId: string, annualSaving: number): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("recordSaving", { leadId, annualSaving });
+  return !!res?.ok;
+}
+
+/** Assign the lead to a named rep (claimed_by + timestamp). */
+export async function claimCrmLead(leadId: string, rep: string): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("claimLead", { leadId, rep });
+  return !!res?.ok;
+}
+
 // ── WhatsApp inbox ────────────────────────────────────────────────────────────
 
 /** Conversation lifecycle status (mirrors crm_logic.CONVERSATION_STATUSES). */

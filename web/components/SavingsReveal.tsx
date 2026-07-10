@@ -38,6 +38,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { ils } from "@/lib/format";
 
 export interface SavingsRevealProps {
   /** Current monthly spend read from the bill (₪/month). */
@@ -46,11 +47,6 @@ export interface SavingsRevealProps {
   annualSaving: number;
   /** Optional extra classes on the wrapper. */
   className?: string;
-}
-
-/** ₪-format a rounded integer with thousands separators (he-IL). */
-function ils(n: number): string {
-  return `₪${Math.round(n).toLocaleString("he-IL")}`;
 }
 
 export default function SavingsReveal({

@@ -17,6 +17,8 @@
 //     guaranteed promise — the copy helpers label them that way.
 // ────────────────────────────────────────────────────────────────────────────
 
+import { ils } from "./format";
+
 /**
  * The raw, REAL aggregate as returned by get_savings_stats() — a single row of
  * counts + shekel aggregates over won leads with a genuine positive actual_saving.
@@ -148,9 +150,13 @@ export function summarizeStats(
   };
 }
 
-/** Format a shekel integer for display, he-IL grouped, e.g. 1234 → "₪1,234". */
+/**
+ * Format a shekel integer for display, he-IL grouped, e.g. 1234 → "₪1,234".
+ * Delegates to the single lib/format.ils so wallet figures never drift from the
+ * rest of the app; kept as a named alias for its call sites.
+ */
 export function ilsStat(n: number): string {
-  return `₪${Math.round(n).toLocaleString("he-IL")}`;
+  return ils(n);
 }
 
 /**

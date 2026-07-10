@@ -1,9 +1,15 @@
 // crm-api — admin CRM backend for the Switchy WhatsApp pipeline.
 //
 // One POST endpoint, dispatched by a {action} body. EVERY request must carry an
-// Authorization: Bearer <supabase user access token> and pass the is_admin gate
-// (requireAdmin → 403). All DB access is service-role via _shared/db.ts — the
-// app/site never touch the whatsapp_* tables directly.
+// Authorization: Bearer <supabase user access token> and pass the CRM-access gate
+// (requireCrmAccess → 403). Access is GRADED (C.2): is_admin === true is the full
+// superset; otherwise a crm_members row grants a role — `viewer` (read-only) or
+// `rep` (read + operate leads/conversations). Each action declares a minimum
+// capability (crm_roles.ts) enforced BEFORE dispatch; an unmapped action is
+// admin-only (fail-closed). The crm_members table is empty until an admin grants
+// a role, so this changes nothing for existing admins. All DB access is
+// service-role via _shared/db.ts — the app/site never touch the whatsapp_* tables
+// directly.
 //
 // Actions (see SHARED CONTRACT):
 //   overview            → pipeline counts + recent conversations
@@ -22,6 +28,9 @@
 //   repLeaderboard      → per-rep performance (claimed/won/lost + booked saving)
 //   listMeetings        → Zoom-booking list · getMeeting → detail + timeline
 //   setMeetingStatus    → patch meetings.status + meeting_events audit row
+//   listMembers         → the CRM roster + each member's role (admin-only)
+//   setMemberRole       → grant/change/revoke a member's role (admin-only, audited,
+//                         refuses self-change)
 //
 // takeOver/handBack flip whatsapp_conversations.bot_enabled — the single gate the
 // whatsapp-webhook checks before any AI auto-reply — and append a crm_events row
@@ -36,7 +45,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { fetchRows, insertRow, logMeetingEvent, serviceFetch } from "../_shared/db.ts";
-import { requireAdmin } from "../_shared/admin.ts";
+import { requireCrmAccess } from "../_shared/admin.ts";
+import { asStoredRole, canDo } from "../_shared/crm_roles.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 import { jlog } from "../_shared/log.ts";
 // Speed-to-lead metrics reuse the SAME shared sources as the Telegram digest/nudge
@@ -64,6 +74,7 @@ import {
   shapeMeeting,
   shapeMeetingDetail,
   shapeMeetingEvent,
+  shapeMember,
   shapeSellableLead,
   snippet,
 } from "./crm_logic.ts";
@@ -831,6 +842,88 @@ async function actSetMeetingStatus(b: Row, actorUid: string): Promise<Response> 
   return json({ ok: true });
 }
 
+// ── CRM members (per-rep roles — C.2, admin-only) ───────────────────────────
+
+// listMembers {} → the graded-roles roster: every crm_members row + each member's
+// display name/email (joined from their OWN profile). Admin-only (capability
+// gate). is_admin superset accounts are not listed here — this is the roles layer
+// BELOW admin. Allowlist DTO (shapeMember): no profile column beyond name/email
+// can leak.
+async function actListMembers(): Promise<Response> {
+  const rows = await fetchRows<Row>(
+    `/rest/v1/crm_members?order=granted_at.desc&limit=200&select=uid,role,granted_at`,
+  );
+  if (rows === null) return json({ error: "שגיאה בטעינת חברי הצוות" }, 502);
+  // Enrich with the member's own profile name/email (batch, allowlist select).
+  const uids = rows.map((r) => s(r.uid)).filter(Boolean);
+  const profiles = new Map<string, Row>();
+  if (uids.length) {
+    const list = uids.map((id) => q(id)).join(",");
+    const profRows = await fetchRows<Row>(
+      `/rest/v1/profiles?id=in.(${list})&select=id,name,email`,
+    );
+    for (const p of profRows ?? []) profiles.set(s(p.id), p);
+  }
+  const members = rows.map((r) => shapeMember(r, profiles.get(s(r.uid))));
+  return json({ members });
+}
+
+// setMemberRole {uid, role} → grant / change / revoke a member's CRM role.
+// Admin-only (capability gate). role ∈ {viewer, rep} upserts the crm_members row;
+// role 'none'/'' REVOKES it (deletes the row). REFUSES a self-change — an admin
+// never manages their own row here (their access comes from is_admin, not this
+// table), so this closes any "demote/elevate myself" confusion. Every change is
+// audited to security_audit_log (Reg.13) with actor + target uid + the new role.
+async function actSetMemberRole(b: Row, actorUid: string): Promise<Response> {
+  const uid = s(b.uid).trim();
+  if (!uid) return json({ error: "uid חסר" }, 400);
+  if (uid === actorUid) return json({ error: "אי אפשר לשנות את ההרשאה של עצמך" }, 400);
+
+  const rawRole = s(b.role).trim().toLowerCase();
+
+  // Revoke path: 'none'/'' removes the member's role entirely (idempotent — a
+  // no-op delete on an absent row still succeeds).
+  if (rawRole === "" || rawRole === "none") {
+    const r = await serviceFetch(`/rest/v1/crm_members?uid=eq.${q(uid)}`, { method: "DELETE" });
+    if (!r || !r.ok) {
+      jlog({ at: "crm.setMemberRole", ok: false, op: "revoke", status: r?.status });
+      return json({ error: "ביטול ההרשאה נכשל" }, 502);
+    }
+    await logAudit(actorUid, "crm_revoke_role", { target_uid: uid });
+    return json({ ok: true, role: null });
+  }
+
+  // Grant / change path: only a valid stored role (viewer/rep) is ever written.
+  const role = asStoredRole(rawRole);
+  if (!role) return json({ error: "תפקיד לא תקין" }, 400);
+
+  // Confirm the target is a real user (every user has a profiles row) — a clean
+  // 404 instead of a confusing FK-violation 502.
+  const who = await fetchRows<Row>(`/rest/v1/profiles?id=eq.${q(uid)}&select=id&limit=1`);
+  if (who === null) return json({ error: "שגיאה באימות המשתמש" }, 502);
+  if (!who.length) return json({ error: "המשתמש לא נמצא" }, 404);
+
+  // Upsert on the uid PK (merge-duplicates): first grant INSERTs (granted_at
+  // defaults to now()); a later change UPDATEs role/granted_by/updated_at and
+  // preserves the original granted_at (not in the payload).
+  const r = await serviceFetch(`/rest/v1/crm_members?on_conflict=uid`, {
+    method: "POST",
+    headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      uid,
+      role,
+      granted_by: actorUid || null,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  if (!r || !r.ok) {
+    jlog({ at: "crm.setMemberRole", ok: false, op: "grant", status: r?.status });
+    return json({ error: "עדכון ההרשאה נכשל" }, 502);
+  }
+  await logAudit(actorUid, "crm_set_role", { target_uid: uid, role });
+  return json({ ok: true, role });
+}
+
 // Exact row count via a ranged read (Range: 0-0) reading the Content-Range
 // header. PostgREST answers a ranged read with 206 Partial Content, which is a
 // 2xx so `r.ok` is true; anything else (or no creds) counts as 0.
@@ -866,15 +959,17 @@ Deno.serve(async (req: Request) => {
   }
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
-  // Admin gate: requireAdmin distinguishes "no/invalid token" from "not admin"
-  // only by returning null — so we re-derive the 401-vs-403 split: a present
-  // bearer that fails ⇒ 403, an absent bearer ⇒ 401.
-  const admin = await requireAdmin(req);
-  if (!admin) {
+  // CRM-access gate: requireCrmAccess distinguishes "no/invalid token" from
+  // "no CRM access" only by returning null — so we re-derive the 401-vs-403
+  // split: a present bearer that fails ⇒ 403, an absent bearer ⇒ 401. An admin
+  // (is_admin) or a granted crm_members role (viewer/rep) resolves; anyone else
+  // is refused exactly as under the old is_admin-only gate.
+  const access = await requireCrmAccess(req);
+  if (!access) {
     const auth = req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
     const hasBearer = auth.toLowerCase().startsWith("bearer ") && auth.slice(7).trim().length > 0;
     return hasBearer
-      ? json({ error: "אין הרשאת ניהול" }, 403)
+      ? json({ error: "אין הרשאת גישה למערכת" }, 403)
       : json({ error: "נדרשת התחברות" }, 401);
   }
 
@@ -887,6 +982,16 @@ Deno.serve(async (req: Request) => {
   const action = s(body.action).trim();
   if (!action) return json({ error: "action חסר" }, 400);
 
+  // C.2 per-action authorization: is_admin is the superset; a graded role
+  // (viewer/rep) may reach ONLY the actions its capability set allows, and an
+  // unmapped action is admin-only (fail-closed). This is the authoritative gate —
+  // the console UI's show/hide is cosmetic; a hidden button called directly
+  // still 403s here.
+  if (!canDo(access.role, action)) {
+    jlog({ at: "crm.forbidden", uid: access.uid, role: access.role, action });
+    return json({ error: "אין הרשאה לפעולה זו" }, 403);
+  }
+
   try {
     switch (action) {
       case "overview":
@@ -898,31 +1003,31 @@ Deno.serve(async (req: Request) => {
       case "getThread":
         return await actGetThread(body);
       case "sendReply":
-        return await actSendReply(body, admin.uid);
+        return await actSendReply(body, access.uid);
       case "takeOver":
-        return await actTakeOver(body, admin.uid);
+        return await actTakeOver(body, access.uid);
       case "handBack":
-        return await actHandBack(body, admin.uid);
+        return await actHandBack(body, access.uid);
       case "setContactStatus":
-        return await actSetContactStatus(body, admin.uid);
+        return await actSetContactStatus(body, access.uid);
       case "listContacts":
         return await actListContacts(body);
       case "setLeadStatus":
-        return await actSetLeadStatus(body, admin.uid);
+        return await actSetLeadStatus(body, access.uid);
       case "listLeads":
         return await actListLeads(body);
       case "getLeadDetail":
         return await actGetLeadDetail(body);
       case "listSellableLeads":
-        return await actListSellableLeads(body, admin.uid);
+        return await actListSellableLeads(body, access.uid);
       case "addNote":
-        return await actAddNote(body, admin.uid);
+        return await actAddNote(body, access.uid);
       case "setLeadNote":
-        return await actSetLeadNote(body, admin.uid);
+        return await actSetLeadNote(body, access.uid);
       case "recordSaving":
-        return await actRecordSaving(body, admin.uid);
+        return await actRecordSaving(body, access.uid);
       case "claimLead":
-        return await actClaimLead(body, admin.uid);
+        return await actClaimLead(body, access.uid);
       case "repLeaderboard":
         return await actRepLeaderboard();
       case "listMeetings":
@@ -930,7 +1035,11 @@ Deno.serve(async (req: Request) => {
       case "getMeeting":
         return await actGetMeeting(body);
       case "setMeetingStatus":
-        return await actSetMeetingStatus(body, admin.uid);
+        return await actSetMeetingStatus(body, access.uid);
+      case "listMembers":
+        return await actListMembers();
+      case "setMemberRole":
+        return await actSetMemberRole(body, access.uid);
       default:
         return json({ error: `פעולה לא מוכרת: ${action}` }, 400);
     }

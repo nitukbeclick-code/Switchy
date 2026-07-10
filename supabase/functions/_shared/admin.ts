@@ -11,6 +11,7 @@
 
 import { fetchRows } from "./db.ts";
 import { jlog } from "./log.ts";
+import { asStoredRole, type EffectiveCrmRole } from "./crm_roles.ts";
 
 // Resolve the user id behind a JWT via GoTrue (/auth/v1/user). We pass the
 // user's token as the Authorization bearer and the service role as the apikey —
@@ -63,4 +64,53 @@ export async function requireAdmin(req: Request): Promise<{ uid: string } | null
     return null;
   }
   return { uid };
+}
+
+// The caller's effective CRM access: their uid + their role. is_admin === true
+// resolves to the "admin" superset; otherwise a crm_members row grants a graded
+// role (viewer/rep). Returns null for anyone with NEITHER (fail-closed) — so the
+// crm-api gate stays at least as strict as requireAdmin: an admin is unchanged,
+// and a non-admin with no crm_members row is refused exactly as before. C.2.
+export interface CrmAccess {
+  uid: string;
+  role: EffectiveCrmRole;
+  isAdmin: boolean;
+}
+
+export async function requireCrmAccess(req: Request): Promise<CrmAccess | null> {
+  const auth = req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
+  const jwt = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
+  if (!jwt) {
+    jlog({ at: "admin.requireCrmAccess", ok: false, error: "missing bearer token" });
+    return null;
+  }
+  const uid = await uidFromJwt(jwt);
+  if (!uid) return null;
+
+  // 1) is_admin → the full superset (unchanged from requireAdmin).
+  const adminRows = await fetchRows<{ is_admin?: unknown }>(
+    `/rest/v1/profiles?select=is_admin&id=eq.${encodeURIComponent(uid)}&limit=1`,
+  );
+  if (adminRows === null) {
+    jlog({ at: "admin.requireCrmAccess", ok: false, error: "profile read failed" });
+    return null; // DB error ⇒ fail closed
+  }
+  if (adminRows.length > 0 && adminRows[0]?.is_admin === true) {
+    return { uid, role: "admin", isAdmin: true };
+  }
+
+  // 2) otherwise a graded crm_members role (service-role read; RLS-exempt).
+  const memberRows = await fetchRows<{ role?: unknown }>(
+    `/rest/v1/crm_members?select=role&uid=eq.${encodeURIComponent(uid)}&limit=1`,
+  );
+  if (memberRows === null) {
+    jlog({ at: "admin.requireCrmAccess", ok: false, error: "member read failed" });
+    return null; // DB error ⇒ fail closed
+  }
+  const role = memberRows.length > 0 ? asStoredRole(memberRows[0]?.role) : null;
+  if (!role) {
+    jlog({ at: "admin.requireCrmAccess", ok: false, uid, error: "no crm access" });
+    return null;
+  }
+  return { uid, role, isAdmin: false };
 }

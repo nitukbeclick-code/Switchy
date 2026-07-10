@@ -1,10 +1,19 @@
-# C.2 — Per-rep roles & permissions — SECURITY PLAN (do NOT build yet)
+# C.2 — Per-rep roles & permissions — SECURITY PLAN + BUILD
 
-> Status: **PLAN ONLY. No code, no migration, no deploy.** Held pending the
-> owner's explicit go-ahead **and** the prod verification checklist in §6 passing.
-> This document exists so the work is scoped, its risks are named, and nothing is
-> built blind. It reverses none of the standing mandate: no security holes, no
-> lead/PII leakage, no unauthorized price/catalogue changes.
+> Status: **§6 prod verification RUN and PASSED (2026-07-10). Foundation BUILT
+> (option B — a dedicated `crm_members` table) as reviewable code; NOT yet
+> activated in prod.** The migration (`supabase/crm-roles-2026-07.sql`) is
+> committed but **not applied to prod**, and crm-api is **not yet deployed** with
+> the new gate — both are the owner's explicit rollout steps (§5). Reverses none
+> of the standing mandate: no security holes, no lead/PII leakage, no unauthorized
+> price/catalogue changes.
+>
+> **Why it was safe to build now:** the verification (§6) proved the self-elevation
+> risk (T1) is structurally closed by option B — a table with NO anon/authenticated
+> grants, RLS-on/no-policies, written only by the service-role edge behind an
+> audited admin-only action. The gate is fail-closed and admin-superset, so it is
+> provably at-least-as-strict as the old is_admin-only gate — even before the
+> table exists (a non-admin hitting a missing `crm_members` fails closed → 403).
 
 ## 0. Why this is 🔴 (blocked), not 🟢
 
@@ -122,25 +131,72 @@ not weaken the existing `is_admin` path (admin stays a superset).**
 5. Enable the web Team tab. Grant the first non-admin role to a test account and
    run the negative tests against prod-with-a-throwaway-account.
 
-## 6. PROD VERIFICATION CHECKLIST (the blocker — must all pass first)
-This is what cannot be done from the sandbox and is the reason C.2 is on hold.
-Before writing a line of C.2 code, confirm against production:
+## 6. PROD VERIFICATION CHECKLIST — RUN 2026-07-10 (read-only, via Supabase MCP)
+Result: **PASS.** Evidence below (schema/metadata introspection only — no lead/PII
+data was read). This is what unblocked the build; it drove the choice of option B.
 
-- [ ] **Column grants:** `anon` and `authenticated` have **no** `INSERT`/`UPDATE`
-      grant on `profiles` role-bearing columns (or on the `crm_members` table).
-      (`information_schema.role_column_grants` / `has_column_privilege`.)
-- [ ] **RLS is ON** for `profiles` (and `crm_members` if used) with no permissive
-      policy that lets a user update their own role. Enumerate every existing
-      `profiles` policy and confirm none grants a self-`UPDATE` path to the new
-      column.
-- [ ] **No view/RPC** currently re-exposes `profiles` columns to clients in a way
-      that would include the new role (re-audit `public_profiles` and any
-      `SECURITY DEFINER` function — recall task #2 dropped `is_admin` from
-      `public_profiles`; the same must hold for `crm_role`).
-- [ ] **Service-role-only** write path confirmed: the only way role changes is the
-      audited edge action.
-- [ ] A throwaway non-admin account **cannot** self-elevate via the REST API
-      (manual red-team of T1 against a preview project).
+- [x] **RLS is ON** for `public.profiles` (`pg_class.relrowsecurity = true`). Its
+      policies are `profiles_select_own` / `profiles_insert_own` / `profiles_update_own`,
+      all `auth.uid() = id` — i.e. a **row-level self-UPDATE path exists**. RLS is
+      row-level, not column-level, so a role column on `profiles` would be safe
+      only via column-grant hygiene → **option B (separate table) chosen** to avoid
+      the dependency entirely.
+- [x] **Column grants on `profiles`:** `anon` has **no** SELECT/INSERT/UPDATE.
+      `authenticated` has NO table-level UPDATE; UPDATE is granted **column-specifically**
+      on a safe subset (name/email/phone/avatar/bio/quiz/bills/notify prefs) and is
+      **absent** on the privileged flags (`is_admin`, `is_banned`,
+      `is_verified_customer`, `total_savings*`). This is the proven precedent: a
+      role column with no UPDATE grant is self-elevation-proof exactly like
+      `is_admin`. (Latent finding, pre-existing: `authenticated` has table-level
+      INSERT → all columns insertable at row-creation, mitigated only by the
+      handle_new_user pre-created row. See §8.)
+- [x] **No view/RPC re-exposes a role.** The only view over `profiles` is
+      `public_profiles`, whose explicit column list is
+      `id,name,avatar_url,is_verified_customer,verified_customer_at,created_at,bio`
+      — **`is_admin` absent** (task #2 holds), and a new column is not auto-added.
+      16 `SECURITY DEFINER` functions touch `profiles`; none provide a
+      self-elevation-to-admin path, and `admin_set_ban(p_admin,…)` shows the correct
+      "verify admin inside the definer" pattern.
+- [x] **Service-role-only write path** — the `crm_members` design: RLS on, NO
+      anon/authenticated policies, all grants revoked; the audited `setMemberRole`
+      edge action (service role) is the sole writer.
+- [x] **Self-elevation (T1) structurally closed** by option B: there is no
+      user-reachable read or write path to `crm_members`. (A live red-team against a
+      throwaway account on prod remains a recommended pre-GA step, but the grant +
+      RLS posture already makes the path non-existent.)
+
+## 7. What was built (this slice — edge foundation)
+- `supabase/crm-roles-2026-07.sql` — `crm_members` table (RLS on, no policies,
+  grants revoked). **Committed, NOT applied to prod.**
+- `_shared/crm_roles.ts` — pure capability model (`canDo`, `ACTION_CAP`,
+  `asStoredRole`); fail-closed for unmapped actions. Unit-tested (7 cases).
+- `_shared/admin.ts` — `requireCrmAccess` (fail-closed; is_admin superset; graded
+  role via service-role read). `requireAdmin` untouched (other functions keep it).
+- `crm-api/index.ts` — entry gate swapped to `requireCrmAccess` + per-action
+  capability check; audited admin-only `listMembers` / `setMemberRole` (refuses
+  self-change). Behaviour-preserving for admins; empty table ⇒ no non-admin access.
+- Tests: capability matrix + `shapeMember` allowlist. `deno check` 0.
+- **Follow-up (PR2):** the web "צוות והרשאות" tab + capability-gated console.
+
+## 8. Follow-up hardening surfaced by the audit (separate, pre-existing)
+- `authenticated` holds **table-level INSERT** on `profiles`, so privileged columns
+  (`is_admin`, `is_banned`, `is_verified_customer`, `total_savings*`, consent
+  stamps, `registration_ip`, `telegram_*`) are settable at row-INSERT. Mitigated
+  today only by the `handle_new_user` trigger pre-creating the row (PK conflict).
+  Recommend a defense-in-depth migration: `REVOKE INSERT (is_admin, …)` from
+  `authenticated`. **Not built** — flagged for the owner's go-ahead.
+
+## 9. Rollout (owner-controlled — activates the new gate in prod)
+1. Apply `supabase/crm-roles-2026-07.sql` to prod (additive; safe even before deploy).
+2. Deploy `crm-api` (deploy-functions.yml). Safe in either order — a non-admin
+   fails closed whether or not the table exists yet.
+3. Grant the first role: `insert into public.crm_members (uid, role) values ('<uid>','rep');`
+   (or via the PR2 Team tab), then smoke-test that the graded role sees only its
+   allowed actions and 403s the rest.
+
+## (appendix) Original prod-verification checklist rationale
+This is what could not be done from the sandbox and was the reason C.2 was on hold
+until 2026-07-10; the boxes above are now checked against production:
 
 Only when every box is checked does C.2 move from 🔴 to buildable.
 

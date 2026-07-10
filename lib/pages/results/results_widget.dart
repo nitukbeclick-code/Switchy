@@ -522,7 +522,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             child: Text(
                               cat == 'cellular' && quizLines > 1
                                   ? 'מסונן לפי השאלון · $quizLines קווים · עד ₪$quizBudget'
-                                  : 'מסונן לפי השאלון · עד ₪$quizBudget${cat == 'abroad' ? '/חבילה' : '/חודש'}',
+                                  : 'מסונן לפי השאלון · עד ₪$quizBudget${billUnitLabel(cat)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: ffTheme.labelSmall.copyWith(
@@ -1030,7 +1030,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     // The default (un-personalized) bill is an estimate, not the user's real
     // spend — flag that so the savings figures are read with the right caveat.
     final isDefault = !appState.billsPersonalized;
-    final unit = cat == 'abroad' ? '/חבילה' : '/חודש';
+    final unit = billUnitLabel(cat);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       child: Container(

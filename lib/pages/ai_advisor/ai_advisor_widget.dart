@@ -101,10 +101,17 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     //    renders plan cards and deep-links. The user always gets an answer.
     _ChatMsg? botMsg;
     try {
+      // Ground the live turn in the user's own bill for the browsed category —
+      // the offline engine already sees the bills, so this brings live chat to
+      // parity. Only when a real bill exists; the edge clamps/validates + omits
+      // an invalid category, and never invents a number from it.
+      final cat = appState.selectedCat;
+      final monthly = appState.currentBill(cat);
       final res = await _edge.respond(
         text,
         history: history,
         sessionId: appState.advisorSessionId,
+        billHint: monthly > 0 ? {'monthly': monthly, 'category': cat} : null,
       );
       if (res.sessionId != null) appState.setAdvisorSessionId(res.sessionId);
       botMsg = _ChatMsg(

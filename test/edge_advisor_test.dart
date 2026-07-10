@@ -74,6 +74,31 @@ void main() {
       expect(captured!.containsKey('sessionId'), isFalse);
     });
 
+    test('ships a billHint in the body when provided (live-chat grounding)', () async {
+      Map<String, dynamic>? captured;
+      final edge = EdgeAdvisor(invoker: (body) async {
+        captured = body;
+        return {'reply': 'ok'};
+      });
+      await edge.respond('כמה אפשר לחסוך?',
+          billHint: {'monthly': 120, 'category': 'cellular'});
+      final hint = captured!['billHint'] as Map;
+      expect(hint['monthly'], 120);
+      expect(hint['category'], 'cellular');
+    });
+
+    test('omits billHint from the body when null/empty', () async {
+      Map<String, dynamic>? captured;
+      final edge = EdgeAdvisor(invoker: (body) async {
+        captured = body;
+        return {'reply': 'ok'};
+      });
+      await edge.respond('hi');
+      expect(captured!.containsKey('billHint'), isFalse);
+      await edge.respond('hi', billHint: const {});
+      expect(captured!.containsKey('billHint'), isFalse);
+    });
+
     test('throws on a transport error (so the caller falls back)', () async {
       final edge = EdgeAdvisor(invoker: (_) async => throw Exception('boom'));
       expect(

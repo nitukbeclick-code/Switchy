@@ -87,6 +87,20 @@ export function fetchCrmOverview(): Promise<CrmOverview | null> {
   return crmPost<CrmOverview>("overview");
 }
 
+export interface CrmSla {
+  slaHours: number;
+  uncontacted: number; // new leads with no contacted_at
+  breaching: number; // of those, waiting longer than slaHours
+  oldestUncontactedAt: string | null;
+  medianResponseMinutes: number | null; // median created_at → contacted_at
+  responseSampleSize: number;
+}
+
+/** Speed-to-lead health: median first-response time + uncontacted / SLA-breach counts. */
+export function fetchCrmSla(): Promise<{ sla: CrmSla } | null> {
+  return crmPost<{ sla: CrmSla }>("slaMetrics");
+}
+
 export type LeadSort = "recent" | "oldest";
 
 /** The lead pipeline (≤200), optionally filtered to one status, a name/phone

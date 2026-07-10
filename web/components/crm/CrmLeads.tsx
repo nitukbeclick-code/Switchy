@@ -5,11 +5,12 @@
 // card list (mobile). Reads crm-api `listLeads` (service_role, admin-gated),
 // which returns a deliberately column-limited, PII-safe shape (name, phone,
 // provider, source, status, created_at — no email/notes/source_ip/consent).
-// Read-only in this slice; status changes + a lead detail drawer land next.
+// Filter by stage, search by name/phone (debounced), sort by recency; each row
+// opens the detail drawer (status changes, won-flow, call-brief).
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
-import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadStatus } from "@/lib/crm-admin";
+import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus } from "@/lib/crm-admin";
 import CrmLeadDrawer from "./CrmLeadDrawer";
 import { BTN_GHOST, LEAD_STATUS_META, NoticeCard, StatusPill, when } from "./ui";
 
@@ -37,23 +38,36 @@ function LeadsSkeleton() {
 
 export default function CrmLeads() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<LeadSort>("recent");
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const load = useCallback(async (f: Filter) => {
+  // Debounce the search box so we don't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     setError(false);
-    const res = await fetchCrmLeads(f === "all" ? undefined : f);
+    const res = await fetchCrmLeads({
+      status: filter === "all" ? undefined : filter,
+      search: search || undefined,
+      sort,
+    });
     if (res) setLeads(res.leads);
     else setError(true);
     setLoading(false);
-  }, []);
+  }, [filter, search, sort]);
 
   useEffect(() => {
-    void load(filter);
-  }, [filter, load]);
+    void load();
+  }, [load]);
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },
@@ -84,12 +98,42 @@ export default function CrmLeads() {
         })}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="חיפוש שם / טלפון"
+          aria-label="חיפוש לידים"
+          className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+        />
+        <div className="ms-auto flex items-center gap-1 text-xs text-muted">
+          <span>מיון:</span>
+          <button
+            type="button"
+            onClick={() => setSort("recent")}
+            aria-pressed={sort === "recent"}
+            className={`rounded-full border px-2.5 py-1 font-medium ${sort === "recent" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
+          >
+            חדשים
+          </button>
+          <button
+            type="button"
+            onClick={() => setSort("oldest")}
+            aria-pressed={sort === "oldest"}
+            className={`rounded-full border px-2.5 py-1 font-medium ${sort === "oldest" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
+          >
+            ותיקים
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <LeadsSkeleton />
       ) : error || !leads ? (
         <NoticeCard
           action={
-            <button type="button" onClick={() => void load(filter)} className={BTN_GHOST}>
+            <button type="button" onClick={() => void load()} className={BTN_GHOST}>
               נסו שוב
             </button>
           }
@@ -97,7 +141,7 @@ export default function CrmLeads() {
           לא הצלחנו לטעון את הלידים.
         </NoticeCard>
       ) : leads.length === 0 ? (
-        <NoticeCard>אין לידים בשלב הזה.</NoticeCard>
+        <NoticeCard>{search ? "לא נמצאו לידים תואמים לחיפוש." : "אין לידים בשלב הזה."}</NoticeCard>
       ) : (
         <>
           <p className="text-xs text-muted">
@@ -174,7 +218,7 @@ export default function CrmLeads() {
         <CrmLeadDrawer
           leadId={selectedId}
           onClose={() => setSelectedId(null)}
-          onChanged={() => void load(filter)}
+          onChanged={() => void load()}
         />
       )}
     </div>

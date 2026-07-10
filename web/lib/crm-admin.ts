@@ -87,9 +87,18 @@ export function fetchCrmOverview(): Promise<CrmOverview | null> {
   return crmPost<CrmOverview>("overview");
 }
 
-/** The lead pipeline (newest first, ≤200), optionally filtered to one status. */
-export function fetchCrmLeads(status?: LeadStatus): Promise<{ leads: CrmLead[] } | null> {
-  return crmPost<{ leads: CrmLead[] }>("listLeads", status ? { status } : {});
+export type LeadSort = "recent" | "oldest";
+
+/** The lead pipeline (≤200), optionally filtered to one status, a name/phone
+ *  search, and a created-at sort direction. */
+export function fetchCrmLeads(
+  opts?: { status?: LeadStatus; search?: string; sort?: LeadSort },
+): Promise<{ leads: CrmLead[] } | null> {
+  return crmPost<{ leads: CrmLead[] }>("listLeads", {
+    ...(opts?.status ? { status: opts.status } : {}),
+    ...(opts?.search ? { search: opts.search } : {}),
+    ...(opts?.sort === "oldest" ? { sort: "oldest" } : {}),
+  });
 }
 
 export interface CrmLeadDetail {

@@ -5,16 +5,18 @@
 // card list (mobile). Reads crm-api `listLeads` (service_role, admin-gated),
 // which returns a deliberately column-limited, PII-safe shape (name, phone,
 // provider, source, status, created_at — no email/notes/source_ip/consent).
-// Filter by stage, search by name/phone (debounced), sort by recency, export the
-// current view as CSV (built in-browser, no new endpoint), and multi-select rows
-// for a bulk stage change (each write is the same audited setLeadStatus, fanned
-// out in bounded waves); each row opens the detail drawer (status, won-flow, brief).
+// Filter by stage, a client-side created-at quick-view (24h/7d/30d), search by
+// name/phone (debounced), sort by recency, export the current view as CSV (built
+// in-browser, no new endpoint), and multi-select rows for a bulk stage change
+// (each write is the same audited setLeadStatus, fanned out in bounded waves);
+// each row opens the detail drawer (status, won-flow, brief).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus, setCrmLeadStatus } from "@/lib/crm-admin";
 import { runChunked } from "@/lib/batch";
 import { buildCsv, downloadCsv } from "@/lib/csv";
+import { type DateRange, withinRange } from "@/lib/date-range";
 import CrmLeadDrawer from "./CrmLeadDrawer";
 import { BTN_GHOST, LEAD_STATUS_META, NoticeCard, StatusPill, when } from "./ui";
 
@@ -53,6 +55,7 @@ export default function CrmLeads() {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<LeadSort>("recent");
+  const [range, setRange] = useState<DateRange>("all");
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -67,6 +70,20 @@ export default function CrmLeads() {
     const t = setTimeout(() => setSearch(searchInput.trim()), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
+
+  // Quick-view date window, applied CLIENT-side over the fetched rows (already
+  // server-sorted), so switching windows is instant and needs no round-trip.
+  // Everything downstream — count, export, select-all — reads `shown`, not `leads`.
+  const shown = useMemo(
+    () => (leads ?? []).filter((l) => withinRange(l.createdAt, range, Date.now())),
+    [leads, range],
+  );
+
+  const changeRange = useCallback((r: DateRange) => {
+    setRange(r);
+    setSelected(new Set()); // a narrower window invalidates a selection of hidden rows
+    setBulkMsg(null);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -95,11 +112,10 @@ export default function CrmLeads() {
   const toggleAll = useCallback(() => {
     setBulkMsg(null);
     setSelected((prev) => {
-      const all = leads ?? [];
-      if (all.length > 0 && all.every((l) => prev.has(l.id))) return new Set();
-      return new Set(all.map((l) => l.id));
+      if (shown.length > 0 && shown.every((l) => prev.has(l.id))) return new Set();
+      return new Set(shown.map((l) => l.id));
     });
-  }, [leads]);
+  }, [shown]);
 
   // Apply a stage to every selected lead. Each call is the SAME audited
   // setLeadStatus the drawer uses (server writes lead_events + security_audit_log),
@@ -130,9 +146,9 @@ export default function CrmLeads() {
   // (fetched via crm-api behind the admin gate), so this adds no new endpoint and
   // no new PII surface — csv.ts guards against formula injection on the way out.
   const exportCsv = useCallback(() => {
-    if (!leads || leads.length === 0) return;
+    if (shown.length === 0) return;
     const headers = ["שם", "טלפון", "ספק", "מקור", "שלב", "נוצר"];
-    const rows = leads.map((l) => [
+    const rows = shown.map((l) => [
       l.name,
       l.phone,
       l.provider ?? "",
@@ -140,13 +156,19 @@ export default function CrmLeads() {
       LEAD_STATUS_META[l.status]?.label ?? l.status,
       l.createdAt ?? "",
     ]);
-    downloadCsv(`leads-${filter}.csv`, buildCsv(headers, rows));
-  }, [leads, filter]);
+    downloadCsv(`leads-${filter}${range === "all" ? "" : `-${range}`}.csv`, buildCsv(headers, rows));
+  }, [shown, filter, range]);
 
-  const canExport = !!leads && leads.length > 0;
-  const visible = leads ?? [];
-  const allSelected = visible.length > 0 && visible.every((l) => selected.has(l.id));
+  const canExport = shown.length > 0;
+  const allSelected = shown.length > 0 && shown.every((l) => selected.has(l.id));
   const someSelected = selected.size > 0 && !allSelected;
+
+  const RANGES: { key: DateRange; label: string }[] = [
+    { key: "all", label: "הכול" },
+    { key: "1d", label: "24 שעות" },
+    { key: "7d", label: "7 ימים" },
+    { key: "30d", label: "30 יום" },
+  ];
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },
@@ -216,6 +238,21 @@ export default function CrmLeads() {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1 text-xs text-muted" role="group" aria-label="טווח זמן">
+        <span>נוצרו:</span>
+        {RANGES.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            onClick={() => changeRange(r.key)}
+            aria-pressed={range === r.key}
+            className={`rounded-full border px-2.5 py-1 font-medium ${range === r.key ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <LeadsSkeleton />
       ) : error || !leads ? (
@@ -263,8 +300,13 @@ export default function CrmLeads() {
               {bulkMsg}
             </p>
           )}
+          {shown.length === 0 ? (
+            <NoticeCard>אין לידים בטווח הזמן שנבחר.</NoticeCard>
+          ) : (
+          <>
           <p className="text-xs text-muted">
-            {leads.length.toLocaleString("he-IL")} לידים{leads.length >= 200 ? " (מוצגים 200 האחרונים)" : ""}
+            {shown.length.toLocaleString("he-IL")} לידים
+            {range === "all" && leads && leads.length >= 200 ? " (מתוך 200 שנטענו)" : ""}
           </p>
 
           {/* Desktop: a semantic table. */}
@@ -293,7 +335,7 @@ export default function CrmLeads() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map((l) => (
+                {shown.map((l) => (
                   <tr
                     key={l.id}
                     role="button"
@@ -332,7 +374,7 @@ export default function CrmLeads() {
 
           {/* Mobile: cards. */}
           <ul className="space-y-2 md:hidden">
-            {leads.map((l) => (
+            {shown.map((l) => (
               <li
                 key={l.id}
                 role="button"
@@ -368,6 +410,8 @@ export default function CrmLeads() {
               </li>
             ))}
           </ul>
+          </>
+          )}
         </>
       )}
 

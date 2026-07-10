@@ -18,6 +18,7 @@
 //   listContacts        → the WhatsApp-contact lifecycle list
 //   setLeadStatus       → patch leads.status + lead_events audit row
 //   listLeads           → the lead pipeline
+//   listSellableLeads   → READ-ONLY consented-sharing feed (audited; no buyer push)
 //   repLeaderboard      → per-rep performance (claimed/won/lost + booked saving)
 //   listMeetings        → Zoom-booking list · getMeeting → detail + timeline
 //   setMeetingStatus    → patch meetings.status + meeting_events audit row
@@ -63,8 +64,14 @@ import {
   shapeMeeting,
   shapeMeetingDetail,
   shapeMeetingEvent,
+  shapeSellableLead,
   snippet,
 } from "./crm_logic.ts";
+// The sellable-leads console view reuses the exporter's LEGAL gate so it can never
+// drift: isSellable (a lead is sellable ⇔ it has an explicit consent_share_at) +
+// SELLABLE_STATUSES (new/contacted/won — a 'lost' lead is never a candidate).
+import { isSellable, SELLABLE_STATUSES } from "../lead-export/lib.ts";
+import type { Lead } from "../_shared/types.ts";
 
 type Row = Record<string, unknown>;
 
@@ -632,6 +639,31 @@ async function actGetLeadDetail(b: Row): Promise<Response> {
   return json({ lead, events });
 }
 
+// listSellableLeads {status?} → the READ-ONLY third-party-sharing feed for the
+// console: ONLY leads carrying an explicit consent_share_at (the SAME hard legal
+// gate the lead-export function uses), never a 'lost' lead, through an allowlist
+// DTO (no source_ip / notes). Because the business is exposing saleable PII, this
+// read is more sensitive than most writes, so EVERY view is audited
+// (crm_lead_export: who viewed how many consented leads). It NEVER pushes anything
+// to a buyer — the secret-gated lead-export cron stays the only path that can.
+async function actListSellableLeads(b: Row, actorUid: string): Promise<Response> {
+  const status = s(b.status).trim();
+  const statuses = status && (SELLABLE_STATUSES as readonly string[]).includes(status)
+    ? [status]
+    : [...SELLABLE_STATUSES];
+  const path =
+    `/rest/v1/leads?consent_share_at=not.is.null&status=in.(${statuses.map((st) => q(st)).join(",")})` +
+    `&order=created_at.desc&limit=500&select=id,name,phone,email,provider,source,status,consent_share_at,created_at`;
+  const rows = await fetchRows<Row>(path);
+  if (rows === null) return json({ error: "שגיאה בטעינת הלידים לשיתוף" }, 502);
+  // Defence in depth: re-apply the exporter's isSellable gate even though the query
+  // already filtered — a consent-less row can never slip through, ever.
+  const leads = rows.filter((r) => isSellable(r as unknown as Lead)).map(shapeSellableLead);
+  // Reg.13: the single most audit-sensitive READ — who saw the saleable feed + size.
+  await logAudit(actorUid, "crm_lead_export", { count: leads.length, status: status || "all" });
+  return json({ leads });
+}
+
 // addNote {leadId, note} → append a note to the lead's activity timeline
 // (lead_events). Does NOT overwrite the single leads.notes field — the timeline
 // preserves history. Clamped; PII-light audit preview.
@@ -881,6 +913,8 @@ Deno.serve(async (req: Request) => {
         return await actListLeads(body);
       case "getLeadDetail":
         return await actGetLeadDetail(body);
+      case "listSellableLeads":
+        return await actListSellableLeads(body, admin.uid);
       case "addNote":
         return await actAddNote(body, admin.uid);
       case "setLeadNote":

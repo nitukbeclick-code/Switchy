@@ -53,6 +53,7 @@ import {
   CONVERSATION_STATUSES,
   eventPreview,
   LEAD_STATUSES,
+  MAX_NOTE_LEN,
   MAX_REPLY_LEN,
   MEETING_STATUSES,
   s,
@@ -650,6 +651,33 @@ async function actAddNote(b: Row, actorUid: string): Promise<Response> {
   return json({ ok: true });
 }
 
+// setLeadNote {leadId, note} → OVERWRITE the single leads.notes field (the primary
+// note shown in the drawer). Unlike addNote (append-only), this replaces the field,
+// so we record every save on the timeline (event=note_edit) — the sequence of
+// note_edit rows IS the edit history, nothing is silently lost. Clamped to
+// MAX_NOTE_LEN; the audit stays PII-light (length + clipped preview only).
+async function actSetLeadNote(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  const note = s(b.note).slice(0, MAX_NOTE_LEN);
+  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ notes: note || null }),
+  });
+  if (!r || !r.ok) {
+    jlog({ at: "crm.setLeadNote", ok: false, status: r?.status });
+    return json({ error: "עדכון ההערה נכשל" }, 502);
+  }
+  await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "note_edit",
+    note: note || "(ההערה נמחקה)",
+    actor_name: "CRM",
+  });
+  await logAudit(actorUid, "crm_lead_note_edit", { lead_id: leadId, len: note.length, preview: eventPreview(note) });
+  return json({ ok: true });
+}
+
 // recordSaving {leadId, annualSaving} → the won-flow: stamp the REAL annual saving
 // (₪/year, clamped 0..100000) AND close the lead (status=won), with a timeline
 // row. A saving is only ever a real recorded figure — the clamp stops a fat-finger
@@ -855,6 +883,8 @@ Deno.serve(async (req: Request) => {
         return await actGetLeadDetail(body);
       case "addNote":
         return await actAddNote(body, admin.uid);
+      case "setLeadNote":
+        return await actSetLeadNote(body, admin.uid);
       case "recordSaving":
         return await actRecordSaving(body, admin.uid);
       case "claimLead":

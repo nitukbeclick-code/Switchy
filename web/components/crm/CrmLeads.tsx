@@ -5,18 +5,28 @@
 // card list (mobile). Reads crm-api `listLeads` (service_role, admin-gated),
 // which returns a deliberately column-limited, PII-safe shape (name, phone,
 // provider, source, status, created_at — no email/notes/source_ip/consent).
-// Filter by stage, search by name/phone (debounced), sort by recency, and export
-// the current view as CSV (built in-browser, no new endpoint); each row opens the
-// detail drawer (status changes, won-flow, call-brief).
+// Filter by stage, search by name/phone (debounced), sort by recency, export the
+// current view as CSV (built in-browser, no new endpoint), and multi-select rows
+// for a bulk stage change (each write is the same audited setLeadStatus, fanned
+// out in bounded waves); each row opens the detail drawer (status, won-flow, brief).
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
-import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus } from "@/lib/crm-admin";
+import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus, setCrmLeadStatus } from "@/lib/crm-admin";
+import { runChunked } from "@/lib/batch";
 import { buildCsv, downloadCsv } from "@/lib/csv";
 import CrmLeadDrawer from "./CrmLeadDrawer";
 import { BTN_GHOST, LEAD_STATUS_META, NoticeCard, StatusPill, when } from "./ui";
 
 type Filter = LeadStatus | "all";
+
+// Stages a bulk action can move a selection to. `won` is deliberately excluded —
+// closing as won goes through the drawer's guided flow (it records the real annual
+// saving); these two are the safe "triage" transitions that need no extra data.
+const BULK_TARGETS: { status: LeadStatus; label: string }[] = [
+  { status: "contacted", label: "יצרנו קשר" },
+  { status: "lost", label: "אבוד" },
+];
 
 // Enter/Space activate a row that is a clickable region (role="button").
 function activateOnKey(fn: () => void) {
@@ -47,6 +57,10 @@ export default function CrmLeads() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Bulk selection (by lead id) + its in-flight/result state.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
 
   // Debounce the search box so we don't fire a request per keystroke.
   useEffect(() => {
@@ -57,6 +71,7 @@ export default function CrmLeads() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
+    setSelected(new Set()); // a fresh view invalidates any prior selection
     const res = await fetchCrmLeads({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
@@ -66,6 +81,46 @@ export default function CrmLeads() {
     else setError(true);
     setLoading(false);
   }, [filter, search, sort]);
+
+  const toggleOne = useCallback((id: string) => {
+    setBulkMsg(null);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAll = useCallback(() => {
+    setBulkMsg(null);
+    setSelected((prev) => {
+      const all = leads ?? [];
+      if (all.length > 0 && all.every((l) => prev.has(l.id))) return new Set();
+      return new Set(all.map((l) => l.id));
+    });
+  }, [leads]);
+
+  // Apply a stage to every selected lead. Each call is the SAME audited
+  // setLeadStatus the drawer uses (server writes lead_events + security_audit_log),
+  // just fanned out in small waves. Partial failures are reported, not swallowed.
+  const applyBulkStatus = useCallback(
+    async (status: LeadStatus) => {
+      if (selected.size === 0 || bulkBusy) return;
+      setBulkBusy(true);
+      setBulkMsg(null);
+      const ids = [...selected];
+      const ok = await runChunked(ids, 5, (id) => setCrmLeadStatus(id, status));
+      setBulkBusy(false);
+      setBulkMsg(
+        ok === ids.length
+          ? `עודכנו ${ok} לידים.`
+          : `עודכנו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`,
+      );
+      await load(); // refresh statuses + clear the (now-stale) selection
+    },
+    [selected, bulkBusy, load],
+  );
 
   useEffect(() => {
     void load();
@@ -89,6 +144,9 @@ export default function CrmLeads() {
   }, [leads, filter]);
 
   const canExport = !!leads && leads.length > 0;
+  const visible = leads ?? [];
+  const allSelected = visible.length > 0 && visible.every((l) => selected.has(l.id));
+  const someSelected = selected.size > 0 && !allSelected;
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },
@@ -174,6 +232,37 @@ export default function CrmLeads() {
         <NoticeCard>{search ? "לא נמצאו לידים תואמים לחיפוש." : "אין לידים בשלב הזה."}</NoticeCard>
       ) : (
         <>
+          {selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-accent/40 bg-accent/5 p-3">
+              <span className="text-sm font-semibold text-ink">{selected.size.toLocaleString("he-IL")} נבחרו</span>
+              <span className="text-xs text-muted">העבר ל־</span>
+              {BULK_TARGETS.map((t) => (
+                <button
+                  key={t.status}
+                  type="button"
+                  onClick={() => void applyBulkStatus(t.status)}
+                  disabled={bulkBusy}
+                  className={`${BTN_GHOST} text-xs`}
+                >
+                  {t.label}
+                </button>
+              ))}
+              {bulkBusy && <span className="text-xs text-muted">מעדכן…</span>}
+              <button
+                type="button"
+                onClick={() => setSelected(new Set())}
+                disabled={bulkBusy}
+                className="ms-auto text-xs text-muted underline underline-offset-2 disabled:opacity-50"
+              >
+                בטל בחירה
+              </button>
+            </div>
+          )}
+          {bulkMsg && (
+            <p className="text-xs font-medium text-value-text" role="status">
+              {bulkMsg}
+            </p>
+          )}
           <p className="text-xs text-muted">
             {leads.length.toLocaleString("he-IL")} לידים{leads.length >= 200 ? " (מוצגים 200 האחרונים)" : ""}
           </p>
@@ -183,6 +272,18 @@ export default function CrmLeads() {
             <table className="w-full text-right text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted">
+                  <th scope="col" className="w-10 px-4 py-2 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={toggleAll}
+                      aria-label="בחר את כל הלידים המוצגים"
+                      className="h-4 w-4 cursor-pointer accent-accent"
+                    />
+                  </th>
                   <th scope="col" className="px-4 py-2 font-medium">שם</th>
                   <th scope="col" className="px-4 py-2 font-medium">טלפון</th>
                   <th scope="col" className="px-4 py-2 font-medium">ספק</th>
@@ -200,8 +301,23 @@ export default function CrmLeads() {
                     aria-label={`פרטי הליד ${l.name || l.phone}`}
                     onClick={() => setSelectedId(l.id)}
                     onKeyDown={activateOnKey(() => setSelectedId(l.id))}
-                    className="cursor-pointer border-b border-border/60 last:border-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5"
+                    className={`cursor-pointer border-b border-border/60 last:border-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5 ${
+                      selected.has(l.id) ? "bg-accent/5" : ""
+                    }`}
                   >
+                    <td
+                      className="px-4 py-2"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.has(l.id)}
+                        onChange={() => toggleOne(l.id)}
+                        aria-label={`בחירת הליד ${l.name || l.phone}`}
+                        className="h-4 w-4 cursor-pointer accent-accent"
+                      />
+                    </td>
                     <td className="px-4 py-2 font-medium text-ink">{l.name || "—"}</td>
                     <td className="px-4 py-2 text-muted" dir="ltr">{l.phone || "—"}</td>
                     <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
@@ -227,9 +343,20 @@ export default function CrmLeads() {
                 className="cursor-pointer rounded-2xl border border-border bg-surface p-3 shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{l.name || "—"}</p>
-                    <p className="truncate text-xs text-muted" dir="ltr">{l.phone || "—"}</p>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(l.id)}
+                      onChange={() => toggleOne(l.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      aria-label={`בחירת הליד ${l.name || l.phone}`}
+                      className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">{l.name || "—"}</p>
+                      <p className="truncate text-xs text-muted" dir="ltr">{l.phone || "—"}</p>
+                    </div>
                   </div>
                   <StatusPill status={l.status} />
                 </div>

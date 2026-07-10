@@ -134,7 +134,13 @@
         if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
       });
     }, { threshold: 0.12 });
-    reveals.forEach((el) => io.observe(el));
+    reveals.forEach((el) => {
+      // An element taller than ~8 viewports (e.g. the stacked mobile comparison
+      // table) can never reach the 12% threshold — reveal it immediately
+      // instead of leaving it permanently invisible.
+      if (el.offsetHeight * 0.12 > window.innerHeight) { el.classList.add('in'); return; }
+      io.observe(el);
+    });
   } else {
     reveals.forEach((el) => el.classList.add('in'));
   }
@@ -1182,7 +1188,9 @@
     };
     pairs.forEach((pair) => {
       if (!pair.trigger.hasAttribute('aria-expanded')) pair.trigger.setAttribute('aria-expanded', 'false');
-      if (!pair.trigger.hasAttribute('aria-haspopup')) pair.trigger.setAttribute('aria-haspopup', 'true');
+      // No aria-haspopup: the mega panel is a DISCLOSURE of plain links (APG
+      // disclosure pattern), not a menu widget — aria-expanded is the contract.
+      pair.trigger.removeAttribute('aria-haspopup');
       pair.panel.hidden = pair.panel.classList.contains('is-open') ? false : true;
       const isOpen = () => pair.trigger.getAttribute('aria-expanded') === 'true';
       const open = (focus) => {
@@ -3248,6 +3256,9 @@
     // Memory + deep-link: restore the visitor's last category/bill, and honor
     // a shareable #finder=<cat>-<bill> fragment (which also wins over memory).
     var MEMKEY = 'switchy-finder';
+    // A11y: mirror the visual is-active selection as aria-pressed (WCAG 4.1.2),
+    // matching the other chip groups (quick filters, plans, booking categories).
+    root.querySelectorAll('.finder__cat').forEach(function (b) { b.setAttribute('aria-pressed', String(b.classList.contains('is-active'))); });
     try {
       var mem = JSON.parse(localStorage.getItem(MEMKEY) || 'null');
       if (mem && RANGES[mem.cat]) { cat = mem.cat; }
@@ -3261,7 +3272,7 @@
         var r1 = RANGES[cat];
         bill.min = r1[0]; bill.max = r1[1]; bill.value = r1[2];
       }
-      root.querySelectorAll('.finder__cat').forEach(function (b) { b.classList.toggle('is-active', b.dataset.cat === cat); });
+      root.querySelectorAll('.finder__cat').forEach(function (b) { var on = b.dataset.cat === cat; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
       if (m) setTimeout(function () { root.scrollIntoView({ block: 'center' }); }, 150);
     } catch (_) {}
     var remember = function () {
@@ -3302,7 +3313,7 @@
     root.querySelectorAll('.finder__cat').forEach(function (btn) {
       btn.addEventListener('click', function () {
         cat = btn.dataset.cat;
-        root.querySelectorAll('.finder__cat').forEach(function (b) { b.classList.toggle('is-active', b === btn); });
+        root.querySelectorAll('.finder__cat').forEach(function (b) { var on = b === btn; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });
         var r = RANGES[cat] || RANGES.cellular;
         bill.min = r[0]; bill.max = r[1]; bill.value = r[2];
         out.textContent = fmt(bill.value);

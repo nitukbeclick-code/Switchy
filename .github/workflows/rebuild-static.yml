@@ -110,8 +110,10 @@ jobs:
 
           # Only the build OUTPUTS — never re-commit source. (build.js itself is
           # unchanged by a run; staging just the generated artefacts keeps the
-          # commit honest and the diff reviewable.)
-          git add site/*.html site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
+          # commit honest and the diff reviewable.) -A + quoted pathspec so the
+          # build's PRUNED pages (deleted stale HTML) get staged too — an
+          # unquoted site/*.html expands in the shell and misses deletions.
+          git add -A -- 'site/*.html' site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
 
           if git diff --cached --quiet; then
             echo "No catalogue changes — nothing to redeploy."

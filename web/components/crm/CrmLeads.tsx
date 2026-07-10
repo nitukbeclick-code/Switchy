@@ -5,12 +5,14 @@
 // card list (mobile). Reads crm-api `listLeads` (service_role, admin-gated),
 // which returns a deliberately column-limited, PII-safe shape (name, phone,
 // provider, source, status, created_at — no email/notes/source_ip/consent).
-// Filter by stage, search by name/phone (debounced), sort by recency; each row
-// opens the detail drawer (status changes, won-flow, call-brief).
+// Filter by stage, search by name/phone (debounced), sort by recency, and export
+// the current view as CSV (built in-browser, no new endpoint); each row opens the
+// detail drawer (status changes, won-flow, call-brief).
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
 import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus } from "@/lib/crm-admin";
+import { buildCsv, downloadCsv } from "@/lib/csv";
 import CrmLeadDrawer from "./CrmLeadDrawer";
 import { BTN_GHOST, LEAD_STATUS_META, NoticeCard, StatusPill, when } from "./ui";
 
@@ -69,6 +71,25 @@ export default function CrmLeads() {
     void load();
   }, [load]);
 
+  // Export the CURRENT view as CSV. The rows are already in the admin's browser
+  // (fetched via crm-api behind the admin gate), so this adds no new endpoint and
+  // no new PII surface — csv.ts guards against formula injection on the way out.
+  const exportCsv = useCallback(() => {
+    if (!leads || leads.length === 0) return;
+    const headers = ["שם", "טלפון", "ספק", "מקור", "שלב", "נוצר"];
+    const rows = leads.map((l) => [
+      l.name,
+      l.phone,
+      l.provider ?? "",
+      l.source ?? "",
+      LEAD_STATUS_META[l.status]?.label ?? l.status,
+      l.createdAt ?? "",
+    ]);
+    downloadCsv(`leads-${filter}.csv`, buildCsv(headers, rows));
+  }, [leads, filter]);
+
+  const canExport = !!leads && leads.length > 0;
+
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },
     ...LEAD_STATUSES.map((s) => ({ key: s as Filter, label: LEAD_STATUS_META[s].label })),
@@ -126,6 +147,15 @@ export default function CrmLeads() {
             ותיקים
           </button>
         </div>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={!canExport}
+          className={`${BTN_GHOST} text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+          title="ייצוא התצוגה הנוכחית כקובץ CSV"
+        >
+          ייצוא CSV
+        </button>
       </div>
 
       {loading ? (

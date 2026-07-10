@@ -506,16 +506,21 @@ async function actSetLeadStatus(b: Row, actorUid: string): Promise<Response> {
   return json({ ok: true });
 }
 
-// listLeads {status?} → the lead pipeline (newest first).
+// listLeads {status?, search?, sort?} → the lead pipeline. `sort` = "oldest"
+// flips to created_at ASC (default newest-first). `search` is an in-memory
+// name/phone filter over the fetched window (same safe post-fetch pattern as
+// listConversations — never interpolated into the PostgREST query string).
 async function actListLeads(b: Row): Promise<Response> {
   const status = s(b.status).trim();
   if (status && !LEAD_STATUSES.has(status)) return json({ error: "סטטוס ליד לא תקין" }, 400);
+  const search = s(b.search).trim().toLowerCase();
+  const asc = s(b.sort).trim() === "oldest";
   let path =
-    `/rest/v1/leads?order=created_at.desc&limit=200&select=id,name,phone,provider,source,status,created_at`;
+    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=200&select=id,name,phone,provider,source,status,created_at`;
   if (status) path += `&status=eq.${q(status)}`;
   const rows = await fetchRows<Row>(path);
   if (rows === null) return json({ error: "שגיאה בטעינת הלידים" }, 502);
-  const leads = rows.map((r) => ({
+  let leads = rows.map((r) => ({
     id: s(r.id),
     name: s(r.name),
     phone: s(r.phone),
@@ -524,6 +529,11 @@ async function actListLeads(b: Row): Promise<Response> {
     status: s(r.status),
     createdAt: s(r.created_at) || null,
   }));
+  if (search) {
+    leads = leads.filter((l) =>
+      l.name.toLowerCase().includes(search) || l.phone.toLowerCase().includes(search)
+    );
+  }
   return json({ leads });
 }
 

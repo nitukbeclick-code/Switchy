@@ -187,6 +187,46 @@ export function shapeLeadEvent(e: Record<string, unknown>): LeadEvent {
   };
 }
 
+// ── rep leaderboard ─────────────────────────────────────────────────────────
+
+export interface RepStat {
+  rep: string;
+  claimed: number; // leads this rep has taken
+  won: number; // of those, closed as won
+  lost: number; // of those, marked lost
+  totalSaving: number; // sum of the REAL recorded annual saving on their won leads
+}
+
+/**
+ * Aggregate claimed leads into per-rep performance. Pure over `rows` (no clock /
+ * network), so it is unit-testable. `totalSaving` sums ONLY won leads' positive
+ * actual_saving — an open, lost, or unrecorded lead can never inflate a rep's
+ * booked figure (truth-only). Sorted by booked saving, then wins, then name.
+ */
+export function aggregateReps(
+  rows: Array<{ claimed_by?: unknown; status?: unknown; actual_saving?: unknown }>,
+): RepStat[] {
+  const map = new Map<string, RepStat>();
+  for (const r of rows) {
+    const rep = s(r.claimed_by).trim();
+    if (!rep) continue;
+    const st = s(r.status);
+    const e = map.get(rep) ?? { rep, claimed: 0, won: 0, lost: 0, totalSaving: 0 };
+    e.claimed++;
+    if (st === "won") {
+      e.won++;
+      const sv = Number(r.actual_saving);
+      if (Number.isFinite(sv) && sv > 0) e.totalSaving += sv;
+    } else if (st === "lost") {
+      e.lost++;
+    }
+    map.set(rep, e);
+  }
+  return [...map.values()].sort(
+    (a, b) => b.totalSaving - a.totalSaving || b.won - a.won || a.rep.localeCompare(b.rep),
+  );
+}
+
 // ── whatsapp contacts (lifecycle view) ─────────────────────────────────────
 
 // The contact fields the lifecycle list exposes (behind the admin gate). wa_id /

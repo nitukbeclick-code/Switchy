@@ -18,6 +18,7 @@
 //   listContacts        → the WhatsApp-contact lifecycle list
 //   setLeadStatus       → patch leads.status + lead_events audit row
 //   listLeads           → the lead pipeline
+//   repLeaderboard      → per-rep performance (claimed/won/lost + booked saving)
 //   listMeetings        → Zoom-booking list · getMeeting → detail + timeline
 //   setMeetingStatus    → patch meetings.status + meeting_events audit row
 //
@@ -44,6 +45,7 @@ import { jlog } from "../_shared/log.ts";
 import { medianMinutes } from "../_shared/digests.ts";
 import { SLA_HOURS } from "../lead-digest/lib.ts";
 import {
+  aggregateReps,
   auditDetail,
   clampLimit,
   CONTACT_STATUSES,
@@ -585,7 +587,7 @@ async function actListLeads(b: Row): Promise<Response> {
   const search = s(b.search).trim().toLowerCase();
   const asc = s(b.sort).trim() === "oldest";
   let path =
-    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=200&select=id,name,phone,provider,source,status,created_at`;
+    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=200&select=id,name,phone,provider,source,status,created_at,claimed_by`;
   if (status) path += `&status=eq.${q(status)}`;
   const rows = await fetchRows<Row>(path);
   if (rows === null) return json({ error: "שגיאה בטעינת הלידים" }, 502);
@@ -597,6 +599,7 @@ async function actListLeads(b: Row): Promise<Response> {
     source: s(r.source) || null,
     status: s(r.status),
     createdAt: s(r.created_at) || null,
+    claimedBy: s(r.claimed_by) || null,
   }));
   if (search) {
     leads = leads.filter((l) =>
@@ -700,6 +703,21 @@ async function actClaimLead(b: Row, actorUid: string): Promise<Response> {
   });
   await logAudit(actorUid, "crm_lead_claim", { lead_id: leadId, rep });
   return json({ ok: true });
+}
+
+// repLeaderboard {} → per-rep performance over the claimed leads: how many each
+// rep took, closed as won / lost, and the REAL annual saving they booked. There
+// is no PostgREST GROUP BY without an RPC, so we read the claimed leads and
+// aggregate in-edge (aggregateReps, pure + tested). Only claimed_by/status/
+// actual_saving are read — no name/phone/PII enters the rollup. `capped` flags a
+// window overflow so the UI can say the totals are a recent sample, not lifetime.
+async function actRepLeaderboard(): Promise<Response> {
+  const LIMIT = 2000;
+  const rows = await fetchRows<Row>(
+    `/rest/v1/leads?claimed_by=not.is.null&order=created_at.desc&limit=${LIMIT}&select=claimed_by,status,actual_saving`,
+  );
+  if (rows === null) return json({ error: "שגיאה בטעינת נתוני הנציגים" }, 502);
+  return json({ reps: aggregateReps(rows), sampled: rows.length, capped: rows.length >= LIMIT });
 }
 
 // ── meetings (Zoom bookings) ───────────────────────────────────────────────
@@ -841,6 +859,8 @@ Deno.serve(async (req: Request) => {
         return await actRecordSaving(body, admin.uid);
       case "claimLead":
         return await actClaimLead(body, admin.uid);
+      case "repLeaderboard":
+        return await actRepLeaderboard();
       case "listMeetings":
         return await actListMeetings(body);
       case "getMeeting":

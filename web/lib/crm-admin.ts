@@ -52,6 +52,20 @@ export interface CrmLead {
   source: string | null;
   status: LeadStatus;
   createdAt: string | null;
+  claimedBy: string | null;
+}
+
+export interface RepStat {
+  rep: string;
+  claimed: number;
+  won: number;
+  lost: number;
+  totalSaving: number;
+}
+
+/** Per-rep performance leaderboard (claimed / won / lost + real booked saving). */
+export function fetchRepLeaderboard(): Promise<{ reps: RepStat[]; sampled: number; capped: boolean } | null> {
+  return crmPost<{ reps: RepStat[]; sampled: number; capped: boolean }>("repLeaderboard");
 }
 
 // Bearer + apikey headers from the live browser session, or null when there is no

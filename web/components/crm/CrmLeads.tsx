@@ -5,11 +5,11 @@
 // card list (mobile). Reads crm-api `listLeads` (service_role, admin-gated),
 // which returns a deliberately column-limited, PII-safe shape (name, phone,
 // provider, source, status, created_at — no email/notes/source_ip/consent).
-// Filter by stage, a client-side created-at quick-view (24h/7d/30d), search by
-// name/phone (debounced), sort by recency, export the current view as CSV (built
-// in-browser, no new endpoint), and multi-select rows for a bulk stage change
-// (each write is the same audited setLeadStatus, fanned out in bounded waves);
-// each row opens the detail drawer (status, won-flow, brief).
+// Filter by stage, a client-side created-at quick-view (24h/7d/30d) and rep,
+// search by name/phone (debounced), sort by recency, export the current view as
+// CSV (built in-browser, no new endpoint), and multi-select rows for a bulk stage
+// change (each write is the same audited setLeadStatus, fanned out in bounded
+// waves); each row opens the detail drawer (status, won-flow, brief).
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -56,6 +56,7 @@ export default function CrmLeads() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<LeadSort>("recent");
   const [range, setRange] = useState<DateRange>("all");
+  const [rep, setRep] = useState<string>("all");
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -71,19 +72,42 @@ export default function CrmLeads() {
     return () => clearTimeout(t);
   }, [searchInput]);
 
-  // Quick-view date window, applied CLIENT-side over the fetched rows (already
-  // server-sorted), so switching windows is instant and needs no round-trip.
+  // The set of reps present in the loaded window, for the rep filter dropdown.
+  const repOptions = useMemo(
+    () => [...new Set((leads ?? []).map((l) => l.claimedBy).filter((r): r is string => !!r))].sort((a, b) => a.localeCompare(b)),
+    [leads],
+  );
+
+  // Quick-view date window + rep filter, applied CLIENT-side over the fetched rows
+  // (already server-sorted), so switching is instant and needs no round-trip.
   // Everything downstream — count, export, select-all — reads `shown`, not `leads`.
   const shown = useMemo(
-    () => (leads ?? []).filter((l) => withinRange(l.createdAt, range, Date.now())),
-    [leads, range],
+    () =>
+      (leads ?? []).filter(
+        (l) => withinRange(l.createdAt, range, Date.now()) && (rep === "all" || l.claimedBy === rep),
+      ),
+    [leads, range, rep],
   );
+
+  const clearOnFilterChange = useCallback(() => {
+    setSelected(new Set()); // a narrower view invalidates a selection of hidden rows
+    setBulkMsg(null);
+  }, []);
 
   const changeRange = useCallback((r: DateRange) => {
     setRange(r);
-    setSelected(new Set()); // a narrower window invalidates a selection of hidden rows
-    setBulkMsg(null);
-  }, []);
+    clearOnFilterChange();
+  }, [clearOnFilterChange]);
+
+  const changeRep = useCallback((r: string) => {
+    setRep(r);
+    clearOnFilterChange();
+  }, [clearOnFilterChange]);
+
+  // If a reload drops the currently-filtered rep from the window, fall back to all.
+  useEffect(() => {
+    if (rep !== "all" && !repOptions.includes(rep)) setRep("all");
+  }, [repOptions, rep]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,12 +171,13 @@ export default function CrmLeads() {
   // no new PII surface — csv.ts guards against formula injection on the way out.
   const exportCsv = useCallback(() => {
     if (shown.length === 0) return;
-    const headers = ["שם", "טלפון", "ספק", "מקור", "שלב", "נוצר"];
+    const headers = ["שם", "טלפון", "ספק", "מקור", "נציג", "שלב", "נוצר"];
     const rows = shown.map((l) => [
       l.name,
       l.phone,
       l.provider ?? "",
       l.source ?? "",
+      l.claimedBy ?? "",
       LEAD_STATUS_META[l.status]?.label ?? l.status,
       l.createdAt ?? "",
     ]);
@@ -238,7 +263,7 @@ export default function CrmLeads() {
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1 text-xs text-muted" role="group" aria-label="טווח זמן">
+      <div className="flex flex-wrap items-center gap-1 text-xs text-muted" role="group" aria-label="טווח זמן ונציג">
         <span>נוצרו:</span>
         {RANGES.map((r) => (
           <button
@@ -251,6 +276,24 @@ export default function CrmLeads() {
             {r.label}
           </button>
         ))}
+        {repOptions.length > 0 && (
+          <>
+            <span className="ms-2">נציג:</span>
+            <select
+              value={rep}
+              onChange={(e) => changeRep(e.target.value)}
+              aria-label="סינון לפי נציג"
+              className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            >
+              <option value="all">הכול</option>
+              {repOptions.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {loading ? (
@@ -330,6 +373,7 @@ export default function CrmLeads() {
                   <th scope="col" className="px-4 py-2 font-medium">טלפון</th>
                   <th scope="col" className="px-4 py-2 font-medium">ספק</th>
                   <th scope="col" className="px-4 py-2 font-medium">מקור</th>
+                  <th scope="col" className="px-4 py-2 font-medium">נציג</th>
                   <th scope="col" className="px-4 py-2 font-medium">שלב</th>
                   <th scope="col" className="px-4 py-2 font-medium">נוצר</th>
                 </tr>
@@ -364,6 +408,7 @@ export default function CrmLeads() {
                     <td className="px-4 py-2 text-muted" dir="ltr">{l.phone || "—"}</td>
                     <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
                     <td className="px-4 py-2 text-muted">{l.source || "—"}</td>
+                    <td className="px-4 py-2 text-muted">{l.claimedBy || "—"}</td>
                     <td className="px-4 py-2"><StatusPill status={l.status} /></td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted">{when(l.createdAt)}</td>
                   </tr>
@@ -405,6 +450,7 @@ export default function CrmLeads() {
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
                   {l.provider && <span>ספק: {l.provider}</span>}
                   {l.source && <span>מקור: {l.source}</span>}
+                  {l.claimedBy && <span>נציג: {l.claimedBy}</span>}
                   {l.createdAt && <span>{when(l.createdAt)}</span>}
                 </div>
               </li>

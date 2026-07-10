@@ -9,11 +9,12 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
-import { type AdminMetrics, fetchAdminMetrics } from "@/lib/crm-admin";
+import { type AdminMetrics, fetchAdminMetrics, fetchRepLeaderboard, type RepStat } from "@/lib/crm-admin";
 import { BTN_GHOST, NoticeCard, StatCard } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
 const pct = (r: number) => `${Math.round(r * 100)}%`;
+const ils = (n: number) => `₪${he(n)}`;
 
 const EVENT_LABEL: Record<string, string> = {
   appOpen: "פתיחות אפליקציה",
@@ -65,6 +66,9 @@ export default function CrmAnalytics() {
   const [data, setData] = useState<AdminMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // The rep leaderboard is lifetime-to-date (not time-windowed), so it loads once
+  // and is best-effort — a failure just hides the section, never blocks the panel.
+  const [reps, setReps] = useState<{ reps: RepStat[]; capped: boolean } | null>(null);
 
   const load = useCallback(async (d: number) => {
     setLoading(true);
@@ -79,10 +83,47 @@ export default function CrmAnalytics() {
     void load(days);
   }, [days, load]);
 
+  useEffect(() => {
+    void (async () => {
+      const r = await fetchRepLeaderboard();
+      if (r) setReps({ reps: r.reps, capped: r.capped });
+    })();
+  }, []);
+
   const windows = [7, 30, 90];
 
   return (
     <div className="space-y-6">
+      {reps && reps.reps.length > 0 && (
+        <Section title="לוח מובילים — נציגים">
+          {reps.capped && <p className="mb-2 text-xs text-muted">מוצג לפי מדגם הלידים האחרונים.</p>}
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted">
+                  <th scope="col" className="px-3 py-2 font-medium">נציג</th>
+                  <th scope="col" className="px-3 py-2 font-medium">לידים</th>
+                  <th scope="col" className="px-3 py-2 font-medium">נסגרו</th>
+                  <th scope="col" className="px-3 py-2 font-medium">אבודים</th>
+                  <th scope="col" className="px-3 py-2 font-medium">חיסכון שנרשם</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reps.reps.map((r) => (
+                  <tr key={r.rep} className="border-b border-border/60 last:border-0">
+                    <td className="px-3 py-2 font-medium text-ink">{r.rep}</td>
+                    <td className="px-3 py-2 tabular-nums text-muted">{he(r.claimed)}</td>
+                    <td className="px-3 py-2 tabular-nums text-value-text">{he(r.won)}</td>
+                    <td className="px-3 py-2 tabular-nums text-muted">{he(r.lost)}</td>
+                    <td className="px-3 py-2 font-semibold tabular-nums text-value-text">{ils(r.totalSaving)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="חלון זמן">
         {windows.map((d) => (
           <button key={d} type="button" role="tab" aria-selected={days === d} onClick={() => setDays(d)} className={chip(days === d)}>

@@ -15,6 +15,7 @@
 //   takeOver            → human takes the conversation (bot_enabled=false, silent)
 //   handBack            → return control to the AI bot (bot_enabled=true)
 //   setContactStatus    → patch whatsapp_contacts.status
+//   listContacts        → the WhatsApp-contact lifecycle list
 //   setLeadStatus       → patch leads.status + lead_events audit row
 //   listLeads           → the lead pipeline
 //   listMeetings        → Zoom-booking list · getMeeting → detail + timeline
@@ -53,6 +54,7 @@ import {
   MAX_REPLY_LEN,
   MEETING_STATUSES,
   s,
+  shapeContact,
   shapeLeadDetail,
   shapeLeadEvent,
   shapeMeeting,
@@ -526,6 +528,27 @@ async function actSetContactStatus(b: Row, actorUid: string): Promise<Response> 
   return json({ ok: true });
 }
 
+// listContacts {status?, search?} → the WhatsApp-contact lifecycle list, most
+// recently active first. `search` is the same safe in-memory name/phone filter
+// as listLeads (never interpolated into the query). Light allowlist DTO.
+async function actListContacts(b: Row): Promise<Response> {
+  const status = s(b.status).trim();
+  if (status && !CONTACT_STATUSES.has(status)) return json({ error: "סטטוס איש קשר לא תקין" }, 400);
+  const search = s(b.search).trim().toLowerCase();
+  let path =
+    `/rest/v1/whatsapp_contacts?order=last_message_at.desc.nullslast&limit=200&select=id,wa_name,wa_phone,status,lead_id,last_message_at`;
+  if (status) path += `&status=eq.${q(status)}`;
+  const rows = await fetchRows<Row>(path);
+  if (rows === null) return json({ error: "שגיאה בטעינת אנשי הקשר" }, 502);
+  let contacts = rows.map(shapeContact);
+  if (search) {
+    contacts = contacts.filter((c) =>
+      c.name.toLowerCase().includes(search) || c.phone.toLowerCase().includes(search)
+    );
+  }
+  return json({ contacts });
+}
+
 // setLeadStatus {leadId, status} → patch leads.status + lead_events audit row.
 async function actSetLeadStatus(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
@@ -804,6 +827,8 @@ Deno.serve(async (req: Request) => {
         return await actHandBack(body, admin.uid);
       case "setContactStatus":
         return await actSetContactStatus(body, admin.uid);
+      case "listContacts":
+        return await actListContacts(body);
       case "setLeadStatus":
         return await actSetLeadStatus(body, admin.uid);
       case "listLeads":

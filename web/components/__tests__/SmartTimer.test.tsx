@@ -1,9 +1,11 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <SmartTimer> — the pure client-side contract calculator. We pin the date math
-// (end date = start + months, dd/mm/yyyy) and the two result branches, including
-// that the FINISHED-commitment branch now surfaces a compare-plans CTA at peak
-// intent instead of dead-ending, while the still-active branch shows only a
-// save-the-date hint (no CTA). No network, no AppState — fully deterministic.
+// (end date = start + months, dd/mm/yyyy) and the two result branches: the
+// FINISHED-commitment branch surfaces a PRIMARY compare-plans CTA at peak intent
+// (with the "worth switching now" line), while the still-active branch shows a
+// save-the-date hint + a SECONDARY compare CTA — honestly framed ("penalty-free
+// switch is at the END; compare now to be ready"), and WITHOUT the "worth
+// switching now" claim. No network, no AppState — fully deterministic.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from "vitest";
@@ -32,11 +34,19 @@ describe("SmartTimer — contract calculator", () => {
     expect(cta).toHaveAttribute("href", "/compare");
   });
 
-  it("shows a save-the-date hint with NO CTA while the commitment is still active", () => {
+  it("shows a save-the-date hint + a SECONDARY compare CTA while the commitment is still active", () => {
     render(<SmartTimer />);
     setDates("2099-01-01", "12"); // ends far in the future → not ended
+    // Honest under-commitment copy: the penalty-free switch is at the END.
     expect(screen.getByText(/כשתסתיים ההתחייבות/)).toBeInTheDocument();
-    expect(screen.queryByRole("link")).toBeNull();
+    // HONESTY GUARD: the "worth switching now" line belongs ONLY to the finished
+    // branch — it must NOT appear while the user is still committed (a switch now
+    // could incur an exit penalty).
+    expect(screen.queryByText(/כדאי לעבור עכשיו/)).toBeNull();
+    // Not a dead-end: a SECONDARY compare CTA is offered (→ /compare) so the user
+    // can prepare, with no penalty-free claim attached.
+    const cta = screen.getByRole("link", { name: /השוואת מסלולים/ });
+    expect(cta).toHaveAttribute("href", "/compare");
   });
 
   it("honours a custom ctaHref/ctaLabel on the finished branch", () => {

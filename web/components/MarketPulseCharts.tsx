@@ -276,9 +276,9 @@ export default function MarketPulseCharts({
           המספרים מודפסים מעל כל עמודה. לקריאה מדויקת בנייד — הקישו על עמודה;
           במחשב — ריחוף מציג את הערך.
         </p>
-        {/* a11y (WCAG 1.1.1): the SVG bars are image-only, so we expose the same
-            figures as a visually-hidden data table for screen readers, and label
-            the chart region with role="img" + aria-label. */}
+        {/* a11y (WCAG 1.1.1): we expose the same figures as a visually-hidden data
+            table for screen readers, and label the chart region (role="group",
+            because it holds focusable bar-groups) with an aria-labelledby name. */}
         <table className="sr-only">
           <caption>מחיר ממוצע והמחיר הזול ביותר בכל קטגוריה, בשקלים</caption>
           <thead>
@@ -305,8 +305,10 @@ export default function MarketPulseCharts({
             The GROUP ORDER is reversed so the bars read right-to-left (RTL): the
             first/most-populated category sits on the right, matching the page. */}
         <div className="w-full" dir="ltr">
-          {/* a11y: role="img" + an in-SVG <title>/<desc> (referenced via
-              aria-labelledby) so assistive tech announces a name AND a longer
+          {/* a11y: role="group" (the SVG holds focusable role="button" bar-groups,
+              so it must expose — not hide — them; role="img" would suppress the
+              interactive children) + an in-SVG <title>/<desc> referenced via
+              aria-labelledby, so assistive tech announces a name AND a longer
               description; the adjacent sr-only data table carries the figures. */}
           <svg
             viewBox={`0 0 ${VB_W} ${VB_H}`}

@@ -26,6 +26,25 @@ import { type BillLine, type ParsedBill } from "./bill-forensics.ts";
 // so every image entry point (analyzer screen + in-chat photo) uses ONE ceiling.
 export const MAX_BILL_BASE64_LEN = 6 * 1024 * 1024;
 
+// Parse + clamp a CLIENT-SUPPLIED bill hint (`{provider?, monthly, category?}`)
+// referencing an already-analyzed bill — no image here (that's the OCR path).
+// The monthly is clamped to 0..5000 and rounded EXACTLY like the WhatsApp/OCR
+// paths, so a misread or a hostile client can't turn it into a giant fake saving;
+// a non-usable bill (non-finite / non-positive monthly) → undefined so the prompt
+// stays byte-identical to today. provider/category are trimmed + length-capped or
+// omitted — never invented. Honesty rail: this only reshapes what the client sent.
+export function parseBillHint(
+  raw: unknown,
+): { provider?: string; monthly: number; category?: string } | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const monthly = Math.round(Math.min(5000, Math.max(0, Number(o.monthly))));
+  if (!Number.isFinite(monthly) || monthly <= 0) return undefined;
+  const provider = typeof o.provider === "string" ? (o.provider.trim().slice(0, 40) || undefined) : undefined;
+  const category = typeof o.category === "string" ? (o.category.trim().slice(0, 20) || undefined) : undefined;
+  return { provider, monthly, category };
+}
+
 export type Extracted = {
   provider: string;
   monthly: number;

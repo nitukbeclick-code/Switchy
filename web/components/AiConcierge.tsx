@@ -146,6 +146,12 @@ export default function AiConcierge() {
     "name" | "phone" | "consent" | null
   >(null);
   const [leadSending, setLeadSending] = useState(false);
+  // The user tapped "לא עכשיו": hide the form AND stop the agent from auto-
+  // re-offering it (no nagging). A small inline affordance still lets them
+  // re-summon it. Mirrored into a ref because the async send() reads it but its
+  // useCallback deps intentionally don't include this.
+  const [leadDismissed, setLeadDismissed] = useState(false);
+  const leadDismissedRef = useRef(false);
 
   const sessionIdRef = useRef<string>("");
   // The bill seeded from the analyzer screen, persisted so EVERY follow-up keeps
@@ -171,6 +177,11 @@ export default function AiConcierge() {
     const el = transcriptRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [turns, offerLead, leadCaptured, sending]);
+
+  // Keep the ref in sync so send()'s auto-offer guard reads the latest value.
+  useEffect(() => {
+    leadDismissedRef.current = leadDismissed;
+  }, [leadDismissed]);
 
   // Focus the input when the panel OPENS. (Focus restoration to the launcher is
   // handled by closePanel, NOT here — an else-branch focus would steal focus to
@@ -309,7 +320,9 @@ export default function AiConcierge() {
             },
           ]);
         }
-        if (data.offerLead) {
+        // Respect an earlier "לא עכשיו": don't auto-re-pop the form. The user
+        // can still re-summon it manually via the inline affordance below.
+        if (data.offerLead && !leadDismissedRef.current) {
           setOfferLead(true);
           trackEvent("ai_chat_offer_lead", { source: "concierge" });
         }
@@ -725,13 +738,31 @@ export default function AiConcierge() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setOfferLead(false)}
+                    onClick={() => {
+                      setOfferLead(false);
+                      setLeadDismissed(true);
+                    }}
                     className="interactive press rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     לא עכשיו
                   </button>
                 </div>
               </form>
+            )}
+
+            {/* After a dismissal, keep a quiet way back in — the user changed
+                their mind or the intent came later. Re-summons the same form. */}
+            {leadDismissed && !offerLead && !leadCaptured && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLeadDismissed(false);
+                  setOfferLead(true);
+                }}
+                className="interactive mt-3 text-xs font-medium text-accent-text underline hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                השאירו פרטים ונחזור אליכם
+              </button>
             )}
           </div>
 

@@ -12,6 +12,7 @@
 // is Hebrew, layout is RTL, and the controls are fully labelled for a11y.
 // ────────────────────────────────────────────────────────────────────────────
 
+import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -57,6 +58,13 @@ export interface SmartTimerProps {
   className?: string;
   /** DOM id (anchor-/deep-link-able). Defaults to "smart-timer". */
   id?: string;
+  /**
+   * Where the "commitment ended" CTA points. Defaults to the plan-comparison
+   * landing so the user can act at the moment of peak intent (no dead-end).
+   */
+  ctaHref?: string;
+  /** Label for that CTA. */
+  ctaLabel?: string;
 }
 
 export default function SmartTimer({
@@ -64,6 +72,8 @@ export default function SmartTimer({
   defaultMonths = 12,
   className,
   id = "smart-timer",
+  ctaHref = "/compare",
+  ctaLabel = "השוואת מסלולים וחיסכון",
 }: SmartTimerProps) {
   const fieldId = useId();
   const startId = `${fieldId}-start`;
@@ -176,17 +186,28 @@ export default function SmartTimer({
             </dl>
 
             {computed.ended ? (
-              <p
-                className="mt-4 flex items-start gap-2 rounded-lg border border-value/40 bg-value/10 p-3 text-sm font-medium text-foreground"
-                data-switch-now="true"
-              >
-                <span
-                  aria-hidden="true"
-                  className="mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-value"
-                />
-                כדאי לעבור עכשיו — תקופת ההתחייבות הסתיימה, כך שאפשר להחליף מסלול
-                ללא קנס יציאה. השוו מסלולים ובדקו כמה אפשר לחסוך.
-              </p>
+              <div className="mt-4">
+                <p
+                  className="flex items-start gap-2 rounded-lg border border-value/40 bg-value/10 p-3 text-sm font-medium text-foreground"
+                  data-switch-now="true"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-value"
+                  />
+                  כדאי לעבור עכשיו — תקופת ההתחייבות הסתיימה, כך שאפשר להחליף מסלול
+                  ללא קנס יציאה. השוו מסלולים ובדקו כמה אפשר לחסוך.
+                </p>
+                {/* Peak-intent CTA: the commitment is over, so surface the next
+                    action instead of dead-ending on the message. */}
+                <Link
+                  href={ctaHref}
+                  className="press mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {ctaLabel}
+                  <span aria-hidden="true">←</span>
+                </Link>
+              </div>
             ) : (
               <p className="mt-4 text-sm text-muted">
                 כשתסתיים ההתחייבות תוכלו לעבור ספק ללא קנס יציאה. שמרו את התאריך

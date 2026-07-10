@@ -193,8 +193,9 @@ describe("BillUploader — unreadable + error", () => {
 
     expect(await screen.findByText("לא הצלחנו לקרוא את החשבון")).toBeInTheDocument();
     expect(screen.getByText("התמונה מטושטשת")).toBeInTheDocument();
-    // No hand-off lead form on an unreadable read.
-    expect(screen.queryByTestId("lead-form")).not.toBeInTheDocument();
+    // A failed OCR must NOT dead-end: a manual lead hand-off is offered so the
+    // user can still leave details and get help switching.
+    expect(screen.getByTestId("lead-form")).toBeInTheDocument();
   });
 
   it("surfaces a retry affordance on a hard error response", async () => {

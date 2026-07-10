@@ -28,7 +28,7 @@ import { useRef, useState } from "react";
 // constructor and break compression (and the test's globalThis.Image stub).
 import NextImage from "next/image";
 import { CATEGORY_HE } from "@/lib/categories";
-import { leadCategory, type LeadCategory } from "@/lib/format";
+import { ils, leadCategory, type LeadCategory } from "@/lib/format";
 import { trackEvent } from "@/lib/tracking";
 import { analyzeBill, type ForensicsPlan } from "@/lib/bill-forensics";
 import LeadForm from "@/components/LeadForm";
@@ -68,11 +68,6 @@ interface AnalyzeResult {
 }
 
 type Phase = "idle" | "compressing" | "analyzing" | "done" | "error";
-
-/** ₪-format a rounded integer. */
-function ils(n: number): string {
-  return `₪${Math.round(n)}`;
-}
 
 /** Human-readable confidence band from the 0–1 read confidence. */
 function confidenceLabel(c: number): { label: string; tone: "ok" | "warn" } {
@@ -384,6 +379,16 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
             צילום מחדש
             <Icon name="chevron" size={16} aria-hidden="true" />
           </button>
+
+          {/* Don't lose the lead when the photo can't be read: offer a manual
+              hand-off so the user can still leave details and get help. Category
+              is unknown here (nothing was extracted), so no defaultCategory. */}
+          <div className="mt-6 border-t border-border pt-6">
+            <LeadForm
+              source="bill-analyzer"
+              heading="לא נורא — נעזור לכם ידנית. השאירו פרטים ונשווה עבורכם, חינם ובלי התחייבות"
+            />
+          </div>
         </div>
       )}
 

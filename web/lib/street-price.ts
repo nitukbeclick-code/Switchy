@@ -30,6 +30,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { CATEGORY_HE } from "./categories";
+import { ils } from "./format";
 
 /** Categories a street-price report may be filed under (mirrors the catalogue). */
 export const STREET_PRICE_CATEGORIES = [
@@ -268,7 +269,6 @@ export function belowThresholdNote(agg: StreetPriceAggregate): string {
   );
 }
 
-/** Format an ILS integer for display, he-IL grouped, e.g. 89 → "₪89". */
-export function ils(n: number): string {
-  return `₪${Math.round(n).toLocaleString("he-IL")}`;
-}
+// Format an ILS integer for display — re-exported from the single lib/format
+// source (he-IL grouped, e.g. 89 → "₪89", 1234 → "₪1,234").
+export { ils };

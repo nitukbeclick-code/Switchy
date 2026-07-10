@@ -51,9 +51,9 @@ import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { type Plan, plansFromRows, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
-import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
+import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge, logCustomerQuestion, matchTopic } from "../_shared/knowledge.ts";
 import { lookupOpenLead } from "../_shared/leadlookup.ts";
-import { type BillHint, extractBillHint, MAX_BILL_BASE64_LEN, parseImage } from "../_shared/bill.ts";
+import { type BillHint, extractBillHint, MAX_BILL_BASE64_LEN, parseBillHint, parseImage } from "../_shared/bill.ts";
 import { chunkText, sseFrame } from "../_shared/sse.ts";
 import {
   appendTurn,
@@ -130,19 +130,8 @@ async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
 
 // A client may seed a chat with an already-analyzed bill (from the bill-analyzer
 // screen) so the user can ask follow-ups about their OWN bill — the shared agent
-// then injects it and can call analyze_bill (grounded, truth-only). Validate +
-// clamp exactly like the WhatsApp/OCR paths (0..5000, rounded); a non-usable
-// bill (no positive monthly) → undefined so the prompt stays unchanged. No image
-// is accepted here (that's the separate OCR path); this only references figures.
-function parseBillHint(raw: unknown): { provider?: string; monthly: number; category?: string } | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const o = raw as Record<string, unknown>;
-  const monthly = Math.round(Math.min(5000, Math.max(0, Number(o.monthly))));
-  if (!Number.isFinite(monthly) || monthly <= 0) return undefined;
-  const provider = typeof o.provider === "string" ? (o.provider.trim().slice(0, 40) || undefined) : undefined;
-  const category = typeof o.category === "string" ? (o.category.trim().slice(0, 20) || undefined) : undefined;
-  return { provider, monthly, category };
-}
+// The client bill-hint parser + 0..5000 clamp now lives in _shared/bill.ts
+// (parseBillHint) so it's shared and unit-testable; imported above.
 
 function clientIp(req: Request): string {
   // Same trust order as the leads rate-limit gate: CDN-set header first, then
@@ -321,7 +310,12 @@ async function handle(req: Request): Promise<Response> {
   // sharing runAgent — it passed none of these. Each is fail-soft and truth-only,
   // so an empty knowledge table / no open lead / a fresh session leaves the
   // prompt byte-identical to today. Prices/numbers are never touched.
-  const knowledgeContext = formatKnowledgeForPrompt(await getBotKnowledge()) || undefined;
+  const knowledge = await getBotKnowledge();
+  const knowledgeContext = formatKnowledgeForPrompt(knowledge) || undefined;
+  // Learning-sink parity with WhatsApp: log the customer question + matched FAQ
+  // topic so the site channel feeds bot_question_log too. Fire-and-forget,
+  // truncated, swallows all errors — it can never block or slow the reply.
+  void logCustomerQuestion("site", message, matchTopic(message, knowledge));
   // Open-lead awareness: only when a lead was captured earlier THIS session
   // (slots.phone). No phone ⇒ no lookup ⇒ no section (identical to WhatsApp's
   // null contract). null → undefined so it satisfies the optional param type.

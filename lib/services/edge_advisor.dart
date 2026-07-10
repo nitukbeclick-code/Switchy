@@ -98,10 +98,16 @@ class EdgeAdvisor {
   /// into a thrown [EdgeAdvisorException] the caller catches to fall back. The
   /// caller is the one that decides what the offline reply is (the local
   /// [AdvisorEngine]) — keeping this layer free of that dependency.
+  /// [billHint] optionally grounds the turn in the user's own bill
+  /// (`{monthly, category?, provider?}`), so live chat is as grounded as the
+  /// offline engine (which already sees the bills). The edge clamps + validates
+  /// it (`parseBillHint`); a null/empty hint is simply omitted (byte-identical to
+  /// before), and no number is ever invented from it.
   Future<EdgeAdvisorResult> respond(
     String message, {
     List<AdvisorTurn> history = const [],
     String? sessionId,
+    Map<String, dynamic>? billHint,
   }) async {
     final trimmed = history.length > maxHistoryTurns
         ? history.sublist(history.length - maxHistoryTurns)
@@ -111,6 +117,7 @@ class EdgeAdvisor {
       'message': message,
       'history': trimmed.map((t) => t.toJson()).toList(),
       if (sessionId != null && sessionId.isNotEmpty) 'sessionId': sessionId,
+      if (billHint != null && billHint.isNotEmpty) 'billHint': billHint,
     };
 
     final Map<String, dynamic> data;

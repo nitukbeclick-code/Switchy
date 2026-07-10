@@ -15,6 +15,7 @@ import {
   analyzeBill,
   bookCallback,
   COMMISSION_DISCLOSURE,
+  compareProviders,
   createLead,
   escalateToHuman,
   generateReferralCode,
@@ -148,6 +149,41 @@ Deno.test("get_provider returns real per-category cheapest, refuses unknown bran
   const bad = await getProvider(ctx, { name: "ספק שלא קיים" });
   assert(!bad.ok);
   assertEquals(bad.reason, "not_found");
+});
+
+// ── compare_providers: grounded head-to-head, truth-only ──────────────────────
+
+Deno.test("compare_providers reports the real cheaper side per shared category", async () => {
+  const ctx = fakeCtx();
+  const r = await compareProviders(ctx, { a: "סלקום", b: "פרטנר" });
+  assert(r.ok);
+  assertEquals((r.data!.a as { provider: string }).provider, "סלקום");
+  assertEquals((r.data!.b as { provider: string }).provider, "פרטנר");
+  const h2h = r.data!.headToHead as Array<Record<string, unknown>>;
+  const cell = h2h.find((x) => x.category === "cellular")!;
+  assertEquals(cell.aPrice, 49); // סלקום c1
+  assertEquals(cell.bPrice, 29); // פרטנר c2
+  assertEquals(cell.cheaper, "פרטנר"); // 29 < 49 — a real, derivable fact
+  assert(ctx.crm.some((e) => e.startsWith("tool:compare_providers")));
+});
+
+Deno.test("compare_providers refuses an unknown side and the same-provider case", async () => {
+  const ctx = fakeCtx();
+  const unknown = await compareProviders(ctx, { a: "סלקום", b: "ספק דמיוני" });
+  assert(!unknown.ok);
+  assertEquals(unknown.reason, "not_found");
+
+  const same = await compareProviders(ctx, { a: "סלקום", b: "סלקום" });
+  assert(!same.ok);
+  assertEquals(same.reason, "invalid");
+});
+
+Deno.test("compare_providers head-to-head only spans categories BOTH offer", async () => {
+  const ctx = fakeCtx();
+  // בזק has only internet; פרטנר has only cellular → no shared category → empty h2h.
+  const r = await compareProviders(ctx, { a: "בזק", b: "פרטנר" });
+  assert(r.ok);
+  assertEquals((r.data!.headToHead as unknown[]).length, 0);
 });
 
 // ── analyze_bill: honest 'up to' saving, refuses no amount ─────────────────────

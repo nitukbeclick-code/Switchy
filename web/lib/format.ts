@@ -45,9 +45,14 @@ function resolveUnit(plan: Plan): PriceUnit {
   return plan.cat === "abroad" ? "package" : "month";
 }
 
-/** Format a number as an ILS price string, e.g. 69 → "₪69". */
+/**
+ * Format a number as an ILS price string with he-IL thousands grouping,
+ * e.g. 69 → "₪69", 1068 → "₪1,068". THE single money formatter — every other
+ * module (bill-forensics, street-price, wallet-stats, SavingsReveal,
+ * BillUploader) imports this so a 4-figure saving never renders two ways.
+ */
 export function ils(n: number): string {
-  return `₪${Math.round(n)}`;
+  return `₪${Math.round(n).toLocaleString("he-IL")}`;
 }
 
 /**

@@ -31,6 +31,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { CATEGORY_HE } from "./categories";
+import { ils } from "./format";
 
 /**
  * A SLIM, serializable plan subset — exactly the fields the forensics reads. The
@@ -145,10 +146,9 @@ const LOW_CONFIDENCE = 0.6;
 /** Ignore sub-shekel deltas — rounding noise, not a real overcharge. */
 const MIN_DELTA = 1;
 
-/** ₪-format a rounded integer (mirrors lib/format.ils). */
-export function ils(n: number): string {
-  return `₪${Math.round(n)}`;
-}
+// ₪-format a rounded integer — re-exported from the single lib/format source so
+// the forensics report groups thousands identically to the rest of /bills.
+export { ils };
 
 /** Round to a whole shekel; clamp negatives to 0 (never a "negative overpay"). */
 function shekels(n: number): number {

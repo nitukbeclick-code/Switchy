@@ -389,7 +389,7 @@ class AccountWidget extends StatelessWidget {
                           ExcludeSemantics(child: Icon(Icons.adjust, size: 20, color: ffTheme.brandAccent)),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
+                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${billUnitLabel(appState.quizCat)}',
                                 style: ffTheme.bodyMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                           ),
                           GestureDetector(

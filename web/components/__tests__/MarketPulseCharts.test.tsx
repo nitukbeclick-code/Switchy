@@ -2,9 +2,11 @@
 // <MarketPulseCharts> — the SSR inline-SVG current-state market chart. Contract:
 //   • HONESTY: it shows ONLY the real current snapshot ("מצב שוק נוכחי"), with an
 //     explicit "no historical trend lines yet" note — never fabricated history.
-//   • a11y (WCAG 1.1.1): the image-only SVG is mirrored by a real sr-only data
-//     <table> (caption + col headers + a row per category) and the chart carries
-//     role="img" with an aria-labelledby title/description.
+//   • a11y (WCAG 1.1.1): the SVG is mirrored by a real sr-only data <table>
+//     (caption + col headers + a row per category), and — because the chart has
+//     focusable per-category bar-groups (role="button") — the SVG itself carries
+//     role="group" with an aria-labelledby title/description (role="img" would
+//     wrongly hide those interactive children).
 //   • Every figure is the server-passed value (avg + min per category), and the
 //     "cheapest deal" list links to the real category compare page.
 //
@@ -98,9 +100,11 @@ describe("MarketPulseCharts — a11y data table mirrors the SVG", () => {
     expect(within(internetRow).getByText("₪70")).toBeInTheDocument(); // min
   });
 
-  it("gives the chart an accessible image role with a name + description", () => {
+  it("gives the chart an accessible group role with a name + description", () => {
     render(<MarketPulseCharts data={DATA} />);
-    const chart = screen.getByRole("img", {
+    // role="group" (not "img"): the chart contains focusable role="button" bar-
+    // groups, so it must expose — not hide — its interactive children.
+    const chart = screen.getByRole("group", {
       name: /מחיר ממוצע מול המחיר הזול ביותר בכל קטגוריה/,
     });
     expect(chart.tagName.toLowerCase()).toBe("svg");

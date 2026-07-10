@@ -202,6 +202,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
+  // /wallet — the "ארנק התקשורת" personal savings view + calculator (a flagship
+  // interactive tool). Indexable + self-canonical; sits with the other tools.
+  const wallet: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/wallet`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+  ];
+
   // /switch + /switch/[provider] — factual smart-exit guides.
   const switchHub: MetadataRoute.Sitemap = [
     {
@@ -245,6 +256,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/about",
     "/how-it-works",
     "/faq",
+    "/community-guidelines",
     // /community itself is noindex,follow (a UGC feed) — NOT listed here. The
     // indexable community surface is the read-only Q&A hub.
     "/community/questions",
@@ -337,6 +349,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...vs,
     ...marketPulse,
     ...bills,
+    ...wallet,
     ...switchHub,
     ...switchProviders,
     ...switchKitAndStreet,

@@ -1,8 +1,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <AiToolsShowcase> — a mobile-first card grid surfacing the app's REAL,
 // interactive tools, each linking to its existing on-site route. Reused by the
-// homepage to route visitors into the high-intent flows (bill analysis, switch
-// kit, matching quiz, negotiation scripts, referral).
+// homepage to route visitors into the high-intent flows (bill analysis, telecom
+// wallet, matching quiz, switch kit, negotiation scripts, referral).
 //
 // TRUTH-ONLY: every card describes a tool that actually exists at the linked
 // route (each dir verified under web/app/). Copy is qualitative — no fabricated
@@ -35,6 +35,11 @@ const TOOLS: readonly Tool[] = [
     href: "/bills",
     title: "ניתוח חשבונית",
     benefit: "מעלים תמונה של החשבון ורואים מה משלמים ואיפה אפשר לחסוך.",
+  },
+  {
+    href: "/wallet",
+    title: "ארנק התקשורת",
+    benefit: "מזינים את החשבון בכל קטגוריה ורואים את המסלול הזול בקטלוג ואת החיסכון השנתי המשוער.",
   },
   {
     href: "/quiz",

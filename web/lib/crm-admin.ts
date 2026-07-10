@@ -268,3 +268,41 @@ export async function fetchAdminMetrics(days = 7): Promise<AdminMetrics | null> 
     return null;
   }
 }
+
+// ── Rep call-brief (rep-brief) ────────────────────────────────────────────────
+
+const REP_BRIEF_FN = `${SUPABASE_URL}/functions/v1/rep-brief`;
+
+export interface RepBriefPlan {
+  provider: string;
+  name: string;
+  price: number;
+  unitLabel: string;
+  annualSaving: number;
+  abroad: boolean;
+  is5G: boolean;
+  noCommit: boolean;
+}
+
+export interface RepBriefResult {
+  need: { category: string; categoryHe: string; budget: number; provider: string; abroad: boolean };
+  plans: RepBriefPlan[];
+  talkingPoints: string[];
+  objections: { objection: string; answer: string }[];
+  compliance: { law: string; mustSay: string }[];
+  brief: string; // the deterministic, copy-paste brief
+  narrative: string | null; // optional AI rephrasing of the SAME brief
+}
+
+/** A grounded Hebrew call-brief for a lead (talking points, objections, §7b/§30A). */
+export async function fetchRepBrief(leadId: string): Promise<RepBriefResult | null> {
+  const h = await authHeaders();
+  if (!h) return null;
+  try {
+    const r = await fetch(REP_BRIEF_FN, { method: "POST", headers: h, body: JSON.stringify({ lead_id: leadId }) });
+    if (!r.ok) return null;
+    return (await r.json()) as RepBriefResult;
+  } catch {
+    return null;
+  }
+}

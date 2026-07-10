@@ -17,6 +17,7 @@ import { createClient } from "@supabase/supabase-js";
 import JsonLd from "@/components/JsonLd";
 import { pageMetadata } from "@/lib/seo";
 import { MENTION_RE, orderByAccepted } from "@/lib/community";
+import ShareBar from "@/components/community/ShareBar";
 import { matchProviders, providerBySlug } from "@/lib/providers.generated";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
@@ -248,6 +249,11 @@ export default async function CommunityPostPage({ params }: Params) {
           </Link>
         )}
       </article>
+
+      <div className="mt-3 flex items-center gap-2 px-1 text-sm text-muted">
+        <span>שיתוף:</span>
+        <ShareBar path={`/community/post/${id}`} body={post.body} />
+      </div>
 
       <section aria-label="תגובות" className="mt-6">
         <h2 className="mb-3 text-sm font-semibold text-ink">

@@ -178,13 +178,28 @@ data was read). This is what unblocked the build; it drove the choice of option 
 - Tests: capability matrix + `shapeMember` allowlist. `deno check` 0.
 - **Follow-up (PR2):** the web "צוות והרשאות" tab + capability-gated console.
 
-## 8. Follow-up hardening surfaced by the audit (separate, pre-existing)
-- `authenticated` holds **table-level INSERT** on `profiles`, so privileged columns
-  (`is_admin`, `is_banned`, `is_verified_customer`, `total_savings*`, consent
-  stamps, `registration_ip`, `telegram_*`) are settable at row-INSERT. Mitigated
-  today only by the `handle_new_user` trigger pre-creating the row (PK conflict).
-  Recommend a defense-in-depth migration: `REVOKE INSERT (is_admin, …)` from
-  `authenticated`. **Not built** — flagged for the owner's go-ahead.
+## 8. Follow-up hardening — DONE 2026-07-10 (`supabase/profiles-insert-hardening-2026-07.sql`)
+- **Was:** `authenticated` held **table-level INSERT** on `profiles`, so privileged
+  columns (`is_admin`, `is_banned`, `is_verified_customer`, `total_savings*`,
+  consent stamps, `registration_ip`, `telegram_*`) were settable at row-INSERT —
+  mitigated only by the `handle_new_user` trigger pre-creating the row (PK conflict).
+- **Fix (applied + verified in prod):** revoked the blanket table INSERT and
+  re-granted INSERT on ONLY the self-service columns (`id, name, phone, email,
+  avatar_url, bio, bills, quiz, renewal_reminders, community_*_opt_*, updated_at`)
+  — the SAME set the UPDATE grant already allows and exactly what the 4 Flutter
+  profile upserts touch. Narrowed (not revoked) because a PostgREST upsert needs
+  INSERT on its payload columns; web only UPDATE/SELECTs; consent is recorded via
+  RPC / signUp metadata, not a client profiles insert.
+- **Verified** with `has_column_privilege`: self-service cols INSERT=true (app
+  unaffected), privileged cols INSERT=false, UPDATE grants unchanged. Reversible:
+  `grant insert on public.profiles to authenticated;`
+
+## 9b. Separate finding to triage (NOT §8, surfaced while verifying)
+- The Flutter app calls `rpc('record_registration_consent', …)` at signup
+  (`lib/services/auth_service.dart`), but **no such function exists in prod**
+  (only `leads_consent_stamp`). So app-registration consent may not be persisted
+  to `profiles` via that path (user_metadata still carries a copy). Compliance-
+  relevant (§13/§30A) — flagged for the owner; not touched here.
 
 ## 9. Rollout (owner-controlled — activates the new gate in prod)
 1. Apply `supabase/crm-roles-2026-07.sql` to prod (additive; safe even before deploy).

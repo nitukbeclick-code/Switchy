@@ -11,6 +11,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import CrmDashboard from "./CrmDashboard";
+import CrmInbox from "./CrmInbox";
 import CrmLeads from "./CrmLeads";
 import { NoticeCard } from "./ui";
 
@@ -19,7 +20,7 @@ type TabKey = "dashboard" | "leads" | "conversations" | "analytics";
 const TABS: { key: TabKey; label: string; ready: boolean }[] = [
   { key: "dashboard", label: "סקירה", ready: true },
   { key: "leads", label: "לידים", ready: true },
-  { key: "conversations", label: "שיחות", ready: false },
+  { key: "conversations", label: "שיחות", ready: true },
   { key: "analytics", label: "אנליטיקס", ready: false },
 ];
 
@@ -81,7 +82,7 @@ export default function CrmConsole() {
 
       {tab === "dashboard" && <CrmDashboard />}
       {tab === "leads" && <CrmLeads />}
-      {tab === "conversations" && <NoticeCard>מדור השיחות (WhatsApp) יתווסף לקונסולה בקרוב.</NoticeCard>}
+      {tab === "conversations" && <CrmInbox />}
       {tab === "analytics" && <NoticeCard>מדור האנליטיקס יתווסף לקונסולה בקרוב.</NoticeCard>}
     </main>
   );

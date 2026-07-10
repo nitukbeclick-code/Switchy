@@ -22,6 +22,7 @@ import {
   fetchCrmThread,
   sendCrmReply,
 } from "@/lib/crm-admin";
+import { useCrmEvents } from "@/lib/use-crm-events";
 import { BTN_GHOST, BTN_PRIMARY, CONVERSATION_STATUS_META, ConversationStatusPill, NoticeCard, when } from "./ui";
 
 type Filter = ConversationStatus | "all";
@@ -85,35 +86,46 @@ export default function CrmInbox() {
   const [notice, setNotice] = useState("");
   const threadEndRef = useRef<HTMLDivElement | null>(null);
 
-  const loadList = useCallback(async () => {
-    setListLoading(true);
+  // `silent` refreshes (from the Realtime feed) skip the skeletons + keep the
+  // current view on failure, so a live update never flashes the list or thread.
+  const loadList = useCallback(async (silent = false) => {
+    if (!silent) setListLoading(true);
     setListError(false);
     const res = await fetchCrmConversations({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
     });
     if (res) setConvs(res.conversations);
-    else setListError(true);
-    setListLoading(false);
+    else if (!silent) setListError(true);
+    if (!silent) setListLoading(false);
   }, [filter, search]);
 
   useEffect(() => {
     void loadList();
   }, [loadList]);
 
-  const loadThread = useCallback(async (id: string) => {
-    setThreadLoading(true);
+  const loadThread = useCallback(async (id: string, silent = false) => {
+    if (!silent) {
+      setThreadLoading(true);
+      setThread(null);
+    }
     setThreadError(false);
-    setThread(null);
     const t = await fetchCrmThread(id);
     if (t) setThread(t);
-    else setThreadError(true);
-    setThreadLoading(false);
+    else if (!silent) setThreadError(true);
+    if (!silent) setThreadLoading(false);
   }, []);
 
   useEffect(() => {
     if (selectedId) void loadThread(selectedId);
   }, [selectedId, loadThread]);
+
+  // Live-refresh the list + the open thread whenever a crm_events row lands (an
+  // inbound message, rep reply, takeover). Silent so it never flashes; fail-soft.
+  useCrmEvents(() => {
+    void loadList(true);
+    if (selectedId) void loadThread(selectedId, true);
+  });
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ block: "end" });

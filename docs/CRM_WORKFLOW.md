@@ -4,7 +4,9 @@
 אחת שנסגרת ב-**PR אחד + אימות מלא + פריסה** (אם נגעה ב-edge). סימון מצב:
 🟢 = אני (Claude) מבצע לבד · 🟡 = דורש פעולה קטנה מהבעלים · 🔴 = חסום/דורש אישור מוצר או אבטחה.
 
-עודכן: 2026-07-10 · אחרי 6 פרוסות (PRs 116–121): קונסולת CRM מלאה למנהלים (4 טאבים).
+עודכן: 2026-07-10 · בסיס (PRs 116–121) + Backlog גל A מלא (A.1–A.5) + גל B (B.1/B.2/B.3/B.5)
+נסגרו (PRs 123–131). קונסולה בת 6 טאבים: סקירה (עם SLA), לידים (חיפוש·מיון·ייצוא·bulk·quick-views·נציג),
+פגישות, שיחות (Realtime), אנשי קשר, אנליטיקס (עם לוח מובילים). נותרו: B.4 (🟡) + גל C (🔴).
 
 ---
 
@@ -92,7 +94,7 @@
 
 | # | פריט | מצב | פירוט |
 |---|------|-----|--------|
-| A.1 | 🟢 **פיד פעילות Realtime** | edge: אין · web | הרשמה ל-`crm_events` (Realtime, RLS מתיר admin) לרענון חי של הסקירה/רשימות. מראה: Flutter `crmEventStream()`. |
+| A.1 | ✅ **פיד פעילות Realtime** | בוצע 2026-07-10 (PR #131) | hook `useCrmEvents` (fail-soft) נרשם ל-INSERT על `crm_events` (Realtime, RLS admin, בפרסום `supabase_realtime`) → רענון **שקט** (בלי הבהוב) של הסקירה (Dashboard) ותיבת ה-WhatsApp (Inbox: רשימה + שרשור פתוח). מראה: Flutter `crmEventStream()` + `CommunityFeed` channel. |
 | A.2 | ✅ **חיפוש + מיון לידים** | בוצע 2026-07-10 | `listLeads` הורחב (search in-memory שם/טלפון + sort recent/oldest); סרגל חיפוש (debounced) + מיון בטבלת הלידים. |
 | A.3 | ✅ **Speed-to-lead / SLA** | בוצע 2026-07-10 (PR #125) | action חדש `slaMetrics` (זמן-תגובה חציוני + ממתינים למענה + חריגות SLA), משתמש חוזר ב-`medianMinutes` (`_shared/digests.ts`) ו-`SLA_HOURS` (`lead-digest/lib.ts`) — אותו מקור-אמת של דיגסט/נאדג׳ הטלגרם. סקשן "מהירות טיפול" ב-Dashboard (best-effort, fail-soft). |
 | A.4 | ✅ **ייצוא CSV של התצוגה** | בוצע 2026-07-10 (PR #124) | כפתור "ייצוא CSV" שמוריד את התצוגה הנוכחית כ-CSV בדפדפן-המנהל (ללא endpoint חדש). `lib/csv.ts` עם שמירה מפני CSV-injection (נטרול נוסחאות) + RFC-4180 quoting + UTF-8 BOM; נבדק ב-`lib/__tests__/csv.test.ts`. |

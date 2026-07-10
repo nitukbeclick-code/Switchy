@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { type CrmOverview, type CrmPipeline, type CrmSla, fetchCrmOverview, fetchCrmSla } from "@/lib/crm-admin";
+import { useCrmEvents } from "@/lib/use-crm-events";
 import {
   BTN_GHOST,
   ConversationStatusPill,
@@ -74,21 +75,27 @@ export default function CrmDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // `silent` refreshes (from the Realtime feed) skip the skeleton + keep stale data
+  // on failure, so a live update never flashes or blanks the dashboard.
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(false);
     // Overview drives the error/empty state; the SLA rollup is best-effort — if it
     // fails we simply hide that section rather than blocking the whole dashboard.
     const [d, sm] = await Promise.all([fetchCrmOverview(), fetchCrmSla()]);
     if (d) setData(d);
-    else setError(true);
-    setSla(sm?.sla ?? null);
-    setLoading(false);
+    else if (!silent) setError(true);
+    if (sm) setSla(sm.sla);
+    if (!silent) setLoading(false);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Live-refresh the overview the moment a crm_events row lands (rep reply /
+  // takeover / inbound). Fail-soft: if Realtime is off, the initial load still ran.
+  useCrmEvents(() => void load(true));
 
   if (loading) return <DashboardSkeleton />;
   if (error || !data) {

@@ -95,7 +95,7 @@
 | A.1 | 🟢 **פיד פעילות Realtime** | edge: אין · web | הרשמה ל-`crm_events` (Realtime, RLS מתיר admin) לרענון חי של הסקירה/רשימות. מראה: Flutter `crmEventStream()`. |
 | A.2 | ✅ **חיפוש + מיון לידים** | בוצע 2026-07-10 | `listLeads` הורחב (search in-memory שם/טלפון + sort recent/oldest); סרגל חיפוש (debounced) + מיון בטבלת הלידים. |
 | A.3 | 🟢 **Speed-to-lead / SLA** | edge: אין (יש `contacted_at`/`created_at` ב-getLeadDetail) · web | KPI בסקירה: זמן-תגובה ממוצע, לידים "חמים" שטרם נוצר איתם קשר. |
-| A.4 | 🟢 **ייצוא CSV של התצוגה** | edge: אין · web | כפתור "ייצוא" שמוריד את `listLeads` הנוכחי כ-CSV (ה-PII נשאר בדפדפן-מנהל בלבד, לא endpoint חדש). |
+| A.4 | ✅ **ייצוא CSV של התצוגה** | בוצע 2026-07-10 (PR #124) | כפתור "ייצוא CSV" שמוריד את התצוגה הנוכחית כ-CSV בדפדפן-המנהל (ללא endpoint חדש). `lib/csv.ts` עם שמירה מפני CSV-injection (נטרול נוסחאות) + RFC-4180 quoting + UTF-8 BOM; נבדק ב-`lib/__tests__/csv.test.ts`. |
 | A.5 | 🟢 **תצוגות/פילטרים שמורים** | web בלבד | קיצורי-פילטר ("שלי", "חדשים היום", "לא נוצר קשר") מעל טבלת הלידים. |
 
 ### גל B — יכולות ניהול (Tier 2 · medium · 🟢/🟡)

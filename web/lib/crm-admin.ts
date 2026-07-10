@@ -91,3 +91,47 @@ export function fetchCrmOverview(): Promise<CrmOverview | null> {
 export function fetchCrmLeads(status?: LeadStatus): Promise<{ leads: CrmLead[] } | null> {
   return crmPost<{ leads: CrmLead[] }>("listLeads", status ? { status } : {});
 }
+
+export interface CrmLeadDetail {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  provider: string | null;
+  planId: string | null;
+  source: string | null;
+  callbackTime: string | null;
+  city: string | null;
+  status: LeadStatus;
+  createdAt: string | null;
+  claimedBy: string | null;
+  claimedAt: string | null;
+  contactedAt: string | null;
+  actualSaving: number | null;
+  notes: string | null;
+  referrerCode: string | null;
+  consent: { sms: boolean; email: boolean; whatsapp: boolean };
+}
+
+export interface CrmLeadEvent {
+  id: string;
+  event: string;
+  oldStatus: string | null;
+  newStatus: string | null;
+  actorName: string | null;
+  note: string | null;
+  createdAt: string | null;
+}
+
+/** One lead's full CRM detail + its activity timeline, or null on failure. */
+export function fetchCrmLeadDetail(
+  leadId: string,
+): Promise<{ lead: CrmLeadDetail; events: CrmLeadEvent[] } | null> {
+  return crmPost<{ lead: CrmLeadDetail; events: CrmLeadEvent[] }>("getLeadDetail", { leadId });
+}
+
+/** Move a lead to a new pipeline stage (server validates + audits). true on success. */
+export async function setCrmLeadStatus(leadId: string, status: LeadStatus): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setLeadStatus", { leadId, status });
+  return !!res?.ok;
+}

@@ -18,6 +18,8 @@ import {
   LEAD_STATUSES,
   MAX_REPLY_LEN,
   s,
+  shapeLeadDetail,
+  shapeLeadEvent,
   snippet,
   SNIPPET_LEN,
 } from "../crm-api/crm_logic.ts";
@@ -146,4 +148,52 @@ Deno.test("auditDetail records a missing uid as null, not an empty string", () =
 
 Deno.test("auditDetail defaults extra to an empty bag", () => {
   assertEquals(auditDetail("uid-9"), { actor: "uid-9" });
+});
+
+// ── shapeLeadDetail / shapeLeadEvent (admin lead-detail DTOs) ─────────────────
+// These are ALLOWLIST shapers: the client only ever sees the mapped fields, so a
+// server-internal column (source_ip) can NEVER leak through even if a future
+// select pulled it. This is the PII spine of the lead-detail view.
+
+Deno.test("shapeLeadDetail maps the CRM fields + coerces empties/consent honestly", () => {
+  const d = shapeLeadDetail({
+    id: "L1", name: "דנה לוי", phone: "0521234567", email: "d@x.com",
+    provider: "סלקום", plan_id: "c1", source: "form", callback_time: "evening",
+    city: "חיפה", status: "contacted", created_at: "2026-07-01T10:00:00Z",
+    claimed_by: "רון", claimed_at: "2026-07-01T11:00:00Z", contacted_at: "",
+    actual_saving: 480, notes: "מעוניין", referrer_code: "",
+    consent_marketing_sms: true, consent_marketing_email: false, consent_marketing_whatsapp: true,
+  });
+  assertEquals(d.name, "דנה לוי");
+  assertEquals(d.email, "d@x.com");
+  assertEquals(d.actualSaving, 480);
+  assertEquals(d.contactedAt, null); // "" → null, never an empty string
+  assertEquals(d.referrerCode, null);
+  assertEquals(d.consent, { sms: true, email: false, whatsapp: true });
+});
+
+Deno.test("shapeLeadDetail is an allowlist — a stray source_ip can NEVER leak", () => {
+  const d = shapeLeadDetail({
+    id: "L1", name: "x", phone: "05200", status: "new",
+    // Hostile / accidental extra columns that must be dropped by the allowlist:
+    source_ip: "1.2.3.4", claimed_by_tg_id: 999, notified_at: "2026-01-01",
+  });
+  const keys = Object.keys(d);
+  assert(!keys.includes("source_ip"), "source_ip must never appear in the DTO");
+  assert(!keys.includes("claimed_by_tg_id"));
+  assert(!keys.includes("notified_at"));
+  // actual_saving absent → null (no fabricated saving).
+  assertEquals(d.actualSaving, null);
+});
+
+Deno.test("shapeLeadEvent maps the timeline row + null-coerces empties", () => {
+  const e = shapeLeadEvent({
+    id: "e1", event: "status_change", old_status: "new", new_status: "contacted",
+    actor_name: "CRM", note: "", created_at: "2026-07-02T09:00:00Z",
+  });
+  assertEquals(e.event, "status_change");
+  assertEquals(e.oldStatus, "new");
+  assertEquals(e.newStatus, "contacted");
+  assertEquals(e.note, null);
+  assertEquals(e.actorName, "CRM");
 });

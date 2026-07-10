@@ -146,6 +146,38 @@ Deno.test("runAgent: a single tool call still works (parallel of one)", async ()
   }
 });
 
+// ── E3: the tools path strips a leaked reasoning preamble (cleanReply) ─────────
+// The plain-text chain always ran cleanReply; the rich tools path did NOT, so a
+// leaked "THOUGHT:"/plan block could reach the user on the tool path only. This
+// pins that the final tool-path reply is now cleaned (honesty / no-leak rail).
+
+Deno.test("runAgent: tools-path final text is cleaned of a leaked THOUGHT preamble", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = twoStepGeminiFetch({
+    firstCalls: [{ name: "recommend_plans", args: { category: "cellular" } }],
+    finalText:
+      "THOUGHT: the user wants cheap cellular, I should surface Partner.\n\n" +
+      'המסלול הזול ביותר בסלולר הוא של פרטנר ב-29 ש"ח.',
+    bodies,
+  });
+  try {
+    const res = await runAgent({
+      channel: "site",
+      message: "מה הכי זול בסלולר?",
+      keys: { gemini: "k" },
+      plans: PLANS,
+      toolContext: {},
+    });
+    assertEquals(res.via, "tools");
+    // The leaked reasoning preamble is stripped…
+    assert(!res.reply.includes("THOUGHT"), "reasoning preamble removed on the tools path");
+    // …and the real grounded Hebrew answer survives.
+    assert(res.reply.includes("פרטנר"), "the grounded answer is preserved");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 // ── memory threading: rejectedPlanIds / objections reach the system prompt ─────
 
 Deno.test("runAgent folds session memory into the system prompt (refine, not repeat)", async () => {

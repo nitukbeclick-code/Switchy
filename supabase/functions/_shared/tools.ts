@@ -524,6 +524,89 @@ export async function getProvider(
   return { ok: true, data: { provider: name, planCount: rows.length, cheapestPerCategory } };
 }
 
+// ── compare_providers ─────────────────────────────────────────────────────────
+// A grounded head-to-head between TWO providers, straight from the catalogue:
+// each side's plan count + cheapest real plan per category, and — for every
+// category BOTH actually offer — which side's entry price is lower. TRUTH-ONLY:
+// "cheaper" is a real, derivable fact (the lower entry price); a tie is reported
+// as a tie (null); a category only one side offers is NOT claimed as a "win"; and
+// no rating/coverage/quality is invented — only real catalogue prices are compared.
+export async function compareProviders(
+  ctx: ToolContext,
+  args: { a?: unknown; b?: unknown; category?: unknown },
+): Promise<ToolResult> {
+  const providers = catalogueProviders(ctx.plans as CataloguePlan[]);
+  const a = normalizeProvider(clipStr(args.a, 60), providers);
+  const b = normalizeProvider(clipStr(args.b, 60), providers);
+  if (!a || !b) {
+    await audit(ctx, "compare_providers", false, "not_found");
+    return { ok: false, reason: "not_found", note: "לא מצאתי את שני הספקים בקטלוג כדי להשוות." };
+  }
+  if (a === b) {
+    await audit(ctx, "compare_providers", false, "same");
+    return { ok: false, reason: "invalid", note: "אלה אותו ספק — בחרו שני ספקים שונים להשוואה." };
+  }
+  const category = normalizeCategory(clipStr(args.category, 40));
+
+  // Cheapest REAL plan per category for one side (optionally filtered to `category`).
+  // Keep the typed ScorablePlan map so prices are read off a number, not a view.
+  const sideView = (name: string) => {
+    let rows = ctx.plans.filter((p) => p.provider === name && typeof p.price === "number");
+    if (category) rows = rows.filter((p) => p.cat === category);
+    const byCat = new Map<string, ScorablePlan>();
+    for (const p of rows) {
+      const cur = byCat.get(p.cat ?? "");
+      if (!cur || (p.price ?? 0) < (cur.price ?? 0)) byCat.set(p.cat ?? "", p);
+    }
+    return { provider: name, planCount: rows.length, byCat };
+  };
+  const sideA = sideView(a);
+  const sideB = sideView(b);
+  if (!sideA.planCount && !sideB.planCount) {
+    await audit(ctx, "compare_providers", false, "no_plans");
+    return { ok: false, reason: "not_found", note: "אין מסלולים פעילים להשוואה בקטגוריה הזו." };
+  }
+
+  // The serializable per-side view the model cites back (cheapest plan per category).
+  const viewOf = (side: { provider: string; planCount: number; byCat: Map<string, ScorablePlan> }) => ({
+    provider: side.provider,
+    planCount: side.planCount,
+    cheapestPerCategory: [...side.byCat.entries()].map(([cat, p]) => ({
+      category: cat,
+      categoryHe: CATEGORY_HE[cat] ?? cat,
+      ...planView(p),
+    })),
+  });
+
+  // Head-to-head entry price ONLY on categories both sides offer — a real fact.
+  const headToHead: Array<Record<string, unknown>> = [];
+  for (const [cat, pa] of sideA.byCat) {
+    const pb = sideB.byCat.get(cat);
+    if (!pb) continue;
+    const priceA = pa.price ?? 0;
+    const priceB = pb.price ?? 0;
+    headToHead.push({
+      category: cat,
+      categoryHe: CATEGORY_HE[cat] ?? cat,
+      aPrice: priceA,
+      bPrice: priceB,
+      cheaper: priceA === priceB ? null : (priceA < priceB ? a : b),
+    });
+  }
+
+  await audit(ctx, "compare_providers", true, `${a} vs ${b}${category ? "/" + category : ""}`);
+  return {
+    ok: true,
+    data: {
+      a: viewOf(sideA),
+      b: viewOf(sideB),
+      ...(category ? { category } : {}),
+      headToHead,
+      note: "השוואה מבוססת קטלוג בלבד — מחיר הכניסה הזול בכל קטגוריה שבה שני הספקים פעילים. לא כולל דירוג/כיסוי.",
+    },
+  };
+}
+
 // ── analyze_bill ────────────────────────────────────────────────────────────
 // Reuses the Gemini-Vision bill path. The agent loop is the one with the image
 // bytes + the vision call (that needs the API key and lives in agent.ts /
@@ -1270,6 +1353,7 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   recommend_plans: (c, a) => recommendPlans(c, a),
   refine_recommendation: (c, a) => refineRecommendation(c, a),
   get_provider: (c, a) => getProvider(c, a),
+  compare_providers: (c, a) => compareProviders(c, a),
   analyze_bill: (c, a) => analyzeBill(c, a),
   suggest_retention_offer: (c, a) => suggestRetentionOffer(c, a),
   generate_referral_code: (c, a) => generateReferralCode(c, a),
@@ -1354,6 +1438,20 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
       type: "object",
       properties: { name: { type: "string", description: "שם הספק" } },
       required: ["name"],
+    },
+  },
+  {
+    name: "compare_providers",
+    description:
+      "השוואה ראש-בראש בין שני ספקים מהקטלוג: כמה מסלולים יש לכל אחד, המסלול הזול של כל אחד בכל קטגוריה, ובכל קטגוריה שבה שניהם פעילים — מי זול יותר בכניסה. מתי: כשהמשתמש שואל 'X מול Y' / 'מה עדיף, סלקום או פרטנר?' / 'מי זול יותר, בזק או הוט?'. אמת בלבד: 'זול יותר' הוא מחיר כניסה אמיתי; תיקו מדווח כתיקו; קטגוריה שרק צד אחד מציע אינה 'ניצחון'. לא ממציא דירוג/כיסוי/איכות — רק מחירים אמיתיים.",
+    parameters: {
+      type: "object",
+      properties: {
+        a: { type: "string", description: "שם הספק הראשון" },
+        b: { type: "string", description: "שם הספק השני" },
+        category: { type: "string", enum: ["cellular", "internet", "tv", "triple", "abroad"], description: "להשוות רק בקטגוריה זו (אופציונלי)" },
+      },
+      required: ["a", "b"],
     },
   },
   {

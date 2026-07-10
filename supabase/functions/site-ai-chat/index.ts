@@ -51,7 +51,7 @@ import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { type Plan, plansFromRows, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
-import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
+import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge, logCustomerQuestion, matchTopic } from "../_shared/knowledge.ts";
 import { lookupOpenLead } from "../_shared/leadlookup.ts";
 import { type BillHint, extractBillHint, MAX_BILL_BASE64_LEN, parseImage } from "../_shared/bill.ts";
 import { chunkText, sseFrame } from "../_shared/sse.ts";
@@ -321,7 +321,12 @@ async function handle(req: Request): Promise<Response> {
   // sharing runAgent — it passed none of these. Each is fail-soft and truth-only,
   // so an empty knowledge table / no open lead / a fresh session leaves the
   // prompt byte-identical to today. Prices/numbers are never touched.
-  const knowledgeContext = formatKnowledgeForPrompt(await getBotKnowledge()) || undefined;
+  const knowledge = await getBotKnowledge();
+  const knowledgeContext = formatKnowledgeForPrompt(knowledge) || undefined;
+  // Learning-sink parity with WhatsApp: log the customer question + matched FAQ
+  // topic so the site channel feeds bot_question_log too. Fire-and-forget,
+  // truncated, swallows all errors — it can never block or slow the reply.
+  void logCustomerQuestion("site", message, matchTopic(message, knowledge));
   // Open-lead awareness: only when a lead was captured earlier THIS session
   // (slots.phone). No phone ⇒ no lookup ⇒ no section (identical to WhatsApp's
   // null contract). null → undefined so it satisfies the optional param type.

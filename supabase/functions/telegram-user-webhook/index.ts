@@ -60,7 +60,7 @@ import { type AiKeys, type ChatTurn } from "../_shared/ai.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
 import { captureAiLead, type AiLeadInput } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
-import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge } from "../_shared/knowledge.ts";
+import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge, logCustomerQuestion, matchTopic } from "../_shared/knowledge.ts";
 import { lookupOpenLead } from "../_shared/leadlookup.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import {
@@ -638,7 +638,12 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   // ── Parity with WhatsApp / site: feed the shared brain the same context ────
   // Each is fail-soft + truth-only — an empty knowledge table, no open lead, or a
   // fresh session leaves the prompt byte-identical to today. Prices are never touched.
-  const knowledgeContext = formatKnowledgeForPrompt(await getBotKnowledge()) || undefined;
+  const knowledge = await getBotKnowledge();
+  const knowledgeContext = formatKnowledgeForPrompt(knowledge) || undefined;
+  // Learning-sink parity with WhatsApp/site: log the customer question + matched
+  // FAQ topic so the Telegram channel feeds bot_question_log too. Fire-and-forget,
+  // truncated, swallows all errors — it can never block or slow the reply.
+  void logCustomerQuestion("telegram", text, matchTopic(text, knowledge));
   // Open-lead awareness: only when a lead was captured earlier THIS session
   // (slots.phone). No phone ⇒ no lookup ⇒ no section (identical null contract).
   const activeLead = session.slots.phone

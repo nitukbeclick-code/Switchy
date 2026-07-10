@@ -49,12 +49,14 @@ import {
   appendFunctionCall,
   appendFunctionResponse,
   type ChatTurn,
+  cleanReply,
   generateReply,
   generateWithToolsStep,
   type ModelTier,
   newToolContents,
   type ReplyMeta,
 } from "./ai.ts";
+import { jlog } from "./log.ts";
 import { buildCitedCatalogueContext, type Plan as CataloguePlan } from "./catalogue.ts";
 import type { ScorablePlan } from "./scoring.ts";
 import { TOOL_DECLARATIONS, TOOL_EXECUTORS, type ToolContext, type ToolResult } from "./tools.ts";
@@ -565,9 +567,11 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
         const out = await generateWithToolsStep(keys.gemini, system, contents, decls, maxOutTokens, tierOpts);
 
         if (out.calls.length === 0) {
-          // Final text answer. Fold in a tool note (e.g. the §7b disclosure) if
-          // the model didn't already include it.
-          let reply = out.text.trim();
+          // Final text answer. Strip any leaked reasoning/plan preamble (the SAME
+          // cleanReply the plain-text chain applies — the tools path skipped it,
+          // so a THOUGHT:/English-plan block could reach the user here). Clean
+          // BEFORE folding in the tool note so the §7b disclosure is never stripped.
+          let reply = cleanReply(out.text);
           if (lastToolNote && reply && !reply.includes(lastToolNote)) {
             reply = `${reply}\n\n${lastToolNote}`;
           }
@@ -604,8 +608,10 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
         // Loop: the model now sees the tool results and answers (or calls again).
       }
       // Hit the step cap without a text answer — fall through to the text chain.
-    } catch (_e) {
+      jlog({ at: "runAgent.degrade", from: "tools", to: "text", reason: "step_cap" });
+    } catch (e) {
       // Gemini tool path failed (rate limit / 5xx / timeout) — degrade to text.
+      jlog({ at: "runAgent.degrade", from: "tools", to: "text", error: String(e) });
     }
   }
 
@@ -615,8 +621,8 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   try {
     const text = await generateReply(keys, system, history, message || "שלום", maxOutTokens, meta, tierOpts);
     if (text) return { reply: text, via: "text", toolCalls, timedOut: meta.timedOut, slotPatch: memoryPatch() };
-  } catch (_e) {
-    // fall through
+  } catch (e) {
+    jlog({ at: "runAgent.degrade", from: "text", to: "fallback", error: String(e) });
   }
 
   // ── 3) Template fallback (the existing per-channel flow) ──────────────────
@@ -624,9 +630,13 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     try {
       const t = await input.templateFallback(message);
       if (t) return { reply: t, via: "template", toolCalls, timedOut: meta.timedOut, slotPatch: memoryPatch() };
-    } catch (_e) { /* fall through */ }
+    } catch (e) {
+      jlog({ at: "runAgent.degrade", from: "template", to: "hard", error: String(e) });
+    }
   }
 
   // ── 4) Hard fallback — the customer always gets *something* ───────────────
+  // Reaching here means every richer path failed — surface it (worst case).
+  jlog({ at: "runAgent", ok: false, via: "hard_fallback" });
   return { reply: HARD_FALLBACK, via: "hard_fallback", toolCalls, timedOut: meta.timedOut, slotPatch: memoryPatch() };
 }

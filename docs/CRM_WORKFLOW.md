@@ -114,7 +114,7 @@
 
 | # | פריט | מצב | פירוט |
 |---|------|-----|--------|
-| C.1 | 🔴 **ייצוא לידים למכירה** | `lead-export` קיים (secret-gated) | חשיפת הפיד המוניטיזציה מהקונסולה — **דורש אישור בעלים** (מונטיזציה + `consent_share_at`). |
+| C.1 | ✅ **תצוגת לידים לשיתוף (קריאה-בלבד)** | בוצע 2026-07-10 (PR #140, באישור בעלים) | טאב "לידים לשיתוף": action `listSellableLeads` — **רק** לידים עם `consent_share_at` (מגן כפול: query `not.is.null` + `isSellable` מ-`lead-export/lib.ts`), allowlist DTO `shapeSellableLead` (ללא source_ip/notes — נבדק), **audit** לכל צפייה (`crm_lead_export`). **קריאה-בלבד** — לא דוחף לרוכש; ה-cron ה-secret-gated נשאר הנתיב היחיד לרוכש. הערה משפטית ב-UI (§7b/DPA באחריות הבעלים). |
 | C.2 | 🔴 **הרשאות ברמת נציג** | schema change (טבלת `reps`/roles) | היום יש רק `is_admin`. הפרדת admin↔rep דורשת מודל הרשאות חדש — **סיכון + אישור**. |
 | C.3 | 🔴 **קמפיינים/תבניות WhatsApp יוצאות** | §30A consent gating | שליחה יזומה מרובה — חייב שער הסכמה שיווקי + אישור משפטי. |
 

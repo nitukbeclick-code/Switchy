@@ -27,6 +27,7 @@ import {
   shapeMeeting,
   shapeMeetingDetail,
   shapeMeetingEvent,
+  shapeSellableLead,
   snippet,
   SNIPPET_LEN,
 } from "../crm-api/crm_logic.ts";
@@ -285,6 +286,31 @@ Deno.test("shapeContact leaves an unnamed contact's name blank (no fabrication)"
   assertEquals(c.name, "");
   assertEquals(c.leadId, null);
   assertEquals(c.lastMessageAt, null);
+});
+
+// ── sellable leads (third-party-sharing feed) ────────────────────────────────
+
+Deno.test("shapeSellableLead is an allowlist — source_ip / notes / internal cols never leak", () => {
+  const d = shapeSellableLead({
+    id: "L1", name: "דנה", phone: "0521234567", email: "d@x.com",
+    provider: "סלקום", source: "advisor", status: "new",
+    consent_share_at: "2026-07-01T10:00:00Z", created_at: "2026-07-01T09:00:00Z",
+    // Columns that must NEVER reach a sellable DTO:
+    source_ip: "9.9.9.9", notes: "פרטי — לא לרוכש", actual_saving: 480, referrer_code: "SW-1",
+  });
+  const keys = Object.keys(d);
+  for (const leak of ["source_ip", "notes", "actual_saving", "referrer_code"]) {
+    assertFalse(keys.includes(leak), `${leak} must not appear in the sellable DTO`);
+  }
+  assertEquals(d.name, "דנה");
+  assertEquals(d.email, "d@x.com");
+  assertEquals(d.consentShareAt, "2026-07-01T10:00:00Z");
+});
+
+Deno.test("shapeSellableLead null-coerces an absent consent stamp (no fabrication)", () => {
+  const d = shapeSellableLead({ id: "L2", name: "x", phone: "05200", status: "new" });
+  assertEquals(d.consentShareAt, null);
+  assertEquals(d.email, null);
 });
 
 // ── aggregateReps (per-rep leaderboard) ──────────────────────────────────────

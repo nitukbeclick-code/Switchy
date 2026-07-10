@@ -356,3 +356,38 @@ export function shapeMeetingEvent(e: Record<string, unknown>): MeetingEvent {
     createdAt: emptyToNull(e.created_at),
   };
 }
+
+// ── sellable leads (third-party-sharing feed — read-only console view) ────────
+
+// The fields the sellable-leads view exposes to the admin. This is the SAME class
+// of PII the lead-export feed carries (name/phone/email), but shaped through an
+// allowlist so `source_ip` and other internal columns can NEVER leak. `notes` is
+// deliberately omitted (the exporter strips it from buyer output too).
+export interface SellableLead {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  provider: string | null;
+  source: string | null;
+  status: string;
+  consentShareAt: string | null; // the explicit third-party-sharing consent stamp
+  createdAt: string | null;
+}
+
+/** Shape a consented `leads` row into the sellable-view DTO (allowlist). Only
+ *  rows with a real `consent_share_at` should ever reach this — the caller gates
+ *  on `consent_share_at=not.is.null` AND re-checks with isSellable() first. */
+export function shapeSellableLead(r: Record<string, unknown>): SellableLead {
+  return {
+    id: s(r.id),
+    name: s(r.name),
+    phone: s(r.phone),
+    email: emptyToNull(r.email),
+    provider: emptyToNull(r.provider),
+    source: emptyToNull(r.source),
+    status: s(r.status),
+    consentShareAt: emptyToNull(r.consent_share_at),
+    createdAt: emptyToNull(r.created_at),
+  };
+}

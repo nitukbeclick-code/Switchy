@@ -129,6 +129,29 @@ export function fetchCrmLeads(
   });
 }
 
+// ── Sellable leads (third-party-sharing feed — read-only, audited) ─────────────
+
+export interface CrmSellableLead {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  provider: string | null;
+  source: string | null;
+  status: string;
+  consentShareAt: string | null;
+  createdAt: string | null;
+}
+
+/** The READ-ONLY consented-sharing feed: ONLY leads with an explicit
+ *  consent_share_at (the exporter's legal gate). Every call is audited server-side
+ *  (crm_lead_export). This never pushes anything to a buyer. */
+export function fetchSellableLeads(opts?: { status?: LeadStatus }): Promise<{ leads: CrmSellableLead[] } | null> {
+  return crmPost<{ leads: CrmSellableLead[] }>("listSellableLeads", {
+    ...(opts?.status ? { status: opts.status } : {}),
+  });
+}
+
 export interface CrmLeadDetail {
   id: string;
   name: string;

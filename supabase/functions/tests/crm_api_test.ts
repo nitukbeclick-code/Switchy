@@ -15,11 +15,16 @@ import {
   isValidContactStatus,
   isValidConversationStatus,
   isValidLeadStatus,
+  isValidMeetingStatus,
   LEAD_STATUSES,
   MAX_REPLY_LEN,
+  MEETING_STATUSES,
   s,
   shapeLeadDetail,
   shapeLeadEvent,
+  shapeMeeting,
+  shapeMeetingDetail,
+  shapeMeetingEvent,
   snippet,
   SNIPPET_LEN,
 } from "../crm-api/crm_logic.ts";
@@ -194,6 +199,65 @@ Deno.test("shapeLeadEvent maps the timeline row + null-coerces empties", () => {
   assertEquals(e.event, "status_change");
   assertEquals(e.oldStatus, "new");
   assertEquals(e.newStatus, "contacted");
+  assertEquals(e.note, null);
+  assertEquals(e.actorName, "CRM");
+});
+
+// ── meetings (Zoom bookings) ─────────────────────────────────────────────────
+
+Deno.test("meeting statuses mirror the meetings.status enum", () => {
+  assertEquals(
+    [...MEETING_STATUSES].sort(),
+    ["cancelled", "completed", "confirmed", "expired", "no_rep", "pending"],
+  );
+  assert(isValidMeetingStatus("confirmed"));
+  assertFalse(isValidMeetingStatus("bogus"));
+});
+
+Deno.test("shapeMeeting is a light allowlist — no email/join_url/notes/internal ids leak", () => {
+  const m = shapeMeeting({
+    id: "M1", name: "רון כהן", phone: "0539998887", provider: "פרטנר",
+    meeting_date: "2026-07-15", slot: "14:30", starts_at: "2026-07-15T11:30:00Z",
+    status: "confirmed", source: "site", claimed_by: "דנה", claimed_at: "",
+    // Fields that must NOT appear in the light list DTO:
+    email: "r@x.com", join_url: "https://zoom.us/j/1", notes: "פרטי",
+    zoom_meeting_id: "z1", gcal_event_id: "g1", claimed_by_tg_id: 42,
+  });
+  const keys = Object.keys(m);
+  for (const leak of ["email", "join_url", "notes", "zoom_meeting_id", "gcal_event_id", "claimed_by_tg_id"]) {
+    assertFalse(keys.includes(leak), `${leak} must not appear in the meeting list DTO`);
+  }
+  assertEquals(m.name, "רון כהן");
+  assertEquals(m.slot, "14:30");
+  assertEquals(m.status, "confirmed");
+});
+
+Deno.test("shapeMeetingDetail maps the CRM fields but still drops internal columns", () => {
+  const d = shapeMeetingDetail({
+    id: "M1", name: "רון", phone: "0539998887", email: "r@x.com",
+    provider: "פרטנר", plan_id: "p1", meeting_date: "2026-07-15", slot: "14:30",
+    starts_at: "2026-07-15T11:30:00Z", status: "confirmed",
+    join_url: "https://zoom.us/j/1", zoom_meeting_id: "z1", notes: "",
+    source: "site", claimed_by: "דנה", claimed_at: "2026-07-10T09:00:00Z",
+    confirmed_at: "2026-07-10T09:05:00Z", created_at: "2026-07-09T08:00:00Z",
+    // Internal columns that must be dropped by the allowlist:
+    gcal_event_id: "g1", claimed_by_tg_id: 42, reminded_rep_at: "2026-07-10",
+  });
+  const keys = Object.keys(d);
+  for (const leak of ["gcal_event_id", "claimed_by_tg_id", "reminded_rep_at"]) {
+    assertFalse(keys.includes(leak), `${leak} must not appear in the meeting detail DTO`);
+  }
+  assertEquals(d.email, "r@x.com");
+  assertEquals(d.joinUrl, "https://zoom.us/j/1");
+  assertEquals(d.notes, null); // "" → null
+});
+
+Deno.test("shapeMeetingEvent maps the timeline row + null-coerces empties", () => {
+  const e = shapeMeetingEvent({
+    id: "me1", event: "status_change", old_status: "pending", new_status: "confirmed",
+    actor_name: "CRM", note: "", created_at: "2026-07-10T09:05:00Z",
+  });
+  assertEquals(e.newStatus, "confirmed");
   assertEquals(e.note, null);
   assertEquals(e.actorName, "CRM");
 });

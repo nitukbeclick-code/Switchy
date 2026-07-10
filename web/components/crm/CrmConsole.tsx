@@ -14,13 +14,15 @@ import CrmAnalytics from "./CrmAnalytics";
 import CrmDashboard from "./CrmDashboard";
 import CrmInbox from "./CrmInbox";
 import CrmLeads from "./CrmLeads";
+import CrmMeetings from "./CrmMeetings";
 import { NoticeCard } from "./ui";
 
-type TabKey = "dashboard" | "leads" | "conversations" | "analytics";
+type TabKey = "dashboard" | "leads" | "meetings" | "conversations" | "analytics";
 
 const TABS: { key: TabKey; label: string; ready: boolean }[] = [
   { key: "dashboard", label: "סקירה", ready: true },
   { key: "leads", label: "לידים", ready: true },
+  { key: "meetings", label: "פגישות", ready: true },
   { key: "conversations", label: "שיחות", ready: true },
   { key: "analytics", label: "אנליטיקס", ready: true },
 ];
@@ -83,6 +85,7 @@ export default function CrmConsole() {
 
       {tab === "dashboard" && <CrmDashboard />}
       {tab === "leads" && <CrmLeads />}
+      {tab === "meetings" && <CrmMeetings />}
       {tab === "conversations" && <CrmInbox />}
       {tab === "analytics" && <CrmAnalytics />}
     </main>

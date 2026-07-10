@@ -10,6 +10,8 @@ import {
   ConversationStatusPill,
   formatMinutes,
   LEAD_STATUS_META,
+  MEETING_STATUS_META,
+  MeetingStatusPill,
   StatusPill,
   when,
 } from "@/components/crm/ui";
@@ -52,5 +54,21 @@ describe("CRM ui helpers", () => {
     expect(CONVERSATION_STATUS_META.bot.label).toBe("בוט");
     render(<ConversationStatusPill status="human" />);
     expect(screen.getByText("נציג")).toBeInTheDocument();
+  });
+
+  it("MEETING_STATUS_META covers the booking lifecycle with the right tones", () => {
+    expect(Object.keys(MEETING_STATUS_META).sort()).toEqual(
+      ["cancelled", "completed", "confirmed", "expired", "no_rep", "pending"],
+    );
+    expect(MEETING_STATUS_META.completed.tone).toBe("value");
+    expect(MEETING_STATUS_META.confirmed.tone).toBe("info");
+    expect(MEETING_STATUS_META.no_rep.tone).toBe("danger");
+  });
+
+  it("MeetingStatusPill shows the Hebrew label for a known status and raw text otherwise", () => {
+    const { rerender } = render(<MeetingStatusPill status="confirmed" />);
+    expect(screen.getByText("מאושר")).toBeInTheDocument();
+    rerender(<MeetingStatusPill status="mystery" />);
+    expect(screen.getByText("mystery")).toBeInTheDocument();
   });
 });

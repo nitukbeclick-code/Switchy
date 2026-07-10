@@ -58,6 +58,16 @@ export const CONVERSATION_STATUS_META: Record<string, { label: string; tone: Ton
   closed: { label: "סגור", tone: "neutral" },
 };
 
+// Meeting lifecycle (meetings.status) — its own enum again (Zoom bookings).
+export const MEETING_STATUS_META: Record<string, { label: string; tone: Tone }> = {
+  pending: { label: "ממתין לאישור", tone: "neutral" },
+  confirmed: { label: "מאושר", tone: "info" },
+  completed: { label: "הושלם", tone: "value" },
+  no_rep: { label: "ללא נציג", tone: "danger" },
+  cancelled: { label: "בוטל", tone: "danger" },
+  expired: { label: "פג תוקף", tone: "neutral" },
+};
+
 const TONE_PILL: Record<Tone, string> = {
   neutral: "border-border text-muted",
   info: "border-accent/40 bg-accent/10 text-accent-text",
@@ -82,6 +92,12 @@ export function StatusPill({ status }: { status: string }) {
 /** A conversation-status chip (bot/human/open/closed). */
 export function ConversationStatusPill({ status }: { status: string }) {
   const meta = CONVERSATION_STATUS_META[status];
+  return <Pill label={meta?.label ?? status} tone={meta?.tone ?? "neutral"} />;
+}
+
+/** A meeting-status chip (pending/confirmed/completed/…). */
+export function MeetingStatusPill({ status }: { status: string }) {
+  const meta = MEETING_STATUS_META[status];
   return <Pill label={meta?.label ?? status} tone={meta?.tone ?? "neutral"} />;
 }
 

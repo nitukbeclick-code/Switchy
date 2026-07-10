@@ -21,6 +21,16 @@ export const CONTACT_STATUSES = new Set([
 ]);
 export const LEAD_STATUSES = new Set(["new", "contacted", "won", "lost"]);
 export const CONVERSATION_STATUSES = new Set(["open", "bot", "human", "closed"]);
+// Zoom-booking lifecycle (mirrors the meetings.status enum + MeetingRow in
+// _shared/types.ts). Writes AND filter params are validated against this set.
+export const MEETING_STATUSES = new Set([
+  "pending",
+  "confirmed",
+  "no_rep",
+  "cancelled",
+  "expired",
+  "completed",
+]);
 
 /** Null-safe stringify — `null`/`undefined` become "". */
 export function s(v: unknown): string {
@@ -61,6 +71,11 @@ export function isValidLeadStatus(status: string): boolean {
 /** True when [status] is a valid conversation-list filter value. */
 export function isValidConversationStatus(status: string): boolean {
   return CONVERSATION_STATUSES.has(status);
+}
+
+/** True when [status] is a writable/filterable meeting lifecycle status. */
+export function isValidMeetingStatus(status: string): boolean {
+  return MEETING_STATUSES.has(status);
 }
 
 /** Clamp a requested page size into the 1..100 window (default 50). */
@@ -161,6 +176,110 @@ export interface LeadEvent {
 
 /** Shape a `lead_events` row into the activity-timeline DTO (allowlist, as above). */
 export function shapeLeadEvent(e: Record<string, unknown>): LeadEvent {
+  return {
+    id: s(e.id),
+    event: s(e.event),
+    oldStatus: emptyToNull(e.old_status),
+    newStatus: emptyToNull(e.new_status),
+    actorName: emptyToNull(e.actor_name),
+    note: emptyToNull(e.note),
+    createdAt: emptyToNull(e.created_at),
+  };
+}
+
+// ── meetings (Zoom bookings) ────────────────────────────────────────────────
+
+// The light meeting fields the LIST view shows (no email/join_url/notes — those
+// live only in the detail DTO, one row at a time).
+export interface MeetingSummary {
+  id: string;
+  name: string;
+  phone: string;
+  provider: string | null;
+  meetingDate: string | null;
+  slot: string | null;
+  startsAt: string | null;
+  status: string;
+  source: string | null;
+  claimedBy: string | null;
+}
+
+/** Shape a service-role `meetings` row into the list DTO (ALLOWLIST — a stray
+ *  internal column can never leak). Nothing invented: absent → null. */
+export function shapeMeeting(r: Record<string, unknown>): MeetingSummary {
+  return {
+    id: s(r.id),
+    name: s(r.name),
+    phone: s(r.phone),
+    provider: emptyToNull(r.provider),
+    meetingDate: emptyToNull(r.meeting_date),
+    slot: emptyToNull(r.slot),
+    startsAt: emptyToNull(r.starts_at),
+    status: s(r.status),
+    source: emptyToNull(r.source),
+    claimedBy: emptyToNull(r.claimed_by),
+  };
+}
+
+// The full meeting detail the drawer shows (still an allowlist — no gcal ids,
+// no rep tg-id, no internal stamps beyond what the console needs).
+export interface MeetingDetail {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  provider: string | null;
+  planId: string | null;
+  meetingDate: string | null;
+  slot: string | null;
+  startsAt: string | null;
+  status: string;
+  joinUrl: string | null;
+  zoomMeetingId: string | null;
+  notes: string | null;
+  source: string | null;
+  claimedBy: string | null;
+  claimedAt: string | null;
+  confirmedAt: string | null;
+  createdAt: string | null;
+}
+
+/** Shape a `meetings` row into the detail DTO (allowlist, as above). */
+export function shapeMeetingDetail(r: Record<string, unknown>): MeetingDetail {
+  return {
+    id: s(r.id),
+    name: s(r.name),
+    phone: s(r.phone),
+    email: emptyToNull(r.email),
+    provider: emptyToNull(r.provider),
+    planId: emptyToNull(r.plan_id),
+    meetingDate: emptyToNull(r.meeting_date),
+    slot: emptyToNull(r.slot),
+    startsAt: emptyToNull(r.starts_at),
+    status: s(r.status),
+    joinUrl: emptyToNull(r.join_url),
+    zoomMeetingId: emptyToNull(r.zoom_meeting_id),
+    notes: emptyToNull(r.notes),
+    source: emptyToNull(r.source),
+    claimedBy: emptyToNull(r.claimed_by),
+    claimedAt: emptyToNull(r.claimed_at),
+    confirmedAt: emptyToNull(r.confirmed_at),
+    createdAt: emptyToNull(r.created_at),
+  };
+}
+
+export interface MeetingEvent {
+  id: string;
+  event: string;
+  oldStatus: string | null;
+  newStatus: string | null;
+  actorName: string | null;
+  note: string | null;
+  createdAt: string | null;
+}
+
+/** Shape a `meeting_events` row into the timeline DTO (allowlist, as above). */
+export function shapeMeetingEvent(e: Record<string, unknown>): MeetingEvent {
   return {
     id: s(e.id),
     event: s(e.event),

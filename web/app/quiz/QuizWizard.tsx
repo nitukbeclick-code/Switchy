@@ -125,7 +125,6 @@ export default function QuizWizard() {
 
   // Fire "quiz_start" at most once per mount, on the first answer.
   const startedRef = useRef(false);
-  const liveRef = useRef<HTMLDivElement>(null);
   const groupId = useId();
 
   const progress = Math.round(((step + 1) / TOTAL_STEPS) * 100);
@@ -247,7 +246,7 @@ export default function QuizWizard() {
   return (
     <div className="bento p-6 sm:p-7">
       {/* Live region: announces step + phase changes to screen readers. */}
-      <div ref={liveRef} className="sr-only" role="status" aria-live="polite">
+      <div className="sr-only" role="status" aria-live="polite">
         {phase === "loading"
           ? "מחשבים התאמות…"
           : phase === "empty"
@@ -320,7 +319,13 @@ export default function QuizWizard() {
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
-              onClick={back}
+              // The empty state is driven by too-tight budget/priority, so send the
+              // user straight back to the budget step (1) to widen it — not back()
+              // which would leave them on the last step (abroad) they submitted from.
+              onClick={() => {
+                setPhase("quiz");
+                setStep(1);
+              }}
               className="interactive press rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               שינוי הבחירות

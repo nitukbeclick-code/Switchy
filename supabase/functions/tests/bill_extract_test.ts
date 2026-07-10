@@ -7,7 +7,7 @@
 // fail soft). Run from supabase/functions/:  deno task test
 
 import { assert, assertEquals } from "@std/assert";
-import { extractBillHint, MAX_BILL_BASE64_LEN, parseExtraction, parseImage } from "../_shared/bill.ts";
+import { extractBillHint, MAX_BILL_BASE64_LEN, parseBillHint, parseExtraction, parseImage } from "../_shared/bill.ts";
 import type { Plan } from "../_shared/catalogue.ts";
 
 const realFetch = globalThis.fetch;
@@ -99,4 +99,36 @@ Deno.test("_shared/bill.ts re-homes parseImage + parseExtraction", () => {
     100,
   );
   assert(MAX_BILL_BASE64_LEN > 0);
+});
+
+// ── parseBillHint: client-supplied hint parse + honesty clamp ──────────────────
+// The 0..5000 clamp is the honesty rail: a misread or hostile client can't turn
+// the referenced bill into a giant fake saving. No image here (that's extractBillHint).
+
+Deno.test("parseBillHint clamps monthly to 0..5000 and rounds", () => {
+  assertEquals(parseBillHint({ monthly: 120 })?.monthly, 120);
+  assertEquals(parseBillHint({ monthly: 120.6 })?.monthly, 121); // rounded
+  assertEquals(parseBillHint({ monthly: 99999 })?.monthly, 5000); // clamped to ceiling
+  assertEquals(parseBillHint({ monthly: "80" })?.monthly, 80); // numeric string coerced
+});
+
+Deno.test("parseBillHint rejects a non-usable bill (⇒ undefined, prompt unchanged)", () => {
+  assertEquals(parseBillHint({ monthly: 0 }), undefined);
+  assertEquals(parseBillHint({ monthly: -50 }), undefined); // clamps to 0 → rejected
+  assertEquals(parseBillHint({ monthly: "abc" }), undefined); // NaN
+  assertEquals(parseBillHint({}), undefined);
+  assertEquals(parseBillHint(null), undefined);
+  assertEquals(parseBillHint("not an object"), undefined);
+});
+
+Deno.test("parseBillHint trims + length-caps provider/category, omits when blank", () => {
+  const r = parseBillHint({ monthly: 60, provider: "  סלקום  ", category: "cellular" });
+  assertEquals(r?.provider, "סלקום");
+  assertEquals(r?.category, "cellular");
+  // Blank/whitespace provider/category are omitted, never an empty string.
+  const r2 = parseBillHint({ monthly: 60, provider: "   ", category: 123 });
+  assertEquals(r2?.provider, undefined);
+  assertEquals(r2?.category, undefined);
+  // Over-long provider is capped at 40 chars.
+  assertEquals(parseBillHint({ monthly: 60, provider: "x".repeat(80) })?.provider?.length, 40);
 });

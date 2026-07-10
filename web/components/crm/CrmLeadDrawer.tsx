@@ -21,6 +21,7 @@ import {
   recordCrmSaving,
   setCrmLeadStatus,
 } from "@/lib/crm-admin";
+import CrmCallBrief from "./CrmCallBrief";
 import { BTN_GHOST, BTN_PRIMARY, LEAD_STATUS_META, when } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
@@ -60,6 +61,7 @@ export default function CrmLeadDrawer({
   const [note, setNote] = useState("");
   const [savingInput, setSavingInput] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [showBrief, setShowBrief] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -203,6 +205,22 @@ export default function CrmLeadDrawer({
                 <p role="status" aria-live="polite" className="mt-2 min-h-4 text-xs text-accent-text">
                   {notice}
                 </p>
+              </section>
+
+              <section className="rounded-2xl border border-border bg-surface p-3">
+                <button
+                  type="button"
+                  onClick={() => setShowBrief((v) => !v)}
+                  aria-expanded={showBrief}
+                  className={`${BTN_GHOST} w-full`}
+                >
+                  {showBrief ? "הסתר תדריך שיחה" : "הכן שיחה (תדריך לנציג)"}
+                </button>
+                {showBrief && (
+                  <div className="mt-3 border-t border-border pt-3">
+                    <CrmCallBrief leadId={leadId} />
+                  </div>
+                )}
               </section>
 
               <section className="space-y-3 rounded-2xl border border-border bg-surface p-3">

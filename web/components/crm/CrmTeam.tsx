@@ -10,6 +10,8 @@
 //
 // Roles: viewer (read-only CRM) · rep (operate leads/conversations). "admin" is
 // NOT assignable here — it comes from profiles.is_admin and outranks both.
+// Revoking (ביטול) is a two-step inline confirm so access removal never happens
+// on a single mis-click; the pending confirmation expires after 5 seconds.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
@@ -48,6 +50,8 @@ export default function CrmTeam() {
   // uid currently being mutated (row-level busy), or "__grant__" for the form.
   const [busy, setBusy] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // uid whose revoke is awaiting the second, confirming click (two-step ביטול).
+  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
 
   // Grant-form fields.
   const [newUid, setNewUid] = useState("");
@@ -84,6 +88,7 @@ export default function CrmTeam() {
 
   const changeRole = useCallback(
     async (uid: string, role: CrmRole | "none") => {
+      setConfirmRevoke(null);
       setBusy(uid);
       setNotice(null);
       const ok = await setCrmMemberRole(uid, role);
@@ -93,6 +98,13 @@ export default function CrmTeam() {
     },
     [load],
   );
+
+  // A pending revoke confirmation quietly expires if the admin does nothing.
+  useEffect(() => {
+    if (!confirmRevoke) return;
+    const t = setTimeout(() => setConfirmRevoke(null), 5000);
+    return () => clearTimeout(t);
+  }, [confirmRevoke]);
 
   return (
     <div className="space-y-4">
@@ -204,14 +216,35 @@ export default function CrmTeam() {
                               → {ROLE_LABEL[r]}
                             </button>
                           ))}
-                        <button
-                          type="button"
-                          onClick={() => void changeRole(m.uid, "none")}
-                          disabled={rowBusy}
-                          className={`${BTN_GHOST} min-h-9 border-danger/40 px-2.5 py-1 text-xs text-danger-text`}
-                        >
-                          {rowBusy ? "…" : "ביטול"}
-                        </button>
+                        {confirmRevoke === m.uid ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void changeRole(m.uid, "none")}
+                              disabled={rowBusy}
+                              className={`${BTN_GHOST} min-h-9 border-danger/60 bg-danger/10 px-2.5 py-1 text-xs text-danger-text`}
+                            >
+                              {rowBusy ? "…" : "לאשר ביטול?"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRevoke(null)}
+                              disabled={rowBusy}
+                              className={`${BTN_GHOST} min-h-9 px-2.5 py-1 text-xs`}
+                            >
+                              חזרה
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRevoke(m.uid)}
+                            disabled={rowBusy}
+                            className={`${BTN_GHOST} min-h-9 border-danger/40 px-2.5 py-1 text-xs text-danger-text`}
+                          >
+                            {rowBusy ? "…" : "ביטול"}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

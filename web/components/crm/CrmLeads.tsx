@@ -12,7 +12,7 @@
 // waves); each row opens the detail drawer (status, won-flow, brief).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus, setCrmLeadStatus } from "@/lib/crm-admin";
 import { runChunked } from "@/lib/batch";
 import { buildCsv, downloadCsv } from "@/lib/csv";
@@ -29,16 +29,6 @@ const BULK_TARGETS: { status: LeadStatus; label: string }[] = [
   { status: "contacted", label: "יצרנו קשר" },
   { status: "lost", label: "אבוד" },
 ];
-
-// Enter/Space activate a row that is a clickable region (role="button").
-function activateOnKey(fn: () => void) {
-  return (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fn();
-    }
-  };
-}
 
 function LeadsSkeleton() {
   return (
@@ -61,10 +51,18 @@ export default function CrmLeads() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Bulk selection (by lead id) + its in-flight/result state.
+  // Bulk selection (by lead id) + its in-flight/result state. `bulkMsg.ok`
+  // drives the tone: full success renders in the value token, a partial
+  // failure in the danger token so it can't be skimmed past as a win.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkMsg, setBulkMsg] = useState<string | null>(null);
+  const [bulkMsg, setBulkMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  // Two-step confirm for the bulk stage buttons: the first click arms the
+  // target, the second actually applies it (no window.confirm).
+  const [confirmStatus, setConfirmStatus] = useState<LeadStatus | null>(null);
+  // Monotonic sequence for loads: rapid filter/sort switches fire overlapping
+  // fetches, and HTTP ordering isn't guaranteed — only the newest may land.
+  const loadSeq = useRef(0);
 
   // Debounce the search box so we don't fire a request per keystroke.
   useEffect(() => {
@@ -92,6 +90,7 @@ export default function CrmLeads() {
   const clearOnFilterChange = useCallback(() => {
     setSelected(new Set()); // a narrower view invalidates a selection of hidden rows
     setBulkMsg(null);
+    setConfirmStatus(null);
   }, []);
 
   const changeRange = useCallback((r: DateRange) => {
@@ -110,14 +109,17 @@ export default function CrmLeads() {
   }, [repOptions, rep]);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     setError(false);
     setSelected(new Set()); // a fresh view invalidates any prior selection
+    setConfirmStatus(null);
     const res = await fetchCrmLeads({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
       sort,
     });
+    if (seq !== loadSeq.current) return; // a newer load superseded this one
     if (res) setLeads(res.leads);
     else setError(true);
     setLoading(false);
@@ -125,6 +127,7 @@ export default function CrmLeads() {
 
   const toggleOne = useCallback((id: string) => {
     setBulkMsg(null);
+    setConfirmStatus(null);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -135,6 +138,7 @@ export default function CrmLeads() {
 
   const toggleAll = useCallback(() => {
     setBulkMsg(null);
+    setConfirmStatus(null);
     setSelected((prev) => {
       if (shown.length > 0 && shown.every((l) => prev.has(l.id))) return new Set();
       return new Set(shown.map((l) => l.id));
@@ -149,13 +153,14 @@ export default function CrmLeads() {
       if (selected.size === 0 || bulkBusy) return;
       setBulkBusy(true);
       setBulkMsg(null);
+      setConfirmStatus(null);
       const ids = [...selected];
       const ok = await runChunked(ids, 5, (id) => setCrmLeadStatus(id, status));
       setBulkBusy(false);
       setBulkMsg(
         ok === ids.length
-          ? `עודכנו ${ok} לידים.`
-          : `עודכנו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`,
+          ? { text: `עודכנו ${ok} לידים.`, ok: true }
+          : { text: `עודכנו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`, ok: false },
       );
       await load(); // refresh statuses + clear the (now-stale) selection
     },
@@ -202,15 +207,14 @@ export default function CrmLeads() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="סינון לפי שלב">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי שלב">
         {filters.map((f) => {
           const active = filter === f.key;
           return (
             <button
               key={f.key}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               onClick={() => setFilter(f.key)}
               className={`interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
@@ -316,21 +320,47 @@ export default function CrmLeads() {
             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-accent/40 bg-accent/5 p-3">
               <span className="text-sm font-semibold text-ink">{selected.size.toLocaleString("he-IL")} נבחרו</span>
               <span className="text-xs text-muted">העבר ל־</span>
-              {BULK_TARGETS.map((t) => (
-                <button
-                  key={t.status}
-                  type="button"
-                  onClick={() => void applyBulkStatus(t.status)}
-                  disabled={bulkBusy}
-                  className={`${BTN_GHOST} text-xs`}
-                >
-                  {t.label}
-                </button>
-              ))}
+              {BULK_TARGETS.map((t) =>
+                confirmStatus === t.status ? (
+                  // Armed: the first click swapped the button for an explicit
+                  // confirm + escape, so a bulk stage change is never one click.
+                  <span key={t.status} className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => void applyBulkStatus(t.status)}
+                      disabled={bulkBusy}
+                      className={`${BTN_GHOST} text-xs ${t.status === "lost" ? "border-danger/40 text-danger-text" : "border-accent/40 text-accent-text"}`}
+                    >
+                      {`אישור: העבר ${selected.size.toLocaleString("he-IL")} ל״${t.label}״`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmStatus(null)}
+                      disabled={bulkBusy}
+                      className={`${BTN_GHOST} text-xs`}
+                    >
+                      ביטול
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    key={t.status}
+                    type="button"
+                    onClick={() => setConfirmStatus(t.status)}
+                    disabled={bulkBusy}
+                    className={`${BTN_GHOST} text-xs`}
+                  >
+                    {t.label}
+                  </button>
+                ),
+              )}
               {bulkBusy && <span className="text-xs text-muted">מעדכן…</span>}
               <button
                 type="button"
-                onClick={() => setSelected(new Set())}
+                onClick={() => {
+                  setSelected(new Set());
+                  setConfirmStatus(null);
+                }}
                 disabled={bulkBusy}
                 className="ms-auto text-xs text-muted underline underline-offset-2 disabled:opacity-50"
               >
@@ -339,8 +369,8 @@ export default function CrmLeads() {
             </div>
           )}
           {bulkMsg && (
-            <p className="text-xs font-medium text-value-text" role="status">
-              {bulkMsg}
+            <p className={`text-xs font-medium ${bulkMsg.ok ? "text-value-text" : "text-danger-text"}`} role="status">
+              {bulkMsg.text}
             </p>
           )}
           {shown.length === 0 ? (
@@ -380,14 +410,14 @@ export default function CrmLeads() {
               </thead>
               <tbody>
                 {shown.map((l) => (
+                  // A plain <tr> keeps row/cell semantics (the scope="col" headers
+                  // stay associated); the row onClick is a pointer-only convenience.
+                  // Keyboard/AT access lives on the real name-cell <button> below,
+                  // a sibling control of the selection checkbox.
                   <tr
                     key={l.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`פרטי הליד ${l.name || l.phone}`}
                     onClick={() => setSelectedId(l.id)}
-                    onKeyDown={activateOnKey(() => setSelectedId(l.id))}
-                    className={`cursor-pointer border-b border-border/60 last:border-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5 ${
+                    className={`cursor-pointer border-b border-border/60 last:border-0 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5 ${
                       selected.has(l.id) ? "bg-accent/5" : ""
                     }`}
                   >
@@ -404,7 +434,16 @@ export default function CrmLeads() {
                         className="h-4 w-4 cursor-pointer accent-accent"
                       />
                     </td>
-                    <td className="px-4 py-2 font-medium text-ink">{l.name || "—"}</td>
+                    <td className="px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(l.id)}
+                        aria-label={`פרטי הליד ${l.name || l.phone}`}
+                        className="font-medium text-ink underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:underline"
+                      >
+                        {l.name || "—"}
+                      </button>
+                    </td>
                     <td className="px-4 py-2 text-muted" dir="ltr">{l.phone || "—"}</td>
                     <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
                     <td className="px-4 py-2 text-muted">{l.source || "—"}</td>
@@ -420,14 +459,13 @@ export default function CrmLeads() {
           {/* Mobile: cards. */}
           <ul className="space-y-2 md:hidden">
             {shown.map((l) => (
+              // Plain <li>: the card onClick is a pointer-only convenience;
+              // keyboard/AT access lives on the real name <button>, a sibling
+              // control of the selection checkbox (no nested-interactive ARIA).
               <li
                 key={l.id}
-                role="button"
-                tabIndex={0}
-                aria-label={`פרטי הליד ${l.name || l.phone}`}
                 onClick={() => setSelectedId(l.id)}
-                onKeyDown={activateOnKey(() => setSelectedId(l.id))}
-                className="cursor-pointer rounded-2xl border border-border bg-surface p-3 shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+                className="cursor-pointer rounded-2xl border border-border bg-surface p-3 shadow-soft [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 items-start gap-2">
@@ -441,7 +479,14 @@ export default function CrmLeads() {
                       className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
                     />
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink">{l.name || "—"}</p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(l.id)}
+                        aria-label={`פרטי הליד ${l.name || l.phone}`}
+                        className="block max-w-full truncate text-start text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      >
+                        {l.name || "—"}
+                      </button>
                       <p className="truncate text-xs text-muted" dir="ltr">{l.phone || "—"}</p>
                     </div>
                   </div>

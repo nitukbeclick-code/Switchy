@@ -5,10 +5,12 @@
 // status timeline, plus the lifecycle-status changer and a join link. Reads
 // crm-api `getMeeting` and writes via `setMeetingStatus` (both admin-gated,
 // service_role, audited). Every field is a real crm-api value; nothing invented.
-// Closes on overlay click or Escape. Mirrors <CrmLeadDrawer>.
+// Closes on overlay click or Escape. Mirrors <CrmLeadDrawer>, including its
+// aria-modal focus contract: focus moves to the close button on open, Tab is
+// trapped inside the dialog, and focus returns to the opener on close.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type CrmMeetingDetail,
   type CrmMeetingEvent,
@@ -59,6 +61,8 @@ export default function CrmMeetingDrawer({
   const [error, setError] = useState(false);
   const [savingStatus, setSavingStatus] = useState<MeetingStatus | null>(null);
   const [notice, setNotice] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,12 +77,42 @@ export default function CrmMeetingDrawer({
     void load();
   }, [load]);
 
+  // aria-modal focus management (same pattern as CrmLeadDrawer/AuthModal): on
+  // open move focus into the dialog, and on close restore it to the opener.
+  useEffect(() => {
+    const restore = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+    return () => {
+      if (restore && document.contains(restore)) restore.focus();
+    };
+  }, []);
+
+  // Escape closes; Tab is clamped to the dialog so the covered page stays unreachable.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !rootRef.current) return;
+      const focusables = rootRef.current.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      const inside = rootRef.current.contains(active);
+      if (e.shiftKey && (!inside || active === first)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose]);
 
   const changeStatus = useCallback(
@@ -103,7 +137,7 @@ export default function CrmMeetingDrawer({
   const meetingTime = meeting?.startsAt ? when(meeting.startsAt) : [meeting?.meetingDate, meeting?.slot].filter(Boolean).join(" ");
 
   return (
-    <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי פגישה">
+    <div ref={rootRef} className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי פגישה">
       <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="flex-1 bg-ink/40 backdrop-blur-[1px]" />
       <div className="ms-auto flex h-full w-full max-w-md flex-col overflow-y-auto border-s border-border bg-background shadow-float">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
@@ -115,7 +149,7 @@ export default function CrmMeetingDrawer({
               </p>
             )}
           </div>
-          <button type="button" onClick={onClose} className={`${BTN_GHOST} min-h-9 px-3`}>
+          <button ref={closeBtnRef} type="button" onClick={onClose} className={`${BTN_GHOST} min-h-9 px-3`}>
             סגור
           </button>
         </header>

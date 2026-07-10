@@ -166,12 +166,16 @@ export default function PlanCard({
         {label ? <FeatureBadges label={label} /> : null}
       </div>
 
-      {/* Plan name — links to the plan's full detail page. */}
+      {/* Plan name — links to the plan's full detail page. The invisible
+          before:-inset-y-2.5 pseudo extends the ~24px text line to a ≥44px tap
+          target (mobile guideline) without moving a pixel visually — the same
+          pseudo-hit-area pattern as PostComposer; it only reaches into the
+          non-interactive provider header above / price block below. */}
       <p className="mt-2">
         <Link
           href={`/plans/${plan.id}`}
           aria-label={`לפרטים מלאים על ${plan.plan} מ${plan.provider}`}
-          className="interactive inline-block rounded-sm font-display text-base font-semibold tracking-tight text-ink underline underline-offset-4 transition-colors hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive relative inline-block rounded-sm font-display text-base font-semibold tracking-tight text-ink underline underline-offset-4 transition-colors before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-[''] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {plan.plan}
         </Link>
@@ -229,11 +233,13 @@ export default function PlanCard({
       ) : null}
 
       {/* Always-present navigation to the plan's full detail page — pinned to the
-          card bottom (mt-auto) so cards in a carousel row share a tidy baseline. */}
+          card bottom (mt-auto) so cards in a carousel row share a tidy baseline.
+          min-h-11 grows the ~32px link to the 44px mobile tap-target guideline
+          (matching the אותיות קטנות summary above) without changing the text. */}
       <Link
         href={`/plans/${plan.id}`}
         aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
-        className="interactive press mt-auto inline-flex items-center gap-1 self-start rounded-lg pt-3 text-[13px] font-semibold text-accent-text underline underline-offset-4 transition-colors hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="interactive press mt-auto inline-flex min-h-11 items-center gap-1 self-start rounded-lg pt-3 text-[13px] font-semibold text-accent-text underline underline-offset-4 transition-colors hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         פרטים מלאים
         <Icon name="chevron" size={14} aria-hidden="true" />

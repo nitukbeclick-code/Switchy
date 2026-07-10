@@ -756,7 +756,11 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
             type="button"
             onClick={resendCode}
             disabled={pending || resendIn > 0}
-            className="interactive text-xs text-accent-text underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
+            // ≥44px tap target (min-h-11 + horizontal padding pulled back with a
+            // negative margin so the text keeps its alignment) — this control is
+            // hit at the flow's most failure-prone moment; keep it visually a
+            // secondary text link, just comfortably tappable.
+            className="interactive -mx-2 inline-flex min-h-11 items-center px-2 text-xs text-accent-text underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
           >
             {resendIn > 0
               ? `אפשר לשלוח קוד חדש בעוד ${resendIn} שניות`

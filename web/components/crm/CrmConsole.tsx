@@ -6,9 +6,15 @@
 // UX ONLY — every crm-api call re-verifies is_admin server-side (requireAdmin),
 // so a forced non-admin just gets empty/failed loads. Sections own their own
 // data + loading/error states; this shell stays thin.
+//
+// The active section lives in the URL (?tab=leads) so refresh, back/forward and
+// shared deep-links land on the right tab. useSearchParams on a prerendered
+// route CSR-bails to the nearest <Suspense>, so the boundary is provided here
+// (the /crm server shell stays a plain <CrmConsole />).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useState } from "react";
+import { type KeyboardEvent, Suspense, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import CrmAnalytics from "./CrmAnalytics";
 import CrmContacts from "./CrmContacts";
@@ -41,10 +47,57 @@ const TABS: { key: TabKey; label: string; ready: boolean }[] = [
   { key: "analytics", label: "אנליטיקס", ready: true },
 ];
 
+function isTabKey(v: string | null): v is TabKey {
+  return TABS.some((t) => t.key === v);
+}
+
 export default function CrmConsole() {
+  return (
+    <Suspense
+      fallback={
+        <main id="main" className="mx-auto w-full max-w-6xl px-4 py-10">
+          <p className="text-sm text-muted">טוען…</p>
+        </main>
+      }
+    >
+      <CrmConsoleInner />
+    </Suspense>
+  );
+}
+
+function CrmConsoleInner() {
   const { ready, profile } = useAuth();
   const isAdmin = !!profile?.is_admin;
-  const [tab, setTab] = useState<TabKey>("dashboard");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlTab = searchParams.get("tab");
+  // Initialized from ?tab= on mount (refresh / deep-link restore); invalid or
+  // absent values fall back to the dashboard.
+  const [tab, setTab] = useState<TabKey>(() => (isTabKey(urlTab) ? urlTab : "dashboard"));
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Local state switches instantly; the URL mirrors it. replace (not push) —
+  // tab hops shouldn't pile up history entries.
+  const selectTab = (key: TabKey) => {
+    setTab(key);
+    router.replace(`?tab=${key}`, { scroll: false });
+  };
+
+  // ARIA tabs keyboard model (roving tabindex). The row renders right→left
+  // (RTL), so ArrowLeft moves to the NEXT tab and ArrowRight to the previous;
+  // Home/End jump to the edges. Moving both activates and focuses the tab.
+  const onTablistKeyDown = (e: KeyboardEvent<HTMLElement>) => {
+    const current = TABS.findIndex((t) => t.key === tab);
+    let next: number;
+    if (e.key === "ArrowLeft") next = (current + 1) % TABS.length;
+    else if (e.key === "ArrowRight") next = (current - 1 + TABS.length) % TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = TABS.length - 1;
+    else return;
+    e.preventDefault();
+    selectTab(TABS[next].key);
+    tabRefs.current[next]?.focus();
+  };
 
   if (!ready) {
     return (
@@ -70,16 +123,27 @@ export default function CrmConsole() {
         </p>
       </header>
 
-      <nav className="mb-6 flex flex-wrap gap-1 border-b border-border" role="tablist" aria-label="מדורי הקונסולה">
-        {TABS.map((t) => {
+      <nav
+        className="mb-6 flex flex-wrap gap-1 border-b border-border"
+        role="tablist"
+        aria-label="מדורי הקונסולה"
+        onKeyDown={onTablistKeyDown}
+      >
+        {TABS.map((t, i) => {
           const active = tab === t.key;
           return (
             <button
               key={t.key}
+              ref={(el) => {
+                tabRefs.current[i] = el;
+              }}
               type="button"
               role="tab"
+              id={`crm-tab-${t.key}`}
               aria-selected={active}
-              onClick={() => setTab(t.key)}
+              aria-controls="crm-tabpanel"
+              tabIndex={active ? 0 : -1}
+              onClick={() => selectTab(t.key)}
               className={`interactive -mb-px flex items-center rounded-t-lg border-b-2 px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
                   ? "border-accent text-accent-text"
@@ -97,14 +161,16 @@ export default function CrmConsole() {
         })}
       </nav>
 
-      {tab === "dashboard" && <CrmDashboard />}
-      {tab === "leads" && <CrmLeads />}
-      {tab === "meetings" && <CrmMeetings />}
-      {tab === "conversations" && <CrmInbox />}
-      {tab === "contacts" && <CrmContacts />}
-      {tab === "sellable" && <CrmSellableLeads />}
-      {tab === "team" && <CrmTeam />}
-      {tab === "analytics" && <CrmAnalytics />}
+      <div role="tabpanel" id="crm-tabpanel" aria-labelledby={`crm-tab-${tab}`}>
+        {tab === "dashboard" && <CrmDashboard />}
+        {tab === "leads" && <CrmLeads />}
+        {tab === "meetings" && <CrmMeetings />}
+        {tab === "conversations" && <CrmInbox />}
+        {tab === "contacts" && <CrmContacts />}
+        {tab === "sellable" && <CrmSellableLeads />}
+        {tab === "team" && <CrmTeam />}
+        {tab === "analytics" && <CrmAnalytics />}
+      </div>
     </main>
   );
 }

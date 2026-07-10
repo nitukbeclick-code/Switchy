@@ -206,11 +206,14 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             aria-label="תפריט ניווט"
             className="flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
           >
-            <Icon
-              name="chevron"
-              size={20}
-              className="rotate-90 transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-open:-rotate-90"
-            />
+            {/* Hamburger — the universal "menu" mark, so the nav trigger reads as
+                navigation and not as one more disclosure chevron among the other
+                circular controls. Swaps to ✕ while open, driven purely by
+                details[open] (group-open) — still zero client JS. The <summary>'s
+                aria-label above carries the accessible name; both glyphs stay
+                decorative. */}
+            <MenuGlyph className="group-open:hidden" />
+            <Icon name="close" size={20} className="hidden group-open:block" />
           </summary>
 
           {/* Dropdown panel — anchored to the masthead's inline-start edge. */}
@@ -278,6 +281,30 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         </div>
       </div>
     </header>
+  );
+}
+
+// Hamburger "menu" glyph for the mobile nav trigger. Local to the header (the
+// shared <Icon> set has no `menu` name) but drawn to its exact contract: 24×24
+// viewBox, 1.75px currentColor strokes, round caps, decorative (aria-hidden) —
+// the owning <summary>'s aria-label carries the meaning. Same 20px render size
+// as the chevron it replaced, so the 40px hit target is unchanged.
+function MenuGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
   );
 }
 

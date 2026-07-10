@@ -652,7 +652,9 @@ export default function AiConcierge() {
                         ? `${consentId}-lead-error`
                         : undefined
                     }
-                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                    // text-base on phones (≥16px) so iOS Safari doesn't zoom-on-focus;
+                    // back to the compact text-sm from the sm breakpoint up.
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 sm:text-sm"
                   />
                   <label htmlFor={`${consentId}-phone`} className="sr-only">
                     מספר טלפון
@@ -672,7 +674,7 @@ export default function AiConcierge() {
                         ? `${consentId}-lead-error`
                         : undefined
                     }
-                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-right text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-right text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 sm:text-sm"
                   />
                 </div>
 
@@ -759,7 +761,10 @@ export default function AiConcierge() {
                   setLeadDismissed(false);
                   setOfferLead(true);
                 }}
-                className="interactive mt-3 text-xs font-medium text-accent-text underline hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                // ≥44px tap target (min-h-11; px-2/-mx-2 keeps text alignment),
+                // still a quiet secondary text link. mt-1 offsets the taller box
+                // so the visual gap stays close to the previous mt-3.
+                className="interactive -mx-2 mt-1 inline-flex min-h-11 items-center px-2 text-xs font-medium text-accent-text underline hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 השאירו פרטים ונחזור אליכם
               </button>
@@ -830,7 +835,9 @@ export default function AiConcierge() {
               maxLength={MAX_MESSAGE_LEN}
               disabled={sending}
               placeholder={pendingImage ? "הוסיפו שאלה (לא חובה)…" : "כתבו שאלה…"}
-              className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
+              // text-base on phones (≥16px) prevents iOS Safari zoom-on-focus in the
+              // fixed popover; compact text-sm returns from the sm breakpoint up.
+              className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-base text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-60 sm:text-sm"
             />
             <button
               type="submit"

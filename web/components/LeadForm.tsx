@@ -283,6 +283,18 @@ export default function LeadForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
+      onKeyDown={(e) => {
+        // On non-final steps a single text input implicit-submits on Enter, which
+        // would fire a full-form validation/POST against fields not yet entered.
+        // Intercept it so Enter ADVANCES (validating only the current step) — only
+        // the last step's real submit button finalizes the lead. Textareas keep
+        // Enter for newlines.
+        const el = e.target as HTMLElement;
+        if (e.key === "Enter" && step < lastStep && el.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          void next();
+        }
+      }}
       noValidate
       aria-labelledby="lead-form-heading"
       className={[

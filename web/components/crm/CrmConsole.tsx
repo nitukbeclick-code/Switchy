@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import CrmAnalytics from "./CrmAnalytics";
 import CrmDashboard from "./CrmDashboard";
 import CrmInbox from "./CrmInbox";
 import CrmLeads from "./CrmLeads";
@@ -21,7 +22,7 @@ const TABS: { key: TabKey; label: string; ready: boolean }[] = [
   { key: "dashboard", label: "סקירה", ready: true },
   { key: "leads", label: "לידים", ready: true },
   { key: "conversations", label: "שיחות", ready: true },
-  { key: "analytics", label: "אנליטיקס", ready: false },
+  { key: "analytics", label: "אנליטיקס", ready: true },
 ];
 
 export default function CrmConsole() {
@@ -83,7 +84,7 @@ export default function CrmConsole() {
       {tab === "dashboard" && <CrmDashboard />}
       {tab === "leads" && <CrmLeads />}
       {tab === "conversations" && <CrmInbox />}
-      {tab === "analytics" && <NoticeCard>מדור האנליטיקס יתווסף לקונסולה בקרוב.</NoticeCard>}
+      {tab === "analytics" && <CrmAnalytics />}
     </main>
   );
 }

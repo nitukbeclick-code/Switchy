@@ -229,3 +229,42 @@ export async function crmHandBack(conversationId: string): Promise<boolean> {
   const res = await crmPost<{ ok?: boolean }>("handBack", { conversationId });
   return !!res?.ok;
 }
+
+// ── Analytics (admin-metrics) ─────────────────────────────────────────────────
+
+const METRICS_FN = `${SUPABASE_URL}/functions/v1/admin-metrics`;
+
+export interface MetricRate {
+  key: string;
+  calls: number;
+  ok: number;
+  rate: number; // 0..1
+}
+
+export interface MetricEventSeries {
+  event: string;
+  total: number;
+  days: { day: string; events: number }[];
+}
+
+export interface AdminMetrics {
+  ok: boolean;
+  window: { days: number; since: string };
+  analytics: { events: MetricEventSeries[]; total: number };
+  toolCalls: { total: number; ok: number; rate: number; byTool: MetricRate[]; byChannel: MetricRate[] };
+  audit: { total: number; byEvent: { event: string; count: number }[] };
+  cron: { ok: boolean; known: number; stale: string[]; failing: string[] };
+}
+
+/** Admin observability rollup over a trailing window (GET admin-metrics?days=). */
+export async function fetchAdminMetrics(days = 7): Promise<AdminMetrics | null> {
+  const h = await authHeaders();
+  if (!h) return null;
+  try {
+    const r = await fetch(`${METRICS_FN}?days=${days}`, { headers: h });
+    if (!r.ok) return null;
+    return (await r.json()) as AdminMetrics;
+  } catch {
+    return null;
+  }
+}

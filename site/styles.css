@@ -456,7 +456,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   transition: background .15s, color .15s;
 }
 .theme-toggle:hover { background: var(--mint); color: var(--accent-ink); }
-.theme-toggle .ico { width: 20px; height: 20px; }
+.theme-toggle .ico { width: 22px; height: 22px; }
 .theme-toggle__sun, .theme-toggle__moon { display: grid; place-items: center; }
 /* Light theme shows the moon (go-dark); dark theme shows the sun (go-light). */
 .theme-toggle__sun { display: none; }
@@ -464,9 +464,9 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 :root[data-theme="dark"] .theme-toggle__sun { display: grid; }
 /* ── Header shortcut icons (Zoom scheduler · SWITCHY AI) ─────────────────────
    Two quick-access controls that sit beside the theme toggle, sharing its 44px
-   hit area, quiet mint hover and focus ring. The AI mark inherits currentColor
-   (so it tints on hover like the toggle); the Zoom mark is a self-contained
-   brand disk that keeps its blue in both themes. */
+   hit area, quiet mint hover and focus ring. All marks inherit currentColor
+   (so they tint on hover like the toggle) and share one 22px optical glyph
+   size so the utility row reads as an even set. */
 .nav__ico {
   flex: none; width: 44px; height: 44px; display: grid; place-items: center;
   background: none; border: 0; cursor: pointer; color: var(--green-d);
@@ -476,7 +476,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .nav__ico:focus-visible { box-shadow: var(--ring-flush); outline: none; }
 .nav__ico--ai svg { width: 22px; height: 22px; }
 .nav__ico--lang svg { width: 22px; height: 22px; }
-.nav__ico--zoom svg { width: 28px; height: 28px; display: block; }
+.nav__ico--zoom svg { width: 22px; height: 22px; display: block; }
 /* flex-shrink/min-width guard: without it the icon row squeezes the burger to a
    ~20px sliver that clips off-screen at 390px (header scrollWidth > viewport). */
 .nav__toggle { display: none; background: none; border: 0; width: 44px; min-width: 44px; height: 44px; flex-shrink: 0; cursor: pointer; padding: 10px; }
@@ -1672,7 +1672,20 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
      section are both linked there) — the burger must never fight them for room. */
   .nav__ico--zoom, .nav__ico--ai { display: none; }
   .nav__toggle { display: block; }
-  .nav__mobile.open { display: flex; }
+  /* The drawer lives inside the sticky header, so page scroll can never reveal
+     its tail — cap it to the viewport minus the 68px bar and scroll internally,
+     with safe-area padding so the last CTA clears the home indicator. */
+  .nav__mobile.open {
+    display: flex;
+    max-height: calc(100vh - 68px);
+    max-height: calc(100dvh - 68px);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+  /* While open, lift the header above the fixed cookie banner (z-index 1100) so
+     the drawer's bottom items stay visible AND tappable pre-consent; still below
+     the skip link (9999) and language menu (10000). */
+  .nav:has(.nav__mobile.open) { z-index: 1200; }
   .section { padding: 48px 0; }
   .section__head { margin-bottom: 36px; }
   .hero { padding: 36px 0 28px; }
@@ -1927,6 +1940,9 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; line-height: 1;
   color: var(--value-ink); background: var(--value-t); padding: 4px 9px; border-radius: 999px;
   box-shadow: 0 3px 10px rgba(180,83,9,.18);
+  /* Never wrap or shrink — long provider names squeeze the flex row and would
+     otherwise break the pill onto two lines (the name block wraps instead). */
+  white-space: nowrap; flex-shrink: 0;
 }
 .plan__score::before { content: "★"; font-size: 11px; }
 
@@ -2262,6 +2278,9 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 @media (max-width: 480px) {
   .subscribe { flex-direction: column; }
   .subscribe__row { flex-direction: column; }
+  /* In a column the row-layout flex-basis (200px) would become the input's
+     HEIGHT — reset it so the field keeps its natural padding-driven height. */
+  .subscribe input[type="email"], .subscribe__input { flex-basis: auto; }
   .subscribe .btn, .subscribe__btn { width: 100%; }
 }
 
@@ -2776,6 +2795,10 @@ a.chip:active { transform: translateY(0) scale(.97); }
   .cmp__cta { width: auto; }
   .cmp__cta::before { display: none; }
   .cmp__cta a { width: 100%; gap: 8px; font-size: .9rem; }
+  /* Primary per-card taps (details button + provider link) get the same 44px
+     touch target as plan-card icons and drawer links — the cells are flex rows,
+     so the extra height pads vertically without shifting layout. */
+  .cmp__name.cmp__more, .cmp__prov { min-height: 44px; display: inline-flex; align-items: center; }
 }
 @media (prefers-reduced-motion: reduce) { .cmp__cta a { transition: none; } }
 
@@ -3195,6 +3218,9 @@ h1 { letter-spacing: -.02em; }
    the responsive block keep phones tight. */
 @media (min-width: 1024px) {
   .section { padding-block: var(--space-2xl); }
+  /* Keep the tight variant tight — the rule above would otherwise win the
+     cascade and balloon compact comparison-table sections to 120px/120px. */
+  .section--tight { padding-block: clamp(28px, 4vw, 46px); }
   .section__head { margin-bottom: 64px; }
   .cta { padding-block: 104px; }
   .lead-hero { padding-top: 72px; }

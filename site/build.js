@@ -918,6 +918,10 @@ function mobileGuideLinks() {
     .join('\n');
 }
 
+// The guides mega-menu follows the WAI-ARIA APG disclosure-navigation pattern:
+// plain links in a panel behind an aria-expanded trigger. Deliberately NO
+// role="menu"/aria-haspopup — those promise menuitem semantics (arrow-key model,
+// no Tab) that a navigation link panel doesn't have.
 const navHtml = (ctaHref) => `  ${iconSprite()}
   <a class="skip" href="#main">דלג לתוכן</a>
   <header class="nav" id="nav">
@@ -930,8 +934,8 @@ const navHtml = (ctaHref) => `  ${iconSprite()}
         <a href="compare.html">השוואה</a>
         <a href="providers.html">ספקים</a>
         <div class="mega" data-mega>
-          <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
-          <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
+          <a href="guides.html" class="mega__trigger" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
+          <div class="mega-menu" aria-label="מדריכים לפי נושא">
 ${megaMenuColumns()}
           </div>
         </div>
@@ -984,7 +988,7 @@ const FOOTER_SOCIAL = [
   ['mailto:hello@switchy-ai.com', 'mail', 'אימייל', false],
 ];
 const footerSocial = FOOTER_SOCIAL.map(([href, icon, label, ext]) =>
-  `<a class="footer__social" href="${href}"${ext ? ' target="_blank" rel="noopener"' : ''} aria-label="${esc(label)}">${svgIcon(icon)}</a>`).join('');
+  `<a class="footer__social-link" href="${href}"${ext ? ' target="_blank" rel="noopener"' : ''} aria-label="${esc(label)}">${svgIcon(icon)}</a>`).join('');
 
 // ── Accessibility widget (a11y) ───────────────────────────────────────────────
 // Legally-required floating accessibility control (Israel: תקנות שוויון זכויות
@@ -1041,7 +1045,7 @@ const footer = `  <footer class="footer">
           <label class="subscribe__consent" for="subscribeConsent"><input type="checkbox" id="subscribeConsent" name="consent" required /> אני מאשר/ת קבלת עדכוני מחיר ומבצעים במייל</label>
           <p class="subscribe__note" id="subscribeNote" role="status" aria-live="polite"></p>
         </form>
-        <div class="footer__socials" aria-label="ערוצי קשר">${footerSocial}</div>
+        <div class="footer__social" aria-label="ערוצי קשר">${footerSocial}</div>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
         <h3>קטגוריות</h3>
@@ -1595,7 +1599,7 @@ function jsonLd(c) {
 // on one page (one per category), so they pass a unique id to avoid duplicate
 // `id="compare-table"` (invalid HTML). Category pages omit it and keep the
 // original single id, so their output is unchanged.
-function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
+function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead = true } = {}) {
   if (!plans || plans.length < 2) return '';
   const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
   const fee = (p, ...keys) => { for (const k of keys) { const v = (p.fees || {})[k]; if (v) return esc(v); } return ''; };
@@ -1652,7 +1656,7 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
   return `
     <section class="section section--tight" id="${sectionId}" aria-label="טבלת השוואת מחירים">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">השוואה מהירה</span><h2>טבלת השוואת מחירים</h2><p>כל המסלולים במבט אחד — מחיר מבצע מול המחיר אחרי תקופת המבצע, ומה כלול. ממוין מהזול ביותר.</p></header>
+        ${withHead ? `<header class="section__head reveal"><span class="eyebrow">השוואה מהירה</span><h2>טבלת השוואת מחירים</h2><p>כל המסלולים במבט אחד — מחיר מבצע מול המחיר אחרי תקופת המבצע, ומה כלול. ממוין מהזול ביותר.</p></header>` : ''}
         <div class="cmp-wrap reveal" role="region" aria-label="טבלת השוואה — ניתן לגלול" tabindex="0">
           <table class="cmp">
             <thead><tr>${ths}</tr></thead>
@@ -3240,11 +3244,14 @@ function providerPage(name, plans) {
   // table is scoped to THIS provider's plans (price-sorted) so the page leads with
   // a scannable price grid before the detailed cards. Categories are emitted in
   // brand order; a single-plan category is skipped (the table needs ≥2 rows).
+  // withHead:false — the per-category h2 emitted right above each table is the
+  // section heading here, so the table's generic "טבלת השוואת מחירים" head would
+  // just stack a second same-weight title under it.
   const provTables = categories
     .filter((c) => planCats.includes(c.slug))
     .map((c) => {
       const catPlans = sortedPlans.filter((p) => p.cat === c.slug);
-      const table = comparisonTable(catPlans, c.slug, `compare-${c.slug}`);
+      const table = comparisonTable(catPlans, c.slug, `compare-${c.slug}`, { withHead: false });
       if (!table) return '';
       return `      <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">${esc(c.name)}</span><h2>${esc(name)} ${esc(c.name)} — המסלולים הזולים</h2></header>${table}`;
     })
@@ -4881,7 +4888,9 @@ function providerVsPage(v) {
   const h1 = `${a.provider} מול ${b.provider}`;
   // Verdict matrix — winner per dimension, marked with the value (amber) accent.
   const rows = providerVsVerdictRows(v);
-  const cell = (val, isWin) => `<td class="cmp__num${isWin ? ' cmp__best' : ''}">${isWin ? `<b>${esc(val)}</b>` : esc(val)}</td>`;
+  // data-th carries the provider name so the stacked mobile cards (which hide
+  // thead) still label each value with whose number it is.
+  const cell = (val, isWin, prov) => `<td class="cmp__num${isWin ? ' cmp__best' : ''}" data-th="${esc(prov)}">${isWin ? `<b>${esc(val)}</b>` : esc(val)}</td>`;
   const matrix = `
     <section class="section section--tight" aria-label="טבלת השוואה ראש בראש">
       <div class="container">
@@ -4890,7 +4899,7 @@ function providerVsPage(v) {
           <table class="cmp">
             <thead><tr><th>קריטריון</th><th class="cmp__num">${providerLogo(a.provider, 24)} ${esc(a.provider)}</th><th class="cmp__num">${providerLogo(b.provider, 24)} ${esc(b.provider)}</th></tr></thead>
             <tbody>
-${rows.map(([label, av, bv, winner]) => `              <tr><td data-th="קריטריון">${esc(label)}</td>${cell(av, winner === 'a')}${cell(bv, winner === 'b')}</tr>`).join('\n')}
+${rows.map(([label, av, bv, winner]) => `              <tr><td data-th="קריטריון">${esc(label)}</td>${cell(av, winner === 'a', a.provider)}${cell(bv, winner === 'b', b.provider)}</tr>`).join('\n')}
             </tbody>
           </table>
         </div>
@@ -5081,21 +5090,26 @@ ${footer}
 }
 
 // ── Write pages ────────────────────────────────────────────────────────────
+// Every generated page goes through writePage() so this run records exactly
+// which filenames it emitted — the prune step below deletes any leftover .html
+// that dropped out of the built set on a rebuild.
+const WRITTEN = new Set();
+const writePage = (name, html) => { fs.writeFileSync(path.join(__dirname, name), html); WRITTEN.add(name); };
 for (const c of categories) {
-  fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
+  writePage(`${c.slug}.html`, page(c));
 }
 for (const col of builtCollections) {
-  fs.writeFileSync(path.join(__dirname, `${col.slug}.html`), collectionPage(col));
+  writePage(`${col.slug}.html`, collectionPage(col));
 }
 for (const c of builtCalculators) {
-  fs.writeFileSync(path.join(__dirname, `calc-${c.slug}.html`), calculatorPage(c));
+  writePage(`calc-${c.slug}.html`, calculatorPage(c));
 }
 for (const v of builtVersus) {
   const html = versusPage(v);
-  if (html) fs.writeFileSync(path.join(__dirname, `${v.slug}.html`), html);
+  if (html) writePage(`${v.slug}.html`, html);
 }
 for (const v of builtProviderVs) {
-  fs.writeFileSync(path.join(__dirname, `${v.slug}.html`), providerVsPage(v));
+  writePage(`${v.slug}.html`, providerVsPage(v));
 }
 
 // Per-provider pages (from the catalogue).
@@ -5104,27 +5118,42 @@ for (const p of catalogue.plans) (providersMap[p.provider] ||= []).push(p);
 const providerNames = Object.keys(providersMap).sort();
 for (const name of providerNames) {
   providersMap[name].sort((a, b) => a.price - b.price);
-  fs.writeFileSync(path.join(__dirname, `provider-${providerSlug(name)}.html`), providerPage(name, providersMap[name]));
+  writePage(`provider-${providerSlug(name)}.html`, providerPage(name, providersMap[name]));
 }
 for (const g of guides) {
-  fs.writeFileSync(path.join(__dirname, `${g.slug}.html`), articlePage(g));
+  writePage(`${g.slug}.html`, articlePage(g));
 }
 for (const p of staticPages) {
-  fs.writeFileSync(path.join(__dirname, `${p.slug}.html`), staticPage(p));
+  writePage(`${p.slug}.html`, staticPage(p));
 }
-fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
-fs.writeFileSync(path.join(__dirname, 'faq.html'), faqPage());
-fs.writeFileSync(path.join(__dirname, 'glossary.html'), glossaryPage());
-fs.writeFileSync(path.join(__dirname, 'how-it-works.html'), howItWorksPage());
-fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
-fs.writeFileSync(path.join(__dirname, 'deals.html'), dealsPage());
-fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
-fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
-fs.writeFileSync(path.join(__dirname, 'comparisons.html'), comparisonsHubPage());
-fs.writeFileSync(path.join(__dirname, 'community.html'), communityPage());
-fs.writeFileSync(path.join(__dirname, 'book.html'), bookPage());
-fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
-fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
+writePage('guides.html', guidesIndexPage());
+writePage('faq.html', faqPage());
+writePage('glossary.html', glossaryPage());
+writePage('how-it-works.html', howItWorksPage());
+writePage('plans.html', plansPage());
+writePage('deals.html', dealsPage());
+writePage('providers.html', providersIndexPage());
+writePage('compare.html', comparePage());
+writePage('comparisons.html', comparisonsHubPage());
+writePage('community.html', communityPage());
+writePage('book.html', bookPage());
+writePage('app.html', appPage());
+writePage('404.html', notFoundPage());
+
+// ── Prune stale generated pages ──────────────────────────────────────────────
+// The build only ever WRITES pages, so a page whose source dropped out of the
+// built set between runs (e.g. a -vs- matchup whose provider left the catalogue)
+// would otherwise linger on disk forever: served and indexable, but frozen at an
+// old catalogue snapshot and absent from sitemap.xml. Delete any top-level .html
+// this run did not emit, except the hand-authored files (index.html — synced in
+// place further below — and og-card.html, the og-image screenshot template).
+// readdirSync is non-recursive, so nothing under assets/ etc. is touched.
+const HAND_AUTHORED_HTML = new Set(['index.html', 'og-card.html']);
+for (const f of fs.readdirSync(__dirname)) {
+  if (!f.endsWith('.html') || WRITTEN.has(f) || HAND_AUTHORED_HTML.has(f)) continue;
+  fs.unlinkSync(path.join(__dirname, f));
+  console.log(`Pruned stale page (not in this build's set): ${f}`);
+}
 
 // ── Generate llms.txt + ai.txt (AI / answer-engine resources) ────────────────
 // The emerging "llms.txt" standard: a clean, LLM-friendly Markdown summary of the

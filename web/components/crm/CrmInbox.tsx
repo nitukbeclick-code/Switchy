@@ -85,19 +85,40 @@ export default function CrmInbox() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const threadEndRef = useRef<HTMLDivElement | null>(null);
+  // Stale-response guards. `listSeq` orders overlapping list loads (rapid
+  // filter/search switches) so a slower, older response can't overwrite the
+  // newer filter's rows. `selectedIdRef` mirrors the live selection so a
+  // thread response for a conversation the rep already left is dropped —
+  // otherwise thread A could render (name, phone, messages) while selectedId
+  // — and therefore the reply box — already targets conversation B.
+  const listSeq = useRef(0);
+  const selectedIdRef = useRef<string | null>(null);
+
+  // Single entry point for changing the selection: the ref updates
+  // synchronously, before any in-flight fetch can resolve.
+  const selectConversation = useCallback((id: string | null) => {
+    selectedIdRef.current = id;
+    setSelectedId(id);
+  }, []);
 
   // `silent` refreshes (from the Realtime feed) skip the skeletons + keep the
   // current view on failure, so a live update never flashes the list or thread.
   const loadList = useCallback(async (silent = false) => {
+    const seq = ++listSeq.current;
     if (!silent) setListLoading(true);
     setListError(false);
     const res = await fetchCrmConversations({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
     });
-    if (res) setConvs(res.conversations);
-    else if (!silent) setListError(true);
-    if (!silent) setListLoading(false);
+    if (seq !== listSeq.current) return; // stale — a newer load owns the list
+    if (res) {
+      setConvs(res.conversations);
+      setListLoading(false);
+    } else if (!silent) {
+      setListError(true);
+      setListLoading(false);
+    }
   }, [filter, search]);
 
   useEffect(() => {
@@ -105,12 +126,19 @@ export default function CrmInbox() {
   }, [loadList]);
 
   const loadThread = useCallback(async (id: string, silent = false) => {
+    // Never load (or show a skeleton for) a conversation that isn't the
+    // current selection — e.g. a post-mutation refresh whose closure captured
+    // an older selection.
+    if (id !== selectedIdRef.current) return;
     if (!silent) {
       setThreadLoading(true);
       setThread(null);
     }
     setThreadError(false);
     const t = await fetchCrmThread(id);
+    // The rep may have switched conversations while this fetch was in flight;
+    // only the latest-selected conversation's response is allowed to land.
+    if (id !== selectedIdRef.current) return;
     if (t) setThread(t);
     else if (!silent) setThreadError(true);
     if (!silent) setThreadLoading(false);
@@ -228,7 +256,7 @@ export default function CrmInbox() {
                   <li key={c.conversationId}>
                     <button
                       type="button"
-                      onClick={() => setSelectedId(c.conversationId)}
+                      onClick={() => selectConversation(c.conversationId)}
                       aria-current={active}
                       className={`w-full rounded-2xl border p-3 text-start focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
                         active
@@ -262,7 +290,7 @@ export default function CrmInbox() {
             <div className="flex h-[70vh] flex-col overflow-hidden rounded-2xl border border-border bg-background">
               <div className="flex items-center justify-between gap-2 border-b border-border bg-surface px-3 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <button type="button" onClick={() => setSelectedId(null)} className="text-sm text-accent-text md:hidden" aria-label="חזרה לרשימת השיחות">
+                  <button type="button" onClick={() => selectConversation(null)} className="text-sm text-accent-text md:hidden" aria-label="חזרה לרשימת השיחות">
                     →
                   </button>
                   <div className="min-w-0">

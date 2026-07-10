@@ -43,13 +43,24 @@
 
 .transition {
   /* The resting (committed) state is fully visible — the animation only plays the
-     enter; it does not hold the element at opacity:0. `both` keeps the FROM frame
-     applied for the (sub-frame) gap before the animation starts so there is no
-     1-frame flash of the final state, while `forwards` settles cleanly at the TO
-     frame. Compositor-only properties (opacity/transform) → no layout, no CLS. */
-  animation: routeEnter 240ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both;
-  /* Hint the compositor; auto-released after the animation by most engines. */
-  will-change: opacity, transform;
+     enter; it does not hold the element at opacity:0. Fill `backwards` keeps the
+     FROM frame applied for the (sub-frame) gap before the animation starts so
+     there is no 1-frame flash of the final state, then the element settles at its
+     NATURAL resting style (opacity:1, transform:none).
+
+     ⚠️ NEVER fill `forwards`/`both` here: a committed non-none transform makes
+     this wrapper the CONTAINING BLOCK for every position:fixed descendant
+     (mobile sticky lead CTA, auth modal, notifications panel), permanently
+     re-anchoring them to the page instead of the viewport. The TO frame IS the
+     natural style, so `backwards` renders identically during the run and frees
+     fixed positioning at rest. Compositor-only properties (opacity/transform)
+     → no layout, no CLS. */
+  animation: routeEnter 240ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1))
+    backwards;
+  /* Hint the compositor for the fade only. `transform` MUST NOT appear here:
+     `will-change: transform` alone creates a fixed-position containing block,
+     even after the animation ends (same breakage as filling forwards). */
+  will-change: opacity;
 }
 
 /* Reduced-motion: render children STATICALLY. No keyframe → the element is shown

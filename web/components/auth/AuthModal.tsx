@@ -186,7 +186,11 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
         role="dialog"
         aria-modal="true"
         aria-label={mode === "signin" ? "התחברות" : "הרשמה"}
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-float"
+        // Small-viewport guard: cap the card to the visual viewport (minus the
+        // overlay's p-4 gutter) and scroll INSIDE it, so the signup submit stays
+        // reachable on short phones / with the keyboard up. The rounded corners
+        // survive because the radius sits on this same scroll container.
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl border border-border bg-surface p-6 shadow-float"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-xl font-bold text-ink">

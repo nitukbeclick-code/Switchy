@@ -5,10 +5,11 @@
 // timeline, and the pipeline-stage changer. Reads crm-api `getLeadDetail` and
 // writes via `setLeadStatus` (both admin-gated, service_role, audited). Every
 // field is a real crm-api value; nothing is fabricated. Closes on overlay click
-// or Escape.
+// or Escape. As an aria-modal dialog it owns focus while open: focus moves to the
+// close button on open, Tab is trapped inside, and focus returns to the opener.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
   addCrmNote,
@@ -66,6 +67,9 @@ export default function CrmLeadDrawer({
   const [actionBusy, setActionBusy] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
 
+  const rootRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(false);
@@ -84,12 +88,42 @@ export default function CrmLeadDrawer({
     setMainNote(data?.lead.notes ?? "");
   }, [data?.lead.notes]);
 
+  // aria-modal focus management (same pattern as AuthModal): on open move focus
+  // into the dialog, and on close restore it to the element that opened it.
+  useEffect(() => {
+    const restore = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+    return () => {
+      if (restore && document.contains(restore)) restore.focus();
+    };
+  }, []);
+
+  // Escape closes; Tab is clamped to the dialog so the covered page stays unreachable.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !rootRef.current) return;
+      const focusables = rootRef.current.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      const inside = rootRef.current.contains(active);
+      if (e.shiftKey && (!inside || active === first)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose]);
 
   const changeStatus = useCallback(
@@ -157,7 +191,7 @@ export default function CrmLeadDrawer({
   const lead = data?.lead;
 
   return (
-    <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי ליד">
+    <div ref={rootRef} className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי ליד">
       <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="flex-1 bg-ink/40 backdrop-blur-[1px]" />
       <div className="ms-auto flex h-full w-full max-w-md flex-col overflow-y-auto border-s border-border bg-background shadow-float">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
@@ -169,7 +203,7 @@ export default function CrmLeadDrawer({
               </p>
             )}
           </div>
-          <button type="button" onClick={onClose} className={`${BTN_GHOST} min-h-9 px-3`}>
+          <button ref={closeBtnRef} type="button" onClick={onClose} className={`${BTN_GHOST} min-h-9 px-3`}>
             סגור
           </button>
         </header>

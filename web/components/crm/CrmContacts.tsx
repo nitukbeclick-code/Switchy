@@ -8,7 +8,7 @@
 // status picker. Presentation only; all authority is server-side.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CONTACT_STATUSES,
   type ContactStatus,
@@ -67,6 +67,11 @@ export default function CrmContacts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Write-failure notice for status changes (loads keep their own `error` state).
+  const [notice, setNotice] = useState("");
+  // Orders overlapping loads (rapid filter/search switches) so a slower, older
+  // response can never overwrite a newer filter's rows.
+  const loadSeq = useRef(0);
 
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -74,12 +79,14 @@ export default function CrmContacts() {
   }, [searchInput]);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setLoading(true);
     setError(false);
     const res = await fetchCrmContacts({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
     });
+    if (seq !== loadSeq.current) return; // stale — a newer load owns the view
     if (res) setContacts(res.contacts);
     else setError(true);
     setLoading(false);
@@ -93,9 +100,13 @@ export default function CrmContacts() {
     async (contactId: string, status: ContactStatus) => {
       if (busyId) return;
       setBusyId(contactId);
+      setNotice("");
       const ok = await setCrmContactStatus(contactId, status);
       setBusyId(null);
       if (ok) await load();
+      // On failure the controlled select re-renders back to c.status; surface
+      // the failure instead of letting it snap back silently.
+      else setNotice("עדכון הסטטוס נכשל. נסו שוב.");
     },
     [busyId, load],
   );
@@ -137,6 +148,12 @@ export default function CrmContacts() {
         aria-label="חיפוש אנשי קשר"
         className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
       />
+
+      {/* Always-mounted polite live region (same pattern as the inbox reply
+          notice) so a failed status change is announced, not swallowed. */}
+      <p role="status" aria-live="polite" className="min-h-4 text-xs text-danger-text">
+        {notice}
+      </p>
 
       {loading ? (
         <ContactsSkeleton />

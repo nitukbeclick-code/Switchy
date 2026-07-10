@@ -81,16 +81,27 @@ async function authHeaders(): Promise<Record<string, string> | null> {
   };
 }
 
+// A usable edge-function body is always a plain JSON object ({ ok }, { leads },
+// { sla }, …). Any other 2xx shape (null / array / string / number — e.g. after
+// a contract drift or deploy skew) must degrade into the callers' existing
+// null → "couldn't load" path instead of blind-casting and crashing a component
+// that dereferences a missing field.
+function isJsonObject(j: unknown): j is Record<string, unknown> {
+  return typeof j === "object" && j !== null && !Array.isArray(j);
+}
+
 // POST {action,...payload} to crm-api and return the parsed JSON body, or null on
-// ANY failure (no session / not admin / network / non-2xx). Never throws — the UI
-// render-gates on is_admin for UX and treats null as "couldn't load".
+// ANY failure (no session / not admin / network / non-2xx / non-object body).
+// Never throws — the UI render-gates on is_admin for UX and treats null as
+// "couldn't load".
 async function crmPost<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
   const h = await authHeaders();
   if (!h) return null;
   try {
     const r = await fetch(FN, { method: "POST", headers: h, body: JSON.stringify({ action, ...payload }) });
     if (!r.ok) return null;
-    return (await r.json()) as T;
+    const j: unknown = await r.json();
+    return isJsonObject(j) ? (j as T) : null;
   } catch {
     return null;
   }
@@ -98,7 +109,9 @@ async function crmPost<T>(action: string, payload: Record<string, unknown> = {})
 
 /** Pipeline counts (by lead status) + the most recent conversations. */
 export function fetchCrmOverview(): Promise<CrmOverview | null> {
-  return crmPost<CrmOverview>("overview");
+  // Shape guard: the dashboard dereferences pipeline/recent unguarded, so an
+  // unexpected 2xx body must land in its existing null → retry state.
+  return crmPost<CrmOverview>("overview").then((j) => (j && j.pipeline && Array.isArray(j.recent) ? j : null));
 }
 
 export interface CrmSla {
@@ -471,7 +484,10 @@ export async function fetchAdminMetrics(days = 7): Promise<AdminMetrics | null> 
   try {
     const r = await fetch(`${METRICS_FN}?days=${days}`, { headers: h });
     if (!r.ok) return null;
-    return (await r.json()) as AdminMetrics;
+    const j: unknown = await r.json();
+    // Shape guard: the analytics tab dereferences all four sections unguarded.
+    if (!isJsonObject(j) || !j.analytics || !j.toolCalls || !j.audit || !j.cron) return null;
+    return j as unknown as AdminMetrics;
   } catch {
     return null;
   }
@@ -509,7 +525,19 @@ export async function fetchRepBrief(leadId: string): Promise<RepBriefResult | nu
   try {
     const r = await fetch(REP_BRIEF_FN, { method: "POST", headers: h, body: JSON.stringify({ lead_id: leadId }) });
     if (!r.ok) return null;
-    return (await r.json()) as RepBriefResult;
+    const j: unknown = await r.json();
+    // Shape guard: the brief card maps over these arrays unguarded.
+    if (
+      !isJsonObject(j) ||
+      !j.need ||
+      !Array.isArray(j.plans) ||
+      !Array.isArray(j.talkingPoints) ||
+      !Array.isArray(j.objections) ||
+      !Array.isArray(j.compliance)
+    ) {
+      return null;
+    }
+    return j as unknown as RepBriefResult;
   } catch {
     return null;
   }

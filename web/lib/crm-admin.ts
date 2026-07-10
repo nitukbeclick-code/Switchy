@@ -135,3 +135,79 @@ export async function setCrmLeadStatus(leadId: string, status: LeadStatus): Prom
   const res = await crmPost<{ ok?: boolean }>("setLeadStatus", { leadId, status });
   return !!res?.ok;
 }
+
+// ── WhatsApp inbox ────────────────────────────────────────────────────────────
+
+/** Conversation lifecycle status (mirrors crm_logic.CONVERSATION_STATUSES). */
+export type ConversationStatus = "open" | "bot" | "human" | "closed";
+export const CONVERSATION_STATUSES: readonly ConversationStatus[] = ["open", "bot", "human", "closed"];
+
+export interface CrmConversation {
+  conversationId: string;
+  contactId: string;
+  name: string;
+  phone: string;
+  status: string;
+  intent: string | null;
+  lastSnippet: string;
+  lastAt: string | null;
+  leadStatus: string | null;
+}
+
+export interface CrmMessage {
+  id: string;
+  direction: string; // "in" | "out"
+  actor: string; // "customer" | "bot" | "rep"
+  body: string;
+  createdAt: string | null;
+}
+
+export interface CrmThreadContact {
+  id: string;
+  name: string;
+  phone: string;
+  status: string;
+  leadId: string | null;
+  leadStatus: string | null;
+}
+
+export interface CrmThread {
+  contact: CrmThreadContact;
+  messages: CrmMessage[];
+}
+
+/** The conversation list, optionally filtered by status + a free-text name/phone search. */
+export function fetchCrmConversations(
+  opts?: { status?: ConversationStatus; search?: string },
+): Promise<{ conversations: CrmConversation[] } | null> {
+  return crmPost<{ conversations: CrmConversation[] }>("listConversations", {
+    ...(opts?.status ? { status: opts.status } : {}),
+    ...(opts?.search ? { search: opts.search } : {}),
+  });
+}
+
+/** One conversation: the contact + its ordered messages (oldest→newest). */
+export function fetchCrmThread(conversationId: string): Promise<CrmThread | null> {
+  return crmPost<CrmThread>("getThread", { conversationId });
+}
+
+/** Send a rep reply. This IMPLICITLY takes the conversation over from the bot. */
+export async function sendCrmReply(conversationId: string, body: string): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("sendReply", { conversationId, body });
+  return !!res?.ok;
+}
+
+/** Take a conversation off the bot (human handling); optional rep display name. */
+export async function crmTakeOver(conversationId: string, rep?: string): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("takeOver", {
+    conversationId,
+    ...(rep ? { rep } : {}),
+  });
+  return !!res?.ok;
+}
+
+/** Return a conversation to the AI bot. */
+export async function crmHandBack(conversationId: string): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("handBack", { conversationId });
+  return !!res?.ok;
+}

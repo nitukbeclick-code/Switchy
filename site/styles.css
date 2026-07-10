@@ -1978,14 +1978,48 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    An accessible dropdown panel anchored to a nav item. Shown via [hidden]
    removal OR a parent [aria-expanded] / :focus-within / :hover, so it works
    with keyboard, mouse, and JS toggling. RTL-anchored to the inline-start. */
+.mega { position: relative; }
 .mega-menu { position: relative; }
-/* Homepage variant: .mega > .mega-menu IS the panel — same pop-in contract. */
+/* Homepage variant: .mega > .mega-menu IS the panel — give it the FULL floating-
+   panel treatment (mirrors .mega-menu__panel). The nav JS toggles [hidden] +
+   .is-open on this element; without absolute positioning + a background + a hidden
+   state it was rendering in normal flow (position: relative) and spilling its
+   columns inline over the hero on open. */
 .mega > .mega-menu {
+  position: absolute; inset-inline-start: 0; top: calc(100% + 12px); z-index: 55;
+  min-width: 500px; max-width: 92vw; padding: 22px;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--glint), var(--shadow-lg);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px;
   transform-origin: top right;
   transition: opacity 180ms var(--ease), transform 180ms var(--ease), display 180ms allow-discrete;
   @starting-style { opacity: 0; transform: scale(.97) translateY(-4px); }
 }
+/* Closed state is driven by the JS [hidden] toggle — must beat the display:grid
+   above (which would otherwise keep the panel laid out while "closed"). */
+.mega > .mega-menu[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .mega > .mega-menu { transition: none; } }
+/* Inner content of the homepage panel: a category heading + spaced, hoverable
+   link rows per column (this variant uses .mega-menu__head + bare <a>, not the
+   icon-based .mega-menu__link, so it needs its own row styling). */
+.mega > .mega-menu .mega-menu__col { display: flex; flex-direction: column; gap: 1px; }
+.mega-menu__head {
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--ink-400); font-weight: 700; padding: 4px 10px; margin-bottom: 2px;
+}
+.mega-menu__head:hover { color: var(--accent-ink); }
+.mega > .mega-menu .mega-menu__col > a:not(.mega-menu__head) {
+  display: block; padding: 8px 10px; border-radius: var(--radius-sm);
+  color: var(--ink); font-weight: 600; font-size: 14px; line-height: 1.35;
+  transition: background .15s var(--ease), color .15s var(--ease);
+}
+.mega > .mega-menu .mega-menu__col > a:not(.mega-menu__head):hover {
+  background: var(--accent-t); color: var(--accent-ink);
+}
+.mega > .mega-menu .mega-menu__col > a:not(.mega-menu__head):focus-visible {
+  box-shadow: var(--ring-flush);
+}
 
 .mega-menu__panel {
   position: absolute; inset-inline-start: 0; top: calc(100% + 12px); z-index: 55;

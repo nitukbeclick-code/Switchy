@@ -9,15 +9,19 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import {
+  addCrmNote,
+  claimCrmLead,
   type CrmLeadDetail,
   type CrmLeadEvent,
   fetchCrmLeadDetail,
   LEAD_STATUSES,
   type LeadStatus,
+  recordCrmSaving,
   setCrmLeadStatus,
 } from "@/lib/crm-admin";
-import { BTN_GHOST, LEAD_STATUS_META, when } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, LEAD_STATUS_META, when } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
 
@@ -52,6 +56,10 @@ export default function CrmLeadDrawer({
   const [error, setError] = useState(false);
   const [savingStatus, setSavingStatus] = useState<LeadStatus | null>(null);
   const [notice, setNotice] = useState("");
+  const { profile } = useAuth();
+  const [note, setNote] = useState("");
+  const [savingInput, setSavingInput] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +99,50 @@ export default function CrmLeadDrawer({
     },
     [data, savingStatus, leadId, load, onChanged],
   );
+
+  // Run a write action, then refresh the detail + notify the parent list. Returns
+  // whether it succeeded so callers can clear their input only on success.
+  const runAction = useCallback(
+    async (fn: () => Promise<boolean>, okMsg: string): Promise<boolean> => {
+      if (actionBusy) return false;
+      setActionBusy(true);
+      setNotice("");
+      const ok = await fn();
+      setActionBusy(false);
+      if (ok) {
+        setNotice(okMsg);
+        await load();
+        onChanged?.();
+      } else {
+        setNotice("הפעולה נכשלה. נסו שוב.");
+      }
+      return ok;
+    },
+    [actionBusy, load, onChanged],
+  );
+
+  const repName = (profile?.name ?? "").trim() || "מנהל";
+
+  const onAddNote = useCallback(async () => {
+    const t = note.trim();
+    if (!t) return;
+    const ok = await runAction(() => addCrmNote(leadId, t), "ההערה נוספה.");
+    if (ok) setNote("");
+  }, [note, leadId, runAction]);
+
+  const onRecordSaving = useCallback(async () => {
+    const n = Number(savingInput);
+    if (!Number.isFinite(n) || n <= 0) {
+      setNotice("הזינו סכום חיסכון שנתי תקין.");
+      return;
+    }
+    const ok = await runAction(() => recordCrmSaving(leadId, n), "החיסכון נרשם והליד נסגר בהצלחה.");
+    if (ok) setSavingInput("");
+  }, [savingInput, leadId, runAction]);
+
+  const onClaim = useCallback(() => {
+    void runAction(() => claimCrmLead(leadId, repName), `הליד שויך ל${repName}.`);
+  }, [leadId, repName, runAction]);
 
   const lead = data?.lead;
 
@@ -151,6 +203,54 @@ export default function CrmLeadDrawer({
                 <p role="status" aria-live="polite" className="mt-2 min-h-4 text-xs text-accent-text">
                   {notice}
                 </p>
+              </section>
+
+              <section className="space-y-3 rounded-2xl border border-border bg-surface p-3">
+                <p className="text-xs font-medium text-muted">פעולות</p>
+
+                {!lead.claimedBy && (
+                  <button type="button" disabled={actionBusy} onClick={onClaim} className={`${BTN_GHOST} w-full`}>
+                    שייך אליי ({repName})
+                  </button>
+                )}
+
+                <div className="space-y-1.5">
+                  <label htmlFor="crm-note" className="text-xs text-muted">
+                    הוספת הערה לתיעוד
+                  </label>
+                  <textarea
+                    id="crm-note"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows={2}
+                    placeholder="הערה…"
+                    className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  />
+                  <button type="button" disabled={actionBusy || !note.trim()} onClick={() => void onAddNote()} className={`${BTN_GHOST} w-full`}>
+                    הוסף הערה
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="crm-saving" className="text-xs text-muted">
+                    רישום חיסכון שנתי (סוגר את הליד כ״נסגר בהצלחה״)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="crm-saving"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={savingInput}
+                      onChange={(e) => setSavingInput(e.target.value)}
+                      placeholder="₪ לשנה"
+                      className="w-32 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                    />
+                    <button type="button" disabled={actionBusy || !savingInput.trim()} onClick={() => void onRecordSaving()} className={BTN_PRIMARY}>
+                      רשום וסגור
+                    </button>
+                  </div>
+                </div>
               </section>
 
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">

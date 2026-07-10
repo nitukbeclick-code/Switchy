@@ -549,6 +549,80 @@ async function actGetLeadDetail(b: Row): Promise<Response> {
   return json({ lead, events });
 }
 
+// addNote {leadId, note} → append a note to the lead's activity timeline
+// (lead_events). Does NOT overwrite the single leads.notes field — the timeline
+// preserves history. Clamped; PII-light audit preview.
+async function actAddNote(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  const note = s(b.note).trim().slice(0, 2000);
+  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  if (!note) return json({ error: "אי אפשר להוסיף הערה ריקה" }, 400);
+  const wrote = await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "note",
+    note,
+    actor_name: "CRM",
+  });
+  if (!wrote) return json({ error: "שמירת ההערה נכשלה" }, 502);
+  await logAudit(actorUid, "crm_lead_note", { lead_id: leadId, preview: eventPreview(note) });
+  return json({ ok: true });
+}
+
+// recordSaving {leadId, annualSaving} → the won-flow: stamp the REAL annual saving
+// (₪/year, clamped 0..100000) AND close the lead (status=won), with a timeline
+// row. A saving is only ever a real recorded figure — the clamp stops a fat-finger
+// from planting a giant fake number.
+async function actRecordSaving(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  const raw = Number(b.annualSaving);
+  const saving = Number.isFinite(raw) ? Math.round(Math.min(100000, Math.max(0, raw))) : NaN;
+  if (!Number.isFinite(saving) || saving <= 0) return json({ error: "סכום חיסכון לא תקין" }, 400);
+  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ actual_saving: saving, status: "won" }),
+  });
+  if (!r || !r.ok) {
+    jlog({ at: "crm.recordSaving", ok: false, status: r?.status });
+    return json({ error: "רישום החיסכון נכשל" }, 502);
+  }
+  await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "saving",
+    new_status: "won",
+    note: `חיסכון שנתי שנרשם: ₪${saving}`,
+    actor_name: "CRM",
+  });
+  await logAudit(actorUid, "crm_lead_saving", { lead_id: leadId, saving });
+  return json({ ok: true });
+}
+
+// claimLead {leadId, rep} → assign the lead to a named rep (claimed_by + timestamp)
+// with a timeline row. `rep` is a display string (same model as assigned_rep /
+// crm_events.actor='rep' — no reps table).
+async function actClaimLead(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  const rep = s(b.rep).trim().slice(0, 120);
+  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  if (!rep) return json({ error: "שם נציג חסר" }, 400);
+  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ claimed_by: rep, claimed_at: new Date().toISOString() }),
+  });
+  if (!r || !r.ok) {
+    jlog({ at: "crm.claimLead", ok: false, status: r?.status });
+    return json({ error: "שיוך הליד נכשל" }, 502);
+  }
+  await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "claim",
+    note: `שויך ל${rep}`,
+    actor_name: rep,
+  });
+  await logAudit(actorUid, "crm_lead_claim", { lead_id: leadId, rep });
+  return json({ ok: true });
+}
+
 // Exact row count via a ranged read (Range: 0-0) reading the Content-Range
 // header. PostgREST answers a ranged read with 206 Partial Content, which is a
 // 2xx so `r.ok` is true; anything else (or no creds) counts as 0.
@@ -627,6 +701,12 @@ Deno.serve(async (req: Request) => {
         return await actListLeads(body);
       case "getLeadDetail":
         return await actGetLeadDetail(body);
+      case "addNote":
+        return await actAddNote(body, admin.uid);
+      case "recordSaving":
+        return await actRecordSaving(body, admin.uid);
+      case "claimLead":
+        return await actClaimLead(body, admin.uid);
       default:
         return json({ error: `פעולה לא מוכרת: ${action}` }, 400);
     }

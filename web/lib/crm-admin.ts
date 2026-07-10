@@ -152,6 +152,32 @@ export function fetchSellableLeads(opts?: { status?: LeadStatus }): Promise<{ le
   });
 }
 
+// ── CRM members (per-rep roles — C.2, admin-only) ─────────────────────────────
+
+/** The storable CRM roles below the is_admin superset (mirrors crm_roles.ts). */
+export type CrmRole = "viewer" | "rep";
+
+export interface CrmMember {
+  uid: string;
+  role: string; // "viewer" | "rep"
+  name: string | null;
+  email: string | null;
+  grantedAt: string | null;
+}
+
+/** The CRM roster (admin-only). Each row is a member's uid + their graded role +
+ *  their own name/email — no other profile field is exposed (server allowlist). */
+export function fetchMembers(): Promise<{ members: CrmMember[] } | null> {
+  return crmPost<{ members: CrmMember[] }>("listMembers");
+}
+
+/** Grant/change a member's role, or revoke it (role="none"). Admin-only, audited
+ *  server-side; the server refuses a self-change. Returns true on success. */
+export async function setCrmMemberRole(uid: string, role: CrmRole | "none"): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setMemberRole", { uid, role });
+  return !!res?.ok;
+}
+
 export interface CrmLeadDetail {
   id: string;
   name: string;

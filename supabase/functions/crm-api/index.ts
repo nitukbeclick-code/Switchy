@@ -43,6 +43,8 @@ import {
   LEAD_STATUSES,
   MAX_REPLY_LEN,
   s,
+  shapeLeadDetail,
+  shapeLeadEvent,
   snippet,
 } from "./crm_logic.ts";
 
@@ -525,6 +527,28 @@ async function actListLeads(b: Row): Promise<Response> {
   return json({ leads });
 }
 
+// getLeadDetail {leadId} → one lead's CRM-relevant fields + its lead_events
+// activity timeline. This is the ONE place richer lead fields (email, notes,
+// claim/contact stamps, actual_saving, consent) are exposed — behind the admin
+// gate, via service_role. `source_ip` is deliberately NOT selected (it's a
+// rate-limit signal, never CRM data). Nothing is fabricated: absent → null.
+async function actGetLeadDetail(b: Row): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  const rows = await fetchRows<Row>(
+    `/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=id,name,phone,email,provider,plan_id,source,callback_time,city,status,created_at,claimed_by,claimed_at,contacted_at,actual_saving,notes,referrer_code,consent_marketing_sms,consent_marketing_email,consent_marketing_whatsapp`,
+  );
+  if (rows === null) return json({ error: "שגיאה בטעינת הליד" }, 502);
+  if (rows.length === 0) return json({ error: "הליד לא נמצא" }, 404);
+  const lead = shapeLeadDetail(rows[0]);
+  // Append-only audit timeline (status changes / claims / notes / savings).
+  const evs = await fetchRows<Row>(
+    `/rest/v1/lead_events?lead_id=eq.${q(leadId)}&order=created_at.desc&limit=50&select=id,event,old_status,new_status,actor_name,note,created_at`,
+  );
+  const events = (evs ?? []).map(shapeLeadEvent);
+  return json({ lead, events });
+}
+
 // Exact row count via a ranged read (Range: 0-0) reading the Content-Range
 // header. PostgREST answers a ranged read with 206 Partial Content, which is a
 // 2xx so `r.ok` is true; anything else (or no creds) counts as 0.
@@ -601,6 +625,8 @@ Deno.serve(async (req: Request) => {
         return await actSetLeadStatus(body, admin.uid);
       case "listLeads":
         return await actListLeads(body);
+      case "getLeadDetail":
+        return await actGetLeadDetail(body);
       default:
         return json({ error: `פעולה לא מוכרת: ${action}` }, 400);
     }

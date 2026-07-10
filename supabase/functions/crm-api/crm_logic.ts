@@ -87,3 +87,87 @@ export function auditDetail(
 ): Record<string, unknown> {
   return { ...extra, actor: actorUid || null };
 }
+
+/** `null`/`undefined`/"" → null, otherwise the trimmed string. */
+function emptyToNull(v: unknown): string | null {
+  const t = s(v).trim();
+  return t || null;
+}
+
+// The CRM-relevant lead fields the detail view exposes (behind the admin gate).
+export interface LeadDetail {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  provider: string | null;
+  planId: string | null;
+  source: string | null;
+  callbackTime: string | null;
+  city: string | null;
+  status: string;
+  createdAt: string | null;
+  claimedBy: string | null;
+  claimedAt: string | null;
+  contactedAt: string | null;
+  actualSaving: number | null;
+  notes: string | null;
+  referrerCode: string | null;
+  consent: { sms: boolean; email: boolean; whatsapp: boolean };
+}
+
+/**
+ * Shape a service-role `leads` row into the admin lead-detail DTO. This is an
+ * ALLOWLIST: it maps ONLY the fields above, so even if the caller's select ever
+ * pulled a sensitive server-internal column (e.g. `source_ip`), it can NEVER
+ * reach the client through this DTO. Nothing is invented — absent → null.
+ */
+export function shapeLeadDetail(r: Record<string, unknown>): LeadDetail {
+  return {
+    id: s(r.id),
+    name: s(r.name),
+    phone: s(r.phone),
+    email: emptyToNull(r.email),
+    provider: emptyToNull(r.provider),
+    planId: emptyToNull(r.plan_id),
+    source: emptyToNull(r.source),
+    callbackTime: emptyToNull(r.callback_time),
+    city: emptyToNull(r.city),
+    status: s(r.status),
+    createdAt: emptyToNull(r.created_at),
+    claimedBy: emptyToNull(r.claimed_by),
+    claimedAt: emptyToNull(r.claimed_at),
+    contactedAt: emptyToNull(r.contacted_at),
+    actualSaving: r.actual_saving == null ? null : Number(r.actual_saving),
+    notes: emptyToNull(r.notes),
+    referrerCode: emptyToNull(r.referrer_code),
+    consent: {
+      sms: r.consent_marketing_sms === true,
+      email: r.consent_marketing_email === true,
+      whatsapp: r.consent_marketing_whatsapp === true,
+    },
+  };
+}
+
+export interface LeadEvent {
+  id: string;
+  event: string;
+  oldStatus: string | null;
+  newStatus: string | null;
+  actorName: string | null;
+  note: string | null;
+  createdAt: string | null;
+}
+
+/** Shape a `lead_events` row into the activity-timeline DTO (allowlist, as above). */
+export function shapeLeadEvent(e: Record<string, unknown>): LeadEvent {
+  return {
+    id: s(e.id),
+    event: s(e.event),
+    oldStatus: emptyToNull(e.old_status),
+    newStatus: emptyToNull(e.new_status),
+    actorName: emptyToNull(e.actor_name),
+    note: emptyToNull(e.note),
+    createdAt: emptyToNull(e.created_at),
+  };
+}

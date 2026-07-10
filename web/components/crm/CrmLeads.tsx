@@ -10,9 +10,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadStatus } from "@/lib/crm-admin";
+import CrmLeadDrawer from "./CrmLeadDrawer";
 import { BTN_GHOST, LEAD_STATUS_META, NoticeCard, StatusPill, when } from "./ui";
 
 type Filter = LeadStatus | "all";
+
+// Enter/Space activate a row that is a clickable region (role="button").
+function activateOnKey(fn: () => void) {
+  return (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fn();
+    }
+  };
+}
 
 function LeadsSkeleton() {
   return (
@@ -29,6 +40,7 @@ export default function CrmLeads() {
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const load = useCallback(async (f: Filter) => {
     setLoading(true);
@@ -107,7 +119,15 @@ export default function CrmLeads() {
               </thead>
               <tbody>
                 {leads.map((l) => (
-                  <tr key={l.id} className="border-b border-border/60 last:border-0">
+                  <tr
+                    key={l.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`פרטי הליד ${l.name || l.phone}`}
+                    onClick={() => setSelectedId(l.id)}
+                    onKeyDown={activateOnKey(() => setSelectedId(l.id))}
+                    className="cursor-pointer border-b border-border/60 last:border-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5"
+                  >
                     <td className="px-4 py-2 font-medium text-ink">{l.name || "—"}</td>
                     <td className="px-4 py-2 text-muted" dir="ltr">{l.phone || "—"}</td>
                     <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
@@ -123,7 +143,15 @@ export default function CrmLeads() {
           {/* Mobile: cards. */}
           <ul className="space-y-2 md:hidden">
             {leads.map((l) => (
-              <li key={l.id} className="rounded-2xl border border-border bg-surface p-3 shadow-soft">
+              <li
+                key={l.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`פרטי הליד ${l.name || l.phone}`}
+                onClick={() => setSelectedId(l.id)}
+                onKeyDown={activateOnKey(() => setSelectedId(l.id))}
+                className="cursor-pointer rounded-2xl border border-border bg-surface p-3 shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">{l.name || "—"}</p>
@@ -140,6 +168,14 @@ export default function CrmLeads() {
             ))}
           </ul>
         </>
+      )}
+
+      {selectedId && (
+        <CrmLeadDrawer
+          leadId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onChanged={() => void load(filter)}
+        />
       )}
     </div>
   );

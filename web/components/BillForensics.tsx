@@ -42,12 +42,12 @@ export interface BillForensicsProps {
 function severityStyle(flag: ForensicsFlag): { glyph: string; accent: string } {
   switch (flag.severity) {
     case "alert":
-      return { glyph: "⚠️", accent: "border-l-value" };
+      return { glyph: "⚠️", accent: "border-s-value" };
     case "warn":
-      return { glyph: "⚠️", accent: "border-l-value/70" };
+      return { glyph: "⚠️", accent: "border-s-value/70" };
     case "info":
     default:
-      return { glyph: "ℹ️", accent: "border-l-border-strong/50" };
+      return { glyph: "ℹ️", accent: "border-s-border-strong/50" };
   }
 }
 
@@ -71,7 +71,7 @@ function FlagCard({ flag }: { flag: ForensicsFlag }) {
   return (
     <li
       className={[
-        "rounded-xl border border-border/60 border-l-4 bg-surface p-4",
+        "rounded-xl border border-border/60 border-s-4 bg-surface p-4",
         accent,
       ].join(" ")}
     >

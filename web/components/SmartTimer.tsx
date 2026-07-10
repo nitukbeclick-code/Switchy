@@ -209,10 +209,21 @@ export default function SmartTimer({
                 </Link>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-muted">
-                כשתסתיים ההתחייבות תוכלו לעבור ספק ללא קנס יציאה. שמרו את התאריך
-                ובדקו שוב סמוך אליו כדי להשוות מסלולים.
-              </p>
+              <div className="mt-4">
+                <p className="text-sm text-muted">
+                  כשתסתיים ההתחייבות תוכלו לעבור ספק ללא קנס יציאה. אפשר כבר עכשיו
+                  להשוות מסלולים ולדעת לאן עוברים — ולחזור לבדוק סמוך לתאריך.
+                </p>
+                {/* Not a dead end: even under commitment the user can compare now
+                    and be ready. Secondary style (the switch isn't penalty-free yet). */}
+                <Link
+                  href={ctaHref}
+                  className="press mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-5 py-2.5 text-sm font-semibold text-accent-text transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {ctaLabel}
+                  <span aria-hidden="true">←</span>
+                </Link>
+              </div>
             )}
           </div>
         )}

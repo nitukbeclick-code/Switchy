@@ -68,6 +68,17 @@ export const MEETING_STATUS_META: Record<string, { label: string; tone: Tone }> 
   expired: { label: "פג תוקף", tone: "neutral" },
 };
 
+// Contact lifecycle (whatsapp_contacts.status) — the CRM's fullest status enum.
+export const CONTACT_STATUS_META: Record<string, { label: string; tone: Tone }> = {
+  new: { label: "חדש", tone: "info" },
+  active: { label: "פעיל", tone: "neutral" },
+  qualified: { label: "מוכשר", tone: "info" },
+  handed_off: { label: "הועבר לנציג", tone: "neutral" },
+  won: { label: "נסגר בהצלחה", tone: "value" },
+  lost: { label: "אבוד", tone: "danger" },
+  blocked: { label: "חסום", tone: "danger" },
+};
+
 const TONE_PILL: Record<Tone, string> = {
   neutral: "border-border text-muted",
   info: "border-accent/40 bg-accent/10 text-accent-text",
@@ -98,6 +109,12 @@ export function ConversationStatusPill({ status }: { status: string }) {
 /** A meeting-status chip (pending/confirmed/completed/…). */
 export function MeetingStatusPill({ status }: { status: string }) {
   const meta = MEETING_STATUS_META[status];
+  return <Pill label={meta?.label ?? status} tone={meta?.tone ?? "neutral"} />;
+}
+
+/** A contact lifecycle-status chip (new/active/qualified/…). */
+export function ContactStatusPill({ status }: { status: string }) {
+  const meta = CONTACT_STATUS_META[status];
   return <Pill label={meta?.label ?? status} tone={meta?.tone ?? "neutral"} />;
 }
 

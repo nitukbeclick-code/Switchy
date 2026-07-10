@@ -187,6 +187,31 @@ export function shapeLeadEvent(e: Record<string, unknown>): LeadEvent {
   };
 }
 
+// ── whatsapp contacts (lifecycle view) ─────────────────────────────────────
+
+// The contact fields the lifecycle list exposes (behind the admin gate). wa_id /
+// internal columns are never mapped, so they can't leak through this DTO.
+export interface ContactSummary {
+  id: string;
+  name: string;
+  phone: string;
+  status: string;
+  leadId: string | null;
+  lastMessageAt: string | null;
+}
+
+/** Shape a `whatsapp_contacts` row into the list DTO (allowlist). */
+export function shapeContact(r: Record<string, unknown>): ContactSummary {
+  return {
+    id: s(r.id),
+    name: emptyToNull(r.wa_name) ?? "",
+    phone: s(r.wa_phone),
+    status: s(r.status),
+    leadId: emptyToNull(r.lead_id),
+    lastMessageAt: emptyToNull(r.last_message_at),
+  };
+}
+
 // ── meetings (Zoom bookings) ────────────────────────────────────────────────
 
 // The light meeting fields the LIST view shows (no email/join_url/notes — those

@@ -11,19 +11,21 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import CrmAnalytics from "./CrmAnalytics";
+import CrmContacts from "./CrmContacts";
 import CrmDashboard from "./CrmDashboard";
 import CrmInbox from "./CrmInbox";
 import CrmLeads from "./CrmLeads";
 import CrmMeetings from "./CrmMeetings";
 import { NoticeCard } from "./ui";
 
-type TabKey = "dashboard" | "leads" | "meetings" | "conversations" | "analytics";
+type TabKey = "dashboard" | "leads" | "meetings" | "conversations" | "contacts" | "analytics";
 
 const TABS: { key: TabKey; label: string; ready: boolean }[] = [
   { key: "dashboard", label: "סקירה", ready: true },
   { key: "leads", label: "לידים", ready: true },
   { key: "meetings", label: "פגישות", ready: true },
   { key: "conversations", label: "שיחות", ready: true },
+  { key: "contacts", label: "אנשי קשר", ready: true },
   { key: "analytics", label: "אנליטיקס", ready: true },
 ];
 
@@ -87,6 +89,7 @@ export default function CrmConsole() {
       {tab === "leads" && <CrmLeads />}
       {tab === "meetings" && <CrmMeetings />}
       {tab === "conversations" && <CrmInbox />}
+      {tab === "contacts" && <CrmContacts />}
       {tab === "analytics" && <CrmAnalytics />}
     </main>
   );

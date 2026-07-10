@@ -6,6 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import {
+  CONTACT_STATUS_META,
+  ContactStatusPill,
   CONVERSATION_STATUS_META,
   ConversationStatusPill,
   formatMinutes,
@@ -69,6 +71,21 @@ describe("CRM ui helpers", () => {
     const { rerender } = render(<MeetingStatusPill status="confirmed" />);
     expect(screen.getByText("מאושר")).toBeInTheDocument();
     rerender(<MeetingStatusPill status="mystery" />);
+    expect(screen.getByText("mystery")).toBeInTheDocument();
+  });
+
+  it("CONTACT_STATUS_META covers the seven-stage contact lifecycle", () => {
+    expect(Object.keys(CONTACT_STATUS_META).sort()).toEqual(
+      ["active", "blocked", "handed_off", "lost", "new", "qualified", "won"],
+    );
+    expect(CONTACT_STATUS_META.won.tone).toBe("value");
+    expect(CONTACT_STATUS_META.blocked.tone).toBe("danger");
+  });
+
+  it("ContactStatusPill shows the Hebrew label for a known status and raw text otherwise", () => {
+    const { rerender } = render(<ContactStatusPill status="qualified" />);
+    expect(screen.getByText("מוכשר")).toBeInTheDocument();
+    rerender(<ContactStatusPill status="mystery" />);
     expect(screen.getByText("mystery")).toBeInTheDocument();
   });
 });

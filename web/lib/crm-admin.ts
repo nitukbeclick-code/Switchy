@@ -254,6 +254,45 @@ export async function setCrmMeetingStatus(meetingId: string, status: MeetingStat
   return !!res?.ok;
 }
 
+// ── Contacts (WhatsApp lifecycle) ───────────────────────────────────────────
+
+/** Contact lifecycle status (mirrors crm_logic.CONTACT_STATUSES). */
+export type ContactStatus = "new" | "active" | "qualified" | "handed_off" | "won" | "lost" | "blocked";
+export const CONTACT_STATUSES: readonly ContactStatus[] = [
+  "new",
+  "active",
+  "qualified",
+  "handed_off",
+  "won",
+  "lost",
+  "blocked",
+];
+
+export interface CrmContact {
+  id: string;
+  name: string;
+  phone: string;
+  status: string;
+  leadId: string | null;
+  lastMessageAt: string | null;
+}
+
+/** The WhatsApp-contact lifecycle list, optionally filtered by status + search. */
+export function fetchCrmContacts(
+  opts?: { status?: ContactStatus; search?: string },
+): Promise<{ contacts: CrmContact[] } | null> {
+  return crmPost<{ contacts: CrmContact[] }>("listContacts", {
+    ...(opts?.status ? { status: opts.status } : {}),
+    ...(opts?.search ? { search: opts.search } : {}),
+  });
+}
+
+/** Move a contact to a new lifecycle status (server validates + audits). */
+export async function setCrmContactStatus(contactId: string, status: ContactStatus): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setContactStatus", { contactId, status });
+  return !!res?.ok;
+}
+
 // ── WhatsApp inbox ────────────────────────────────────────────────────────────
 
 /** Conversation lifecycle status (mirrors crm_logic.CONVERSATION_STATUSES). */

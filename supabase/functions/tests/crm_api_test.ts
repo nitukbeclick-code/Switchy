@@ -20,6 +20,7 @@ import {
   MAX_REPLY_LEN,
   MEETING_STATUSES,
   s,
+  shapeContact,
   shapeLeadDetail,
   shapeLeadEvent,
   shapeMeeting,
@@ -260,4 +261,27 @@ Deno.test("shapeMeetingEvent maps the timeline row + null-coerces empties", () =
   assertEquals(e.newStatus, "confirmed");
   assertEquals(e.note, null);
   assertEquals(e.actorName, "CRM");
+});
+
+Deno.test("shapeContact is an allowlist — wa_id / internal columns never leak", () => {
+  const c = shapeContact({
+    id: "C1", wa_name: "יעל", wa_phone: "0501112233", status: "active",
+    lead_id: "L9", last_message_at: "2026-07-10T08:00:00Z",
+    // Internal columns that must NOT appear in the DTO:
+    wa_id: "972501112233", bot_enabled: true, source_ip: "9.9.9.9",
+  });
+  const keys = Object.keys(c);
+  for (const leak of ["wa_id", "bot_enabled", "source_ip"]) {
+    assertFalse(keys.includes(leak), `${leak} must not appear in the contact DTO`);
+  }
+  assertEquals(c.name, "יעל");
+  assertEquals(c.phone, "0501112233");
+  assertEquals(c.leadId, "L9");
+});
+
+Deno.test("shapeContact leaves an unnamed contact's name blank (no fabrication)", () => {
+  const c = shapeContact({ id: "C2", wa_phone: "0500000000", status: "new" });
+  assertEquals(c.name, "");
+  assertEquals(c.leadId, null);
+  assertEquals(c.lastMessageAt, null);
 });

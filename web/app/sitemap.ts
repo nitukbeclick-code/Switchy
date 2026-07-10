@@ -4,6 +4,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import type { MetadataRoute } from "next";
+import { createClient } from "@supabase/supabase-js";
 import {
   getCategories,
   getProviders,
@@ -14,10 +15,41 @@ import {
 import { getVsPairs } from "@/lib/vs";
 import { getGuides } from "@/lib/guides";
 import { SITE_URL } from "@/lib/schema";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase-public";
 
-export const dynamic = "force-static";
+// ISR (not force-static) because the community-Q&A permalinks below are read from
+// the public community_feed view at runtime; the hourly revalidate picks up newly
+// answered posts without a redeploy. The catalogue-derived entries are unaffected.
+export const revalidate = 3600;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+// The answered, non-flagged community-Q&A permalinks — the SAME ANON, public gate
+// the /community/questions hub uses (is_flagged=false, reply_count≥1). Only the
+// indexable post pages are emitted; /community itself stays noindex. Best-effort:
+// a failed read returns none so the sitemap never breaks on a network hiccup.
+async function communityPermalinks(now: Date): Promise<MetadataRoute.Sitemap> {
+  try {
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data } = await sb
+      .from("community_feed")
+      .select("id,created_at")
+      .eq("is_flagged", false)
+      .gte("reply_count", 1)
+      .order("created_at", { ascending: false })
+      .limit(500);
+    return ((data as { id: string; created_at: string }[] | null) ?? []).map((p) => ({
+      url: `${SITE_URL}/community/post/${p.id}`,
+      lastModified: p.created_at ? new Date(p.created_at) : now,
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   const home: MetadataRoute.Sitemap = [
@@ -339,6 +371,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Keep the FIRST occurrence so the higher-priority `compare` (categories) entry
   // wins over the lower-priority `serviceHubs` duplicate. Self-conflicting <loc>
   // entries are a sitemap-validity smell, so we emit each URL exactly once.
+  const community = await communityPermalinks(now);
+
   const all: MetadataRoute.Sitemap = [
     ...home,
     ...compare,
@@ -361,6 +395,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...authority,
     ...glossary,
     ...legal,
+    ...community,
   ];
 
   const seen = new Set<string>();

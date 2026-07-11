@@ -36,7 +36,10 @@ import { useAuth } from "@/lib/auth-context";
 
 const POLL_MS = 60_000;
 
-// ── Relative-time (Hebrew) — tiny local helper, no dependency. ────────────────
+// ── Relative-time (Hebrew) — tiny local helper, no dependency. DELIBERATELY not
+// lib/community-render's relativeTime: this variant floors instead of rounding,
+// opens with "ממש עכשיו" (vs "לפני רגע"), and bridges the month→year gap, so
+// folding it into the shared helper would change the bell's visible copy. ─────
 function relativeTime(iso: string): string {
   const then = new Date(iso).getTime();
   if (!Number.isFinite(then)) return "";

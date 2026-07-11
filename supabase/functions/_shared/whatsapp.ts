@@ -13,7 +13,7 @@
 // Beyond sendText, this module exposes a small fail-soft toolkit so the bot can
 // feel faster + more capable WITHOUT changing the webhook's guard chain:
 //   markRead(messageId)        — mark an inbound message as read (blue ticks)
-//   markTyping(to, on)         — show/clear the "typing…" indicator
+//   markTyping(messageId, on)  — show/clear the "typing…" indicator
 //   sendList(to, body, …)      — an interactive list (more than 3 options)
 //   sendImage(to, link, …)     — an image by public link
 //   sendDocument(to, link, …)  — a document (e.g. a PDF switch-kit) by link
@@ -184,26 +184,23 @@ export async function markRead(messageId: string): Promise<boolean | null> {
   }
 }
 
-// Shows or clears the "typing…" indicator for a recipient. Meta drives the
-// indicator off a message_id (the inbound message being answered), so `on`
-// toggles the typing_indicator payload. Returns true on success, null on any
-// failure — never throws. `on` defaults to true (the common "I'm working" case).
-//
-// NOTE: WhatsApp's typing indicator is tied to marking the triggering message as
-// read; pass the inbound wamid as `to` is NOT how Graph models it. We keep the
-// documented signature (to, on) and post the indicator against `to`, falling
-// back gracefully if Graph rejects the shape.
+// Shows or clears the "typing…" indicator for a recipient. WhatsApp ties the
+// typing indicator to marking the triggering message as read, so Graph wants
+// the message_id of the INBOUND message being answered (its wamid) — NOT the
+// recipient's phone number. `messageId` is that wamid; `on` toggles the
+// typing_indicator payload. Returns true on success, null on any failure —
+// never throws. `on` defaults to true (the common "I'm working" case).
 export async function markTyping(
-  to: string,
+  messageId: string,
   on = true,
 ): Promise<boolean | null> {
   if (!TOKEN) {
     jlog({ at: "wa.markTyping", ok: false, error: "WHATSAPP_TOKEN not set" });
     return null;
   }
-  const id = (to ?? "").trim();
+  const id = (messageId ?? "").trim();
   if (!id) {
-    jlog({ at: "wa.markTyping", ok: false, error: "missing to" });
+    jlog({ at: "wa.markTyping", ok: false, error: "missing messageId" });
     return null;
   }
   try {

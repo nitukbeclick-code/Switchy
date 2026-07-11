@@ -5,6 +5,7 @@ import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgInlineKeyboard, TgMessag
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import { HANDOFF_ENDED_REPLY } from "../_shared/handoff.ts";
 import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { lastSendWasOutside24hWindow, sendText as waSendText } from "../_shared/whatsapp.ts";
@@ -969,10 +970,8 @@ async function handleTgHandback(
   // below stay UNCONDITIONAL: handing the conversation back to the bot is an
   // internal state change the rep must always be able to complete.
   if (!(await isTelegramSuppressed(chatId))) {
-    await sendUserBot(
-      chatId,
-      "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.",
-    );
+    // Canonical hand-back copy — _shared/handoff.ts, shared with the user bot.
+    await sendUserBot(chatId, HANDOFF_ENDED_REPLY);
   }
   await answer("הוחזר לבוט 🤖");
   await sendTelegram(cfg, `🤖 <b>שיחת הטלגרם הוחזרה לבוט</b> (<code>tg:${esc(chatId)}</code>) — העוזר האוטומטי חזר לענות ללקוח.`);

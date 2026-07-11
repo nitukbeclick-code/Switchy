@@ -1,12 +1,12 @@
-// Unit tests for the site-bill-analyzer pure helpers (site-bill-analyzer/lib.ts)
-// + the shared buildSuggestions it now delegates to (B4 drift fix). These pin the
-// defensive JSON parsing (fence-strip, first-{} extraction, NaN→0) and the
-// raw/data-URL image parsing, with no network or env. Run from
+// Unit tests for the site-bill-analyzer pure helpers (now homed in
+// _shared/bill.ts) + the shared buildSuggestions they delegate to (B4 drift
+// fix). These pin the defensive JSON parsing (fence-strip, first-{} extraction,
+// NaN→0) and the raw/data-URL image parsing, with no network or env. Run from
 // supabase/functions/:
 //   deno task test
 
 import { assert, assertEquals } from "@std/assert";
-import { buildParsedBill, parseExtraction, parseImage, parseLines } from "../site-bill-analyzer/lib.ts";
+import { buildParsedBill, parseExtraction, parseImage, parseLines } from "../_shared/bill.ts";
 import { buildSuggestions, type Plan } from "../_shared/catalogue.ts";
 
 // ── parseExtraction: defensive JSON parsing of Gemini's reply ─────────────────

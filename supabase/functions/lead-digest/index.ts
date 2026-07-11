@@ -34,11 +34,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Schedule: see supabase/lead-digest-cron-2026-06.sql (pg_cron + pg_net, ~08:30 IL).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Cfg, Lead, MeetingRow } from "../_shared/types.ts";
 import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
 import { fetchRows } from "../_shared/db.ts";
 import { sendTelegram } from "../_shared/telegram.ts";
-import { type AgendaInput, buildDailyDigest } from "../_shared/agenda.ts";
+import { buildDailyDigest, fetchAgenda } from "../_shared/agenda.ts";
 import { jlog } from "../_shared/log.ts";
 import { captureError } from "../_shared/observability.ts";
 
@@ -56,22 +55,12 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-// ── agenda fetch (mirrors notify-lead/commands.ts fetchAgenda, which is not
-// exported) ──────────────────────────────────────────────────────────────────
-// Confirmed + pending meetings in a ±day window (buildDailyDigest trims to the
-// Israel day) and uncontacted (status=new) leads. Returns null on a failed query
-// so the caller suppresses the digest instead of pushing a hollow "all clear".
-async function fetchAgenda(): Promise<AgendaInput | null> {
-  const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
-  const winEnd = enc(new Date(Date.now() + 36 * 3_600_000).toISOString());
-  const [confirmed, pending, uncontacted] = await Promise.all([
-    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
-    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.pending&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
-    fetchRows<Lead>(`/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=200`),
-  ]);
-  if (confirmed === null || pending === null || uncontacted === null) return null;
-  return { confirmed, pending, uncontacted };
-}
+// ── agenda fetch ──────────────────────────────────────────────────────────────
+// SHARED with notify-lead's /today + /digest (_shared/agenda.ts fetchAgenda).
+// The cron reads up to 200 uncontacted leads (vs the commands' interactive 30)
+// so the morning digest counts stay honest on a big backlog. A null return
+// (failed query) suppresses the digest instead of pushing a hollow "all clear".
+const AGENDA_LEAD_LIMIT = 200;
 
 // ── stale-lead fetch ──────────────────────────────────────────────────────────
 // Pre-filter DB-side: status=new AND contacted_at IS NULL AND created more than
@@ -106,7 +95,7 @@ async function handle(req: Request): Promise<Response> {
 
   // Build both parts from REAL reads. Each section is independent and fail-soft:
   // a miss on one never blocks the other.
-  const [agenda, stale] = await Promise.all([fetchAgenda(), fetchStaleLeads(nowMs)]);
+  const [agenda, stale] = await Promise.all([fetchAgenda(AGENDA_LEAD_LIMIT), fetchStaleLeads(nowMs)]);
 
   const digestText = agenda ? buildDailyDigest(agenda, nowMs) : "";
   const staleSelected = stale ? selectStaleLeads(stale, nowMs) : [];

@@ -1,8 +1,12 @@
 // Daily/weekly agenda + this-week funnel stats + customer-360 dossier +
-// reschedule parsing + returning-customer line. All pure — unit-tested in
-// supabase/functions/tests/. Data fetching stays in the commands/cron layer.
+// reschedule parsing + returning-customer line. The builders are pure —
+// unit-tested in supabase/functions/tests/. The ONE exception is fetchAgenda,
+// the PostgREST read that fills AgendaInput: it used to be duplicated verbatim
+// by notify-lead/commands.ts and lead-digest/index.ts, so the canonical copy
+// lives here next to the type it fills and the two callers can never drift.
 
 import type { Lead, MeetingRow } from "./types.ts";
+import { fetchRows } from "./db.ts";
 import { esc, NL, waLink } from "./telegram.ts";
 import { SOURCE_HE, STATUS_EMOJI, STATUS_HE } from "./leads.ts";
 import { MEETING_STATUS_EMOJI, MEETING_STATUS_HE } from "./meetings.ts";
@@ -38,6 +42,27 @@ export type AgendaInput = {
   pending: MeetingRow[];     // pending meetings (any day; we trim to today)
   uncontacted: Lead[];       // status=new leads still awaiting first contact
 };
+
+// The ONE PostgREST read behind /today, /digest AND the lead-digest morning
+// cron: confirmed + pending meetings in a ±day window (buildAgenda /
+// buildDailyDigest trim to the Israel day) and uncontacted (status=new) leads,
+// oldest first. `leadLimit` is the only knob the callers differ on: the
+// interactive commands cap at 30 (a chat answer), the morning cron reads up to
+// 200 so the digest counts stay honest on a big backlog. Returns null on ANY
+// failed query so the caller can say "try again" / suppress the section instead
+// of confidently reporting "nothing today".
+export async function fetchAgenda(leadLimit: number): Promise<AgendaInput | null> {
+  const enc = encodeURIComponent;
+  const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
+  const winEnd = enc(new Date(Date.now() + 36 * 3_600_000).toISOString());
+  const [confirmed, pending, uncontacted] = await Promise.all([
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.pending&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+    fetchRows<Lead>(`/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=${leadLimit}`),
+  ]);
+  if (confirmed === null || pending === null || uncontacted === null) return null;
+  return { confirmed, pending, uncontacted };
+}
 
 export function buildAgenda(rows: AgendaInput, nowMs: number): string {
   const today = israelDay(nowMs);

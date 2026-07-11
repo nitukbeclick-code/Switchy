@@ -7,7 +7,7 @@ import { fetchRows, insertRow, logMeetingEvent, patchCount, rpcRows } from "../_
 import { buildText, keyboardFor, SOURCE_HE, STATUS_EMOJI, STATUS_HE } from "../_shared/leads.ts";
 import { formatMinutes, medianMinutes } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
-import { buildAgenda, buildDailyDigest, buildDossier, buildStats, buildWeek, type DossierInput } from "../_shared/agenda.ts";
+import { buildAgenda, buildDailyDigest, buildDossier, buildStats, buildWeek, type DossierInput, fetchAgenda } from "../_shared/agenda.ts";
 import { buildBoard, type ConsoleBoard, fetchOpenMeetings } from "./console.ts";
 import { pipelineCounts, renderLeadCard, renderLeadsPipeline, renderMeetingsBoard } from "./board.ts";
 import { parseReschedule } from "../_shared/reschedule.ts";
@@ -80,19 +80,34 @@ export async function aiMeetingsSummary(cfg: Cfg, board: ConsoleBoard): Promise<
   return "";
 }
 
-async function sendLeadCards(cfg: Cfg, leads: Lead[]): Promise<number> {
+// THE lead-card send loop — one card per lead, oldest of the batch first so the
+// newest lands closest to the input box, then a single honest warning when any
+// Telegram send failed. The renderer is injected so /search (status-headed
+// buildText cards) and /leads-/myleads (renderLeadCard) share the loop + failure
+// copy without sharing a card layout. Returns the failure count.
+async function sendCardBatch(
+  cfg: Cfg,
+  leads: Lead[],
+  render: (lead: Lead) => { text: string; reply_markup?: Record<string, unknown> },
+): Promise<number> {
   let failures = 0;
-  // oldest of the batch first so the newest lands closest to the input box
   for (const lead of [...leads].reverse()) {
-    const head = `${STATUS_EMOJI[String(lead.status ?? "new")] ?? ""} <b>${esc(STATUS_HE[String(lead.status ?? "new")] ?? lead.status)}</b> · ${String(lead.created_at ?? "").slice(0, 10)}`;
-    // status-aware keyboard: closed leads stay frozen even in search results
-    const r = await sendTelegram(cfg, head + NL + buildText(lead), keyboardFor(lead));
+    const card = render(lead);
+    const r = await sendTelegram(cfg, card.text, card.reply_markup);
     if (!r.ok) failures++;
   }
   if (failures > 0) {
     await sendTelegram(cfg, `⚠️ ${failures} כרטיסים לא נשלחו (תקלת טלגרם) — נסו שוב עוד רגע.`);
   }
   return failures;
+}
+
+async function sendLeadCards(cfg: Cfg, leads: Lead[]): Promise<number> {
+  return await sendCardBatch(cfg, leads, (lead) => {
+    const head = `${STATUS_EMOJI[String(lead.status ?? "new")] ?? ""} <b>${esc(STATUS_HE[String(lead.status ?? "new")] ?? lead.status)}</b> · ${String(lead.created_at ?? "").slice(0, 10)}`;
+    // status-aware keyboard: closed leads stay frozen even in search results
+    return { text: head + NL + buildText(lead), reply_markup: keyboardFor(lead) };
+  });
 }
 
 // Honest failure: a broken query must not read as "no results".
@@ -113,16 +128,7 @@ async function sendLeadsPipeline(cfg: Cfg, cmd: string, leads: Lead[], title?: s
   const headText = title ? `${title}${NL}${NL}${head.text}` : head.text;
   await sendTelegram(cfg, headText, head.reply_markup);
   if (leads.length === 0) return { ok: true, command: cmd };
-  // oldest of the batch first so the newest card lands closest to the input box
-  let failures = 0;
-  for (const lead of [...leads].reverse()) {
-    const card = renderLeadCard(lead);
-    const r = await sendTelegram(cfg, card.text, card.reply_markup);
-    if (!r.ok) failures++;
-  }
-  if (failures > 0) {
-    await sendTelegram(cfg, `⚠️ ${failures} כרטיסים לא נשלחו (תקלת טלגרם) — נסו שוב עוד רגע.`);
-  }
+  const failures = await sendCardBatch(cfg, leads, renderLeadCard);
   return { ok: true, command: cmd, failures };
 }
 
@@ -137,20 +143,9 @@ export function baresPhone(text: string): string | null {
   return digits.length >= 9 && digits.length <= 15 ? digits : null;
 }
 
-// Today's agenda: confirmed + pending meetings (±24h, trimmed to the Israel day
-// by buildAgenda) and uncontacted (status=new) leads. Returns null on a failed
-// query so the caller can say "try again" instead of "nothing today".
-async function fetchAgenda(): Promise<{ confirmed: MeetingRow[]; pending: MeetingRow[]; uncontacted: Lead[] } | null> {
-  const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
-  const winEnd = enc(new Date(Date.now() + 36 * 3_600_000).toISOString());
-  const [confirmed, pending, uncontacted] = await Promise.all([
-    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
-    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.pending&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
-    fetchRows<Lead>(`/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=30`),
-  ]);
-  if (confirmed === null || pending === null || uncontacted === null) return null;
-  return { confirmed, pending, uncontacted };
-}
+// Today's agenda now comes from the SHARED fetchAgenda (_shared/agenda.ts) —
+// the interactive commands cap the uncontacted-leads read at 30 (a chat answer).
+const AGENDA_LEAD_LIMIT = 30;
 
 // Compose a customer-360 dossier from existing tables (no new SQL): resolve the
 // phone to lead/meeting rows + (when those carry a user_id) the profile name,
@@ -450,7 +445,7 @@ export async function auditBookedMeeting(meetingId: string | null | undefined, a
 // compatible; only /myleads reads it, and it fails soft when it's absent.
 export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?: number): Promise<CmdResult> {
   if (cmd === "/today" || cmd === "/agenda") {
-    const data = await fetchAgenda();
+    const data = await fetchAgenda(AGENDA_LEAD_LIMIT);
     if (data === null) return await reportQueryFailure(cfg, cmd);
     await sendTelegram(cfg, buildAgenda(data, Date.now()));
     return { ok: true, command: cmd };
@@ -458,7 +453,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?
 
   if (cmd === "/digest") {
     // The count-led executive brief over the same agenda data as /today.
-    const data = await fetchAgenda();
+    const data = await fetchAgenda(AGENDA_LEAD_LIMIT);
     if (data === null) return await reportQueryFailure(cfg, cmd);
     await sendTelegram(cfg, buildDailyDigest(data, Date.now()));
     return { ok: true, command: cmd };

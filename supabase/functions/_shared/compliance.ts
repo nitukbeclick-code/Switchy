@@ -191,13 +191,20 @@ export async function recordSuppression(
 // does NOT hard-delete — it LOGS the request + suppresses future contact and tells
 // the user a human will complete the deletion within the legal timeframe.
 
-// "What do you know about me?" / "what data do you have" / "data".
+// "What do you know about me?" / "what data do you have" / "my data" — REQUEST-
+// shaped phrases only. Deliberately NOT the bare token "data": an English
+// customer asking "how much data does the plan include?" is a product question,
+// not an Amendment-13 access request, and must reach the agent instead of the
+// counts summary. Every remaining English keyword carries request context
+// ("what …", "my …", "… about me"), so a genuine access request still trips the
+// detector however it's phrased — this narrowing only removes the false
+// positive, it does not weaken real requests (pinned in compliance_test.ts).
 const DATA_ACCESS_KEYWORDS: readonly string[] = [
   "מה אתם יודעים עליי", "מה אתם יודעים עלי",
   "איזה מידע יש עליי", "איזה מידע יש עלי",
   "איזה מידע יש לכם עליי", "איזה מידע יש לכם עלי",
   "מה המידע שלי", "המידע שלי אצלכם",
-  "what data", "my data", "data about me", "data",
+  "what data", "my data", "data about me",
 ];
 
 // "Delete my data" / "erase" / "מחק את המידע שלי" / "מחיקת מידע".

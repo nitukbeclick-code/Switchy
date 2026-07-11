@@ -6,6 +6,9 @@
 //   • loadBotKnowledge() — read the curated, enabled bot_knowledge rows (priority
 //     order) via the existing service-role db helper. Fail-soft → [] (never throws
 //     into the agent path).
+//   • loadBotKnowledgeCached() — the same rows behind a modest per-isolate TTL
+//     (KNOWLEDGE_TTL_MS), so a long-lived warm isolate picks up curated edits
+//     without a redeploy, while a failed REFRESH keeps serving the last good copy.
 //   • formatKnowledgeForPrompt() — a compact, bounded Hebrew "verified knowledge"
 //     block to inject into the agent system prompt, so the model answers common
 //     questions directly + consistently (fewer tool round-trips = faster).
@@ -38,15 +41,17 @@ export type KnowledgeEntry = {
 // short WhatsApp-sized answers while staying small next to the catalogue context.
 const MAX_PROMPT_CHARS = 1500;
 
-// ── loadBotKnowledge: enabled rows, priority order. Fail-soft → []. ───────────
-// Reuses the shared service-role read (db.ts fetchRows → serviceFetch). On ANY
-// error (or a failed query → fetchRows returns null) we return [] so the agent
-// path simply runs without the knowledge block rather than breaking.
-export async function loadBotKnowledge(): Promise<KnowledgeEntry[]> {
+// ── fetchBotKnowledge: enabled rows, priority order — NULLABLE on failure. ────
+// Reuses the shared service-role read (db.ts fetchRows → serviceFetch). Returns
+// null when the READ ITSELF failed (network/non-2xx → fetchRows null) and [] for
+// a genuinely empty/all-disabled table — the distinction the TTL cache below
+// needs so a failed refresh keeps the stale copy while a real "table emptied"
+// edit still propagates. Never throws.
+export async function fetchBotKnowledge(): Promise<KnowledgeEntry[] | null> {
   const rows = await fetchRows<Record<string, unknown>>(
     "/rest/v1/bot_knowledge?select=topic,question_examples,answer,priority&enabled=eq.true&order=priority.asc",
   );
-  if (!rows) return [];
+  if (!rows) return null;
   const out: KnowledgeEntry[] = [];
   for (const r of rows) {
     const topic = String(r.topic ?? "").trim();
@@ -59,6 +64,48 @@ export async function loadBotKnowledge(): Promise<KnowledgeEntry[]> {
     out.push({ topic, question_examples: examples, answer, priority });
   }
   return out;
+}
+
+// ── loadBotKnowledge: enabled rows, priority order. Fail-soft → []. ───────────
+// The original contract, unchanged: on ANY error we return [] so the agent path
+// simply runs without the knowledge block rather than breaking.
+export async function loadBotKnowledge(): Promise<KnowledgeEntry[]> {
+  return (await fetchBotKnowledge()) ?? [];
+}
+
+// ── loadBotKnowledgeCached: the TTL-refreshed per-isolate cache ────────────────
+// Long-lived warm isolates used to cache the knowledge for their ENTIRE lifetime,
+// so curated bot_knowledge edits never reached the bot until a cold start. A
+// modest TTL fixes that: within the window we serve the cached copy (zero DB
+// round-trips on the hot path), after it we re-fetch. FAIL-SOFT ON REFRESH: when
+// the re-fetch fails (fetchBotKnowledge → null) we keep serving the last good
+// copy and try again after another TTL — a DB blip can only ever delay freshness,
+// never blank out the knowledge block. A successful fetch of an EMPTY set is
+// honored (the team disabling every row must propagate). `now` is injectable so
+// the TTL contract can be pinned in tests without timers.
+export const KNOWLEDGE_TTL_MS = 10 * 60_000;
+let _cache: KnowledgeEntry[] | null = null;
+let _cacheAt = 0;
+
+export async function loadBotKnowledgeCached(now = Date.now()): Promise<KnowledgeEntry[]> {
+  if (_cache && now - _cacheAt < KNOWLEDGE_TTL_MS) return _cache;
+  const fresh = await fetchBotKnowledge();
+  if (fresh) {
+    _cache = fresh; // includes a legitimate [] — curated edits always win
+  } else if (_cache === null) {
+    _cache = []; // first load failed → run without the block, retry after TTL
+  } // else: refresh failed → keep the stale copy (fail-soft)
+  // Stamp the window even on failure so a broken DB is retried once per TTL,
+  // not on every message.
+  _cacheAt = now;
+  return _cache;
+}
+
+// Test-only: clear the TTL cache so each test starts cold (mirrors the
+// __resetRateLimitForTests pattern in _shared/ratelimit.ts).
+export function __resetKnowledgeCacheForTests(): void {
+  _cache = null;
+  _cacheAt = 0;
 }
 
 // ── formatKnowledgeForPrompt: compact, bounded Hebrew block (PURE) ────────────

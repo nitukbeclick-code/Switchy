@@ -100,6 +100,41 @@ Deno.test("isDataAccessRequest is false for empty / unrelated", () => {
   assertFalse(isDataAccessRequest("מה המסלול הכי זול?"));
 });
 
+// ── Amendment-13 NARROWING: the bare-'data' keyword was dropped ────────────────
+// The standalone substring "data" false-positived on innocent English data-plan
+// questions, hijacking them into the privacy counts summary. The remaining
+// keywords are all REQUEST-shaped ("what data", "my data", "data about me"), so
+// this narrowing removes ONLY the false positives — the two tests below pin both
+// directions: real requests still trigger, product questions never do.
+
+Deno.test("Amendment-13 narrowing: innocent 'data' product questions do NOT trigger the access summary", () => {
+  // The motivating false positive: an English customer asking about a plan's
+  // data allowance must reach the agent, not the privacy counts summary.
+  assertFalse(isDataAccessRequest("how much data does the plan include?"));
+  assertFalse(isDataAccessRequest("do you have a plan with unlimited data?"));
+  assertFalse(isDataAccessRequest("is there a data cap on the fiber plan?"));
+  assertFalse(isDataAccessRequest("which plan has the most data"));
+  assertFalse(isDataAccessRequest("I need more data for streaming"));
+  // And none of these read as erasure either — they stay on the agent path.
+  assertFalse(isErasureRequest("how much data does the plan include?"));
+  assertFalse(isErasureRequest("do you have a plan with unlimited data?"));
+});
+
+Deno.test("Amendment-13 narrowing: REAL access requests still trigger (detector never weakened)", () => {
+  // Every remaining English keyword still fires, including inside a sentence.
+  assert(isDataAccessRequest("what data do you have on me?"));
+  assert(isDataAccessRequest("i want to see my data"));
+  assert(isDataAccessRequest("please show me all the data about me you keep"));
+  // Hebrew phrasings are untouched by the narrowing.
+  assert(isDataAccessRequest("מה אתם יודעים עליי?"));
+  assert(isDataAccessRequest("איזה מידע יש לכם עלי"));
+  assert(isDataAccessRequest("מה המידע שלי"));
+  assert(isDataAccessRequest("המידע שלי אצלכם"));
+  // Erasure precedence is unchanged: deletion intent never reads as access.
+  assert(isErasureRequest("please delete my data"));
+  assertFalse(isDataAccessRequest("please delete my data"));
+});
+
 Deno.test("isErasureRequest detects he/en erasure phrasings", () => {
   assert(isErasureRequest("מחק את המידע שלי"));
   assert(isErasureRequest("מחיקת מידע"));

@@ -14,11 +14,17 @@
 // feel faster + more capable WITHOUT changing the webhook's guard chain:
 //   markRead(messageId)        — mark an inbound message as read (blue ticks)
 //   markTyping(messageId, on)  — show/clear the "typing…" indicator
+//   sendButtons(to, body, …)   — up to 3 interactive quick-reply buttons
 //   sendList(to, body, …)      — an interactive list (more than 3 options)
 //   sendImage(to, link, …)     — an image by public link
 //   sendDocument(to, link, …)  — a document (e.g. a PDF switch-kit) by link
 // Every one returns null on any error (never throws): callers stay simple and a
 // degraded Graph call never breaks the reply path.
+//
+// RETRY CONTRACT: the message-bearing sends — sendText AND the interactive
+// sendButtons/sendList — retry ONCE on a Graph 5xx (a transient Meta hiccup),
+// so the welcome menu / pickers are exactly as resilient as plain text. 4xx is
+// a real client error and is never retried.
 
 import { jlog } from "./log.ts";
 import { captureError } from "./observability.ts";
@@ -41,6 +47,25 @@ function graphPost(payload: Record<string, unknown>): Promise<Response> {
     },
     body: JSON.stringify(payload),
   });
+}
+
+// graphPost + retry ONCE on a 5xx — the single hardened send every
+// message-bearing helper (sendText/sendButtons/sendList) goes through, so the
+// retry contract can never drift between the text and interactive paths. A 4xx
+// is a real client error (bad number/body); re-posting it would just fail
+// again, so only the 5xx range retries. The retried payload is byte-identical
+// (same object, same JSON.stringify). Network throws propagate to the caller's
+// existing try/catch (fail-soft to null), exactly as before.
+async function graphPostRetry5xx(
+  at: string,
+  payload: Record<string, unknown>,
+): Promise<Response> {
+  let res = await graphPost(payload);
+  if (res.status >= 500 && res.status < 600) {
+    jlog({ at, ok: false, status: res.status, retry: true });
+    res = await graphPost(payload);
+  }
+  return res;
 }
 
 // Pull Meta's wamid out of a successful messages-API response, or null.
@@ -117,13 +142,8 @@ export async function sendText(
     text: { body },
   };
   try {
-    let res = await graphPost(payload);
-    // Retry once on a 5xx only — a transient Graph/Meta hiccup. 4xx is a real
-    // client error (bad number/body); re-posting it would just fail again.
-    if (res.status >= 500 && res.status < 600) {
-      jlog({ at: "wa.sendText", ok: false, status: res.status, retry: true });
-      res = await graphPost(payload);
-    }
+    // Retry once on a 5xx only — a transient Graph/Meta hiccup (shared helper).
+    const res = await graphPostRetry5xx("wa.sendText", payload);
     if (!res.ok) {
       // Read the error body ONCE, classify the 24h-window block for the side-channel,
       // then log it (unchanged shape). Keeps the null return contract intact.
@@ -226,6 +246,68 @@ export async function markTyping(
   }
 }
 
+// One quick-reply button: Meta echoes `id` back in interactive.button_reply.id;
+// `title` is the visible label (Graph caps it at 20 chars).
+export type ReplyButton = { id: string; title: string };
+
+// Sends a text body with up to 3 quick-reply BUTTONS (Meta's hard cap) — the
+// welcome menu / budget pickers. Moved here from the webhook's inline copy so
+// EVERY interactive send shares this module's token/endpoint and the same
+// retry-once-on-5xx contract sendText has (the payload Graph sees is unchanged).
+// Returns Meta's wamid or null on any failure — never throws. NO plain-text
+// fallback here: the caller decides how to degrade (the webhook falls back to
+// sendText so the customer never gets silence).
+export async function sendButtons(
+  to: string,
+  body: string,
+  buttons: ReplyButton[],
+): Promise<string | null> {
+  if (!TOKEN) {
+    jlog({ at: "wa.sendButtons", ok: false, error: "WHATSAPP_TOKEN not set" });
+    return null;
+  }
+  const dest = (to ?? "").trim();
+  // Drop malformed entries and enforce Meta's 3-button cap; bail (null) before
+  // the network if nothing tappable survives (an empty action would 400 anyway).
+  const clean = (buttons ?? [])
+    .filter((b) => b && b.id && b.title)
+    .slice(0, 3);
+  if (!dest || !body || clean.length === 0) {
+    jlog({ at: "wa.sendButtons", ok: false, error: "missing to/body/buttons" });
+    return null;
+  }
+  try {
+    const res = await graphPostRetry5xx("wa.sendButtons", {
+      messaging_product: "whatsapp",
+      to: dest,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: body.slice(0, 1024) },
+        action: {
+          buttons: clean.map((b) => ({
+            type: "reply",
+            reply: { id: String(b.id), title: String(b.title).slice(0, 20) },
+          })),
+        },
+      },
+    });
+    if (!res.ok) {
+      jlog({
+        at: "wa.sendButtons",
+        ok: false,
+        status: res.status,
+        msg: await res.text().catch(() => ""),
+      });
+      return null;
+    }
+    return await wamidOf(res);
+  } catch (e) {
+    jlog({ at: "wa.sendButtons", ok: false, error: String(e) });
+    return null;
+  }
+}
+
 // A single row inside an interactive-list section.
 export type ListRow = { id: string; title: string; description?: string };
 // A titled group of rows inside an interactive list.
@@ -269,7 +351,8 @@ export async function sendList(
     return null;
   }
   try {
-    const res = await graphPost({
+    // Interactive sends share sendText's retry-once-on-5xx (see graphPostRetry5xx).
+    const res = await graphPostRetry5xx("wa.sendList", {
       messaging_product: "whatsapp",
       to: dest,
       type: "interactive",

@@ -40,12 +40,15 @@ import {
 // deterministic fallback copy around it.
 import { extractBillHint as extractBillFromImage } from "../_shared/bill.ts";
 // Shared Cloud API toolkit (fail-soft): markRead/markTyping make the bot feel
-// responsive, sendList drives the >3-option category picker. sendText keeps its
-// signature but now retries once on a 5xx internally — see _shared/whatsapp.ts.
+// responsive, sendButtons drives the ≤3-button menus, sendList the >3-option
+// category picker. sendText/sendButtons/sendList all retry once on a 5xx
+// internally — see _shared/whatsapp.ts (ONE hardened sender; the old inline
+// sendButtons copy here, with its own token/endpoint consts, is gone).
 import {
   type ListSection,
   markRead as waMarkRead,
   markTyping as waMarkTyping,
+  sendButtons as waSendButtons,
   sendList as waSendList,
   sendText as waSendText,
 } from "../_shared/whatsapp.ts";
@@ -91,6 +94,12 @@ import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
 // (lookupOpenLead below) and threaded into the agent as TRUTH-ONLY context.
 import { type ActiveLead, isLeadStatusInquiry } from "../_shared/agent.ts";
 import { leadPhoneCandidates, lookupOpenLead } from "../_shared/leadlookup.ts";
+// Session PREFETCH: the SAME shared loader the agent runner uses. We start it in
+// the per-turn parallel read batch (step 3/4) and hand the resolved session to
+// runWhatsappAgent via its injectable loadSessionFn, so the agent path skips its
+// own sequential ai_state round-trip. Fail-soft by contract (errors → empty
+// session), identical parsing — only the WHEN changes, not the WHAT.
+import { loadSession } from "../_shared/session.ts";
 // Curated, truth-only verified-FAQ knowledge layer (bot_knowledge) + the learning
 // data sink (bot_question_log). The webhook loads the knowledge once per instance,
 // injects it into the agent prompt for the free-text Q&A path, and appends each
@@ -98,7 +107,7 @@ import { leadPhoneCandidates, lookupOpenLead } from "../_shared/leadlookup.ts";
 import {
   formatKnowledgeForPrompt,
   type KnowledgeEntry,
-  loadBotKnowledge,
+  loadBotKnowledgeCached,
   logCustomerQuestion,
   matchTopic,
 } from "../_shared/knowledge.ts";
@@ -113,8 +122,10 @@ import { rateLimit } from "../_shared/ratelimit.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
+// TOKEN/GRAPH_VER remain ONLY for the inbound media download (downloadMediaBytes);
+// every outbound send goes through _shared/whatsapp.ts, which reads the same env
+// (incl. WHATSAPP_PHONE_ID) with the same Switchy defaults.
 const TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
-const PHONE_ID = Deno.env.get("WHATSAPP_PHONE_ID") ?? "1202423646285095";
 const GRAPH_VER = Deno.env.get("GRAPH_API_VERSION") ?? "v21.0";
 
 const enc = new TextEncoder();
@@ -169,34 +180,54 @@ const CHUNK_SOFT_LIMIT = 1000;
 // than racing — WhatsApp orders by receipt, and back-to-back posts can invert.
 const CHUNK_GAP_MS = 350;
 
-// Catalogue is loaded once per function instance from the live public.plans
-// table (service-role read) — always fresh, no bundled snapshot to redeploy.
+// PER-ISOLATE CACHE TTL: the catalogue and the Gemini key below (and the
+// bot_knowledge cache in _shared/knowledge.ts) used to be cached for the
+// isolate's ENTIRE lifetime — a warm isolate could serve hours-old plans/keys
+// forever, so catalogue updates and key rotations only landed on a cold start.
+// A modest TTL keeps replies grounded in current data at negligible cost (one
+// extra read per 10 minutes). FAIL-SOFT: a failed REFRESH keeps serving the
+// last good copy and retries after another TTL — freshness can degrade, the
+// bot never loses data it already had.
+const CACHE_TTL_MS = 10 * 60_000;
+
+// Catalogue from the live public.plans table (service-role read) — TTL-cached
+// per isolate. `now` is injectable so the TTL contract is testable; exported
+// for tests only (production callers pass no argument).
 let _plans: Plan[] | null = null;
-async function getPlans(): Promise<Plan[]> {
-  if (_plans) return _plans;
+let _plansAt = 0;
+export async function getPlans(now = Date.now()): Promise<Plan[]> {
+  if (_plans && now - _plansAt < CACHE_TTL_MS) return _plans;
   const rows = await fetchRows<Record<string, unknown>>(
     "/rest/v1/plans?select=id,provider,category,price,price_unit,specs,subtitle,kind,title&limit=1000",
   );
-  _plans = rows ? plansFromRows(rows) : [];
+  if (rows) {
+    _plans = plansFromRows(rows);
+  } else if (_plans === null) {
+    _plans = []; // first load failed → empty catalogue for this window
+  } // else: refresh failed → keep serving the stale copy (fail-soft)
+  // Stamp the window even on failure so a broken read is retried once per TTL,
+  // not on every inbound message.
+  _plansAt = now;
   return _plans;
 }
 
-// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function
-// instance via the service-role read. Fail-soft → [] (loadBotKnowledge never
-// throws), so a missing/empty table simply means the agent runs without the
-// knowledge block. Cached for the instance lifetime like the catalogue above.
-let _knowledge: KnowledgeEntry[] | null = null;
+// Curated verified-FAQ knowledge (bot_knowledge) — served from the shared TTL
+// cache in _shared/knowledge.ts (same 10-min refresh, fail-soft to the last good
+// copy), so curated edits reach a warm isolate without a redeploy. Fail-soft →
+// [] on a cold-start failure; the agent then simply runs without the block.
 async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
-  if (_knowledge) return _knowledge;
-  _knowledge = await loadBotKnowledge();
-  return _knowledge;
+  return await loadBotKnowledgeCached();
 }
 
 // Gemini API key: Vault first (gemini_api_key, via the shared config RPC the
-// site-* functions also use), then env. Cached for the instance lifetime.
+// site-* functions also use), then env — TTL-cached per isolate so a key
+// ROTATION reaches a warm isolate within CACHE_TTL_MS instead of never. On a
+// refresh miss (Vault unreachable AND no env key) the last good key keeps
+// serving — fail-soft, never downgraded to "". Exported for tests only.
 let _geminiKey: string | null = null;
-async function geminiKey(): Promise<string> {
-  if (_geminiKey !== null) return _geminiKey;
+let _geminiKeyAt = 0;
+export async function geminiKey(now = Date.now()): Promise<string> {
+  if (_geminiKey !== null && now - _geminiKeyAt < CACHE_TTL_MS) return _geminiKey;
   try {
     const url = Deno.env.get("SUPABASE_URL") ?? "";
     const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -209,11 +240,19 @@ async function geminiKey(): Promise<string> {
       if (r.ok) {
         const j = await r.json();
         const v = String(j?.gemini_api_key ?? "").trim();
-        if (v) { _geminiKey = v; return v; }
+        if (v) {
+          _geminiKey = v;
+          _geminiKeyAt = now;
+          return v;
+        }
       }
     }
   } catch (_) { /* fall through to env */ }
-  _geminiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_AI_KEY") ?? "";
+  const envKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_AI_KEY") ?? "";
+  // Keep the last good key when the refresh found nothing better; only adopt ""
+  // when we never had a key at all (cold start with no Vault and no env).
+  if (envKey || _geminiKey === null) _geminiKey = envKey;
+  _geminiKeyAt = now;
   return _geminiKey;
 }
 
@@ -364,44 +403,20 @@ export function parsePickerTapId(
 }
 
 // Sends a text body with up to 3 reply buttons; returns Meta's wamid or null.
-// Falls back to a plain text send if the interactive call is rejected (so the
-// customer never gets silence), preserving the same outbound-storage contract.
+// Delegates to the shared _shared/whatsapp.ts sendButtons (the former inline
+// copy here, with its own token/endpoint consts, is gone) so the interactive
+// menus get the SAME retry-once-on-5xx contract sendText has — the Graph
+// payload is unchanged. Falls back to a plain text send if the interactive call
+// still fails after the retry (so the customer never gets silence), preserving
+// the same outbound-storage contract.
 async function sendButtons(
   to: string,
   body: string,
   buttons: { id: string; title: string }[] = MENU_BUTTONS,
 ): Promise<string | null> {
-  if (!TOKEN) { jlog({ at: "wa.sendButtons", ok: false, error: "WHATSAPP_TOKEN not set" }); return null; }
-  try {
-    const res = await fetch(`https://graph.facebook.com/${GRAPH_VER}/${PHONE_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to,
-        type: "interactive",
-        interactive: {
-          type: "button",
-          body: { text: body.slice(0, 1024) },
-          action: {
-            buttons: buttons.slice(0, 3).map((b) => ({
-              type: "reply",
-              reply: { id: b.id, title: b.title.slice(0, 20) },
-            })),
-          },
-        },
-      }),
-    });
-    if (!res.ok) {
-      jlog({ at: "wa.sendButtons", ok: false, status: res.status, msg: await res.text().catch(() => "") });
-      return await sendText(to, body); // graceful degrade to plain text
-    }
-    const j = await res.json().catch(() => ({}));
-    return j?.messages?.[0]?.id ?? null;
-  } catch (e) {
-    jlog({ at: "wa.sendButtons", ok: false, error: String(e) });
-    return await sendText(to, body);
-  }
+  const wamid = await waSendButtons(to, body, buttons);
+  if (wamid !== null) return wamid;
+  return await sendText(to, body); // graceful degrade to plain text
 }
 
 // Split a reply into ordered bubbles, each ≤ `limit` chars, on the most natural
@@ -611,7 +626,7 @@ async function upsertContact(phone: string, name?: string): Promise<Row | null> 
 
 async function getOrCreateConversation(contactId: string): Promise<Row | null> {
   const open = await fetchRows<Row>(
-    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state,relay_tg_chat_id`,
+    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state,relay_tg_chat_id,human_active_at`,
   );
   if (open && open.length) return open[0];
   const created = await pgInsert("whatsapp_conversations", { contact_id: contactId, status: "open" }, { returnRep: true });
@@ -630,46 +645,76 @@ function relayChatId(convo: Row | null): string | null {
   return id || null;
 }
 
-// RELAY-ACTIVE: the ONE source of truth for "a human rep currently owns this
-// conversation". Mirrors notify-lead/callbacks.ts isRelayActive VERBATIM:
+// RELAY-ACTIVE: a human rep owns this conversation THROUGH THE TELEGRAM RELAY.
+// Mirrors notify-lead/callbacks.ts isRelayActive VERBATIM:
 //   bot_enabled === false  AND  relay_tg_chat_id is a non-empty string.
-// Both halves of the takeover contract must hold. A row with bot_enabled=false
-// but NO relay target is NOT an active takeover — see botEnabled() below for why
-// that distinction is load-bearing (the self-heal that ended the silent-forever
-// outage).
+// Both halves of the relay contract must hold. A row with bot_enabled=false but
+// NO relay target is EITHER a CRM-app takeover (humanTakeoverActive below) OR a
+// stuck leftover — see botEnabled() for how the two are told apart (the self-heal
+// that ended the silent-forever outage, now reconciled with the CRM takeover).
 function relayActive(convo: Row | null): boolean {
   if (!convo) return false;
   return convo.bot_enabled === false && relayChatId(convo) !== null;
+}
+
+// CRM-APP TAKEOVER (relay-less): the Flutter CRM's crm-api takeOver — and its
+// sendMessage, an implicit takeover — flip bot_enabled=false + status='human'
+// and stamp human_active_at, but set NO relay_tg_chat_id (only the Telegram
+// takeover sets that). Before this reconciliation the self-heal below treated
+// exactly that state as "stuck" and re-enabled the bot on the customer's very
+// next message — so a rep who took over from the CRM got the bot answering OVER
+// them. A CRM takeover therefore counts as ACTIVE while human_active_at is
+// RECENT: crm-api re-stamps it on every rep reply, so an engaged rep keeps the
+// window open indefinitely, while a takeover whose rep has gone dark for the
+// whole freshness window degrades to the stuck state and self-heals — the
+// original "never silent forever" outage fix stays intact, just TTL-bounded.
+// All three fingerprint fields are required (bot_enabled=false is what only a
+// real takeover sets; the webhook's own rep-REQUEST path sets status='human'
+// WITHOUT flipping bot_enabled, and must keep the bot answering).
+// Pure + exported (with an injectable clock) so the contract is pinned in tests.
+export const HUMAN_TAKEOVER_FRESH_MS = 12 * 3_600_000; // 12h of rep inactivity → self-heal
+export function humanTakeoverActive(convo: Row | null, now = Date.now()): boolean {
+  if (!convo || convo.bot_enabled !== false) return false;
+  if (String(convo.status ?? "") !== "human") return false;
+  const at = Date.parse(String(convo.human_active_at ?? ""));
+  if (!Number.isFinite(at)) return false; // never stamped → not a CRM takeover
+  return now - at < HUMAN_TAKEOVER_FRESH_MS;
 }
 
 // True when the AI bot may auto-reply on this conversation. The gate column
 // (whatsapp_conversations.bot_enabled, see supabase/crm-takeover-2026-06.sql)
 // defaults true; an ACTIVE human takeover sets it false.
 //
-// SELF-HEALING CONTRACT (fixes the production "silent forever" outage):
-// The bot is silenced ONLY during an ACTIVE human takeover — i.e. when the FULL
-// relay contract holds (bot_enabled=false AND relay_tg_chat_id IS NOT NULL). A
-// conversation can get STUCK with bot_enabled=false while NO human is actually
-// relaying (relay_tg_chat_id IS NULL) — left over from a past handoff, an aborted
-// takeover, or a hand-back that cleared the relay target but not the flag. In that
-// stuck state the OLD gate (read bot_enabled alone) suppressed EVERY inbound
-// forever, so the customer got total silence and the only way out was a fresh
-// human takeover+handback. We now treat that stuck state as bot-ENABLED: a rep
-// who is NOT relaying cannot be "handling it", so the assistant must keep
-// answering. (The caller additionally REPAIRS the row — sets bot_enabled=true —
-// so the stuck state auto-recovers and the relay write itself is cheap.)
+// SELF-HEALING CONTRACT (fixes the production "silent forever" outage, RECONCILED
+// with the CRM-app takeover):
+// The bot is silenced ONLY during an ACTIVE human takeover — either
+//   (a) the FULL Telegram relay contract (bot_enabled=false AND relay_tg_chat_id
+//       IS NOT NULL, relayActive), or
+//   (b) a RECENT CRM-app takeover (bot_enabled=false AND status='human' AND a
+//       fresh human_active_at, humanTakeoverActive).
+// A conversation can still get STUCK with bot_enabled=false while NO human is
+// actually handling it — a past handoff, an aborted takeover, a hand-back that
+// cleared the relay target but not the flag, or a CRM takeover whose rep went
+// dark past the freshness window. In that stuck state the OLD gate (read
+// bot_enabled alone) suppressed EVERY inbound forever, so the customer got total
+// silence and the only way out was a fresh human takeover+handback. We treat the
+// stuck state as bot-ENABLED: a rep who is neither relaying nor recently active
+// cannot be "handling it", so the assistant must keep answering. (The caller
+// additionally REPAIRS the row — sets bot_enabled=true — so the stuck state
+// auto-recovers.)
 //
 // Fail OPEN when the column is genuinely absent/undefined (older row before the
 // crm-takeover migration) so the bot keeps working pre-migration.
-function botEnabled(convo: Row | null): boolean {
+// Exported (pure) so the gate truth-table is pinned in tests.
+export function botEnabled(convo: Row | null): boolean {
   if (!convo) return true;
   const v = convo.bot_enabled;
   if (v === undefined || v === null) return true; // column not present yet → behave as before
   if (v !== false) return true; // explicitly enabled
-  // bot_enabled === false: silence ONLY when a rep is ACTUALLY relaying. A stuck
-  // false with no relay target (no active rep) self-heals to ENABLED — the bot
-  // answers normally instead of going silent forever.
-  return !relayActive(convo);
+  // bot_enabled === false: silence ONLY while a rep is ACTUALLY handling it —
+  // relaying via Telegram OR recently active from the CRM app. A stuck false
+  // with neither self-heals to ENABLED instead of going silent forever.
+  return !(relayActive(convo) || humanTakeoverActive(convo));
 }
 
 // Forward ONE inbound customer message to the rep's Telegram relay chat. This is
@@ -712,36 +757,102 @@ async function logCrmEvent(
   });
 }
 
-// Recent turns for memory, excluding the just-stored inbound row (so the current
-// message isn't duplicated — it's passed separately to generateReply).
-async function recentHistory(convId: string, excludeId?: string | null): Promise<ChatTurn[]> {
-  const ex = excludeId ? `&id=neq.${excludeId}` : "";
-  const rows = await fetchRows<Row>(
-    `/rest/v1/whatsapp_messages?conversation_id=eq.${convId}${ex}&order=created_at.desc&limit=8&select=direction,body`,
+// ONE batched read for the two per-turn memory questions (recent history +
+// first contact): the newest CONTACT_RECENT_LIMIT message rows for the contact,
+// newest first. Replaces the OLD pair of sequential per-turn queries
+// (recentHistory + isFirstContact) — deriveHistoryAndFirstContact() below
+// reproduces both answers from this single result, identically.
+const CONTACT_RECENT_LIMIT = 9; // 8 history turns + the just-stored inbound
+
+async function recentContactRows(contactId: string): Promise<Row[] | null> {
+  return await fetchRows<Row>(
+    `/rest/v1/whatsapp_messages?contact_id=eq.${contactId}&order=created_at.desc&limit=${CONTACT_RECENT_LIMIT}&select=id,conversation_id,direction,body`,
   );
-  if (!rows) return [];
-  return rows
-    .reverse()
-    .map((r) => ({ role: r.direction === "in" ? "user" : "bot", text: String(r.body ?? "") }))
-    .filter((h) => h.text);
 }
 
+// Derive BOTH per-turn memory answers from the one batched read above. PURE +
+// exported so the parity with the old two-query behaviour is pinned in tests.
+//   • history      — the newest ≤8 turns of THIS conversation (oldest→newest),
+//     excluding the just-stored inbound (it's passed separately to the agent) —
+//     exactly what the old per-conversation recentHistory query returned:
+//     messages always land in the contact's NEWEST active conversation
+//     (getOrCreateConversation), so the newest contact-wide rows ARE this
+//     conversation's newest rows.
+//   • firstContact — no stored message besides the one we just inserted —
+//     exactly what the old per-contact isFirstContact query returned, including
+//     its fail-soft edge: a FAILED read (rows === null) counts as first contact,
+//     matching the old `(rows?.length ?? 0) === 0`.
+export function deriveHistoryAndFirstContact(
+  rows: Row[] | null,
+  convId: string | null,
+  excludeId?: string | null,
+): { history: ChatTurn[]; firstContact: boolean } {
+  const others = (rows ?? []).filter((r) => !excludeId || String(r.id) !== String(excludeId));
+  const history: ChatTurn[] = others
+    .filter((r) => !!convId && String(r.conversation_id) === convId)
+    .slice(0, 8)
+    .reverse()
+    .map((r) => ({ role: r.direction === "in" ? "user" : "bot", text: String(r.body ?? "") } as ChatTurn))
+    .filter((h) => h.text);
+  return { history, firstContact: others.length === 0 };
+}
+
+// Parse the total row count out of a PostgREST Content-Range header ("0-8/57",
+// "*/0"). Returns null on a missing/unknown ("0-0/*") count so the caller can
+// fail-soft. Pure + exported so the header contract is pinned in tests.
+export function parseContentRangeCount(header: string | null): number | null {
+  const m = /\/(\d+)\s*$/.exec(String(header ?? ""));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+// Per-contact hourly cap, counted server-side via a HEAD + Prefer: count=exact
+// request — PostgREST answers with the exact count in Content-Range and
+// transfers ZERO rows (the old implementation fetched up to ~30 message rows per
+// inbound just to .length them). Same threshold, same fail-soft: any transport/
+// HTTP/parse failure counts as NOT over (exactly like the old null-rows path),
+// so the limiter can never silence a legitimate message.
 async function overLimit(contactId: string): Promise<boolean> {
   const since = new Date(Date.now() - 3_600_000).toISOString();
-  const rows = await fetchRows<Row>(
-    `/rest/v1/whatsapp_messages?contact_id=eq.${contactId}&direction=eq.in&created_at=gte.${since}&select=id`,
-  );
-  return (rows?.length ?? 0) > PER_CONTACT_HOURLY;
+  try {
+    const r = await serviceFetch(
+      `/rest/v1/whatsapp_messages?contact_id=eq.${contactId}&direction=eq.in&created_at=gte.${since}&select=id`,
+      { method: "HEAD", headers: { Prefer: "count=exact" } },
+    );
+    if (!r || !r.ok) {
+      if (r) jlog({ at: "wa.overLimit", ok: false, status: r.status });
+      return false;
+    }
+    const n = parseContentRangeCount(r.headers.get("content-range"));
+    return n !== null && n > PER_CONTACT_HOURLY;
+  } catch (e) {
+    jlog({ at: "wa.overLimit", ok: false, error: String(e) });
+    return false;
+  }
 }
 
-// First contact = the only stored message is the one we just inserted (no prior
-// turns at all). Drives the one-time WELCOME with the quick-reply menu.
-async function isFirstContact(contactId: string, excludeId?: string | null): Promise<boolean> {
-  const ex = excludeId ? `&id=neq.${excludeId}` : "";
-  const rows = await fetchRows<Row>(
-    `/rest/v1/whatsapp_messages?contact_id=eq.${contactId}${ex}&select=id&limit=1`,
-  );
-  return (rows?.length ?? 0) === 0;
+// Once-per-window guard for the hourly-cap "one moment" notice. The cap used to
+// re-send that line on EVERY over-limit inbound — a flood got a 1:1 echo until
+// the burst shed kicked in. Process-local (same pragmatic scope as the burst
+// shed above): a cold start may re-send the notice once, which is harmless.
+// Injectable clock + reset hook so the window can be pinned in tests. The map is
+// pruned opportunistically so it can't grow unbounded over the isolate's life.
+const RATE_NOTICE_WINDOW_MS = 3_600_000; // matches the hourly cap window
+const _rateNoticeAt = new Map<string, number>();
+export function shouldSendRateNotice(contactId: string, now = Date.now()): boolean {
+  const last = _rateNoticeAt.get(contactId);
+  if (last !== undefined && now - last < RATE_NOTICE_WINDOW_MS) return false;
+  if (_rateNoticeAt.size > 500) {
+    for (const [k, v] of _rateNoticeAt) {
+      if (now - v >= RATE_NOTICE_WINDOW_MS) _rateNoticeAt.delete(k);
+    }
+  }
+  _rateNoticeAt.set(contactId, now);
+  return true;
+}
+export function __resetRateNoticeForTests(): void {
+  _rateNoticeAt.clear();
 }
 
 // ── intents ──────────────────────────────────────────────────────────────────
@@ -1182,18 +1293,28 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   }
 
   // 2b) HUMAN TAKEOVER GATE. The AI bot must NOT auto-reply ONLY while a rep is
-  //     ACTUALLY relaying — i.e. the FULL takeover contract holds: bot_enabled=false
-  //     AND relay_tg_chat_id IS NOT NULL (relayActive). The inbound is already
-  //     stored + audited above and STOP was already honoured (step 2, BEFORE this
-  //     gate — opt-out always wins); we go silent for the BOT and FORWARD this
-  //     inbound to the rep's Telegram chat so they follow the live conversation. The
-  //     bot does NOT auto-reply to the customer. Only the inbound timestamps are
-  //     touched (no customer-facing outbound, no AI fan-out).
-  if (convo && relayActive(convo)) {
-    jlog({ at: "wa.silent", reason: "human_takeover", convId: String(convo.id) });
-    if (contact && type !== "image") {
+  //     ACTUALLY handling the conversation — either the FULL Telegram relay
+  //     contract holds (bot_enabled=false AND relay_tg_chat_id IS NOT NULL,
+  //     relayActive) OR a RECENT CRM-app takeover is in effect (bot_enabled=false
+  //     + status='human' + fresh human_active_at, humanTakeoverActive). The
+  //     inbound is already stored + audited above (the crm_events feed is what a
+  //     CRM rep watches live) and STOP was already honoured (step 2, BEFORE this
+  //     gate — opt-out always wins); we go silent for the BOT and, for a Telegram
+  //     takeover only, FORWARD this inbound to the rep's relay chat. The bot does
+  //     NOT auto-reply to the customer. Only the inbound timestamps are touched
+  //     (no customer-facing outbound, no AI fan-out).
+  if (convo && !botEnabled(convo)) {
+    const viaRelay = relayActive(convo);
+    jlog({
+      at: "wa.silent",
+      reason: viaRelay ? "human_takeover" : "crm_takeover",
+      convId: String(convo.id),
+    });
+    if (contact && viaRelay && type !== "image") {
       // Customer→rep relay (NOT marketing — this is the customer's live human
-      // conversation, gated behind the §30A opt-out above). Best-effort.
+      // conversation, gated behind the §30A opt-out above). Best-effort. A
+      // CRM-app takeover has no relay target — the rep follows the live thread
+      // in the CRM itself (this inbound is already on crm_events + messages).
       await relayInboundToRep(contact, convo, text);
     }
     if (contact) {
@@ -1205,18 +1326,21 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   }
 
   // 2c) SELF-HEAL the stuck-silent state. A conversation can be left with
-  //     bot_enabled=false while NO rep is relaying (relay_tg_chat_id IS NULL) —
-  //     a past handoff, an aborted takeover, or a hand-back that cleared the relay
-  //     target but not the flag. The OLD gate read bot_enabled alone and went
-  //     SILENT FOREVER on every inbound (the production outage: customers got no
-  //     reply, not even to "מחירים"/"מסלולים"). botEnabled() now treats this stuck
-  //     state as ENABLED (so we DON'T return above and the normal reply path runs
-  //     below); here we additionally REPAIR the row — set bot_enabled=true — so the
-  //     DB itself recovers and downstream relay/takeover logic sees a consistent
-  //     state. Best-effort: a failed repair never blocks the reply (the gate above
+  //     bot_enabled=false while NO rep is actually handling it — a past handoff,
+  //     an aborted takeover, a hand-back that cleared the relay target but not
+  //     the flag, or a CRM-app takeover whose rep went dark past the freshness
+  //     window. The OLD gate read bot_enabled alone and went SILENT FOREVER on
+  //     every inbound (the production outage: customers got no reply, not even
+  //     to "מחירים"/"מסלולים"). botEnabled() treats this stuck state as ENABLED
+  //     (so we DON'T return above and the normal reply path runs below); here we
+  //     additionally REPAIR the row — set bot_enabled=true — so the DB itself
+  //     recovers and downstream relay/takeover logic sees a consistent state.
+  //     Best-effort: a failed repair never blocks the reply (the gate above
   //     already let us through). We DO NOT touch relay_tg_chat_id (already NULL).
-  //     Guarded by botEnabled() so the "stuck" predicate stays the single source of
-  //     truth: it returns true here precisely BECAUSE the row is not relay-active.
+  //     Guarded by botEnabled() so the "stuck" predicate stays the single source
+  //     of truth: it returns true here precisely BECAUSE the row is neither
+  //     relay-active NOR a recent CRM takeover — an ACTIVE takeover of either
+  //     kind returned at the gate above and is never repaired over.
   if (convo && convo.bot_enabled === false && botEnabled(convo)) {
     jlog({ at: "wa.selfheal", reason: "stuck_bot_disabled_no_relay", convId: String(convo.id) });
     await pgPatch("whatsapp_conversations", `id=eq.${convo.id}`, { bot_enabled: true });
@@ -1224,16 +1348,49 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
     convo.bot_enabled = true;
   }
 
-  // 3) Abuse guard (per-contact hourly cap on AI fan-out).
-  if (contact && await overLimit(String(contact.id))) {
-    await sendText(from, "רגע 🙂 אני עונה לפי הסדר — חוזר אליך עוד כמה רגעים.");
+  // 3+4 preface) ONE parallel read batch for everything the guard + routing below
+  // need. These reads used to run SEQUENTIALLY (hourly cap → history → first-
+  // contact → open-lead → the agent's session load), adding a full DB round-trip
+  // each to EVERY reply. They are independent, so we issue them together; the
+  // GUARD ORDER below is unchanged — the hourly cap is still checked first,
+  // before any AI fan-out, with identical semantics.
+  //   • overLimit          — now a HEAD + count=exact request (transfers no rows)
+  //   • recentContactRows  — ONE query deriving history + firstContact (was two)
+  //   • lookupOpenLead     — prefetched only for a typed free-text turn (the same
+  //     condition as before; a transcribed voice note still looks it up after
+  //     transcription, below)
+  //   • loadSession        — prefetched for the paths that can reach the agent so
+  //     the runner skips its own sequential ai_state read (fixed-menu taps never
+  //     run the agent, so they don't fetch it)
+  const isPlainText = type === "text" && !buttonId;
+  const fixedMenuTap = !!buttonId && !parsePickerTapId(buttonId);
+  const [over, contactRows, openLeadPrefetch, prefetchedSession] = await Promise.all([
+    contact ? overLimit(String(contact.id)) : Promise.resolve(false),
+    contact ? recentContactRows(String(contact.id)) : Promise.resolve(null),
+    (isPlainText && contact) ? lookupOpenLead(String(contact.wa_phone ?? "")) : Promise.resolve(null),
+    (convo && !fixedMenuTap) ? loadSession("whatsapp", String(convo.id)) : Promise.resolve(null),
+  ]);
+  // Hand the PREFETCHED session to the agent runner (its loadSessionFn is
+  // injectable): the load already happened in the batch above, identically.
+  // undefined ⇒ the runner falls back to its own loader, exactly as before.
+  const loadSessionFn = prefetchedSession ? () => Promise.resolve(prefetchedSession) : undefined;
+
+  // 3) Abuse guard (per-contact hourly cap on AI fan-out). The soft "one moment"
+  //    notice goes out ONCE per window (shouldSendRateNotice) — it used to be
+  //    re-sent on EVERY over-limit inbound, so a flood got a 1:1 echo of this
+  //    line until the burst shed kicked in. Same Hebrew copy, sent less often.
+  if (contact && over) {
+    if (shouldSendRateNotice(String(contact.id))) {
+      await sendText(from, "רגע 🙂 אני עונה לפי הסדר — חוזר אליך עוד כמה רגעים.");
+    }
     return;
   }
 
   // 4) Route by intent.
-  const history = convo ? await recentHistory(String(convo.id), insertedId) : [];
+  const derived = deriveHistoryAndFirstContact(contactRows, convo ? String(convo.id) : null, insertedId);
+  const history: ChatTurn[] = convo ? derived.history : [];
   // Brand-new contact (no prior turns) → one-time welcome + quick-reply menu.
-  const firstContact = contact ? await isFirstContact(String(contact.id), insertedId) : false;
+  const firstContact = contact ? derived.firstContact : false;
   // Multi-turn memory: the structured context we persisted on prior turns
   // (last category/budget/abroad/topic), merged with whatever THIS message
   // reveals. New slots win; old ones fill the gaps — so a terse follow-up like
@@ -1262,6 +1419,12 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   // For non-agent turns (welcome / button prompts / explicit handoff) this stays
   // false and step 6 writes mergedCtx as before.
   let agentSaved = false;
+  // The in-flight bot_question_log "learning data" write for this turn (set on
+  // the free-text Q&A path only). Started fire-and-forget so it never delays the
+  // reply, then AWAITED at the end of the turn so an isolate freeze right after
+  // the response can't silently drop the insert. Always fail-soft (the writer
+  // swallows its own errors) — awaiting it can never fail the turn.
+  let pendingQuestionLog: Promise<void> | null = null;
 
   // The agent's side-effect sinks (audit / consent-gated lead / human escalation).
   // Built once per message; only used when we route a turn through runWhatsappAgent.
@@ -1317,9 +1480,12 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
     const transcript = mediaId ? await transcribeVoiceNote(String(mediaId), aiKeys) : "";
     if (transcript) {
       // Treat the transcript as a typed free-text message: fall through to the
-      // text path below by rebranding the routing type + text.
+      // text path below by rebranding the routing type + text. CAPPED like every
+      // other agent input (capInbound → MAX_INBOUND_TEXT): a very long voice
+      // note's transcript must not balloon the (paid) prompt past the documented
+      // runaway-token guard — exactly the cap the typed-text path already gets.
       routeType = "text";
-      routeText = transcript;
+      routeText = capInbound(transcript);
       transcribed = true;
       jlog({ at: "wa.voice", ok: true, chars: transcript.length });
     } else {
@@ -1343,9 +1509,13 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   // paths that reach the agent), AFTER the whole guard chain above (HMAC, dedup,
   // §30A opt-out, Amendment-13, human-takeover relay, rate limits) so no guard is
   // weakened. Fail-soft: any lookup error → null → behavior identical to today.
-  const openLead: ActiveLead | null = (routeType === "text" && !buttonId && contact)
-    ? await lookupOpenLead(String(contact.wa_phone ?? ""))
-    : null;
+  // A typed text turn already prefetched this in the parallel batch (same
+  // condition); only a transcribed voice note still needs the lookup here.
+  const openLead: ActiveLead | null = isPlainText ? openLeadPrefetch : (
+    (routeType === "text" && !buttonId && contact)
+      ? await lookupOpenLead(String(contact.wa_phone ?? ""))
+      : null
+  );
 
   if (routeType === "audio" || routeType === "voice") {
     // Voice note we couldn't transcribe — `reply` is already the friendly nudge
@@ -1374,6 +1544,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
           billHint: bill.hint,
           templateFallback: () => bill.fallbackReply,
           slotPatch: bill.hint.category ? { category: bill.hint.category } : undefined,
+          loadSessionFn, // session prefetched in the parallel batch above
         });
         reply = r.reply || bill.fallbackReply;
         if (convo) agentSaved = true;
@@ -1421,6 +1592,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
             ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
             topic: "compare",
           },
+          loadSessionFn, // session prefetched in the parallel batch above
         });
         reply = r.reply || templateFallback();
         if (convo) agentSaved = true;
@@ -1520,14 +1692,20 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
           ...(mergedCtx.abroad ? { abroad: mergedCtx.abroad } : {}),
           ...(mergedCtx.topic ? { topic: mergedCtx.topic } : {}),
         },
+        loadSessionFn, // session prefetched in the parallel batch above
       });
       reply = r.reply || templateFallback();
       // LEARNING DATA: append this real free-text question (+ matched topic) to
-      // bot_question_log for the team to review. Fire-and-forget — best-effort,
-      // never awaited on the reply path, swallows its own errors. Runs ONLY on
-      // this genuine free-text Q&A path (NOT opt-out, NOT human takeover/relay,
-      // NOT the honeypot/system messages — all returned before reaching here).
-      void logCustomerQuestion("whatsapp", t, matchedTopic);
+      // bot_question_log for the team to review. Started WITHOUT awaiting so it
+      // never delays the reply, but the pending promise is FLUSHED at the very
+      // end of this turn (after the send + stores): an edge isolate can freeze
+      // right after the response, and a fully fire-and-forget insert was being
+      // silently lost — dropping the exact "learning data" rows the team curates
+      // bot_knowledge from. logCustomerQuestion swallows its own errors, so the
+      // flush can never throw into the reply path. Runs ONLY on this genuine
+      // free-text Q&A path (NOT opt-out, NOT human takeover/relay, NOT the
+      // honeypot/system messages — all returned before reaching here).
+      pendingQuestionLog = logCustomerQuestion("whatsapp", t, matchedTopic);
       if (convo) agentSaved = true;
     }
   }
@@ -1597,6 +1775,12 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
       preview: reply,
     });
   }
+
+  // 7) FLUSH the learning-data write started on the free-text path (see above).
+  //    The customer's reply is already sent + stored, so this costs no reply
+  //    latency; the whole handler chain is awaited before the 200 goes back to
+  //    Meta, so the isolate cannot freeze with the insert still in flight.
+  if (pendingQuestionLog) await pendingQuestionLog;
 }
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────

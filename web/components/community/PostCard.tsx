@@ -6,10 +6,16 @@
 // Renders the author (avatar + name, verified-customer badge when the row carries
 // it), the channel chip, a relative Hebrew timestamp, the body (with @mentions
 // bolded), and any attached media via <MediaView>. The action row offers like
-// (optimistic, own like-state hydrated via fetchMyLikes on mount), a reply toggle
-// that expands the <Replies> thread, bookmark, and a "⋯" overflow menu with report
-// / block / (own only) delete. Every gated action falls back to onRequireAuth()
-// for guests. The author's own flagged post shows an "under review" note.
+// (optimistic), a reply toggle that expands the <Replies> thread, bookmark, and a
+// "⋯" overflow menu with report / block / (own only) delete. Every gated action
+// falls back to onRequireAuth() for guests. The author's own flagged post shows
+// an "under review" note.
+//
+// HYDRATION: the viewer's like/bookmark state + the extra gallery images come in
+// via the optional `hydration` prop when the card sits inside a list that batches
+// them for the whole page (<CommunityFeed> — one fetchMyLikes/fetchMyBookmarks/
+// fetchPostMedia round-trip per page, not per card). Standalone call-sites
+// (ProfileView, no `hydration` prop) keep the original self-hydration on mount.
 //
 // SECURITY: all user content is rendered through JSX {} (React auto-escapes) —
 // never dangerouslySetInnerHTML. The media URL reaches the DOM only as the `src`
@@ -35,6 +41,7 @@ import {
   setPinned,
   type CommunityPost,
   type Media,
+  type PostHydration,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
@@ -209,10 +216,15 @@ export default function PostCard({
   post,
   onRequireAuth,
   onDeleted,
+  hydration,
 }: {
   post: CommunityPost;
   onRequireAuth: () => void;
   onDeleted?: (id: string) => void;
+  /** Batched like/bookmark/gallery state from the parent list. `undefined`
+   *  (prop absent) = standalone → the card fetches its own; `null` = the
+   *  parent's batch is still in flight → wait for it, don't self-fetch. */
+  hydration?: PostHydration | null;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!user && user.id === post.user_id;
@@ -264,13 +276,16 @@ export default function PostCard({
     setPinnedLocal(post.is_pinned);
   }, [post.is_pinned]);
 
-  // Hydrate the viewer's own like + bookmark state for this post on mount.
+  // Hydrate the viewer's own like + bookmark state for this post on mount —
+  // ONLY when standalone (`hydration` prop absent). Inside a list, the parent
+  // batches this for the whole page instead of one round-trip per card.
   useEffect(() => {
     if (!user) {
       setLiked(false);
       setBookmarked(false);
       return;
     }
+    if (hydration !== undefined) return; // parent-owned (batched at the list level)
     let active = true;
     void fetchMyLikes([post.id]).then((set) => {
       if (active) setLiked(set.has(post.id));
@@ -281,10 +296,12 @@ export default function PostCard({
     return () => {
       active = false;
     };
-  }, [user, post.id]);
+  }, [user, post.id, hydration]);
 
-  // Hydrate the extra gallery images for this post on mount.
+  // Hydrate the extra gallery images for this post on mount — standalone only,
+  // same rule as above.
   useEffect(() => {
+    if (hydration !== undefined) return; // parent-owned (batched at the list level)
     let active = true;
     void fetchPostMedia([post.id]).then((map) => {
       if (active) setGallery(map.get(post.id) ?? []);
@@ -292,7 +309,17 @@ export default function PostCard({
     return () => {
       active = false;
     };
-  }, [post.id]);
+  }, [post.id, hydration]);
+
+  // Apply the parent's batched hydration when it lands. The feed keeps each
+  // post's entry referentially stable across map merges, so this runs once per
+  // resolved entry and never clobbers a later optimistic like/bookmark flip.
+  useEffect(() => {
+    if (!hydration) return;
+    setLiked(hydration.liked);
+    setBookmarked(hydration.bookmarked);
+    setGallery(hydration.gallery);
+  }, [hydration]);
 
   const media: Media | null = post.media_url
     ? {

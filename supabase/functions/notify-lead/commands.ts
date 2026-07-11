@@ -9,7 +9,7 @@ import { formatMinutes, medianMinutes } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
 import { buildAgenda, buildDailyDigest, buildDossier, buildStats, buildWeek, type DossierInput, fetchAgenda } from "../_shared/agenda.ts";
 import { buildBoard, type ConsoleBoard, fetchOpenMeetings } from "./console.ts";
-import { pipelineCounts, renderLeadCard, renderLeadsPipeline, renderMeetingsBoard } from "./board.ts";
+import { type LeadsPipeline, pipelineCounts, renderLeadCard, renderLeadsPipeline, renderMeetingsBoard } from "./board.ts";
 import { parseReschedule } from "../_shared/reschedule.ts";
 import { type BusyInterval, createCalendarEvent, gcalConfigured, getFreeBusy, slotIsBusy } from "../_shared/google_calendar.ts";
 import { jlog } from "../_shared/log.ts";
@@ -116,19 +116,44 @@ async function reportQueryFailure(cfg: Cfg, cmd: string): Promise<CmdResult> {
   return { ok: false, command: cmd };
 }
 
+// THE ONE data window for the pipeline view — the SINGLE SOURCE OF TRUTH shared
+// by the /leads command AND the leads:new|all callbacks (callbacks.ts
+// handleLeadsView), so the counts header can never again disagree between the
+// two identical-looking surfaces (the command used to count over only its 5
+// fetched new+contacted rows, so "🏆 נסגרו" always rendered 0 there while the
+// callback counted a 60-row funnel including won).
+//
+// Counts are computed over the recent funnel (new|contacted|won, newest-first,
+// 60 rows — lost is folded out, see pipelineCounts); `recent` (the cards we
+// surface) is the view's filtered slice: "new" → only uncontacted, "all" → the
+// live funnel (new+contacted), never the closed rows. Capped at 5 cards so we
+// don't flood the chat. Returns null on a failed query (the caller reports it).
+export async function fetchLeadsPipeline(view: "new" | "all"): Promise<LeadsPipeline | null> {
+  const open = await fetchRows<Lead>(
+    "/rest/v1/leads?status=in.(new,contacted,won)&order=created_at.desc&limit=60&select=*",
+  );
+  if (open === null) return null;
+  const counts = pipelineCounts(open);
+  const recent = (view === "new"
+    ? open.filter((l) => String(l.status ?? "new") === "new")
+    : open.filter((l) => ["new", "contacted"].includes(String(l.status ?? "new"))))
+    .slice(0, 5);
+  return { counts, recent };
+}
+
 // Render a leads pipeline: the counts header (renderLeadsPipeline, optionally
-// with a custom title line prepended) + one live lead card per lead (each via
-// renderLeadCard, reusing the EXISTING lead:<id>:… keyboard). Shared by /leads
-// (the whole open funnel) and /myleads (the rep's claimed slice) so the two can
-// never drift on layout or card behaviour. Pure rendering over a vetted list.
-async function sendLeadsPipeline(cfg: Cfg, cmd: string, leads: Lead[], title?: string): Promise<CmdResult> {
-  const pipeline = { counts: pipelineCounts(leads), recent: leads };
+// with a custom title line prepended) + one live lead card per recent lead
+// (each via renderLeadCard, reusing the EXISTING lead:<id>:… keyboard). Shared
+// by /leads (the whole open funnel via fetchLeadsPipeline) and /myleads (the
+// rep's claimed slice) so the two can never drift on layout or card behaviour.
+// Pure rendering over a vetted pipeline.
+async function sendLeadsPipeline(cfg: Cfg, cmd: string, pipeline: LeadsPipeline, title?: string): Promise<CmdResult> {
   const head = renderLeadsPipeline(pipeline);
   // Optional title line (e.g. "🙋 הלידים שלי") above the shared counts header.
   const headText = title ? `${title}${NL}${NL}${head.text}` : head.text;
   await sendTelegram(cfg, headText, head.reply_markup);
-  if (leads.length === 0) return { ok: true, command: cmd };
-  const failures = await sendCardBatch(cfg, leads, renderLeadCard);
+  if (pipeline.recent.length === 0) return { ok: true, command: cmd };
+  const failures = await sendCardBatch(cfg, pipeline.recent, renderLeadCard);
   return { ok: true, command: cmd, failures };
 }
 
@@ -480,12 +505,14 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?
   }
 
   if (cmd === "/leads") {
-    // Pull the recent active funnel (new + contacted), then render the native
-    // CRM pipeline: a counts header (renderLeadsPipeline) + one live lead card
-    // per recent lead (renderLeadCard reuses the EXISTING lead:<id>:… keyboard).
-    const open = await fetchRows<Lead>("/rest/v1/leads?status=in.(new,contacted)&order=created_at.desc&limit=5&select=*");
-    if (open === null) return await reportQueryFailure(cfg, cmd);
-    return await sendLeadsPipeline(cfg, cmd, open);
+    // The SAME source of truth as the leads:new|all callbacks: fetchLeadsPipeline
+    // counts the recent funnel INCLUDING won and cards the open (new+contacted)
+    // slice — so this header and the callback header always agree. Rendered as
+    // the native CRM pipeline: a counts header (renderLeadsPipeline) + one live
+    // lead card per recent lead (renderLeadCard, EXISTING lead:<id>:… keyboard).
+    const pipeline = await fetchLeadsPipeline("all");
+    if (pipeline === null) return await reportQueryFailure(cfg, cmd);
+    return await sendLeadsPipeline(cfg, cmd, pipeline);
   }
 
   if (cmd === "/myleads") {
@@ -506,7 +533,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?
       await sendTelegram(cfg, "🙋 <b>הלידים שלי — Switchy AI</b>" + NL + NL + "אין כרגע לידים פתוחים בטיפולך 🎉 (תפסו ליד עם 🙋 כדי שיופיע כאן).");
       return { ok: true, command: cmd };
     }
-    return await sendLeadsPipeline(cfg, cmd, mine, "🙋 <b>הלידים שלי — Switchy AI</b>");
+    return await sendLeadsPipeline(cfg, cmd, { counts: pipelineCounts(mine), recent: mine }, "🙋 <b>הלידים שלי — Switchy AI</b>");
   }
 
   if (cmd === "/meetings") {

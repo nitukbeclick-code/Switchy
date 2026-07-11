@@ -16,7 +16,10 @@
 // Design: premium-2026 tokens only (surface / ink / muted / accent / border /
 // danger), rounded-2xl cards, hairline border + soft shadow, RTL logical
 // properties, dark mode via tokens, real <button>s with aria-labels + visible
-// focus rings, aria-live status region.
+// focus rings, aria-live status region. Destructive actions (remove / ban) use
+// the inline two-step armed confirm (CrmTeam's revoke idiom) — first click arms,
+// second click within 5s executes, "חזרה" or the timeout disarms — instead of a
+// blocking native window.confirm.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useState } from "react";
@@ -57,6 +60,53 @@ function Card({ children }: { children: React.ReactNode }) {
   return <li className="rounded-2xl border border-border bg-surface p-4 shadow-soft">{children}</li>;
 }
 
+/** Two-step destructive button (CrmTeam's confirmRevoke idiom): the idle danger
+ *  button ARMS on first click, swapping to a confirming button + a "חזרה" escape;
+ *  the second click executes. The parent auto-expires a pending arm after 5s. */
+function ConfirmDanger({
+  armed,
+  disabled,
+  label,
+  confirmLabel,
+  ariaLabel,
+  onArm,
+  onConfirm,
+  onDismiss,
+}: {
+  armed: boolean;
+  disabled: boolean;
+  label: string;
+  confirmLabel: string;
+  ariaLabel: string;
+  onArm: () => void;
+  onConfirm: () => void;
+  onDismiss: () => void;
+}) {
+  if (!armed) {
+    return (
+      <button type="button" disabled={disabled} onClick={onArm} className={BTN_DANGER} aria-label={ariaLabel}>
+        {label}
+      </button>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onConfirm}
+        className={`${BTN_DANGER} border-danger/60 bg-danger/10`}
+        aria-label={ariaLabel}
+      >
+        {confirmLabel}
+      </button>
+      <button type="button" disabled={disabled} onClick={onDismiss} className={BTN_GHOST} aria-label="ביטול הפעולה">
+        חזרה
+      </button>
+    </>
+  );
+}
+
 function SectionTitle({ children, count }: { children: React.ReactNode; count: number }) {
   return (
     <h2 className="mb-3 mt-8 flex items-center gap-2 font-display text-lg font-bold text-ink">
@@ -79,6 +129,17 @@ export default function AdminModeration() {
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [notice, setNotice] = useState("");
+  // Action key (post:<id> / reply:<id> / ban:<uid>) whose destructive button is
+  // ARMED, awaiting the second, confirming click (two-step confirm — same idiom
+  // as CrmTeam's revoke; replaces the old blocking window.confirm).
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+
+  // A pending armed confirm quietly expires if the admin does nothing.
+  useEffect(() => {
+    if (!confirmKey) return;
+    const t = setTimeout(() => setConfirmKey(null), 5000);
+    return () => clearTimeout(t);
+  }, [confirmKey]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -107,6 +168,7 @@ export default function AdminModeration() {
   // without a full refetch. `key` disables the row's buttons while in flight.
   const run = useCallback(
     async (key: string, fn: () => Promise<boolean>, onOk: () => void, okMsg: string) => {
+      setConfirmKey(null); // acting consumes / disarms any pending confirm
       mark(key, true);
       const ok = await fn();
       mark(key, false);
@@ -129,31 +191,28 @@ export default function AdminModeration() {
       status === "resolved" ? "הדיווח סומן כטופל." : "הדיווח נדחה.",
     );
 
-  const onModeratePost = (p: ModPost, act: "approve" | "remove") => {
-    if (act === "remove" && !confirm("להסיר את הפוסט לצמיתות? לא ניתן לשחזר.")) return;
-    return run(
+  // Removal / ban are gated by the inline two-step confirm in the JSX below
+  // (ConfirmDanger) — by the time these run, the admin already confirmed.
+  const onModeratePost = (p: ModPost, act: "approve" | "remove") =>
+    run(
       `post:${p.id}`,
       () => moderateContent("community_posts", p.id, act),
       () =>
         setQueue((q) => (q ? { ...q, flaggedPosts: q.flaggedPosts.filter((x) => x.id !== p.id) } : q)),
       act === "approve" ? "הפוסט אושר." : "הפוסט הוסר.",
     );
-  };
 
-  const onModerateReply = (r: ModReply, act: "approve" | "remove") => {
-    if (act === "remove" && !confirm("להסיר את התגובה לצמיתות? לא ניתן לשחזר.")) return;
-    return run(
+  const onModerateReply = (r: ModReply, act: "approve" | "remove") =>
+    run(
       `reply:${r.id}`,
       () => moderateContent("community_replies", r.id, act),
       () =>
         setQueue((q) => (q ? { ...q, flaggedReplies: q.flaggedReplies.filter((x) => x.id !== r.id) } : q)),
       act === "approve" ? "התגובה אושרה." : "התגובה הוסרה.",
     );
-  };
 
-  const onBan = (userId: string, name: string) => {
-    if (!confirm(`לחסום את ${name || "המשתמש"}? לא יוכל/תוכל לפרסם תוכן חדש.`)) return;
-    return run(
+  const onBan = (userId: string) =>
+    run(
       `ban:${userId}`,
       () => setBan(userId, true),
       () =>
@@ -168,7 +227,6 @@ export default function AdminModeration() {
         ),
       "המשתמש נחסם.",
     );
-  };
 
   // ── gates ────────────────────────────────────────────────────────────────
   if (!ready || (isAdmin && loading)) {
@@ -277,15 +335,29 @@ export default function AdminModeration() {
                     </p>
                   )}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" disabled={b} onClick={() => onModeratePost(p, "approve")} className={BTN_PRIMARY} aria-label="אשר את הפוסט והסר את הסימון">
+                    <button type="button" disabled={b} onClick={() => void onModeratePost(p, "approve")} className={BTN_PRIMARY} aria-label="אשר את הפוסט והסר את הסימון">
                       אשר
                     </button>
-                    <button type="button" disabled={b} onClick={() => onModeratePost(p, "remove")} className={BTN_DANGER} aria-label="הסר את הפוסט לצמיתות">
-                      הסר
-                    </button>
-                    <button type="button" disabled={b} onClick={() => onBan(p.user_id, p.author)} className={BTN_DANGER} aria-label="חסום את מפרסם הפוסט">
-                      חסום משתמש
-                    </button>
+                    <ConfirmDanger
+                      armed={confirmKey === `post:${p.id}`}
+                      disabled={b}
+                      label="הסר"
+                      confirmLabel="לאשר הסרה לצמיתות?"
+                      ariaLabel="הסר את הפוסט לצמיתות"
+                      onArm={() => setConfirmKey(`post:${p.id}`)}
+                      onConfirm={() => void onModeratePost(p, "remove")}
+                      onDismiss={() => setConfirmKey(null)}
+                    />
+                    <ConfirmDanger
+                      armed={confirmKey === `ban:${p.user_id}`}
+                      disabled={b}
+                      label="חסום משתמש"
+                      confirmLabel="לאשר חסימה?"
+                      ariaLabel="חסום את מפרסם הפוסט"
+                      onArm={() => setConfirmKey(`ban:${p.user_id}`)}
+                      onConfirm={() => void onBan(p.user_id)}
+                      onDismiss={() => setConfirmKey(null)}
+                    />
                   </div>
                 </Card>
               );
@@ -309,15 +381,29 @@ export default function AdminModeration() {
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{clip(r.body)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" disabled={b} onClick={() => onModerateReply(r, "approve")} className={BTN_PRIMARY} aria-label="אשר את התגובה והסר את הסימון">
+                    <button type="button" disabled={b} onClick={() => void onModerateReply(r, "approve")} className={BTN_PRIMARY} aria-label="אשר את התגובה והסר את הסימון">
                       אשר
                     </button>
-                    <button type="button" disabled={b} onClick={() => onModerateReply(r, "remove")} className={BTN_DANGER} aria-label="הסר את התגובה לצמיתות">
-                      הסר
-                    </button>
-                    <button type="button" disabled={b} onClick={() => onBan(r.user_id, r.author)} className={BTN_DANGER} aria-label="חסום את מפרסם התגובה">
-                      חסום משתמש
-                    </button>
+                    <ConfirmDanger
+                      armed={confirmKey === `reply:${r.id}`}
+                      disabled={b}
+                      label="הסר"
+                      confirmLabel="לאשר הסרה לצמיתות?"
+                      ariaLabel="הסר את התגובה לצמיתות"
+                      onArm={() => setConfirmKey(`reply:${r.id}`)}
+                      onConfirm={() => void onModerateReply(r, "remove")}
+                      onDismiss={() => setConfirmKey(null)}
+                    />
+                    <ConfirmDanger
+                      armed={confirmKey === `ban:${r.user_id}`}
+                      disabled={b}
+                      label="חסום משתמש"
+                      confirmLabel="לאשר חסימה?"
+                      ariaLabel="חסום את מפרסם התגובה"
+                      onArm={() => setConfirmKey(`ban:${r.user_id}`)}
+                      onConfirm={() => void onBan(r.user_id)}
+                      onDismiss={() => setConfirmKey(null)}
+                    />
                   </div>
                 </Card>
               );

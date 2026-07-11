@@ -11,6 +11,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
   type CrmMeetingDetail,
   type CrmMeetingEvent,
@@ -77,43 +78,9 @@ export default function CrmMeetingDrawer({
     void load();
   }, [load]);
 
-  // aria-modal focus management (same pattern as CrmLeadDrawer/AuthModal): on
-  // open move focus into the dialog, and on close restore it to the opener.
-  useEffect(() => {
-    const restore = document.activeElement as HTMLElement | null;
-    closeBtnRef.current?.focus();
-    return () => {
-      if (restore && document.contains(restore)) restore.focus();
-    };
-  }, []);
-
-  // Escape closes; Tab is clamped to the dialog so the covered page stays unreachable.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab" || !rootRef.current) return;
-      const focusables = rootRef.current.querySelectorAll<HTMLElement>(
-        'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement;
-      const inside = rootRef.current.contains(active);
-      if (e.shiftKey && (!inside || active === first)) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (!inside || active === last)) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  // aria-modal focus contract (shared useFocusTrap hook, same as CrmLeadDrawer):
+  // focus the close button on open, clamp Tab, Escape closes, restore to opener.
+  useFocusTrap(rootRef, { onEscape: onClose, initialFocusRef: closeBtnRef });
 
   const changeStatus = useCallback(
     async (status: MeetingStatus) => {

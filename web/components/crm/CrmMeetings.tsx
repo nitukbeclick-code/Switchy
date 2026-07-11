@@ -15,15 +15,6 @@ import { BTN_GHOST, MEETING_STATUS_META, MeetingStatusPill, NoticeCard, when } f
 
 type Filter = MeetingStatus | "all";
 
-function activateOnKey(fn: () => void) {
-  return (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fn();
-    }
-  };
-}
-
 // The booking's human time: prefer the exact timestamp, else the date + slot.
 function meetingWhen(m: CrmMeeting): string {
   if (m.startsAt) return when(m.startsAt);
@@ -67,15 +58,14 @@ export default function CrmMeetings() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="סינון לפי סטטוס פגישה">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי סטטוס פגישה">
         {filters.map((f) => {
           const active = filter === f.key;
           return (
             <button
               key={f.key}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               onClick={() => setFilter(f.key)}
               className={`interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
@@ -124,16 +114,25 @@ export default function CrmMeetings() {
               </thead>
               <tbody>
                 {meetings.map((m) => (
+                  // A plain <tr> keeps row/cell semantics (the scope="col" headers
+                  // stay associated); the row onClick is a pointer-only convenience.
+                  // Keyboard/AT access lives on the real name-cell <button> below
+                  // (same pattern as CrmLeads).
                   <tr
                     key={m.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`פרטי הפגישה של ${m.name || m.phone}`}
                     onClick={() => setSelectedId(m.id)}
-                    onKeyDown={activateOnKey(() => setSelectedId(m.id))}
-                    className="cursor-pointer border-b border-border/60 last:border-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5"
+                    className="cursor-pointer border-b border-border/60 last:border-0 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5"
                   >
-                    <td className="px-4 py-2 font-medium text-ink">{m.name || "—"}</td>
+                    <td className="px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(m.id)}
+                        aria-label={`פרטי הפגישה של ${m.name || m.phone}`}
+                        className="font-medium text-ink underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:underline"
+                      >
+                        {m.name || "—"}
+                      </button>
+                    </td>
                     <td className="px-4 py-2 text-muted" dir="ltr">{m.phone || "—"}</td>
                     <td className="whitespace-nowrap px-4 py-2 text-foreground">{meetingWhen(m) || "—"}</td>
                     <td className="px-4 py-2 text-muted">{m.provider || "—"}</td>
@@ -148,18 +147,24 @@ export default function CrmMeetings() {
           {/* Mobile: cards. */}
           <ul className="space-y-2 md:hidden">
             {meetings.map((m) => (
+              // Plain <li>: the card onClick is a pointer-only convenience;
+              // keyboard/AT access lives on the real name <button> (same
+              // pattern as CrmLeads — no role="button" on the container).
               <li
                 key={m.id}
-                role="button"
-                tabIndex={0}
-                aria-label={`פרטי הפגישה של ${m.name || m.phone}`}
                 onClick={() => setSelectedId(m.id)}
-                onKeyDown={activateOnKey(() => setSelectedId(m.id))}
-                className="cursor-pointer rounded-2xl border border-border bg-surface p-3 shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+                className="cursor-pointer rounded-2xl border border-border bg-surface p-3 shadow-soft [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">{m.name || "—"}</p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(m.id)}
+                      aria-label={`פרטי הפגישה של ${m.name || m.phone}`}
+                      className="block max-w-full truncate text-start text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      {m.name || "—"}
+                    </button>
                     <p className="truncate text-xs text-muted" dir="ltr">{m.phone || "—"}</p>
                   </div>
                   <MeetingStatusPill status={m.status} />

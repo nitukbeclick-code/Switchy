@@ -5431,8 +5431,16 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     const best = heroPlans[cat] && heroPlans[cat][0];
     if (!best) return '';
     const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת' }[cat];
-    return `<a class="ticker__item" href="deals.html"><b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a>`;
-  }).filter(Boolean).join('');
+    return `<b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span>`;
+  }).filter(Boolean).map((body, i) => {
+    // A11y initial state (script.js keeps it in sync while rotating): only the
+    // first item is visible (is-on) — without JS the others stay opacity:0, so
+    // they must also be out of the accessibility tree and the tab order
+    // (they're links; invisible-but-focusable strands keyboard users).
+    const state = i === 0 ? ' is-on' : '';
+    const hidden = i === 0 ? '' : ' aria-hidden="true" tabindex="-1"';
+    return `<a class="ticker__item${state}" href="deals.html"${hidden}>${body}</a>`;
+  }).join('');
   if (/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/.test(html)) {
     html = html.replace(/<!--DEALS:START-->[\s\S]*?<!--DEALS:END-->/, `<!--DEALS:START-->${dealItems}<!--DEALS:END-->`);
   } else {

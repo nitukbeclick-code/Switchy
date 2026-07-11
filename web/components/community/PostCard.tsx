@@ -155,7 +155,6 @@ function OverflowMenu({
           {isAdmin && (
             <button
               type="button"
-              role="menuitem"
               onClick={() => runAndClose(onTogglePin)}
               disabled={pinning}
               className={itemClass}
@@ -182,7 +181,6 @@ function OverflowMenu({
           {isOwn && (
             <button
               type="button"
-              role="menuitem"
               onClick={() => runAndClose(onEdit)}
               className={itemClass}
             >

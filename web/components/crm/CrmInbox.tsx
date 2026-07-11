@@ -210,9 +210,9 @@ export default function CrmInbox() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="סינון שיחות">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="סינון שיחות">
           {filters.map((f) => (
-            <button key={f.key} type="button" role="tab" aria-selected={filter === f.key} onClick={() => setFilter(f.key)} className={chip(filter === f.key)}>
+            <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)} className={chip(filter === f.key)}>
               {f.label}
             </button>
           ))}

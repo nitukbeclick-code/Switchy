@@ -10,7 +10,10 @@
 // trigger writes rows server-side; there is no realtime here — a light poll is
 // enough for an ambient bell), surfaces an unread count on the bell, and opens a
 // dropdown listing each notification as a Hebrew line + actor + relative time.
-// Clicking an unread item marks it read (fetchNotifications / markNotificationRead).
+// Clicking an item marks it read (fetchNotifications / markNotificationRead) and,
+// when the row carries a target post_id, follows it to the existing permalink
+// /community/post/[id]. "flag" rows only mark read — their flagged target is
+// hidden from the public permalink (is_flagged=false only) and would 404.
 //
 // Gating: notifications are per-user (RLS scopes community_notifications to
 // auth.uid()), so with no session there is nothing to show — the bell renders
@@ -27,6 +30,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   fetchNotifications,
   markNotificationRead,
@@ -93,8 +97,16 @@ function kindLine(kind: CommunityNotification["kind"]): string {
   }
 }
 
+// A row navigates when it carries a target post that is publicly visible —
+// "flag" rows never do (the flagged post is hidden from the permalink and
+// would 404). Single source for the click handler + the sr-only hint.
+function hasTarget(n: CommunityNotification): boolean {
+  return n.post_id !== null && n.kind !== "flag";
+}
+
 export default function NotificationsBell() {
   const { user } = useAuth();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CommunityNotification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -281,6 +293,21 @@ export default function NotificationsBell() {
     }
   }, []);
 
+  // Open a notification: mark it read, then follow it to the existing post
+  // permalink when the row carries a target post. "flag" rows stay put — the
+  // flagged post is filtered out of the public permalink (is_flagged=false
+  // only) and navigating there would 404. The panel closes WITHOUT returning
+  // focus to the trigger since we are leaving for a new page.
+  const openNotification = useCallback(
+    (n: CommunityNotification) => {
+      void markRead(n); // optimistic — don't block navigation on the write
+      if (!hasTarget(n)) return;
+      setOpen(false);
+      router.push(`/community/post/${n.post_id}`);
+    },
+    [markRead, router],
+  );
+
   // Mark everything unread as read.
   const markAllRead = useCallback(async () => {
     const unreadRows = items.filter((n) => n.read_at === null);
@@ -414,7 +441,7 @@ export default function NotificationsBell() {
                     <li key={n.id}>
                       <button
                         type="button"
-                        onClick={() => void markRead(n)}
+                        onClick={() => openNotification(n)}
                         className={[
                           "flex w-full items-start gap-3 border-b border-border px-4 py-3 text-start",
                           "interactive hover:bg-background",
@@ -445,6 +472,9 @@ export default function NotificationsBell() {
                           <span className="text-xs text-muted">
                             {relativeTime(n.created_at)}
                           </span>
+                          {hasTarget(n) && (
+                            <span className="sr-only">— פתיחת הפוסט</span>
+                          )}
                         </span>
 
                         {isUnread && (

@@ -118,15 +118,14 @@ export default function CrmContacts() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="סינון לפי סטטוס איש קשר">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי סטטוס איש קשר">
         {filters.map((f) => {
           const active = filter === f.key;
           return (
             <button
               key={f.key}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               onClick={() => setFilter(f.key)}
               className={`interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active

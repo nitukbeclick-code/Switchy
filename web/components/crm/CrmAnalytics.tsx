@@ -124,9 +124,9 @@ export default function CrmAnalytics() {
         </Section>
       )}
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="חלון זמן">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="חלון זמן">
         {windows.map((d) => (
-          <button key={d} type="button" role="tab" aria-selected={days === d} onClick={() => setDays(d)} className={chip(days === d)}>
+          <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)} className={chip(days === d)}>
             {d} ימים
           </button>
         ))}

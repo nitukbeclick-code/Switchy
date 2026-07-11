@@ -21,16 +21,28 @@ export default function CrmCallBrief({ leadId }: { leadId: string }) {
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const b = await fetchRepBrief(leadId);
-    if (b) setData(b);
-    else setError(true);
-    setLoading(false);
-  }, [leadId]);
+  // Fetch the brief. Loading/error resets are event-driven: the useState
+  // initializers cover the mount load (leadId is fixed for this instance — the
+  // drawer mounts a fresh brief per lead) and the retry button resets via
+  // `reload` — so the mount effect never sets state synchronously
+  // (react-hooks/set-state-in-effect): state only lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchRepBrief(leadId).then((b) => {
+        if (b) setData(b);
+        else setError(true);
+        setLoading(false);
+      }),
+    [leadId],
+  );
 
   useEffect(() => {
+    void load();
+  }, [load]);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
     void load();
   }, [load]);
 
@@ -50,7 +62,7 @@ export default function CrmCallBrief({ leadId }: { leadId: string }) {
     return (
       <div className="text-xs">
         <p className="text-muted">לא הצלחנו להכין תדריך.</p>
-        <button type="button" onClick={() => void load()} className={`${BTN_GHOST} mt-2`}>
+        <button type="button" onClick={reload} className={`${BTN_GHOST} mt-2`}>
           נסו שוב
         </button>
       </div>

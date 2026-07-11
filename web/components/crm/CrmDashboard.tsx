@@ -77,32 +77,47 @@ export default function CrmDashboard() {
 
   // `silent` refreshes (from the Realtime feed) skip the skeleton + keep stale data
   // on failure, so a live update never flashes or blanks the dashboard.
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    setError(false);
-    // Overview drives the error/empty state; the SLA rollup is best-effort — if it
-    // fails we simply hide that section rather than blocking the whole dashboard.
-    const [d, sm] = await Promise.all([fetchCrmOverview(), fetchCrmSla()]);
-    if (d) setData(d);
-    else if (!silent) setError(true);
-    if (sm) setSla(sm.sla);
-    if (!silent) setLoading(false);
-  }, []);
+  // Loading/error resets are event-driven: the useState initializers cover the
+  // mount load, and the retry/Realtime callers reset before calling — so the
+  // load effect never sets state synchronously (react-hooks/set-state-in-effect):
+  // state only lands in the .then continuation.
+  const load = useCallback(
+    (silent = false) =>
+      // Overview drives the error/empty state; the SLA rollup is best-effort — if it
+      // fails we simply hide that section rather than blocking the whole dashboard.
+      Promise.all([fetchCrmOverview(), fetchCrmSla()]).then(([d, sm]) => {
+        if (d) setData(d);
+        else if (!silent) setError(true);
+        if (sm) setSla(sm.sla);
+        if (!silent) setLoading(false);
+      }),
+    [],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  // Retry from the error notice: reset, then re-fetch with the skeleton up.
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    void load();
+  }, [load]);
+
   // Live-refresh the overview the moment a crm_events row lands (rep reply /
   // takeover / inbound). Fail-soft: if Realtime is off, the initial load still ran.
-  useCrmEvents(() => void load(true));
+  useCrmEvents(() => {
+    setError(false); // a silent refresh starts by clearing any stale error
+    void load(true);
+  });
 
   if (loading) return <DashboardSkeleton />;
   if (error || !data) {
     return (
       <NoticeCard
         action={
-          <button type="button" onClick={() => void load()} className={BTN_GHOST}>
+          <button type="button" onClick={reload} className={BTN_GHOST}>
             נסו שוב
           </button>
         }

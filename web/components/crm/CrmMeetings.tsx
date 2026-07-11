@@ -38,18 +38,42 @@ export default function CrmMeetings() {
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const res = await fetchCrmMeetings({ status: filter === "all" ? undefined : filter });
-    if (res) setMeetings(res.meetings);
-    else setError(true);
-    setLoading(false);
-  }, [filter]);
+  // Fetch the current filter's meetings. Loading/error resets are event-driven:
+  // the useState initializers cover the mount load, and every later load starts
+  // from an event (`changeFilter`, `reload`) that resets first — so the load
+  // effect never sets state synchronously (react-hooks/set-state-in-effect):
+  // state only lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchCrmMeetings({ status: filter === "all" ? undefined : filter }).then((res) => {
+        if (res) setMeetings(res.meetings);
+        else setError(true);
+        setLoading(false);
+      }),
+    [filter],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Re-fetch the current filter from an event (retry / drawer onChanged).
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    void load();
+  }, [load]);
+
+  // Switch filters: reset the view in the click, then the effect refetches.
+  const changeFilter = useCallback(
+    (next: Filter) => {
+      if (next === filter) return; // same chip — no reload, same as before
+      setLoading(true);
+      setError(false);
+      setFilter(next);
+    },
+    [filter],
+  );
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },
@@ -66,7 +90,7 @@ export default function CrmMeetings() {
               key={f.key}
               type="button"
               aria-pressed={active}
-              onClick={() => setFilter(f.key)}
+              onClick={() => changeFilter(f.key)}
               className={`interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
                   ? "border-accent bg-accent/10 text-accent-text"
@@ -84,7 +108,7 @@ export default function CrmMeetings() {
       ) : error || !meetings ? (
         <NoticeCard
           action={
-            <button type="button" onClick={() => void load()} className={BTN_GHOST}>
+            <button type="button" onClick={reload} className={BTN_GHOST}>
               נסו שוב
             </button>
           }
@@ -184,7 +208,7 @@ export default function CrmMeetings() {
         <CrmMeetingDrawer
           meetingId={selectedId}
           onClose={() => setSelectedId(null)}
-          onChanged={() => void load()}
+          onChanged={reload}
         />
       )}
     </div>

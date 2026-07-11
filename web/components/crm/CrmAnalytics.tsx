@@ -70,18 +70,42 @@ export default function CrmAnalytics() {
   // and is best-effort — a failure just hides the section, never blocks the panel.
   const [reps, setReps] = useState<{ reps: RepStat[]; capped: boolean } | null>(null);
 
-  const load = useCallback(async (d: number) => {
-    setLoading(true);
-    setError(false);
-    const m = await fetchAdminMetrics(d);
-    if (m) setData(m);
-    else setError(true);
-    setLoading(false);
-  }, []);
+  // Fetch a window's metrics. Loading/error resets are event-driven: the
+  // useState initializers cover the mount load, and every later load starts
+  // from an event (`changeDays`, `reload`) that resets first — so the load
+  // effect never sets state synchronously (react-hooks/set-state-in-effect):
+  // state only lands in the .then continuation.
+  const load = useCallback(
+    (d: number) =>
+      fetchAdminMetrics(d).then((m) => {
+        if (m) setData(m);
+        else setError(true);
+        setLoading(false);
+      }),
+    [],
+  );
 
   useEffect(() => {
     void load(days);
   }, [days, load]);
+
+  // Retry the current window from the error notice.
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    void load(days);
+  }, [load, days]);
+
+  // Switch windows: reset the view in the click, then the effect refetches.
+  const changeDays = useCallback(
+    (next: number) => {
+      if (next === days) return; // same chip — no reload, same as before
+      setLoading(true);
+      setError(false);
+      setDays(next);
+    },
+    [days],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -126,7 +150,7 @@ export default function CrmAnalytics() {
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="חלון זמן">
         {windows.map((d) => (
-          <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)} className={chip(days === d)}>
+          <button key={d} type="button" aria-pressed={days === d} onClick={() => changeDays(d)} className={chip(days === d)}>
             {d} ימים
           </button>
         ))}
@@ -135,7 +159,7 @@ export default function CrmAnalytics() {
       {loading ? (
         <div className="h-64 animate-pulse rounded-2xl border border-border bg-surface" aria-hidden="true" />
       ) : error || !data ? (
-        <NoticeCard action={<button type="button" onClick={() => void load(days)} className={BTN_GHOST}>נסו שוב</button>}>
+        <NoticeCard action={<button type="button" onClick={reload} className={BTN_GHOST}>נסו שוב</button>}>
           לא הצלחנו לטעון את הנתונים.
         </NoticeCard>
       ) : (

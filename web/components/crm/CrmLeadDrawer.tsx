@@ -70,24 +70,42 @@ export default function CrmLeadDrawer({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  // The last server value of the lead's main note (undefined = nothing loaded
+  // yet). Lets `load` re-seed the editable field only when the SERVER value
+  // changed, so an unrelated refresh never clobbers an unsaved draft.
+  const lastNotesRef = useRef<string | null | undefined>(undefined);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const d = await fetchCrmLeadDetail(leadId);
-    if (d) setData(d);
-    else setError(true);
-    setLoading(false);
-  }, [leadId]);
+  // Fetch the lead detail. Loading/error resets are event-driven: the useState
+  // initializers cover the mount load (leadId is fixed for this instance — the
+  // list mounts a fresh drawer per lead) and every later load starts from an
+  // event (retry / changeStatus / runAction) via `reload` — so the mount effect
+  // never sets state synchronously (react-hooks/set-state-in-effect): state
+  // only lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchCrmLeadDetail(leadId).then((d) => {
+        if (d) {
+          setData(d);
+          // Keep the editable main-note field in sync with the loaded/saved value.
+          if (d.lead.notes !== lastNotesRef.current) {
+            lastNotesRef.current = d.lead.notes;
+            setMainNote(d.lead.notes ?? "");
+          }
+        } else setError(true);
+        setLoading(false);
+      }),
+    [leadId],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Keep the editable main-note field in sync with the loaded/saved value.
-  useEffect(() => {
-    setMainNote(data?.lead.notes ?? "");
-  }, [data?.lead.notes]);
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await load();
+  }, [load]);
 
   // aria-modal focus contract (shared useFocusTrap hook): focus the close button
   // on open, clamp Tab to the dialog, Escape closes, restore focus to the opener.
@@ -102,13 +120,13 @@ export default function CrmLeadDrawer({
       setSavingStatus(null);
       if (ok) {
         setNotice("הסטטוס עודכן.");
-        await load();
+        await reload();
         onChanged?.();
       } else {
         setNotice("עדכון הסטטוס נכשל. נסו שוב.");
       }
     },
-    [data, savingStatus, leadId, load, onChanged],
+    [data, savingStatus, leadId, reload, onChanged],
   );
 
   // Run a write action, then refresh the detail + notify the parent list. Returns
@@ -122,14 +140,14 @@ export default function CrmLeadDrawer({
       setActionBusy(false);
       if (ok) {
         setNotice(okMsg);
-        await load();
+        await reload();
         onChanged?.();
       } else {
         setNotice("הפעולה נכשלה. נסו שוב.");
       }
       return ok;
     },
-    [actionBusy, load, onChanged],
+    [actionBusy, reload, onChanged],
   );
 
   const repName = (profile?.name ?? "").trim() || "מנהל";
@@ -181,7 +199,7 @@ export default function CrmLeadDrawer({
           ) : error || !lead ? (
             <div className="rounded-2xl border border-border bg-surface p-4 text-center shadow-soft">
               <p className="text-sm text-muted">לא הצלחנו לטעון את הליד.</p>
-              <button type="button" onClick={() => void load()} className={`${BTN_GHOST} mt-3`}>
+              <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
                 נסו שוב
               </button>
             </div>

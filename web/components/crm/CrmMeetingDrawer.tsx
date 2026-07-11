@@ -65,17 +65,30 @@ export default function CrmMeetingDrawer({
   const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const d = await fetchCrmMeetingDetail(meetingId);
-    if (d) setData(d);
-    else setError(true);
-    setLoading(false);
-  }, [meetingId]);
+  // Fetch the meeting detail. Loading/error resets are event-driven: the
+  // useState initializers cover the mount load (meetingId is fixed for this
+  // instance — the list mounts a fresh drawer per meeting) and every later load
+  // starts from an event (retry / changeStatus) via `reload` — so the mount
+  // effect never sets state synchronously (react-hooks/set-state-in-effect):
+  // state only lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchCrmMeetingDetail(meetingId).then((d) => {
+        if (d) setData(d);
+        else setError(true);
+        setLoading(false);
+      }),
+    [meetingId],
+  );
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await load();
   }, [load]);
 
   // aria-modal focus contract (shared useFocusTrap hook, same as CrmLeadDrawer):
@@ -91,13 +104,13 @@ export default function CrmMeetingDrawer({
       setSavingStatus(null);
       if (ok) {
         setNotice("הסטטוס עודכן.");
-        await load();
+        await reload();
         onChanged?.();
       } else {
         setNotice("עדכון הסטטוס נכשל. נסו שוב.");
       }
     },
-    [data, savingStatus, meetingId, load, onChanged],
+    [data, savingStatus, meetingId, reload, onChanged],
   );
 
   const meeting = data?.meeting;
@@ -127,7 +140,7 @@ export default function CrmMeetingDrawer({
           ) : error || !meeting ? (
             <div className="rounded-2xl border border-border bg-surface p-4 text-center shadow-soft">
               <p className="text-sm text-muted">לא הצלחנו לטעון את הפגישה.</p>
-              <button type="button" onClick={() => void load()} className={`${BTN_GHOST} mt-3`}>
+              <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
                 נסו שוב
               </button>
             </div>

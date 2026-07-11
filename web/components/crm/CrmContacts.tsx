@@ -73,28 +73,58 @@ export default function CrmContacts() {
   // response can never overwrite a newer filter's rows.
   const loadSeq = useRef(0);
 
+  // Debounce the search box; when the (trimmed) query actually changes, reset
+  // the view here in the timeout callback — the load effect then refetches.
   useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
+    const t = setTimeout(() => {
+      const next = searchInput.trim();
+      if (next === search) return; // unchanged query — no reload, same as before
+      setLoading(true);
+      setError(false);
+      setSearch(next);
+    }, 300);
     return () => clearTimeout(t);
-  }, [searchInput]);
+  }, [searchInput, search]);
 
-  const load = useCallback(async () => {
+  // Fetch the current view. Loading/error resets are event-driven: the useState
+  // initializers cover the mount load, and every later load starts from an
+  // event (`changeFilter`, the search debounce above, `reload`) that resets
+  // first — so the load effect never sets state synchronously
+  // (react-hooks/set-state-in-effect): state only lands in the .then continuation.
+  const load = useCallback(() => {
     const seq = ++loadSeq.current;
-    setLoading(true);
-    setError(false);
-    const res = await fetchCrmContacts({
+    return fetchCrmContacts({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
+    }).then((res) => {
+      if (seq !== loadSeq.current) return; // stale — a newer load owns the view
+      if (res) setContacts(res.contacts);
+      else setError(true);
+      setLoading(false);
     });
-    if (seq !== loadSeq.current) return; // stale — a newer load owns the view
-    if (res) setContacts(res.contacts);
-    else setError(true);
-    setLoading(false);
   }, [filter, search]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Re-fetch the current view from an event (retry / after a status change).
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await load();
+  }, [load]);
+
+  // Switch filters: reset the view in the click, then the effect refetches.
+  const changeFilter = useCallback(
+    (next: Filter) => {
+      if (next === filter) return; // same chip — no reload, same as before
+      setLoading(true);
+      setError(false);
+      setFilter(next);
+    },
+    [filter],
+  );
 
   const changeStatus = useCallback(
     async (contactId: string, status: ContactStatus) => {
@@ -103,12 +133,12 @@ export default function CrmContacts() {
       setNotice("");
       const ok = await setCrmContactStatus(contactId, status);
       setBusyId(null);
-      if (ok) await load();
+      if (ok) await reload();
       // On failure the controlled select re-renders back to c.status; surface
       // the failure instead of letting it snap back silently.
       else setNotice("עדכון הסטטוס נכשל. נסו שוב.");
     },
-    [busyId, load],
+    [busyId, reload],
   );
 
   const filters: { key: Filter; label: string }[] = [
@@ -126,7 +156,7 @@ export default function CrmContacts() {
               key={f.key}
               type="button"
               aria-pressed={active}
-              onClick={() => setFilter(f.key)}
+              onClick={() => changeFilter(f.key)}
               className={`interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
                   ? "border-accent bg-accent/10 text-accent-text"
@@ -159,7 +189,7 @@ export default function CrmContacts() {
       ) : error || !contacts ? (
         <NoticeCard
           action={
-            <button type="button" onClick={() => void load()} className={BTN_GHOST}>
+            <button type="button" onClick={() => void reload()} className={BTN_GHOST}>
               נסו שוב
             </button>
           }

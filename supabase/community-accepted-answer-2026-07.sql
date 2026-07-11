@@ -57,6 +57,12 @@ create trigger community_posts_check_accepted
 -- Expose accepted_reply_id on the read view (client feed + SEO permalinks). The view
 -- has no reloptions (reloptions=null) and SELECT is granted to anon+authenticated;
 -- CREATE OR REPLACE preserves both. New column is appended last (required).
+-- ✅ CANONICAL community_feed — this is the NEWEST definition (supersedes the
+-- copies in community-web-fixes / -pinned / -edit / -provider-tag). One caveat:
+-- security-views-hardening-2026-07.sql LATER set security_invoker=on on this
+-- view (so the "no reloptions" note above is now stale), and CREATE OR REPLACE
+-- VIEW resets that option. If you re-run the view below, re-apply afterwards:
+--   alter view public.community_feed set (security_invoker = on);
 create or replace view public.community_feed as
   select p.id,
          p.user_id,

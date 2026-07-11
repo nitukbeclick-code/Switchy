@@ -22,6 +22,13 @@
 --     threshold a row is STILL returned with the count (so the UI can say "צריך
 --     עוד N דיווחים") but every PRICE figure is NULL — the chart then renders
 --     NOTHING rather than a fabricated, non-representative "typical price".
+--     ⚠️ 2026-07 UPDATE: the "kept == the plan/provider RPC's gate" claim above
+--     is now STALE — street-price-kanonymity-2026-07.sql raised
+--     get_street_price()'s floor to 10 distinct reporters. THIS category RPC
+--     deliberately stays at 5 (a whole-category cohort pools many plans and
+--     providers, so each reporter hides in a far larger crowd). See the
+--     divergence note in street-price-kanonymity-2026-07.sql — the per-RPC
+--     floors documented there are canonical.
 --
 -- GRANT-GAP RULE (2026-06): this project's default privileges do NOT grant to
 -- service_role, so EXECUTE is granted EXPLICITLY to service_role and revoked from

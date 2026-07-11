@@ -7,13 +7,15 @@ import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
 
-/// Widget tests for the availability / coverage-check screen
-/// (lib/pages/availability/availability_widget.dart): that the page renders its
-/// app bar, hero, address inputs, the four technology filter chips and the
-/// "בדוק זמינות" CTA; and that tapping the CTA with no city entered surfaces the
-/// validation SnackBar instead of silently dropping into the loading state.
-/// Boots the full app through GoRouter exactly like the existing harnesses
-/// (test/results_widget_test.dart, test/bills_widget_test.dart).
+/// Widget tests for the internet-provider directory
+/// (lib/pages/availability/availability_widget.dart): after the honest-copy
+/// reframe the page is a general per-technology provider directory — no
+/// address form, no "בדוק זמינות" CTA, no fake 900ms checking delay. The list
+/// renders immediately, the tech chips genuinely filter it, and the copy
+/// carries the explicit caveat that per-address availability is confirmed
+/// with the provider. Boots the full app through GoRouter exactly like the
+/// existing harnesses (test/results_widget_test.dart,
+/// test/bills_widget_test.dart).
 Future<void> _bootApp(WidgetTester tester) async {
   GoogleFonts.config.allowRuntimeFetching = false;
   SharedPreferences.setMockInitialValues({});
@@ -32,7 +34,7 @@ void _go(WidgetTester tester, String path) {
 }
 
 /// Run [body] while swallowing benign RenderFlex overflow FlutterErrors — the
-/// availability column is tall and can overflow in the test viewport; that is a
+/// directory column is tall and can overflow in the test viewport; that is a
 /// pre-existing layout artefact, not a test failure (same approach as
 /// test/bills_widget_test.dart and test/results_widget_test.dart).
 Future<void> _ignoringOverflow(Future<void> Function() body) async {
@@ -50,7 +52,7 @@ Future<void> _ignoringOverflow(Future<void> Function() body) async {
 }
 
 void main() {
-  testWidgets('Availability screen renders hero, address inputs, tech filters and CTA',
+  testWidgets('directory renders hero, tech filters and the provider list immediately',
       (tester) async {
     await _ignoringOverflow(() async {
       await _bootApp(tester);
@@ -59,16 +61,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 400));
 
-      // App bar title.
-      expect(find.text('בדיקת זמינות'), findsOneWidget);
+      // App bar title — a directory, not a lookup.
+      expect(find.text('ספקי אינטרנט בישראל'), findsOneWidget);
 
-      // Hero card headline + subtitle.
-      expect(find.text('בדוק זמינות בכתובת שלך'), findsOneWidget);
-      expect(find.text('גלה אילו ספקי אינטרנט פעילים באזורך'), findsOneWidget);
-
-      // Address input labels.
-      expect(find.text('עיר'), findsOneWidget);
-      expect(find.text('רחוב ומספר (אופציונלי)'), findsOneWidget);
+      // Hero headline + the up-front honest caveat.
+      expect(find.text('ספקי אינטרנט לפי טכנולוגיה'), findsOneWidget);
+      expect(find.text('זמינות מדויקת בכתובת שלכם נבדקת ישירות מול הספק'),
+          findsOneWidget);
 
       // Technology filter section + all four chips.
       expect(find.text('סוג טכנולוגיה'), findsOneWidget);
@@ -76,15 +75,17 @@ void main() {
         expect(find.text(f), findsWidgets, reason: 'missing tech filter $f');
       }
 
-      // Primary CTA in its idle label (no city -> not loading yet).
-      expect(find.text('בדוק זמינות'), findsOneWidget);
+      // The list renders IMMEDIATELY — no gate, no fake check.
+      expect(find.text('ספקים פעילים'), findsOneWidget);
+      expect(find.text('בזק'), findsWidgets);
+      expect(find.text('HOT'), findsWidgets);
 
       await tester.pumpAndSettle();
       tester.takeException();
     });
   });
 
-  testWidgets('Tapping "בדוק זמינות" with no city shows the validation SnackBar',
+  testWidgets('the address-check pretense is gone: no city form, no check CTA, no checking copy',
       (tester) async {
     await _ignoringOverflow(() async {
       await _bootApp(tester);
@@ -93,18 +94,40 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Tap the CTA without entering a city. The swept layout can place the
-      // CTA below the 800x600 test surface — bring it on-screen first.
-      await tester.ensureVisible(find.text('בדוק זמינות'));
+      // The old fake-lookup surface must not come back.
+      expect(find.text('בדוק זמינות'), findsNothing);
+      expect(find.text('עיר'), findsNothing);
+      expect(find.text('רחוב ומספר (אופציונלי)'), findsNothing);
+      expect(find.textContaining('בודק זמינות ספקים'), findsNothing);
+      expect(find.text('בדוק זמינות בכתובת שלך'), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+
+      await tester.pumpAndSettle();
+      tester.takeException();
+    });
+  });
+
+  testWidgets('tech chips genuinely filter the directory (לוויין shows גילת, hides HOT)',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      await _bootApp(tester);
+
+      _go(tester, '/availability');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Full list first: the cables provider is present.
+      expect(find.text('HOT'), findsWidgets);
+
+      await tester.ensureVisible(find.text('לוויין').first);
       await tester.pump();
-      await tester.tap(find.text('בדוק זמינות'));
-      await tester.pump(); // let the SnackBar enter
+      await tester.tap(find.text('לוויין').first);
+      await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
-      // The empty-city guard surfaces a clear prompt...
-      expect(find.text('הזינו עיר כדי לבדוק זמינות'), findsOneWidget);
-      // ...and the page stays out of the loading state (label never flips).
-      expect(find.text('בודק כיסוי...'), findsNothing);
+      // Only the satellite provider remains in the list.
+      expect(find.text('גילת'), findsWidgets);
+      expect(find.text('HOT'), findsNothing);
 
       await tester.pumpAndSettle();
       tester.takeException();

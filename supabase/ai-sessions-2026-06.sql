@@ -88,4 +88,6 @@ grant execute on function public.prune_ai_sessions() to service_role;
 --   the browser-replayed history), but cross-reload memory won't persist.
 -- • Lead capture from the chat writes to public.leads (existing consent path),
 --   NOT here — this table is conversation memory only.
--- • Optional: schedule select public.prune_ai_sessions(); daily via pg_cron.
+-- • Retention scheduling: the daily 'ai-sessions-prune' pg_cron job that calls
+--   prune_ai_sessions() lives in retention-cron-2026-07.sql (data-deleting —
+--   owner-gated, APPLY MANUALLY). Register it from there, not here.

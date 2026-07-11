@@ -28,6 +28,13 @@ grant update (body, edited_at) on public.community_replies to authenticated;
 -- change needed for posts.
 
 -- (3) Surface edited_at through the feed view (explicit column list — must re-create).
+-- ⚠️ SUPERSEDED: this community_feed definition was later replaced by
+-- community-web-provider-tag → community-accepted-answer-2026-07.sql (the
+-- CANONICAL copy, + the security_invoker ALTER in security-views-hardening-
+-- 2026-07.sql). Re-running the view below against prod ERRORS (CREATE OR
+-- REPLACE VIEW cannot drop the later columns) — skip section (3); the rest of
+-- this file (edited_at columns, reply policy/grant, re-moderation trigger) is
+-- still current.
 create or replace view public.community_feed as
   select
     p.id, p.user_id, p.author, p.avatar, p.channel, p.body,

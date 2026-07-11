@@ -10,6 +10,26 @@
 --    digest job already runs this exact net.http_post pattern, so the plumbing
 --    (vault secret, pg_net) is proven. cron.schedule UPSERTS by name, so this is
 --    idempotent and safe to re-run.
+--
+-- ✅ REGISTRY OF RECORD for the renewal-reminders pg_cron schedules (2026-07).
+--    upgrade-2026-06-10.sql §9 originally registered four jobs; its copies of
+--    the three below are now marked SUPERSEDED there — edit schedules HERE only
+--    (upsert-by-name means the last file applied wins, so two live sources of
+--    truth invite silent schedule reverts). The full job map across the repo:
+--      renewal-reminders-daily   '0 8 * * *'    upgrade-2026-06-10 §9 (live;
+--                                               schedule of record noted here)
+--      lead-followup-hourly      '5 * * * *'    THIS FILE §1a
+--      lead-sweep-10min          '*/10 * * * *' THIS FILE §1b
+--      weekly-digest             '0 7 * * 0'    THIS FILE §1c
+--    Other cron-owning files (each owns exactly ONE job, no duplicates):
+--      lead-digest-cron-2026-06.sql · community-digest-cron-2026-07.sql ·
+--      data-protection-2026-06.sql · data-protection-newsletter-2026-06.sql ·
+--      audit-observability-2026-06.sql · meeting-otp-atomic-2026-06.sql §2 ·
+--      retention-cron-2026-07.sql (chat-messages-trim + ai-sessions-prune —
+--      data-deleting, owner-gated, may not be applied yet).
+--    Drafted-but-NOT-registered (comments only, deliberate): lead-export
+--      monthly, security_audit_log purge (security-hardening-2026-06.sql),
+--      savings-watch + site-push-notify sender schedules (see their files).
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- ── 1. Missing renewal-reminders schedules ───────────────────────────────────

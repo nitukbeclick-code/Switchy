@@ -159,3 +159,9 @@ supabase start          # full local stack (Docker)
   `digest` daily, `sweep` every 10 min (claim-before-send re-delivery),
   `follow-up` hourly (SLA ladder), `weekly` business report — plus
   `lead-digest`, `community-digest`, `savings-watch`, `site-push-notify`.
+  The **registry of record** for the renewal-reminders schedules is
+  `cron-and-hardening-2026-07.sql` (its header maps every cron-owning file);
+  the copies in `upgrade-2026-06-10.sql` §9 are marked superseded. Retention
+  sweeps (`chat-messages-trim`, `ai-sessions-prune`) are written in
+  `retention-cron-2026-07.sql` but **data-deleting and owner-gated — apply
+  manually after review**; they are not registered until the owner runs it.

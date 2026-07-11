@@ -10,6 +10,22 @@
 -- Applied as two migrations:
 --   community_feed_web_read_grant_2026_07
 --   community_blocks_grant_and_public_profiles_2026_07
+--
+-- ⚠️ PARTIALLY SUPERSEDED — DO NOT RE-APPLY AS A WHOLE (2026-07 hygiene pass;
+--    banners only, the SQL below was not altered):
+--      • community_feed (FIX 1+2) → superseded by the canonical definition in
+--        community-accepted-answer-2026-07.sql (which appended is_pinned,
+--        edited_at, provider_slug, accepted_reply_id) + the security_invoker
+--        ALTER in security-views-hardening-2026-07.sql. Re-running this copy
+--        against prod ERRORS (CREATE OR REPLACE VIEW cannot drop columns) —
+--        and must not be "fixed" by dropping the view first.
+--      • public_profiles (FIX 4) → superseded by
+--        security-views-hardening-2026-07.sql, which DROPPED is_admin from the
+--        view (admin-account enumeration leak) and added bio /
+--        verified_customer_at / created_at. Re-running FIX 4 would re-leak
+--        is_admin (it also errors on prod for the same cannot-drop reason).
+--    FIX 3a (profiles.is_verified_customer) and FIX 3b (community_blocks
+--    grants) are still current.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- FIX 1+2 — the feed was unreadable on the web:

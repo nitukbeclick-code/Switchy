@@ -1,3 +1,40 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- support-tickets-2026-06-12.sql — in-app support tickets + message threads
+-- (the Flutter app's advisor/sales support chat with human escalation).
+--
+-- ⚠️ NOT auto-applied. One-time delta, applied to prod 2026-06-12. Review, then
+--    run manually (Supabase SQL editor / psql). ⚠️ NOT fully idempotent, unlike
+--    the other dated deltas: the CREATE POLICY / CREATE INDEX / CREATE TRIGGER
+--    statements have no IF-NOT-EXISTS/drop-first guards, so a re-run against a
+--    database that already has them ERRORS (42710/42P07). That is fail-safe
+--    (nothing regresses) but means this file is NOT safe to blind-re-run.
+--
+-- SECURITY / GRANT POSTURE (documented 2026-07 hygiene pass; SQL unchanged):
+--   • RLS ON both tables. support_tickets: owner-scoped SELECT/INSERT/UPDATE
+--     (auth.uid() = user_id); UPDATE is additionally COLUMN-scoped to `status`
+--     only (see the revoke/grant below) so workflow columns (agent_type,
+--     escalated_at, human_assigned_to, telegram_group_id) stay server-managed.
+--   • support_messages: owner-of-ticket SELECT; INSERT is service_role-only by
+--     POLICY (the agent/edge fn writes both user and agent turns server-side).
+--   • Client base-table grants (authenticated SELECT/INSERT on both + UPDATE
+--     (status) on tickets) are applied by schema.sql §(A3) "grant gap" block —
+--     this file predates the grant-gap discovery and carries only the
+--     column-scope revoke/grant pair.
+--   • service_role access comes from schema.sql §(A5) "grant all … to
+--     service_role" (this project's default privileges do NOT grant to
+--     service_role — the documented 2026-06 incident).
+--
+-- KNOWN DEVIATIONS (kept as-applied; do not "fix" without a new dated delta):
+--   • update_support_tickets_timestamp() duplicates public.set_updated_at()
+--     byte-for-byte (and update_updated_at() — three identical one-liners in
+--     prod). It also lacks the `set search_path` pin the advisor flags; the
+--     body only touches NEW + now(), so the lint is cosmetic. Consolidating the
+--     three into set_updated_at() is a candidate future migration.
+--   • Policy names are ad-hoc sentence-style ("Users can view their own
+--     tickets") instead of the house snake_case ("tickets_select_own").
+--     Renaming live policies is churn without a security win — left as-is.
+-- ═══════════════════════════════════════════════════════════════════════════
+
 -- Create support_tickets table
 create table if not exists public.support_tickets (
   id uuid primary key default gen_random_uuid(),

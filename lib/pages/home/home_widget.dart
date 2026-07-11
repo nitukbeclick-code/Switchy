@@ -129,13 +129,54 @@ class _HomeWidgetState extends State<HomeWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    // Home legitimately renders ~a dozen AppState slices (bills, quiz, watched,
-    // recently-viewed, compare, meeting, notifications, community, category…),
-    // so a Selector over "just the fields it needs" would be nearly the whole
-    // state and would risk missed rebuilds. Instead the EXPENSIVE derivations
-    // are memoised by input fingerprint ([_savingsFor], [_recsMemo],
-    // [_cheapestCache]) so an unrelated notify re-renders cheap widgets only.
-    final appState = Provider.of<AppState>(context);
+    // ── Granular AppState scope (same pattern as Compare's build) ──────────
+    // Was one full listening Provider.of, so EVERY notify (a community like on
+    // a post home doesn't even preview, a CRM tick…) rebuilt the whole page.
+    // The selects below cover the COMPLETE read-set of this build tree —
+    // derived values are selected as value fingerprints, so provider's
+    // deep-equality compare skips the rebuild whenever the rendered inputs are
+    // unchanged. The EXPENSIVE derivations stay memoised by input fingerprint
+    // ([_savingsFor], [_recsMemo], [_cheapestCache]) on top of this, and
+    // MUTATING calls (setCategory / viewPlan) go through the non-listening read.
+    final appState = Provider.of<AppState>(context, listen: false);
+    // Header: greeting name + the notification badge (value-based count).
+    context.select<AppState, String>((s) => s.firstName);
+    context.select<AppState, int>(notificationCount);
+    // Engine inputs — hero figures, recommendations, category-grid savings:
+    // bills + the full quiz profile (the exact fingerprint the memos key on).
+    context.select<AppState, String>(_savingsFingerprint);
+    context.select<AppState, bool>((s) => s.billsPersonalized);
+    context.select<AppState, String>((s) => s.selectedCat);
+    // Live-catalogue swaps: CatalogueSync notifies AppState after a hydrate
+    // and every plan card renders out of [allPlans], so fold the catalogue
+    // signature in (same signature [_recsFingerprint] keys on).
+    context.select<AppState, String>(
+        (_) => '${catalogueSyncedAt?.millisecondsSinceEpoch ?? 0}|${allPlans.length}');
+    // Activity row + compare tray (unmodifiable copies — deep-equality scoped).
+    context.select<AppState, List<String>>((s) => s.watchedPlans);
+    context.select<AppState, List<String>>((s) => s.recentlyViewed);
+    context.select<AppState, List<String>>((s) => s.comparePlans);
+    // Renewal alert renders the next renewal's provider + days-left.
+    context.select<AppState, String?>((s) {
+      final r = s.nextRenewal;
+      return r == null ? null : '${r.id}|${r.provider}|${r.daysUntilRenewal}';
+    });
+    // Meeting card: [AppState.bookedMeeting] constructs a fresh instance per
+    // read (no ==), so fingerprint the fields the card renders instead of
+    // selecting the object itself.
+    context.select<AppState, String?>((s) {
+      final m = s.bookedMeeting;
+      return m == null
+          ? null
+          : '${m.id}|${m.status}|${m.provider}|${m.meetingDate}|${m.slot}|${m.joinUrl}';
+    });
+    // Community highlights: home previews only the first two non-empty posts
+    // (author initial / channel / text) — a like elsewhere must not rebuild.
+    context.select<AppState, String>((s) => s.communityPosts
+        .where((p) => (p['text'] as String? ?? '').isNotEmpty)
+        .take(2)
+        .map((p) => '${p['author']}|${p['channel']}|${p['text']}')
+        .join('~'));
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
     final savings = _savingsFor(appState);

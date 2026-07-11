@@ -6,26 +6,252 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('node:crypto');
+const vm = require('node:vm'); // parse-only syntax gate for the minified JS (nothing is executed)
 
 const SITE = 'https://switchy-ai.com';
+
+// ── Build-time asset minification (dependency-free) ─────────────────────────
+// styles.css / script.js / translate-runtime.js are the hand-edited SOURCES
+// (heavily commented — a large share of their bytes is comment banners). The
+// build emits comment-stripped, whitespace-collapsed *.min.* copies next to
+// them and every generated page references the .min files. Deliberately
+// conservative — NO token reordering, NO renaming, NO line joining in JS (every
+// newline is kept, so ASI semantics are byte-for-byte identical); the minifiers
+// are string/template/regex-aware so quoted content is copied verbatim. Each
+// minified asset is sanity-checked (CSS: brace balance vs the source; JS:
+// compiled with vm.Script — parse only, nothing executes) and FALLS BACK to the
+// unminified source on any failure, so a minifier bug can never ship a broken
+// asset. The .min files are generated outputs: edit the sources, never the .min.
+
+// CSS: strip /* */ comments, collapse whitespace runs, drop spaces around
+// structural punctuation ({ } ; ,) and after a declaration colon, drop the ';'
+// before '}'. Strings and url(...) tokens are copied verbatim. Spaces are NEVER
+// touched around combinators or inside calc() (runs only collapse to one), and
+// the space after ':' is kept for custom properties (--x: …) whose values are
+// whitespace-significant.
+function minifyCss(src) {
+  const n = src.length;
+  const NOSPACE = '{};,';
+  let out = '';
+  let pend = false; // pending whitespace/comment separator
+  let word = ''; // trailing ident run, to spot custom-property declarations
+  let colonCustom = false; // the last ':' opened a --custom-property value
+  const emit = (s) => {
+    if (pend) {
+      const prev = out[out.length - 1];
+      const keep = out !== '' && !NOSPACE.includes(prev) && !NOSPACE.includes(s[0]) &&
+        !(prev === ':' && !colonCustom);
+      if (keep) out += ' ';
+      pend = false;
+    }
+    if (s === '}') { while (out.endsWith(';')) out = out.slice(0, -1); }
+    out += s;
+  };
+  let i = 0;
+  while (i < n) {
+    const c = src[i];
+    if (c === '/' && src[i + 1] === '*') {
+      const e = src.indexOf('*/', i + 2);
+      pend = true; // a comment can separate two tokens — treat as whitespace
+      i = e === -1 ? n : e + 2;
+      continue;
+    }
+    if (/\s/.test(c)) { pend = true; i++; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n) { if (src[j] === '\\') j += 2; else if (src[j] === c) { j++; break; } else j++; }
+      emit(src.slice(i, j)); word = ''; i = j; continue;
+    }
+    if ((c === 'u' || c === 'U') && src.slice(i, i + 4).toLowerCase() === 'url(') {
+      let j = i + 4;
+      while (j < n && src[j] !== ')') {
+        if (src[j] === '"' || src[j] === "'") {
+          const q = src[j]; j++;
+          while (j < n) { if (src[j] === '\\') j += 2; else if (src[j] === q) { j++; break; } else j++; }
+        } else j++;
+      }
+      emit(src.slice(i, j + 1)); word = ''; i = j + 1; continue;
+    }
+    if (/[A-Za-z0-9_-]/.test(c)) { emit(c); word += c; i++; continue; }
+    if (c === ':') { colonCustom = word.startsWith('--'); }
+    emit(c); word = ''; i++;
+  }
+  return out.trim() + '\n';
+}
+
+// JS: strip comments + trim indentation/trailing space, collapsing intra-line
+// whitespace runs to one space. Every line break is preserved (a multi-line
+// block comment collapses to a newline, matching its ASI role), so no two
+// tokens are ever joined or reordered. The scanner tracks strings, template
+// literals (with nested ${…} via a context stack) and regex literals — their
+// contents pass through untouched.
+function minifyJs(src) {
+  const n = src.length;
+  const REGEX_PREV = '(,=:[!&|?{};+-*/%~^<>'; // a '/' after these starts a regex…
+  const REGEX_KW = new Set(['return', 'typeof', 'instanceof', 'new', 'delete', 'void',
+    'in', 'of', 'do', 'else', 'case', 'throw', 'yield', 'await']); // …and after these keywords
+  let out = '';
+  let i = 0;
+  let pendSpace = false, pendNewline = false;
+  let lastSig = '', prevSig = '', lastWord = '';
+  const ctx = [{ t: 'code' }]; // 'code' | 'tpl' (template chars) | 'expr' (code inside ${…})
+  const emit = (s) => {
+    if (pendNewline) { if (out !== '' && out[out.length - 1] !== '\n') out += '\n'; }
+    else if (pendSpace && out !== '' && out[out.length - 1] !== '\n') out += ' ';
+    pendNewline = pendSpace = false;
+    out += s;
+  };
+  // `sig` is the last significant char (')' doubles as “an expression just
+  // ended” after strings/templates/regexes, so a following '/' is division).
+  const mark = (sig, word) => { prevSig = lastSig; lastSig = sig; lastWord = word || ''; };
+  const scanString = (start, quote) => {
+    let j = start + 1;
+    while (j < n) { if (src[j] === '\\') j += 2; else if (src[j] === quote) return j + 1; else j++; }
+    return j;
+  };
+  // Tentative regex scan: returns the index past the literal (incl. flags), or
+  // -1 when no well-formed single-line regex starts here (then it's division).
+  const tryScanRegex = (start) => {
+    let j = start + 1, inClass = false;
+    while (j < n) {
+      const ch = src[j];
+      if (ch === '\n') return -1;
+      if (ch === '\\') { j += 2; continue; }
+      if (ch === '[') inClass = true;
+      else if (ch === ']') inClass = false;
+      else if (ch === '/' && !inClass) {
+        j++;
+        while (j < n && /[a-z]/i.test(src[j])) j++;
+        return j;
+      }
+      j++;
+    }
+    return -1;
+  };
+  while (i < n) {
+    const top = ctx[ctx.length - 1];
+    const c = src[i];
+    if (top.t === 'tpl') { // template literal — copy verbatim
+      if (c === '\\') { out += src.slice(i, i + 2); i += 2; continue; }
+      if (c === '`') { out += '`'; ctx.pop(); mark(')'); i++; continue; }
+      if (c === '$' && src[i + 1] === '{') { out += '${'; ctx.push({ t: 'expr', depth: 0 }); mark(''); i += 2; continue; }
+      out += c; i++; continue;
+    }
+    if (c === '\n') { pendNewline = true; i++; continue; }
+    if (/\s/.test(c)) { if (!pendNewline) pendSpace = true; i++; continue; }
+    if (c === '/' && src[i + 1] === '/') { const e = src.indexOf('\n', i + 2); i = e === -1 ? n : e; continue; }
+    if (c === '/' && src[i + 1] === '*') {
+      const e = src.indexOf('*/', i + 2);
+      const body = src.slice(i, e === -1 ? n : e + 2);
+      if (body.includes('\n')) pendNewline = true; // ASI-equivalent: a comment with a line break IS a line break
+      else if (!pendNewline) pendSpace = true;
+      i = e === -1 ? n : e + 2; continue;
+    }
+    if (c === '"' || c === "'") { const e = scanString(i, c); emit(src.slice(i, e)); mark(')'); i = e; continue; }
+    if (c === '`') { emit('`'); ctx.push({ t: 'tpl' }); mark(''); i++; continue; }
+    if (c === '/') {
+      const regexAllowed = lastSig === '' ||
+        (REGEX_PREV.includes(lastSig) &&
+          !(lastSig === '+' && prevSig === '+') && !(lastSig === '-' && prevSig === '-')) ||
+        REGEX_KW.has(lastWord);
+      if (regexAllowed) {
+        const e = tryScanRegex(i);
+        if (e !== -1) { emit(src.slice(i, e)); mark(')'); i = e; continue; }
+      }
+      emit('/'); mark('/'); i++; continue;
+    }
+    if (/[A-Za-z0-9_$]/.test(c)) {
+      let j = i + 1;
+      while (j < n && /[A-Za-z0-9_$]/.test(src[j])) j++;
+      const w = src.slice(i, j);
+      emit(w); mark(w[w.length - 1], w); i = j; continue;
+    }
+    if (c === '{' && top.t === 'expr') { top.depth++; emit('{'); mark('{'); i++; continue; }
+    if (c === '}' && top.t === 'expr') {
+      if (top.depth === 0) { ctx.pop(); emit('}'); i++; continue; } // ${…} closed — back into the template
+      top.depth--; emit('}'); mark('}'); i++; continue;
+    }
+    emit(c); mark(c); i++;
+  }
+  return out.trimEnd() + '\n';
+}
+
+// Brace census for the CSS sanity gate — counts { } outside comments/strings so
+// the minified output can be compared against the source (equal opens/closes,
+// same final depth, never dipping below the source's minimum).
+function cssBraceScan(text) {
+  let depth = 0, low = 0, opens = 0, closes = 0;
+  let i = 0; const n = text.length;
+  while (i < n) {
+    const c = text[i];
+    if (c === '/' && text[i + 1] === '*') { const e = text.indexOf('*/', i + 2); i = e === -1 ? n : e + 2; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < n) { if (text[j] === '\\') j += 2; else if (text[j] === c) { j++; break; } else j++; }
+      i = j; continue;
+    }
+    if (c === '{') { depth++; opens++; }
+    else if (c === '}') { depth--; closes++; if (depth < low) low = depth; }
+    i++;
+  }
+  return { depth, low, opens, closes };
+}
+
+const writeIfChanged = (relFile, content) => {
+  const p = path.join(__dirname, relFile);
+  try { if (fs.readFileSync(p, 'utf8') === content) return; } catch { /* new file */ }
+  fs.writeFileSync(p, content);
+};
+
+// Minify + sanity-check + write one asset; returns the filename the pages
+// should reference (always the .min name — on a failed check it holds the
+// unminified source, so the site keeps working while the WARN gets fixed).
+function buildMinifiedAsset(srcFile, minFile, kind) {
+  const src = fs.readFileSync(path.join(__dirname, srcFile), 'utf8');
+  let min;
+  try {
+    min = kind === 'css' ? minifyCss(src) : minifyJs(src);
+    if (kind === 'css') {
+      const a = cssBraceScan(src), b = cssBraceScan(min);
+      if (a.opens !== b.opens || a.closes !== b.closes || a.depth !== b.depth || b.low < a.low) {
+        throw new Error(`brace balance drifted (src ${a.opens}/${a.closes}, min ${b.opens}/${b.closes})`);
+      }
+    } else {
+      new vm.Script(min, { filename: minFile }); // parse-only syntax gate — executes nothing
+    }
+  } catch (e) {
+    console.warn(`minify: ${srcFile} FAILED (${(e && e.message) || e}) — shipping unminified fallback as ${minFile}`);
+    min = src;
+  }
+  writeIfChanged(minFile, min);
+  const from = Buffer.byteLength(src), to = Buffer.byteLength(min);
+  console.log(`minify: ${srcFile} ${from.toLocaleString('en-US')} B → ${minFile} ${to.toLocaleString('en-US')} B (−${Math.round((1 - to / from) * 100)}%)`);
+  return minFile;
+}
 
 // Cache-busting fingerprints: the deploy configs (netlify.toml / vercel.json)
 // serve *.css/*.js with `Cache-Control: immutable` for a year, so every
 // reference carries a content-hash query (?v=<hash>) — a changed file gets a
 // new URL and returning visitors fetch it immediately. No file renames needed.
+// The hash is taken over the emitted .min file (what browsers actually fetch).
 // NOTE: index.html is hand-written (not generated), but the build now rewrites
-// its styles.css/script.js ?v= refs in place at the end of the run (see the
+// its styles/script ?v= refs in place at the end of the run (see the
 // "Sync the hand-written index.html" block) — no hand-editing required.
 const assetHash = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, file))).digest('hex').slice(0, 8);
-const CSS_V = assetHash('styles.css');
-const JS_V = assetHash('script.js');
-const CSS_HREF = `styles.css?v=${CSS_V}`;
-const JS_SRC = `script.js?v=${JS_V}`;
+const CSS_FILE = buildMinifiedAsset('styles.css', 'styles.min.css', 'css');
+const JS_FILE = buildMinifiedAsset('script.js', 'script.min.js', 'js');
+const CSS_V = assetHash(CSS_FILE);
+const JS_V = assetHash(JS_FILE);
+const CSS_HREF = `${CSS_FILE}?v=${CSS_V}`;
+const JS_SRC = `${JS_FILE}?v=${JS_V}`;
 // The shared translation runtime (window.SwitchyI18n) — loaded before script.js on
 // every page so the language menu + persisted-language re-apply are wired at load.
-const RT_V = assetHash('translate-runtime.js');
-const RT_SRC = `translate-runtime.js?v=${RT_V}`;
+// (The SOURCE translate-runtime.js stays byte-identical to the Next app's copy;
+// only the generated .min derivative differs.)
+const RT_FILE = buildMinifiedAsset('translate-runtime.js', 'translate-runtime.min.js', 'js');
+const RT_V = assetHash(RT_FILE);
+const RT_SRC = `${RT_FILE}?v=${RT_V}`;
 
 // ── Analytics — Google Analytics 4 (free) ───────────────────────────────────
 // Live Measurement ID below (mirror it in index.html if you ever change it, then
@@ -5094,7 +5320,21 @@ ${footer}
 // which filenames it emitted — the prune step below deletes any leftover .html
 // that dropped out of the built set on a rebuild.
 const WRITTEN = new Set();
-const writePage = (name, html) => { fs.writeFileSync(path.join(__dirname, name), html); WRITTEN.add(name); };
+// Anchor hrefs per written page, harvested at write time (the html is already
+// in memory) for the internal-link integrity gate at the end of the run.
+const PAGE_LINKS = new Map();
+const collectHrefs = (html) => {
+  const hrefs = new Set();
+  const re = /<a\b[^>]*?\bhref="([^"]*)"/g;
+  let m;
+  while ((m = re.exec(html))) hrefs.add(m[1]);
+  return hrefs;
+};
+const writePage = (name, html) => {
+  fs.writeFileSync(path.join(__dirname, name), html);
+  WRITTEN.add(name);
+  PAGE_LINKS.set(name, collectHrefs(html));
+};
 for (const c of categories) {
   writePage(`${c.slug}.html`, page(c));
 }
@@ -5447,15 +5687,18 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     notes.push('WARN: no DEALS markers found in index.html');
   }
 
-  const cssMatched = /href="styles\.css\?v=[0-9a-f]+"/.test(html);
-  const jsMatched = /src="script\.js\?v=[0-9a-f]+"/.test(html);
-  const rtMatched = /src="translate-runtime\.js\?v=[0-9a-f]+"/.test(html);
-  html = html.replace(/href="styles\.css\?v=[0-9a-f]+"/g, `href="${CSS_HREF}"`);
-  html = html.replace(/src="script\.js\?v=[0-9a-f]+"/g, `src="${JS_SRC}"`);
-  html = html.replace(/src="translate-runtime\.js\?v=[0-9a-f]+"/g, `src="${RT_SRC}"`);
-  if (!cssMatched) notes.push('WARN: no styles.css?v= ref found to update');
-  if (!jsMatched) notes.push('WARN: no script.js?v= ref found to update');
-  if (!rtMatched) notes.push('WARN: no translate-runtime.js?v= ref found to update');
+  // The patterns accept BOTH the legacy unminified refs (styles.css?v=…) and
+  // the current minified ones (styles.min.css?v=…) so the one-time migration to
+  // the .min assets happens through the same idempotent rewrite.
+  const cssMatched = /href="styles(?:\.min)?\.css\?v=[0-9a-f]+"/.test(html);
+  const jsMatched = /src="script(?:\.min)?\.js\?v=[0-9a-f]+"/.test(html);
+  const rtMatched = /src="translate-runtime(?:\.min)?\.js\?v=[0-9a-f]+"/.test(html);
+  html = html.replace(/href="styles(?:\.min)?\.css\?v=[0-9a-f]+"/g, `href="${CSS_HREF}"`);
+  html = html.replace(/src="script(?:\.min)?\.js\?v=[0-9a-f]+"/g, `src="${JS_SRC}"`);
+  html = html.replace(/src="translate-runtime(?:\.min)?\.js\?v=[0-9a-f]+"/g, `src="${RT_SRC}"`);
+  if (!cssMatched) notes.push('WARN: no styles(.min).css?v= ref found to update');
+  if (!jsMatched) notes.push('WARN: no script(.min).js?v= ref found to update');
+  if (!rtMatched) notes.push('WARN: no translate-runtime(.min).js?v= ref found to update');
 
   // 2) Provenance meta — <meta name="build:catalogue-source" content="live|bundled">.
   //    Update it in place if present, else inject after <meta charset> (falling
@@ -5474,6 +5717,63 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     notes.push('WARN: no <head> found — provenance meta not stamped');
   }
 
+  // 3) Chrome parity (WARN-only) — the homepage header/footer/mega-menu are
+  //    hand-maintained while the other pages regenerate from navHtml()/footer,
+  //    and drift here has shipped a real bug before (the 9d544772 mega-menu
+  //    fix). Compare the LINK INVENTORY (normalized href + visible text) of
+  //    index.html's <header>/<footer> against the shared templates and print
+  //    exactly what's missing/extra. Deliberately never auto-rewrites: the
+  //    homepage copy is hand-authored, so a human closes the gap. CTA buttons
+  //    (class btn) are excluded — their target is page-specific by design —
+  //    and '#x' on the homepage is equivalent to 'index.html#x' elsewhere.
+  const chromeSlice = (doc, open, close) => {
+    const s = doc.indexOf(open);
+    if (s === -1) return '';
+    const e = doc.indexOf(close, s);
+    return e === -1 ? '' : doc.slice(s, e + close.length);
+  };
+  const chromeLinkSet = (fragment) => {
+    const set = new Set();
+    const re = /<a\b([^>]*)>([\s\S]*?)<\/a>/g;
+    let m;
+    while ((m = re.exec(fragment))) {
+      const attrs = m[1];
+      if (/\bclass="[^"]*\bbtn\b/.test(attrs)) continue; // page-specific CTA
+      const hm = attrs.match(/\bhref="([^"]*)"/);
+      if (!hm) continue;
+      let href = hm[1];
+      if (href === '#' || href === '#top') href = 'index.html';
+      else if (href.startsWith('#')) href = 'index.html' + href;
+      if (href === 'index.html#top') href = 'index.html';
+      const text = m[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      set.add(text ? `${href} (${text})` : href);
+    }
+    return set;
+  };
+  let chromeDrift = false;
+  const chromeCompare = (zone, tplFragment, idxFragment) => {
+    if (!idxFragment) {
+      chromeDrift = true;
+      notes.push(`WARN: chrome parity — no <${zone}> found in index.html`);
+      return;
+    }
+    const tpl = chromeLinkSet(tplFragment);
+    const idx = chromeLinkSet(idxFragment);
+    const missing = [...tpl].filter((l) => !idx.has(l));
+    const extra = [...idx].filter((l) => !tpl.has(l));
+    if (!missing.length && !extra.length) return;
+    chromeDrift = true;
+    const fmt = (arr) => arr.slice(0, 8).join(' | ') + (arr.length > 8 ? ` …(+${arr.length - 8} more)` : '');
+    console.warn(
+      `index.html chrome parity WARN — <${zone}> drifted from the shared build.js template:` +
+        (missing.length ? `\n  missing in index.html: ${fmt(missing)}` : '') +
+        (extra.length ? `\n  only in index.html:    ${fmt(extra)}` : ''),
+    );
+  };
+  chromeCompare('header', chromeSlice(navHtml('#cta'), '<header', '</header>'), chromeSlice(html, '<header', '</header>'));
+  chromeCompare('footer', chromeSlice(footer, '<footer', '</footer>'), chromeSlice(html, '<footer', '</footer>'));
+  if (!chromeDrift) console.log('index.html chrome parity: header + footer match the shared navHtml()/footer templates.');
+
   if (html !== before) {
     try {
       fs.writeFileSync(indexPath, html);
@@ -5483,12 +5783,59 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     }
   }
   console.log(
-    `index.html sync: styles.css?v=${CSS_V}  script.js?v=${JS_V}  ` +
+    `index.html sync: ${CSS_HREF}  ${JS_SRC}  ` +
       `catalogue-source=${CATALOGUE_SOURCE}` +
       (html !== before ? ' (updated)' : ' (already in sync)') +
       (notes.length ? `  [${notes.join('; ')}]` : ''),
   );
 })();
 
-console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (auto-synced into index.html by this build)`);
+// ── Internal-link integrity gate ─────────────────────────────────────────────
+// The prune pass above deletes pages whose source dropped out of the built set
+// (e.g. a -vs- matchup whose provider left the catalogue), but nothing verified
+// that the SURVIVING pages don't still link to them — a dead internal href
+// shipped silently until a crawler found it. Every internal <a href> in every
+// generated page must resolve to: (a) a page written this run, (b) a
+// hand-authored page, (c) an extensionless clean URL whose <name>.html was
+// written (e.g. /community), or (d) a real file on disk (assets, favicon, the
+// fingerprinted css/js). Unknown targets FAIL the build (exit code 1) so a
+// dead link can never be committed/deployed by the rebuild workflow; the
+// hand-authored index.html is scanned too but only WARNs (its copy is not this
+// build's output). Runs last so a failure still leaves a complete, inspectable
+// tree on disk.
+(() => {
+  const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i; // https:, mailto:, tel:, protocol-relative…
+  const resolves = (href) => {
+    let t = href.replace(/&amp;/g, '&').split('#')[0].split('?')[0].trim();
+    if (t === '') return true; // same-page anchor or query-only
+    if (t.startsWith('/')) t = t.slice(1);
+    if (t === '') return true; // site root
+    try { t = decodeURIComponent(t); } catch { /* keep raw */ }
+    if (WRITTEN.has(t) || HAND_AUTHORED_HTML.has(t)) return true;
+    if (!/\.[a-z0-9]+$/i.test(t) && (WRITTEN.has(`${t}.html`) || HAND_AUTHORED_HTML.has(`${t}.html`))) return true; // clean URL
+    return fs.existsSync(path.join(__dirname, t)); // shipped file (assets/…, *.min.css, sitemap.xml, …)
+  };
+  const fatal = [];
+  const warns = [];
+  for (const [name, hrefs] of PAGE_LINKS) {
+    for (const href of hrefs) {
+      if (!EXTERNAL.test(href) && !resolves(href)) fatal.push(`${name} → "${href}"`);
+    }
+  }
+  try {
+    for (const href of collectHrefs(fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'))) {
+      if (!EXTERNAL.test(href) && !resolves(href)) warns.push(`index.html → "${href}"`);
+    }
+  } catch { /* index.html missing — already warned by the sync step */ }
+  for (const w of warns) console.warn(`link check WARN (hand-authored): ${w} does not resolve`);
+  if (fatal.length) {
+    console.error(`link check FAILED — ${fatal.length} internal link(s) in generated pages resolve to nothing:`);
+    for (const f of fatal) console.error(`  ${f}`);
+    process.exitCode = 1; // fail the build/CI — a dead link must not ship
+  } else {
+    console.log(`link check: all internal links across ${PAGE_LINKS.size} generated pages resolve${warns.length ? ` (${warns.length} WARN in index.html)` : ''}.`);
+  }
+})();
+
+console.log(`Asset fingerprints: ${CSS_HREF}  ${JS_SRC}  (auto-synced into index.html by this build)`);
 console.log(`Build provenance: catalogue was read ${CATALOGUE_SOURCE === 'live' ? 'LIVE from Supabase' : 'from the BUNDLED snapshot (data/plans.json)'}  ·  meta build:catalogue-source=${CATALOGUE_SOURCE} stamped into index.html`);

@@ -113,7 +113,10 @@ jobs:
           # commit honest and the diff reviewable.) -A + quoted pathspec so the
           # build's PRUNED pages (deleted stale HTML) get staged too — an
           # unquoted site/*.html expands in the shell and misses deletions.
-          git add -A -- 'site/*.html' site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
+          # The *.min.css/*.min.js are build outputs too (generated pages
+          # reference them by content hash), so they MUST land in the same
+          # commit or the deploy would serve stale assets under a fresh ?v=.
+          git add -A -- 'site/*.html' 'site/*.min.css' 'site/*.min.js' site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
 
           if git diff --cached --quiet; then
             echo "No catalogue changes — nothing to redeploy."

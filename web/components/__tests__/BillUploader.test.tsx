@@ -10,7 +10,8 @@
 //
 // fetch + tracking are mocked at the module boundary. <LeadForm> is stubbed so the
 // test focuses on the uploader contract (LeadForm has its own test). jsdom has no
-// real canvas, so compressImage() falls back to the original data-URL (covered).
+// drawing backend, so vitest.setup.ts stubs canvas getContext/toDataURL and the
+// compress path runs for real (no "Not implemented" noise).
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -55,9 +56,10 @@ function mockFetchJson(body: unknown, status = 200) {
 // jsdom's HTMLImageElement never fires load/error when `src` is set, so
 // compressImage()'s `await loadImage(...)` would hang forever and the upload
 // would never reach fetch. Stub Image with one that fires `onload` on the next
-// microtask after `src` is assigned. compressImage then runs its real path —
-// canvas.getContext("2d") is null in jsdom, so it falls back to the original
-// data-URL (exactly the path the suite intends to exercise).
+// microtask after `src` is assigned. compressImage then runs its real canvas
+// path end-to-end: vitest.setup.ts stubs getContext("2d")/toDataURL (jsdom has
+// no drawing backend), so the scaled-draw + JPEG-encode branch executes without
+// the "Not implemented" console noise.
 let OriginalImage: typeof Image;
 beforeEach(() => {
   OriginalImage = globalThis.Image;

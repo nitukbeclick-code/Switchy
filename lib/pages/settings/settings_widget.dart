@@ -41,6 +41,38 @@ const String kDeleteAccountSummaryLoggedIn =
 const String kDeleteAccountSummaryGuest =
     'אין חשבון רשום במכשיר הזה. המחיקה תנקה את הנתונים המקומיים ואת עקבות השרת של הזהות האנונימית של המכשיר. הפעולה אינה הפיכה.';
 
+// ── Honest Telegram copy (mirrors the shipped /start reply in
+// supabase/functions/telegram-webhook) ──────────────────────────────────────
+// Linking an account to the bot WORKS today, but no server sender ships
+// Telegram notifications yet (nothing reads profiles.telegram_chat_id to
+// deliver), so this row must not promise "connect to receive messages". The
+// truthful frame: the link is real, notifications will land here once we turn
+// them on ("כשנפעיל — יגיעו לכאן"), and TODAY updates arrive in-app + email.
+// Exposed for the copy-regression test (test/settings_test.dart).
+
+/// Subtitle on the not-yet-connected row: invites the (working) link, promises
+/// notifications only for when we enable them.
+@visibleForTesting
+const String kTelegramConnectSubtitle =
+    'חברו את החשבון — כשנפעיל התראות בטלגרם, הן יגיעו לכאן';
+
+/// Hint under the connected badge: link is live, delivery starts when we
+/// enable it; meanwhile the real channels are the app + email.
+@visibleForTesting
+const String kTelegramConnectedHint =
+    'כשנפעיל התראות בטלגרם — יגיעו לכאן; בינתיים העדכונים באפליקציה ובמייל';
+
+/// "בדוק חיבור" result when the account IS linked: reports the true state of
+/// the link without claiming the server already sends.
+@visibleForTesting
+const String kTelegramLinkedSnack =
+    'הטלגרם מחובר. כשנפעיל התראות בטלגרם — הן יגיעו לכאן; בינתיים העדכונים באפליקציה ובמייל.';
+
+/// "בדוק חיבור" result when the account is NOT linked: points back at the
+/// working link flow, no notification promise.
+@visibleForTesting
+const String kTelegramNotLinkedSnack = 'הטלגרם אינו מחובר — חברו מחדש מכאן.';
+
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
 
@@ -980,16 +1012,16 @@ class _TelegramRowState extends State<_TelegramRow> {
     setState(() => _busy = true);
     try {
       // Client-side Telegram sending was removed for security (no bot token in
-      // the app); delivery is server-side. "Test" now honestly reports whether
-      // this account is linked to a Telegram chat, which is what enables the
-      // server to deliver notifications.
+      // the app); "Test" honestly reports whether this account is linked to a
+      // Telegram chat. It does NOT claim the server already delivers — no
+      // sender ships Telegram notifications yet (see the copy constants above).
       final appState = Provider.of<AppState>(context, listen: false);
       final linked = appState.userTelegramChatId.isNotEmpty;
       if (!mounted) return;
       if (linked) {
-        AppSnackBar.success(context, 'הטלגרם שלך מחובר — התראות יישלחו מהשרת.');
+        AppSnackBar.success(context, kTelegramLinkedSnack);
       } else {
-        AppSnackBar.error(context, 'הטלגרם אינו מחובר. חברו מחדש כדי לקבל התראות.');
+        AppSnackBar.error(context, kTelegramNotLinkedSnack);
       }
     } catch (e) {
       if (!mounted) return;
@@ -1064,6 +1096,12 @@ class _TelegramRowState extends State<_TelegramRow> {
                         Text('מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                       ],
                     ),
+                    // Honest expectation-setting: the LINK is live, delivery
+                    // starts when we enable it — today's updates are app+email.
+                    Text(
+                      kTelegramConnectedHint,
+                      style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                    ),
                   ],
                 ),
               ),
@@ -1110,7 +1148,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('טלגרם', style: ffTheme.titleSmall),
-                    Text('חבר כדי לקבל הודעות', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                    Text(kTelegramConnectSubtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
                   ],
                 ),
               ),

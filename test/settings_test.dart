@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
+import 'package:chosech/pages/settings/settings_widget.dart';
 
 /// Widget tests for the settings screen
 /// (lib/pages/settings/settings_widget.dart): that it renders its sections, and
@@ -146,6 +147,58 @@ void main() {
 
       await tester.pumpAndSettle();
       tester.takeException();
+    });
+  });
+
+  // ── Telegram copy honesty (mirror of the telegram-webhook /start fix) ──────
+  // No server sender ships Telegram notifications yet (nothing reads
+  // profiles.telegram_chat_id to deliver), so the settings row must promise
+  // only what exists: the link works; notifications arrive here WHEN we enable
+  // them ("כשנפעיל"); today's updates are app + email.
+  group('Telegram copy honesty', () {
+    test('copy promises delivery only conditionally, and names the real channels',
+        () {
+      for (final s in [
+        kTelegramConnectSubtitle,
+        kTelegramConnectedHint,
+        kTelegramLinkedSnack,
+      ]) {
+        // The conditional frame — never an unconditional delivery promise.
+        expect(s, contains('כשנפעיל'));
+      }
+      // Where we set expectations, we point at the channels that DO deliver.
+      expect(kTelegramConnectedHint, contains('באפליקציה ובמייל'));
+      expect(kTelegramLinkedSnack, contains('באפליקציה ובמייל'));
+      // Regression: the old over-promises must not creep back.
+      const banned = ['יישלחו מהשרת', 'חבר כדי לקבל הודעות', 'כדי לקבל התראות'];
+      for (final s in [
+        kTelegramConnectSubtitle,
+        kTelegramConnectedHint,
+        kTelegramLinkedSnack,
+        kTelegramNotLinkedSnack,
+      ]) {
+        for (final b in banned) {
+          expect(s.contains(b), isFalse,
+              reason: 'over-promising copy "$b" resurfaced in "$s"');
+        }
+      }
+    });
+
+    testWidgets('unlinked settings row renders the honest connect subtitle',
+        (tester) async {
+      await _ignoringOverflow(() async {
+        await _bootApp(tester); // fresh prefs → no telegram_chat_id → unlinked
+
+        _go(tester, '/settings');
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
+
+        expect(find.text(kTelegramConnectSubtitle), findsOneWidget);
+        expect(find.text('חבר כדי לקבל הודעות'), findsNothing);
+
+        await tester.pumpAndSettle();
+        tester.takeException();
+      });
     });
   });
 }

@@ -1,7 +1,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Shared community render helpers — the single source of truth for the small
-// presentation formulas that PostCard / Replies / ProfileView used to each
-// carry as hand-copied private functions (a duplicated formula will drift):
+// presentation formulas that PostCard / Replies / ProfileView / the SEO post
+// permalink used to each carry as hand-copied private functions (a duplicated
+// formula will drift):
 //
 //   • relativeTime(iso) — relative Hebrew timestamp ("לפני 5 דקות").
 //   • initial(name)     — avatar-fallback monogram (first rendered char).
@@ -53,10 +54,15 @@ export function initial(name: string): string {
  *  catalogue-provider names additionally become links (never inside an
  *  @mention span). Every segment is a plain string placed via JSX {} (React
  *  auto-escapes it) or a next/link whose children are plain text — raw HTML is
- *  never injected. */
+ *  never injected. `linkClassName` overrides the provider-link classes — the
+ *  default is the interactive feed's style; the SEO permalink page passes its
+ *  own so its served DOM stays byte-identical. */
 export function renderBody(
   body: string,
-  { linkProviders = false }: { linkProviders?: boolean } = {},
+  {
+    linkProviders = false,
+    linkClassName = "font-medium text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+  }: { linkProviders?: boolean; linkClassName?: string } = {},
 ): ReactNode {
   type Span = { start: number; end: number; kind: "mention" | "provider"; slug?: string };
   const spans: Span[] = [];
@@ -88,11 +94,7 @@ export function renderBody(
       );
     } else {
       nodes.push(
-        <Link
-          key={`s${key++}`}
-          href={`/providers/${s.slug}`}
-          className="font-medium text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
+        <Link key={`s${key++}`} href={`/providers/${s.slug}`} className={linkClassName}>
           {text}
         </Link>,
       );

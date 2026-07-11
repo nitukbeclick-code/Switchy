@@ -75,4 +75,40 @@ describe("renderBody", () => {
     expect(link!.props.href).toBe("/providers/partner");
     expect(link!.props.children).toBe("פרטנר");
   });
+
+  it("styles provider links with the feed default when linkClassName is omitted", () => {
+    const linked = renderBody("עברתי אל פרטנר החודש", { linkProviders: true }) as ReactNode[];
+    const link = linked.find((n) => isValidElement(n)) as ReactElement<{ className: string }>;
+    expect(link.props.className).toBe(
+      "font-medium text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+    );
+  });
+
+  it("linkClassName overrides the provider-link classes (the SEO permalink styling)", () => {
+    const cls = "font-medium text-accent-text underline-offset-2 hover:underline";
+    const linked = renderBody("עברתי אל פרטנר החודש", {
+      linkProviders: true,
+      linkClassName: cls,
+    }) as ReactNode[];
+    const link = linked.find((n) => isValidElement(n)) as ReactElement<{
+      href: string;
+      children: string;
+      className: string;
+    }>;
+    expect(link.props.className).toBe(cls);
+    expect(link.props.href).toBe("/providers/partner");
+    expect(link.props.children).toBe("פרטנר");
+  });
+
+  it("linkClassName never touches @mention spans", () => {
+    const nodes = renderBody("תודה @dana ופרטנר", {
+      linkProviders: true,
+      linkClassName: "custom-class",
+    }) as ReactNode[];
+    const mention = nodes.find(
+      (n) => isValidElement(n) && n.type === "span",
+    ) as ReactElement<{ className: string; children: string }>;
+    expect(mention.props.children).toBe("@dana");
+    expect(mention.props.className).toBe("font-semibold text-accent-text");
+  });
 });

@@ -6,7 +6,9 @@ import AuthorityBlock from "@/components/AuthorityBlock";
 import MarketPulseCharts, {
   type MarketPulseCategory,
 } from "@/components/MarketPulseCharts";
-import SmartTimer from "@/components/SmartTimer";
+// Lazy wrapper (ssr:false + CLS-safe skeleton) — the calculator is below the
+// fold here just like on the home page, so it must not add hydration cost.
+import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
 import { priceStats, CATEGORY_HE, getPlans, getProviders } from "@/lib/data";

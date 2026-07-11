@@ -13,8 +13,19 @@ name: Deploy edge functions
 # How to deploy:
 #   • Manually: Actions tab -> "Deploy edge functions" -> Run workflow, pick a
 #     function (available once this file is on the default branch).
-#   • By commit: push a commit whose message contains "[deploy]" to the working
-#     branch; this deploys notify-lead.
+#
+# Everything in the menu deploys with --no-verify-jwt (each function does its
+# own auth in code — webhook secret / requireAdmin / platform signatures).
+# Deliberately ABSENT from the menu — do NOT "helpfully" add them:
+#   • lead-export — the sellable-lead monetization feed behind a hard legal
+#     consent gate; manual CLI deploys only, so it can never be fat-fingered
+#     from a dropdown.
+#   • community-admin, community-digest, rep-brief — their headers document a
+#     deploy WITHOUT --no-verify-jwt, and this workflow hard-codes the flag;
+#     they keep their manual CLI deploy path.
+# Everything else under supabase/functions/ (except _shared and tests, which
+# are libraries, not deployables) should appear both in the choices below AND
+# in the "all" loop — keep the two lists in sync.
 
 on:
   workflow_dispatch:
@@ -40,10 +51,13 @@ on:
           - analytics-track
           - admin-metrics
           - translate
+          - community-moderate
+          - community-notify
+          - lead-digest
+          - site-bill-analyzer
+          - site-plan-advisor
+          - site-push-notify
           - all
-  push:
-    branches:
-      - claude/laughing-hawking-4q1i8j
 
 concurrency:
   group: deploy-edge-functions
@@ -54,9 +68,6 @@ env:
 
 jobs:
   deploy:
-    # On a push, only deploy when the commit message opts in with "[deploy]";
-    # a manual run (workflow_dispatch) always deploys the chosen function.
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[deploy]')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -77,7 +88,8 @@ jobs:
             exit 1
           fi
 
-          # A push deploys notify-lead; a manual run uses the chosen input.
+          # The dispatch input always carries a value (default: notify-lead);
+          # the fallback is a defensive guard only.
           target="${{ github.event.inputs.function }}"
           [ -z "$target" ] && target="notify-lead"
           echo "Deploy target: $target"
@@ -90,8 +102,9 @@ jobs:
             echo "::endgroup::"
           }
 
+          # Keep this list identical to the dispatch choices above (minus "all").
           if [ "$target" = "all" ]; then
-            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat crm-api savings-watch renewal-reminders telegram-webhook meeting-book referral-issue street-price account-delete analytics-track admin-metrics; do
+            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat crm-api site-subscribe savings-watch telegram-webhook renewal-reminders meeting-book referral-issue street-price account-delete analytics-track admin-metrics translate community-moderate community-notify lead-digest site-bill-analyzer site-plan-advisor site-push-notify; do
               deploy_one "$fn"
             done
           else

@@ -5289,13 +5289,27 @@ fs.writeFileSync(path.join(__dirname, 'ai.txt'), aiTxt);
 //  • catalogue date (when prices were last exported) for plan-driven pages
 //    (home, category, provider, all-plans, compare);
 //  • the guide's own publish date for articles;
-//  • today's build date for evergreen static pages.
+//  • the newest guide date for the guides index (its real change signal);
+//  • a pinned last-content-change date for evergreen pages (EVERGREEN_LASTMOD).
 const isoDate = (d) => new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
 // Reuse the single catalogue-date source (defined near the top) so the sitemap
 // <lastmod>, the visible freshness badge, temporalCoverage and the llms/ai feeds
 // all derive from the SAME real export date — no divergent "data as of" values.
 const CATALOGUE_DATE = CATALOGUE_DATE_ISO;
-const BUILD_DATE = isoDate(Date.now());
+// Evergreen pages (community/book/app/glossary/about + the legal set) don't
+// change with the catalogue. They used to stamp the run's build date, which
+// claimed false freshness (a signal engines discount when unreliable) and made
+// sitemap.xml mutate on each day's first scheduled rebuild even when nothing
+// changed — a daily no-content commit + redeploy. Pin them instead to the date
+// their copy/template last actually changed, so identical content produces a
+// byte-identical sitemap.
+// ⚠️ Bump this date whenever evergreen page content in this file is edited.
+const EVERGREEN_LASTMOD = '2026-07-10';
+// guides.html renders the guide catalogue, so its truthful change signal is the
+// newest guide date — not whichever day the build happened to run.
+const GUIDES_INDEX_LASTMOD = isoDate(
+  guides.reduce((m, g) => Math.max(m, +new Date(g.date) || 0), 0) || Date.now(),
+);
 // priority/changefreq tiers — home is the apex; conversion + plan pages rank
 // above evergreen content; legal pages sit lowest.
 const locs = [
@@ -5305,16 +5319,16 @@ const locs = [
   { loc: `${SITE}/providers.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/compare.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/comparisons.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
-  { loc: `${SITE}/community.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'daily' },
-  { loc: `${SITE}/book.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly' },
-  { loc: `${SITE}/app.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly', images: [
+  { loc: `${SITE}/community.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.7', changefreq: 'daily' },
+  { loc: `${SITE}/book.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.7', changefreq: 'monthly' },
+  { loc: `${SITE}/app.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.7', changefreq: 'monthly', images: [
     `${SITE}/assets/app/shot-home.webp`, `${SITE}/assets/app/shot-results.webp`, `${SITE}/assets/app/shot-meeting.webp`,
   ] },
-  { loc: `${SITE}/guides.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/guides.html`, lastmod: GUIDES_INDEX_LASTMOD, priority: '0.7', changefreq: 'weekly' },
   { loc: `${SITE}/faq.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' },
   { loc: `${SITE}/how-it-works.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' },
-  { loc: `${SITE}/glossary.html`, lastmod: BUILD_DATE, priority: '0.6', changefreq: 'monthly' },
-  { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
+  { loc: `${SITE}/glossary.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.6', changefreq: 'monthly' },
+  { loc: `${SITE}/about.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.5', changefreq: 'monthly' },
   ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
   ...builtVersus.map((v) => ({ loc: `${SITE}/${v.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
   ...builtProviderVs.map((v) => ({ loc: `${SITE}/${v.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
@@ -5322,10 +5336,10 @@ const locs = [
   ...builtCalculators.map((c) => ({ loc: `${SITE}/calc-${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   ...guides.map((g) => ({ loc: `${SITE}/${g.slug}.html`, lastmod: isoDate(g.date), priority: '0.6', changefreq: 'monthly' })),
   ...providerNames.map((n) => ({ loc: `${SITE}/provider-${providerSlug(n)}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
-  { loc: `${SITE}/privacy.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
-  { loc: `${SITE}/terms.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
-  { loc: `${SITE}/account-deletion.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
-  { loc: `${SITE}/accessibility.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/privacy.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/terms.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/account-deletion.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/accessibility.html`, lastmod: EVERGREEN_LASTMOD, priority: '0.3', changefreq: 'yearly' },
 ];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">

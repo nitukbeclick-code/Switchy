@@ -420,7 +420,7 @@ export default function PostCard({
       onRequireAuth();
       return;
     }
-    if (hasReportedThisSession("post", post.id)) {
+    if (hasReportedThisSession("post", post.id, user.id)) {
       setNotice("כבר שלחתם דיווח על התוכן הזה — הוא ממתין לבדיקה.");
       setNoticeError(false);
       return;

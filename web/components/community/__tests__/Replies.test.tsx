@@ -120,6 +120,42 @@ describe("Replies accepted-answer flow", () => {
   });
 });
 
+describe("Replies auto-expand on a new child (Bug 4)", () => {
+  it("reveals a just-posted reply that would otherwise fall behind the 'show more' fold", async () => {
+    const user = userEvent.setup();
+    // A root with exactly CHILD_PREVIEW(2) children — both shown, no fold yet.
+    mocks.fetchReplies.mockResolvedValue([
+      reply("r1", "other-1"),
+      reply("c1", "other-1", "r1"),
+      reply("c2", "other-1", "r1"),
+    ]);
+    // The new reply nests under r1 (DB depth-cap → parent_reply_id is the root).
+    mocks.createReply.mockResolvedValue(reply("c3", AUTHOR, "r1"));
+    render(<Replies postId="p1" onRequireAuth={() => {}} />);
+    await screen.findByText("body-r1");
+
+    expect(screen.getByText("body-c1")).toBeInTheDocument();
+    expect(screen.getByText("body-c2")).toBeInTheDocument();
+    expect(screen.queryByText(/תגובות נוספות/)).not.toBeInTheDocument();
+
+    // Open the ROOT's inline composer (first "reply-to-reply" button) and post.
+    await user.click(screen.getAllByRole("button", { name: "תגובה לתגובה זו" })[0]);
+    const boxes = screen.getAllByPlaceholderText(/כתבו תגובה/);
+    await user.type(boxes[0], "תשובה חדשה"); // the inline composer (before the bottom one)
+    await user.click(screen.getAllByRole("button", { name: "שליחה" })[0]);
+
+    // The fresh reply is VISIBLE (root auto-expanded), NOT hidden behind a fold.
+    expect(await screen.findByText("body-c3")).toBeInTheDocument();
+    expect(screen.queryByText(/תגובות נוספות/)).not.toBeInTheDocument();
+    expect(mocks.createReply).toHaveBeenCalledWith(
+      "p1",
+      expect.anything(),
+      expect.objectContaining({ body: "תשובה חדשה" }),
+      { parentReplyId: "r1" },
+    );
+  });
+});
+
 describe("Replies delete (two-step + honest failure)", () => {
   it("arms on the first click, deletes on the second, and reports -1 to the parent", async () => {
     const user = userEvent.setup();

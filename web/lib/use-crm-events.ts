@@ -15,21 +15,45 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef } from "react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { RealtimeChannel, RealtimePostgresInsertPayload } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "./supabase-browser";
 
 /**
- * Call `onEvent` (debounced ~400ms) whenever a crm_events row is inserted.
- * `enabled` gates the subscription (e.g. only the active tab subscribes).
+ * A coalesced burst of crm_events INSERTs handed to the callback. `conversationIds`
+ * is the set of `conversation_id`s seen across the burst (rows with a null
+ * conversation_id — e.g. a contact-status change — are omitted). A caller can
+ * check membership to tell whether the burst actually touched a specific OPEN
+ * conversation, WITHOUT re-fetching that thread to find out — crm-api's getThread
+ * writes a `crm_thread_view` audit row on every call, so an unconditional reload
+ * on every background event (the bot answering other customers) would flood the
+ * audit log. See CrmInbox for the gate.
  */
-export function useCrmEvents(onEvent: () => void, enabled = true): void {
+export interface CrmEventBatch {
+  conversationIds: Set<string>;
+}
+
+/**
+ * Call `onEvent` (debounced ~400ms) whenever a crm_events row is inserted, passing
+ * the coalesced burst's touched conversation ids. `enabled` gates the subscription
+ * (e.g. only the active tab subscribes). Callers that don't care about the payload
+ * can ignore the argument.
+ */
+export function useCrmEvents(onEvent: (batch: CrmEventBatch) => void, enabled = true): void {
+  // Latest-ref: keep the debounced subscription callback pointed at the newest
+  // `onEvent` closure without re-subscribing. Updated in an effect (not during
+  // render) — the ref is only ever read later, from the async realtime handler.
   const cb = useRef(onEvent);
-  cb.current = onEvent;
+  useEffect(() => {
+    cb.current = onEvent;
+  });
 
   useEffect(() => {
     if (!enabled) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
     let channel: RealtimeChannel | null = null;
+    // conversation ids accumulated across the current coalescing window, so the
+    // single debounced refresh knows every conversation the burst touched.
+    let convIds = new Set<string>();
     const sb = getBrowserSupabase();
 
     try {
@@ -38,10 +62,16 @@ export function useCrmEvents(onEvent: () => void, enabled = true): void {
         .on(
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "crm_events" },
-          () => {
+          (payload: RealtimePostgresInsertPayload<Record<string, unknown>>) => {
+            const cid = payload.new?.conversation_id;
+            if (typeof cid === "string" && cid) convIds.add(cid);
             // Coalesce a burst (one action can append several rows) into one refresh.
             if (timer) clearTimeout(timer);
-            timer = setTimeout(() => cb.current(), 400);
+            timer = setTimeout(() => {
+              const batch: CrmEventBatch = { conversationIds: convIds };
+              convIds = new Set(); // reset the window for the next burst
+              cb.current(batch);
+            }, 400);
           },
         )
         .subscribe();

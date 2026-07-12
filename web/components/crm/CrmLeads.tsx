@@ -87,6 +87,10 @@ export default function CrmLeads() {
   });
   const [rep, setRep] = useState<string>(() => params.get("lead_rep") ?? "all");
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
+  // The server's authoritative "there are more rows past this window" flag —
+  // drives the honest "-partial" CSV suffix (NOT `leads.length >= 200`, which
+  // mislabels an exactly-200 window with no more rows).
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   // The typed reason of the last failed load (server message + retryability).
@@ -213,6 +217,7 @@ export default function CrmLeads() {
       if (seq !== loadSeq.current) return; // a newer load superseded this one
       if (res.data) {
         setLeads(res.data.leads);
+        setHasMore(res.data.hasMore);
         setNowMs(Date.now()); // fresh window clock for the fresh rows
         // If this load dropped the currently-filtered rep from the window, fall
         // back to all (previously a separate effect over repOptions).
@@ -342,8 +347,10 @@ export default function CrmLeads() {
   // Export the CURRENT view as CSV. The rows are already in the admin's browser
   // (fetched via crm-api behind the access gate), so this adds no new endpoint and
   // no new PII surface — csv.ts guards against formula injection on the way out.
-  // The id column makes a row traceable back to the console; a full 200-row
-  // server window gets the honest "-partial" filename suffix.
+  // The id column makes a row traceable back to the console; the honest
+  // "-partial" suffix is driven by the server's `hasMore` (real rows past the
+  // window), so an exactly-200-row window with nothing beyond it is NOT labelled
+  // partial.
   const exportCsv = useCallback(() => {
     if (shown.length === 0) return;
     const headers = ["id", "שם", "טלפון", "ספק", "מקור", "נציג", "שלב", "נוצר"];
@@ -357,12 +364,11 @@ export default function CrmLeads() {
       isLeadStatus(l.status) ? LEAD_STATUS_META[l.status].label : l.status,
       l.createdAt ?? "",
     ]);
-    const partial = (leads?.length ?? 0) >= 200;
     downloadCsv(
-      csvFileName(`leads-${filter}${range === "all" ? "" : `-${range}`}`, partial),
+      csvFileName(`leads-${filter}${range === "all" ? "" : `-${range}`}`, hasMore),
       buildCsv(headers, rows),
     );
-  }, [shown, leads, filter, range]);
+  }, [shown, filter, range, hasMore]);
 
   const canExport = shown.length > 0;
   const allSelected = shown.length > 0 && shown.every((l) => selected.has(l.id));

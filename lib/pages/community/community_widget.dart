@@ -20,6 +20,34 @@ import '../../widgets/skeleton.dart';
 import '../../services/media_service.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/backend/backend.dart';
+import '../../services/backend/supabase_backend.dart' show SupabaseBackend;
+
+/// Splices an OLDER backend page ([older]) into the live feed ([current]),
+/// de-duping by id and keeping the bundled seed posts pinned to the tail so the
+/// feed stays newest-first across load-older pages. The strict "older-than"
+/// cursor can return a post that shares the boundary timestamp, so ids already
+/// present in [current] are dropped (the shared-timestamp-skip guard). New
+/// older posts are inserted just before the first seed post (or appended when
+/// there is no seed tail). [seedIds] defaults to the bundled [communityPosts];
+/// it's injectable for tests. Pure — no widget/backend/network dependency.
+List<CommunityPost> mergeOlderCommunityPage(
+  List<CommunityPost> current,
+  List<CommunityPost> older, {
+  Set<String>? seedIds,
+}) {
+  final seeds = seedIds ?? communityPosts.map((p) => p.id).toSet();
+  final have = current.map((p) => p.id).toSet();
+  final fresh = older.where((p) => !have.contains(p.id)).toList();
+  if (fresh.isEmpty) return current;
+  final insertAt = current.indexWhere((p) => seeds.contains(p.id));
+  final out = [...current];
+  if (insertAt < 0) {
+    out.addAll(fresh);
+  } else {
+    out.insertAll(insertAt, fresh);
+  }
+  return out;
+}
 
 class CommunityWidget extends StatefulWidget {
   const CommunityWidget({super.key});
@@ -45,6 +73,19 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   static const _feedPageSize = 20;
   int _visibleCount = _feedPageSize;
   final _feedScrollCtrl = ScrollController();
+
+  // Remote load-older paging. The first fetch returns the newest
+  // [SupabaseBackend.feedPageSize] posts; scrolling to the end of the loaded
+  // set pulls successively OLDER pages via the `before` cursor, so a community
+  // with >50 posts no longer permanently hides its oldest posts. [_remoteIds]
+  // is the de-dupe key across pages (a post sharing the boundary timestamp can
+  // reappear under the strict "older-than" compare); [_oldestRemoteTs] is the
+  // cursor; [_reachedFeedEnd] latches once a short/empty page proves there's
+  // nothing older to load.
+  final Set<String> _remoteIds = {};
+  DateTime? _oldestRemoteTs;
+  bool _loadingOlder = false;
+  bool _reachedFeedEnd = false;
 
   static const _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל', 'חבילה משולבת', 'עזרה בניתוק'];
 
@@ -109,6 +150,16 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       if (remote.isNotEmpty) {
         final remoteIds = remote.map((p) => p.id).toSet();
         final seedOnly = communityPosts.where((p) => !remoteIds.contains(p.id)).toList();
+        // Reset the load-older cursor to this fresh newest page: remember every
+        // remote id (the de-dupe key), the oldest timestamp (the cursor), and
+        // whether a full page came back (a short page means there's no older
+        // page to fetch).
+        _remoteIds
+          ..clear()
+          ..addAll(remoteIds);
+        _oldestRemoteTs =
+            remote.map((p) => p.timestamp).reduce((a, b) => a.isBefore(b) ? a : b);
+        _reachedFeedEnd = remote.length < SupabaseBackend.feedPageSize;
         setState(() => _posts = [...remote, ...seedOnly]);
       }
       if (mounted) setState(() => _loadFailed = false);
@@ -129,12 +180,47 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     super.dispose();
   }
 
-  // Grow the visible window as the user approaches the end of the built list.
+  // Grow the visible window as the user approaches the end of the built list;
+  // once the window already covers every LOADED post, reach for the next OLDER
+  // remote page so posts beyond the first 50 stay reachable.
   void _maybeGrowFeed() {
     if (!_feedScrollCtrl.hasClients) return;
     final pos = _feedScrollCtrl.position;
-    if (pos.pixels >= pos.maxScrollExtent - 400 && _visibleCount < _filtered.length) {
+    if (pos.pixels < pos.maxScrollExtent - 400) return;
+    if (_visibleCount < _filtered.length) {
       setState(() => _visibleCount += _feedPageSize);
+    } else {
+      _loadOlder();
+    }
+  }
+
+  // Pull the next OLDER remote page (`created_at < the oldest loaded post`) and
+  // splice it in, de-duped by id. Fetches ALL channels — like the first load —
+  // so the client-side channel/search filter still runs over the FULL loaded
+  // set. Stops when a page comes back short (< a full page) or adds nothing new
+  // (every id already loaded, e.g. a boundary-timestamp twin). Fail-soft: an
+  // error keeps what's loaded and a later scroll retries the same cursor.
+  Future<void> _loadOlder() async {
+    final cursor = _oldestRemoteTs;
+    if (_loadingOlder || _reachedFeedEnd || cursor == null) return;
+    _loadingOlder = true;
+    try {
+      final older = await appBackend.fetchPosts(before: cursor);
+      if (!mounted) return;
+      final fresh = older.where((p) => !_remoteIds.contains(p.id)).toList();
+      if (older.length < SupabaseBackend.feedPageSize || fresh.isEmpty) {
+        _reachedFeedEnd = true;
+      }
+      if (fresh.isNotEmpty) {
+        _remoteIds.addAll(fresh.map((p) => p.id));
+        _oldestRemoteTs = [cursor, ...fresh.map((p) => p.timestamp)]
+            .reduce((a, b) => a.isBefore(b) ? a : b);
+        setState(() => _posts = mergeOlderCommunityPage(_posts, fresh));
+      }
+    } catch (_) {
+      // Keep the loaded feed; the next scroll retries with the same cursor.
+    } finally {
+      _loadingOlder = false;
     }
   }
 

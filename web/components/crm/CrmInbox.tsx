@@ -251,13 +251,19 @@ export default function CrmInbox() {
     void loadThread(selectedId);
   }, [selectedId, loadThread]);
 
-  // Live-refresh the list + the open thread whenever a crm_events row lands (an
-  // inbound message, rep reply, takeover). Silent so it never flashes; fail-soft.
-  useCrmEvents(() => {
+  // Live-refresh the list on EVERY crm_events burst (an inbound message, rep
+  // reply, takeover — anywhere in the inbox). Silent so it never flashes; fail-soft.
+  // The open THREAD, however, is only re-fetched when the burst actually touched
+  // THIS conversation: crm-api's getThread writes a `crm_thread_view` audit row on
+  // every call, so reloading the open thread on unrelated background events (the
+  // bot answering OTHER customers) would mint a spurious audit row per event. The
+  // burst's conversationIds tell us whether the open conversation moved; if it
+  // did, the reload respects the near-bottom autoscroll guard as before.
+  useCrmEvents((batch) => {
     setListError(false); // a silent refresh starts by clearing any stale error
     setListFailure(null);
     void loadList(true);
-    if (selectedId) {
+    if (selectedId && batch.conversationIds.has(selectedId)) {
       setThreadError(false);
       setThreadFailure(null);
       void loadThread(selectedId, true);

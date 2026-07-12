@@ -184,8 +184,9 @@ describe("PostCard report-with-reason", () => {
 
   it("blocks a SECOND report in the same session without another form", async () => {
     const user = userEvent.setup();
-    // The real hasReportedThisSession reads this exact key (set by reportContent).
-    sessionStorage.setItem("swc:reported:post:p1", "1");
+    // The real hasReportedThisSession reads this exact key (set by reportContent) —
+    // now scoped to the reporting user's id so a sign-out/in doesn't inherit it.
+    sessionStorage.setItem("swc:reported:viewer-1:post:p1", "1");
     render(<PostCard post={post()} onRequireAuth={() => {}} hydration={null} />);
     await openReportForm(user);
 
@@ -194,6 +195,20 @@ describe("PostCard report-with-reason", () => {
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "שליחת דיווח" })).not.toBeInTheDocument();
     expect(mocks.reportContent).not.toHaveBeenCalled();
+  });
+
+  it("does NOT block a DIFFERENT signed-in user who inherits the tab's session (key is per-reporter)", async () => {
+    const user = userEvent.setup();
+    // A previous account reported p1 in this tab; a different account signs in.
+    sessionStorage.setItem("swc:reported:someone-else:post:p1", "1");
+    render(<PostCard post={post()} onRequireAuth={() => {}} hydration={null} />);
+    await openReportForm(user);
+
+    // viewer-1 never reported p1 → the reason form opens, no false "already reported".
+    expect(await screen.findByRole("button", { name: "שליחת דיווח" })).toBeInTheDocument();
+    expect(
+      screen.queryByText("כבר שלחתם דיווח על התוכן הזה — הוא ממתין לבדיקה."),
+    ).not.toBeInTheDocument();
   });
 
   it("a guest is routed to onRequireAuth instead of the form", async () => {

@@ -47,6 +47,9 @@ export default function CrmMeetings() {
   });
   const [searchInput, setSearchInput] = useState(() => params.get("meeting_q") ?? "");
   const [meetings, setMeetings] = useState<CrmMeeting[] | null>(null);
+  // The server's authoritative "there are more rows past this window" flag —
+  // drives the honest "-partial" CSV suffix (NOT `meetings.length >= 200`).
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,8 +66,10 @@ export default function CrmMeetings() {
     const seq = ++loadSeq.current;
     return fetchCrmMeetings({ status: filter === "all" ? undefined : filter }).then((res) => {
       if (seq !== loadSeq.current) return; // stale — a newer load owns the view
-      if (res) setMeetings(res.meetings);
-      else setError(true);
+      if (res) {
+        setMeetings(res.meetings);
+        setHasMore(res.hasMore);
+      } else setError(true);
       setLoading(false);
     });
   }, [filter]);
@@ -109,7 +114,8 @@ export default function CrmMeetings() {
 
   // Export the CURRENT view as CSV (same in-browser builder as the leads export
   // — no new endpoint, formula-injection-guarded). id column + honest
-  // "-partial" filename when the 200-row server window is full.
+  // "-partial" filename driven by the server's `hasMore` (real rows past the
+  // window), so an exactly-200-row window with nothing beyond it is NOT partial.
   const exportCsv = useCallback(() => {
     if (shown.length === 0) return;
     const headers = ["id", "שם", "טלפון", "מועד", "ספק", "סטטוס", "נציג", "מקור"];
@@ -123,9 +129,8 @@ export default function CrmMeetings() {
       m.claimedBy ?? "",
       m.source ?? "",
     ]);
-    const partial = (meetings?.length ?? 0) >= 200;
-    downloadCsv(csvFileName(`meetings-${filter}`, partial), buildCsv(headers, rows));
-  }, [shown, meetings, filter]);
+    downloadCsv(csvFileName(`meetings-${filter}`, hasMore), buildCsv(headers, rows));
+  }, [shown, filter, hasMore]);
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },

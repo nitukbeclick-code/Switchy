@@ -63,6 +63,44 @@ function meetingWhen(m: CrmMeeting): string {
   return [m.meetingDate, m.slot].filter(Boolean).join(" ");
 }
 
+// listMeetings returns furthest-future-first (starts_at.desc.nullslast), caps
+// `limit` at 200 rows/page server-side, and exposes no date filter and no
+// ascending option (see supabase/functions/crm-api/actions_meetings.ts). So when
+// ≥200 future bookings sit AHEAD of today's in that order, the default single
+// window never reaches today and the strip goes wrongly empty. We instead PAGE
+// from the far-future end toward today (offset += 200) and stop the moment a page
+// crosses below the start of today: today's block sorts after every future row
+// and before every past row, so the first row that starts before today means
+// today's block has been fully seen. We also stop when the server reports no more
+// rows. Bounded at MAX_MEETING_PAGES as a safety valve so a pathological table can
+// never loop unbounded; in the common case (<200 future bookings) this is exactly
+// ONE request — unchanged from before.
+const MEETING_PAGE = 200; // == the server's LIST_LIMIT (the max it will return)
+const MAX_MEETING_PAGES = 25; // ≤ 5000 future+today rows scanned before we give up
+
+async function collectTodayMeetings(now: Date): Promise<CrmMeeting[] | null> {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const today: CrmMeeting[] = [];
+  let offset = 0;
+  for (let page = 0; page < MAX_MEETING_PAGES; page++) {
+    const res = await fetchCrmMeetings({ limit: MEETING_PAGE, offset });
+    // Best-effort: a mid-page failure keeps whatever today's rows we already
+    // gathered; a first-page failure hides the strip (null), exactly as before.
+    if (!res) return page === 0 ? null : today;
+    let crossedToday = false;
+    for (const m of res.meetings) {
+      if (isToday(m, now)) today.push(m);
+      else if (m.startsAt) {
+        const t = new Date(m.startsAt).getTime();
+        if (!Number.isNaN(t) && t < startOfToday) crossedToday = true;
+      }
+    }
+    if (crossedToday || !res.hasMore) break;
+    offset += MEETING_PAGE;
+  }
+  return today;
+}
+
 // A proportional stacked bar of the pipeline. Widths are share-of-total; the
 // numbers themselves are shown on the KPI cards, so this is a shape-at-a-glance.
 function PipelineBar({ pipeline, total }: { pipeline: CrmPipeline; total: number }) {
@@ -127,23 +165,24 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
   // load effect never sets state synchronously (react-hooks/set-state-in-effect):
   // state only lands in the .then continuation.
   const load = useCallback(
-    (silent = false) =>
+    (silent = false) => {
       // Overview drives the error/empty state; the SLA rollup + today's meetings
       // are best-effort — if either fails we simply hide that section rather
-      // than blocking the whole dashboard.
-      Promise.all([fetchCrmOverview(), fetchCrmSla(), fetchCrmMeetings()]).then(([d, sm, mm]) => {
+      // than blocking the whole dashboard. collectTodayMeetings pages the
+      // furthest-future-first window down to today so the strip can't go empty
+      // just because ≥200 future bookings sit ahead of today's.
+      const now = new Date();
+      return Promise.all([fetchCrmOverview(), fetchCrmSla(), collectTodayMeetings(now)]).then(([d, sm, mm]) => {
         if (d.data) setData(d.data);
         else if (!silent) {
           setFailure(d.failure);
           setError(true);
         }
         if (sm.data) setSla(sm.data.sla);
-        if (mm) {
-          const now = new Date();
-          setTodayMeetings(mm.meetings.filter((m) => isToday(m, now)));
-        }
+        if (mm) setTodayMeetings(mm); // already today-only
         if (!silent) setLoading(false);
-      }),
+      });
+    },
     [],
   );
 

@@ -294,6 +294,60 @@ Deno.test("a rep reply to a RELAY-ACTIVE card sends to the customer + stores out
   }
 });
 
+Deno.test("rep relay whose whatsapp_messages store FAILS writes NO crm_events rep_reply row (parity with actSendReply's err-before-log)", async () => {
+  const graphSends: Capture[] = [];
+  const msgInserts: Capture[] = [];
+  const auditInserts: Capture[] = [];
+  const crmEvents: Capture[] = [];
+  const routes: Route[] = [
+    { match: (c) => isRest("crm_events")(c) && c.method === "POST", respond: (c) => { crmEvents.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("leads?id=eq.")(c), respond: () => jsonRes([{ status: "new", phone: "0501234567" }]) },
+    {
+      match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("wa_phone=ilike"),
+      respond: () => jsonRes([{ id: CONTACT_ID }]),
+    },
+    {
+      match: (c) => isRest("whatsapp_conversations")(c) && c.method === "GET",
+      respond: () => jsonRes([{ id: CONV_ID, contact_id: CONTACT_ID, bot_enabled: false, relay_tg_chat_id: "-1009" }]),
+    },
+    {
+      match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("id=eq."),
+      respond: () => jsonRes([{ wa_phone: "972501234567", status: "active" }]),
+    },
+    { match: (c) => isRest("marketing_suppression")(c) && c.method === "GET", respond: () => jsonRes([]) },
+    { match: isGraphSend, respond: (c) => { graphSends.push(c); return graphOkWamid("wamid.OUT2"); } },
+    // The authoritative DB write FAILS (non-2xx) → insertRow returns false.
+    { match: (c) => isRest("whatsapp_messages")(c) && c.method === "POST", respond: (c) => { msgInserts.push(c); return jsonRes({ message: "boom" }, 500); } },
+    { match: (c) => isRest("security_audit_log")(c) && c.method === "POST", respond: (c) => { auditInserts.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("whatsapp_conversations")(c) && c.method === "PATCH", respond: () => jsonRes([{ id: CONV_ID }]) },
+    { match: isTg, respond: tgOk },
+  ];
+  const s = installRoutes(routes);
+  try {
+    const msg: TgMessage = {
+      message_id: 13,
+      chat: { id: -1001 },
+      from: { id: 42, first_name: "נציג" },
+      text: "היי, אשמח לעזור",
+      reply_to_message: leadCardReply(),
+    };
+    const res = await cb.handleTeamMessage(cfg(), msg);
+    // The store failed → the handler reports it, never claims a clean relay.
+    assertEquals(res.ok, false);
+    assertEquals(res.skipped, "message store failed");
+    assertEquals(msgInserts.length, 1, "the store WAS attempted");
+    // The bug: a rep_reply crm_events row must NOT be written when the message
+    // never persisted — the activity feed only shows a reply that really landed.
+    assertEquals(crmEvents.length, 0, "no phantom rep_reply on the activity feed");
+    // The Reg.13 audit trail is DELIBERATELY still written (it records the attempt,
+    // with delivered:true off the wamid) — that divergence from crm_events is intended.
+    assertEquals(auditInserts.length, 1, "the Reg.13 attempt-audit is still written");
+    assertEquals(auditInserts[0].body.event, "wa_relay_reply");
+  } finally {
+    s.restore();
+  }
+});
+
 Deno.test("rep relay is BLOCKED (no Graph send) when the customer has opted out — §30A wins", async () => {
   const graphSends: Capture[] = [];
   const routes: Route[] = [

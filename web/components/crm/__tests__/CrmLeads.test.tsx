@@ -59,8 +59,8 @@ function lead(id: string, over: Partial<CrmLead> = {}): CrmLead {
   };
 }
 
-function ok(leads: CrmLead[]): CrmFetch<{ leads: CrmLead[] }> {
-  return { data: { leads }, failure: null };
+function ok(leads: CrmLead[], hasMore = false): CrmFetch<{ leads: CrmLead[]; hasMore: boolean }> {
+  return { data: { leads, hasMore }, failure: null };
 }
 
 beforeEach(() => {
@@ -191,15 +191,29 @@ describe("CrmLeads CSV export", () => {
     expect(lines[2]).toContain("נסגר בהצלחה"); // Hebrew stage label, not the raw enum
   });
 
-  it("marks a full 200-row window with the -partial filename suffix", async () => {
+  it("marks a truncated window (server hasMore) with the -partial filename suffix", async () => {
+    // A full 200-row window WITH more rows behind it on the server.
     const many = Array.from({ length: 200 }, (_, i) => lead(String(i)));
-    mocks.fetchCrmLeads.mockResolvedValue(ok(many));
+    mocks.fetchCrmLeads.mockResolvedValue(ok(many, true));
     render(<CrmLeads />);
     await screen.findAllByText("ליד 0");
 
     fireEvent.click(screen.getByRole("button", { name: "ייצוא CSV" }));
     const [name] = mocks.downloadCsv.mock.calls[0] as [string, string];
     expect(name).toBe("leads-all-partial.csv");
+  });
+
+  it("does NOT mark an exactly-200-row window with no more rows as -partial", async () => {
+    // The regression: 200 rows is the full window, but the server says hasMore
+    // is false — there is nothing past it, so the export is complete, not partial.
+    const exactly = Array.from({ length: 200 }, (_, i) => lead(String(i)));
+    mocks.fetchCrmLeads.mockResolvedValue(ok(exactly, false));
+    render(<CrmLeads />);
+    await screen.findAllByText("ליד 0");
+
+    fireEvent.click(screen.getByRole("button", { name: "ייצוא CSV" }));
+    const [name] = mocks.downloadCsv.mock.calls[0] as [string, string];
+    expect(name).toBe("leads-all.csv");
   });
 });
 

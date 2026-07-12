@@ -11,7 +11,7 @@
 // handler (_capture_handler.ts) and stub fetch — no port, no network, no source
 // change. Run from supabase/functions/:  deno task test
 
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertEquals, assertFalse } from "@std/assert";
 import { planAction, QUEUE_LIMIT, queueUrls } from "../community-admin/actions.ts";
 import { captureServeHandler, jsonResponse, withFetchStub } from "./_capture_handler.ts";
 
@@ -306,6 +306,56 @@ Deno.test("community-admin GET enrichment is fail-soft: failed reads leave the f
       assertEquals(j.flaggedPosts.length, 1);
       assertEquals("reportCount" in j.flaggedPosts[0], false);
       assertEquals("authorBanned" in j.flaggedPosts[0], false);
+    })
+  );
+});
+
+Deno.test("community-admin GET enrichment leaves rows PAST the 200-id cap UNANNOTATED (never a fabricated 0/false beyond the capped lookup)", async () => {
+  const CAP = 200;
+  const N = CAP + 1; // one flagged row beyond the enrichment id cap
+  // Distinct uuid-ish id + user_id per row so the cap (on UNIQUE ids) bites at N-1.
+  const posts = Array.from({ length: N }, (_, i) => ({
+    id: "aaaaaaaa-aaaa-aaaa-aaaa-" + i.toString(16).padStart(12, "0"),
+    user_id: "bbbbbbbb-bbbb-bbbb-bbbb-" + i.toString(16).padStart(12, "0"),
+    author: "u" + i,
+    channel: "סלולר",
+    body: "spam",
+    created_at: "2026-07-01T00:00:00Z",
+  }));
+  const firstId = posts[0].id;
+  const firstAuthor = posts[0].user_id;
+  const pastCapId = posts[N - 1].id;
+  const routes = [
+    { match: (u: string) => u.includes("/auth/v1/user"), respond: () => jsonResponse({ id: ADMIN }) },
+    { match: (u: string) => u.includes("/rest/v1/profiles") && u.includes("select=is_admin"), respond: () => jsonResponse([{ is_admin: true }]) },
+    // Enrichment: the first (in-cap) post has 2 open reports and a banned author.
+    { match: (u: string) => u.includes("/rest/v1/profiles") && u.includes("select=id,is_banned"), respond: () => jsonResponse([{ id: firstAuthor, is_banned: true }]) },
+    { match: (u: string) => u.includes("/rest/v1/community_reports") && u.includes("select=target_id"), respond: () => jsonResponse([{ target_id: firstId }, { target_id: firstId }]) },
+    { match: (u: string) => u.includes("/rest/v1/community_reports"), respond: () => jsonResponse([]) },
+    { match: (u: string) => u.includes("/rest/v1/community_posts"), respond: () => jsonResponse(posts) },
+    { match: (u: string) => u.includes("/rest/v1/community_replies"), respond: () => jsonResponse([]) },
+  ];
+  await withAdminEnv(() =>
+    withFetchStub(routes, async (calls) => {
+      const r = await handler(authed("GET"));
+      assertEquals(r.status, 200);
+      const j = await r.json();
+      assertEquals(j.flaggedPosts.length, N);
+      // In-cap row #0 WAS queried → real annotations.
+      assertEquals(j.flaggedPosts[0].reportCount, 2);
+      assertEquals(j.flaggedPosts[0].authorBanned, true);
+      // In-cap row #1 was queried but has no reports / isn't banned → REAL 0 / false.
+      assertEquals(j.flaggedPosts[1].reportCount, 0);
+      assertEquals(j.flaggedPosts[1].authorBanned, false);
+      // The bug: the row PAST the cap was never looked up, so its fields must be
+      // ABSENT ("unknown" to the web client) — NOT a fabricated 0 / false.
+      const last = j.flaggedPosts[N - 1];
+      assertEquals("reportCount" in last, false);
+      assertEquals("authorBanned" in last, false);
+      // Prove the lookup itself was capped: the past-cap id never reached the query.
+      const reportReads = calls.filter((u) => u.includes("select=target_id"));
+      assertEquals(reportReads.length, 1);
+      assertFalse(reportReads[0].includes(pastCapId), "the past-cap id is never queried");
     })
   );
 });

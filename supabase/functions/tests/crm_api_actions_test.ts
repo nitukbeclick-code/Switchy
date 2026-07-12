@@ -38,7 +38,7 @@ import {
 import { actGetThread, actSendReply, actSetContactStatus } from "../crm-api/actions_conversations.ts";
 import { actSetMeetingStatus } from "../crm-api/actions_meetings.ts";
 import { actOverview } from "../crm-api/actions_overview.ts";
-import { actListMembers } from "../crm-api/actions_members.ts";
+import { actListMembers, actSetMemberRole } from "../crm-api/actions_members.ts";
 
 const ACTOR = "9d8f2c44-1111-4222-8333-444455556666";
 const LEAD = "a3bb189e-8bf9-3888-9912-ace4e6543002";
@@ -443,6 +443,88 @@ Deno.test("listSellableLeads re-filters with isSellable and audits ids/count onl
       assertEquals(parsed.event, "crm_lead_export");
       assertEquals(parsed.detail.count, 1);
       assertFalse(audit.includes("0521234567"), "no phone in the audit detail");
+    });
+  });
+});
+
+Deno.test("listSellableLeads audits the APPLIED filter, not the raw ask: a non-sellable status falls back to 'all'", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/leads?consent_share_at="), () =>
+        jsonResponse([
+          { id: LEAD, name: "דנה", phone: "0521234567", status: "new", consent_share_at: "2026-07-01T10:00:00Z" },
+        ])),
+      ...sinkRoutes(rec),
+    ], async () => {
+      // "lost" is NOT a sellable status → the query falls back to the full set and
+      // returns everything; the audit must NOT claim the feed was filtered to "lost".
+      const r = await actListSellableLeads({ status: "lost" }, ACTOR);
+      assertEquals(r.status, 200);
+      // The query really applied the full sellable set (new/contacted/won), not "lost".
+      const query = of(rec, "/rest/v1/leads?consent_share_at=", "GET")[0].url;
+      assert(query.includes("new") && query.includes("contacted") && query.includes("won"));
+      assertFalse(query.includes("lost"), "the ignored status never reaches the query");
+      const audit = JSON.parse(of(rec, "/rest/v1/security_audit_log", "POST")[0].body);
+      assertEquals(audit.event, "crm_lead_export");
+      // The bug: the trail recorded status:"lost" while returning the full set.
+      assertEquals(audit.detail.status, "all", "audit records the EFFECTIVE filter");
+      assertEquals(audit.detail.statuses, ["new", "contacted", "won"]);
+    });
+  });
+});
+
+Deno.test("listSellableLeads audit records a genuinely-applied status verbatim (won)", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/leads?consent_share_at="), () =>
+        jsonResponse([
+          { id: LEAD, name: "דנה", phone: "0521234567", status: "won", consent_share_at: "2026-07-01T10:00:00Z" },
+        ])),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const r = await actListSellableLeads({ status: "won" }, ACTOR);
+      assertEquals(r.status, 200);
+      const audit = JSON.parse(of(rec, "/rest/v1/security_audit_log", "POST")[0].body);
+      assertEquals(audit.detail.status, "won");
+      assertEquals(audit.detail.statuses, ["won"]);
+    });
+  });
+});
+
+// ── setMemberRole: self-change guard (case-insensitive) ──────────────────────
+
+Deno.test("setMemberRole refuses a self-change even when the actor's uid is UPPERCASED (case-insensitive guard)", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      // Any DB call would be a bug — the guard must reject BEFORE touching the DB.
+      route(rec, () => true, () => jsonResponse([])),
+    ], async () => {
+      const r = await actSetMemberRole({ uid: ACTOR.toUpperCase(), role: "rep" }, ACTOR);
+      assertEquals(r.status, 400);
+      assertEquals((await r.json()).code, "bad_request");
+      assertEquals(rec.length, 0, "a self-change must never reach the DB, whatever the uid casing");
+    });
+  });
+});
+
+Deno.test("setMemberRole still grants a role to a DIFFERENT member (guard doesn't over-block)", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u, i) => u.includes("/rest/v1/profiles") && u.includes("id=eq.") && isGet(i), () => jsonResponse([{ id: MEMBER }])),
+      route(rec, (u, i) => u.includes("/rest/v1/crm_members") && i?.method === "POST", () => new Response("", { status: 201 })),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const r = await actSetMemberRole({ uid: MEMBER, role: "rep" }, ACTOR);
+      assertEquals(r.status, 200);
+      assertEquals(await r.json(), { ok: true, role: "rep" });
+      const audit = JSON.parse(of(rec, "/rest/v1/security_audit_log", "POST")[0].body);
+      assertEquals(audit.event, "crm_set_role");
+      assertEquals(audit.detail.target_uid, MEMBER);
+      assertEquals(audit.detail.role, "rep");
     });
   });
 });

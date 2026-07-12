@@ -429,7 +429,7 @@ export default function CommunityFeed() {
   // post-unmount responses so a fast typist never sees stale results. The
   // synchronous mode flip (feed↔searching) is adjusted during render; the effect
   // only owns the debounce timer + fetch, with state landing in the .then.
-  const searchKey = `${tab} ${search}`;
+  const searchKey = `${tab} ${search}`;
   const [prevSearchKey, setPrevSearchKey] = useState(searchKey);
   if (searchKey !== prevSearchKey) {
     setPrevSearchKey(searchKey);
@@ -655,10 +655,11 @@ export default function CommunityFeed() {
       if (p.created_at < oldest) oldest = p.created_at;
     }
     setLoadingMore(true);
-    // fetchFeed's `before` is a strict `.lt(created_at)` (time-only API), so posts
-    // sharing the exact oldest timestamp would be skipped. We pass the same oldest
-    // cursor and rely on the id de-dupe below rather than dropping tie posts; the
-    // lastOlderCursor guard breaks the loop if a page brings back no NEW ids.
+    // fetchFeed's `before` is an INCLUSIVE `.lte(created_at)`, so posts sharing the
+    // exact oldest timestamp are re-fetched instead of skipped at the page seam. We
+    // pass the same oldest cursor and rely on the id de-dupe below to drop the rows
+    // already on screen; the lastOlderCursor guard breaks the loop if a page brings
+    // back no NEW ids (a same-timestamp cluster that fully de-duped).
     const page = await fetchFeed({
       channel: tab,
       before: oldest,

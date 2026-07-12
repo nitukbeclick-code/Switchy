@@ -65,13 +65,19 @@ const batchCapFor = (lang: string) => (VERBOSE_LANGS.has(lang) ? 24 : 40);
 // steady-state usage sits far under this.
 const DAILY_MODEL_BUDGET = 40_000;
 
-// Latency-first provider order for translation: lead with the FASTEST inference
-// (Cerebras wafer-scale, then Groq LPU), then Gemini + the remaining fallbacks.
-// Translation is a mechanical JSON task — it doesn't need Gemini-2.5 reasoning — so
-// fastest-first + the "fast" tier (gemini-2.0-flash) cuts per-batch latency a lot.
-// The chain never narrows: any provider omitted here is still appended by
-// generateReply, so a busy Cerebras/Groq still falls through to the rest.
-const TRANSLATE_PROVIDER_ORDER: AiProvider[] = ["cerebras", "groq", "gemini", "openrouter", "openai"];
+// Quality-first provider order for translation: lead with Gemini (gemini-2.0-flash
+// via the "fast" tier), then the wafer-scale/LPU free providers, then the rest.
+// WHY quality-first now (this used to be latency-first): every translation is
+// CACHED permanently after its first hit, and the 6 core languages are additionally
+// served from static /i18n bundles — so a provider's latency is a ONE-TIME per-string
+// cost, while its quality is permanent (cached forever, exported to the bundles).
+// Gemini is the strongest FREE translator for exactly the low-resource, non-Latin
+// scripts this site's communities use (Amharic, Tigrinya, Arabic, Georgian, Chinese),
+// and it follows the sentinel-preservation rules more reliably → FEWER verify
+// rejections (fewer strings falling back to Hebrew). The chain never narrows: if the
+// GEMINI_API_KEY is absent or Gemini is busy, generateReply falls straight through to
+// Cerebras/Groq/OpenRouter/OpenAI, so today's no-Gemini-key behaviour is preserved.
+const TRANSLATE_PROVIDER_ORDER: AiProvider[] = ["gemini", "cerebras", "groq", "openrouter", "openai"];
 const TRANSLATE_AI_OPTS = { tier: "fast" as const, providerOrder: TRANSLATE_PROVIDER_ORDER };
 
 function json(req: Request, body: unknown, status = 200, extra: Record<string, string> = {}): Response {

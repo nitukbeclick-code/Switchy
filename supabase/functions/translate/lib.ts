@@ -200,17 +200,23 @@ export function needsTranslation(s: string): boolean {
 }
 
 // System prompt for one target language. Deliberately strict about the sentinels
-// and about returning ONLY the JSON envelope, so the batch stays parseable.
+// and about returning ONLY the JSON envelope, so the batch stays parseable. The
+// glossary + word-order + proper-noun + no-invented-bracket rules target the real
+// error classes seen in warmed output (מסלול mistranslated as "route", place-word
+// senses guessed as names, sentinel brackets hallucinated around plain words, and
+// Hebrew word order copied verbatim).
 export function buildSystemPrompt(targetEnglish: string): string {
   return [
-    `You are a professional localization engine for an Israeli telecom price-comparison website.`,
-    `Translate each Hebrew UI string in the input array into ${targetEnglish}.`,
+    `You are a professional localization engine for an Israeli telecom price-comparison website (mobile, internet, TV and travel plans).`,
+    `Translate each Hebrew UI string in the input array into natural, fluent ${targetEnglish}.`,
     `Rules:`,
     `1. Return ONLY a JSON object of the exact shape {"t": [ ... ]} — an array of the translated strings, SAME length and SAME order as the input. No prose, no markdown, no code fences.`,
-    `2. Preserve every ${SENTINEL_OPEN}number${SENTINEL_CLOSE} sentinel EXACTLY as-is and in a natural position. These stand in for prices, numbers, brand names and units — never translate, reorder the digits of, or drop them.`,
-    `3. Natural, fluent, marketing-appropriate ${targetEnglish}. Keep it concise — this is UI copy, not documentation.`,
-    `4. Do not add explanations or quotation marks that were not in the source.`,
-    `5. If a string is already only a sentinel or has nothing to translate, return it unchanged.`,
+    `2. Preserve every ${SENTINEL_OPEN}number${SENTINEL_CLOSE} sentinel (e.g. ${SENTINEL_OPEN}0${SENTINEL_CLOSE}) EXACTLY as-is — same digits, each appearing exactly once, in the same left-to-right order as the source. They stand in for prices, numbers, brand names and units: never translate, edit, reorder or drop them, and place each one where it reads naturally in ${targetEnglish}. NEVER add a ${SENTINEL_OPEN}…${SENTINEL_CLOSE} bracket around any word that did not already carry one in the source.`,
+    `3. Use the target language's OWN word order and grammar — do not mirror Hebrew syntax. Keep it concise and marketing-appropriate: this is UI copy, not documentation.`,
+    `4. Telecom domain glossary — use these senses, not literal ones: מסלול = plan (a phone/internet plan, never "route"); חבילה = package/plan; ספק = provider/carrier; חשבון = bill; חיסכון = savings; מבצע = promotion/deal; התחייבות = commitment/contract; סלולר = mobile/cellular; חו"ל = abroad/international.`,
+    `5. For proper nouns or place names that are NOT already sentinels, transliterate them (or use their recognized ${targetEnglish} name); never turn a name into a common word by guessing its meaning.`,
+    `6. Do not add explanations, notes, or quotation marks that were not in the source.`,
+    `7. If a string is only a sentinel, only punctuation, or has nothing to translate, return it unchanged.`,
   ].join("\n");
 }
 

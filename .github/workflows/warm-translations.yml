@@ -1,0 +1,100 @@
+# Warm the translation cache and snapshot it into static /i18n bundles
+# ────────────────────────────────────────────────────────────────────────────
+# WHAT: translate-runtime.js now loads /i18n/<lang>.json ONCE per language and
+# applies from it with zero per-string model calls — a pre-warmed language
+# translates near-instantly. This job keeps those bundles fresh:
+#   1. prewarm-translations.mjs drives the REAL runtime on the deployed site so
+#      the edge function translates + caches every page string (free-tier models,
+#      brand/number sentinels + verify). Only NEW/changed strings hit a model;
+#      already-cached rows are skipped, so steady-state runs are tiny.
+#   2. export-i18n.mjs snapshots the site_translations cache into
+#      site/i18n/<lang>.json + web/public/i18n/<lang>.json (deterministic, sorted).
+#   3. If anything changed, it commits — and the host's git integration redeploys
+#      the static bundles.
+#
+# It NEVER changes prices/numbers: the edge function masks + double-verifies those
+# when the cache is warmed; this job only copies trusted rows out.
+#
+# ── Triggers ─────────────────────────────────────────────────────────────────
+#  (a) schedule — nightly (03:17 UTC): pick up strings added by the day's builds.
+#  (b) workflow_dispatch — manual, with a `langs` input so a big first warm can be
+#      split across runs (e.g. "en,ru,ar" one night, "fr,es,am" the next) to stay
+#      under the edge fn's 40k/day model budget.
+#
+# ── One-time setup by the owner ──────────────────────────────────────────────
+#  • Add repo secret SUPABASE_SERVICE_ROLE_KEY (the site_translations RLS blocks
+#    anon reads, so the EXPORT step needs the service role; the WARM step needs
+#    only the public anon key, already baked into the site).
+#  • Optional repo var SITE_BASE_URL to warm a surface other than the prod site.
+
+name: Warm translations
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      langs:
+        description: "Comma-separated language codes to warm (blank = the 6 core langs; 'all' = every language)."
+        required: false
+        default: ""
+
+concurrency:
+  group: warm-translations
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  BASE_URL: ${{ vars.SITE_BASE_URL || 'https://switchy-ai.com' }}
+  SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://orzitfqmlvopujsoyigr.supabase.co' }}
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright Chromium
+        run: npm i -D playwright && npx playwright install --with-deps chromium
+
+      - name: Warm the cache (drive the real runtime on the deployed site)
+        env:
+          LANGS: ${{ github.event.inputs.langs }}
+        run: node scripts/prewarm-translations.mjs
+
+      - name: Export the cache into static /i18n bundles
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LANGS: ${{ github.event.inputs.langs }}
+        run: |
+          if [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::warning::SUPABASE_SERVICE_ROLE_KEY not set — skipping export. Add the repo secret to enable static bundle generation."
+            exit 0
+          fi
+          node tools/export-i18n.mjs
+
+      - name: Commit refreshed bundles (redeploys the static site)
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- 'site/i18n/*.json' 'web/public/i18n/*.json'
+          if git diff --cached --quiet; then
+            echo "No translation changes — nothing to redeploy."
+            exit 0
+          fi
+          git commit -m "chore(i18n): refresh static translation bundles from the warmed cache [skip ci]
+
+          Snapshotted site_translations → site/i18n + web/public/i18n via
+          export-i18n.mjs. No prices/numbers changed (masked + verified upstream).
+
+          Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+          git push origin "HEAD:${{ github.ref_name }}"

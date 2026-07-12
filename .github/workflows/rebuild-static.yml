@@ -116,7 +116,10 @@ jobs:
           # The *.min.css/*.min.js are build outputs too (generated pages
           # reference them by content hash), so they MUST land in the same
           # commit or the deploy would serve stale assets under a fresh ?v=.
-          git add -A -- 'site/*.html' 'site/*.min.css' 'site/*.min.js' site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
+          # site/i18n/*.json are the static translation bundles (owned by the
+          # warm-translations workflow); include them so this cron never leaves a
+          # freshly-warmed bundle uncommitted on the branch.
+          git add -A -- 'site/*.html' 'site/*.min.css' 'site/*.min.js' 'site/i18n/*.json' site/sitemap.xml site/robots.txt site/llms.txt site/ai.txt
 
           if git diff --cached --quiet; then
             echo "No catalogue changes — nothing to redeploy."

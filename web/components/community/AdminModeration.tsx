@@ -34,6 +34,7 @@ import {
   type ModReply,
   type ModReport,
 } from "@/lib/community-admin";
+import ConfirmDanger from "./ConfirmDanger";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -53,57 +54,39 @@ const BTN_PRIMARY =
   "interactive inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover";
 const BTN_GHOST =
   "interactive inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-1.5 text-sm font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10";
-const BTN_DANGER =
-  "interactive inline-flex min-h-11 items-center justify-center rounded-xl border border-danger/40 px-4 py-1.5 text-sm font-medium text-danger-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-danger/10";
+// (the danger style now lives inside the shared ./ConfirmDanger)
 
 function Card({ children }: { children: React.ReactNode }) {
   return <li className="rounded-2xl border border-border bg-surface p-4 shadow-soft">{children}</li>;
 }
 
-/** Two-step destructive button (CrmTeam's confirmRevoke idiom): the idle danger
- *  button ARMS on first click, swapping to a confirming button + a "חזרה" escape;
- *  the second click executes. The parent auto-expires a pending arm after 5s. */
-function ConfirmDanger({
-  armed,
-  disabled,
-  label,
-  confirmLabel,
-  ariaLabel,
-  onArm,
-  onConfirm,
-  onDismiss,
-}: {
-  armed: boolean;
-  disabled: boolean;
-  label: string;
-  confirmLabel: string;
-  ariaLabel: string;
-  onArm: () => void;
-  onConfirm: () => void;
-  onDismiss: () => void;
-}) {
-  if (!armed) {
-    return (
-      <button type="button" disabled={disabled} onClick={onArm} className={BTN_DANGER} aria-label={ariaLabel}>
-        {label}
-      </button>
-    );
-  }
+// The two-step destructive button now lives in the SHARED ./ConfirmDanger (same
+// idiom, extracted so post/reply delete use it too). This dashboard keeps the
+// CONTROLLED mode: one armed key across the whole queue (arming a second row
+// disarms the first) with the 5s auto-expiry owned here.
+
+/** Loading skeleton — mirrors the card layout so the queue doesn't jump when the
+ *  real rows land. */
+function QueueSkeleton() {
   return (
-    <>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onConfirm}
-        className={`${BTN_DANGER} border-danger/60 bg-danger/10`}
-        aria-label={ariaLabel}
-      >
-        {confirmLabel}
-      </button>
-      <button type="button" disabled={disabled} onClick={onDismiss} className={BTN_GHOST} aria-label="ביטול הפעולה">
-        חזרה
-      </button>
-    </>
+    <ul className="space-y-3" aria-hidden="true">
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-16 animate-pulse rounded-full bg-border/60" />
+            <span className="h-3 w-24 animate-pulse rounded bg-border/50" />
+          </div>
+          <div className="mt-3 space-y-2">
+            <span className="block h-3 w-full animate-pulse rounded bg-border/50" />
+            <span className="block h-3 w-3/4 animate-pulse rounded bg-border/50" />
+          </div>
+          <div className="mt-3 flex gap-2">
+            <span className="h-9 w-20 animate-pulse rounded-xl bg-border/50" />
+            <span className="h-9 w-20 animate-pulse rounded-xl bg-border/40" />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -128,7 +111,13 @@ export default function AdminModeration() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<Set<string>>(new Set());
-  const [notice, setNotice] = useState("");
+  // The status text carries a NONCE: aria-live only re-announces on DOM change,
+  // so two identical messages in a row ("הפעולה נכשלה" twice) would otherwise be
+  // silent the second time. The nonce toggles an invisible suffix.
+  const [notice, setNotice] = useState<{ text: string; n: number }>({ text: "", n: 0 });
+  const announce = useCallback((text: string) => {
+    setNotice((prev) => ({ text, n: prev.n + 1 }));
+  }, []);
   // Action key (post:<id> / reply:<id> / ban:<uid>) whose destructive button is
   // ARMED, awaiting the second, confirming click (two-step confirm — same idiom
   // as CrmTeam's revoke; replaces the old blocking window.confirm).
@@ -141,18 +130,36 @@ export default function AdminModeration() {
     return () => clearTimeout(t);
   }, [confirmKey]);
 
-  const load = useCallback(async () => {
+  // Fetch-only: every setState lands in the .then CONTINUATION, so calling this
+  // from the gate effect never sets state synchronously. Event handlers
+  // (refresh / retry) arm the skeleton themselves via reload() below.
+  const load = useCallback(
+    () =>
+      fetchModerationQueue().then((q) => {
+        if (q) {
+          setQueue(q);
+          setError(false);
+        } else {
+          setError(true);
+        }
+        setLoading(false);
+      }),
+    [],
+  );
+
+  // Event-driven reload (refresh button / retry card): arm the skeleton, clear
+  // the error, then fetch. Sync setState is fine in an event handler.
+  const reload = useCallback(() => {
     setLoading(true);
     setError(false);
-    const q = await fetchModerationQueue();
-    if (q) setQueue(q);
-    else setError(true);
-    setLoading(false);
-  }, []);
+    void load();
+  }, [load]);
 
+  // Non-admins never reach the queue, so `loading` is only meaningful for admins
+  // — the gates below check isAdmin first, which is why no "loading=false" write
+  // is needed here (and the effect never sets state synchronously).
   useEffect(() => {
     if (ready && isAdmin) void load();
-    else if (ready) setLoading(false);
   }, [ready, isAdmin, load]);
 
   const mark = useCallback((key: string, on: boolean) => {
@@ -174,12 +181,12 @@ export default function AdminModeration() {
       mark(key, false);
       if (ok) {
         onOk();
-        setNotice(okMsg);
+        announce(okMsg);
       } else {
-        setNotice("הפעולה נכשלה. נסו שוב.");
+        announce("הפעולה נכשלה. נסו שוב.");
       }
     },
-    [mark],
+    [mark, announce],
   );
 
   const onResolve = (r: ModReport, status: "resolved" | "dismissed") =>
@@ -230,7 +237,7 @@ export default function AdminModeration() {
 
   // ── gates ────────────────────────────────────────────────────────────────
   if (!ready || (isAdmin && loading)) {
-    return <p className="text-sm text-muted">טוען…</p>;
+    return <QueueSkeleton />;
   }
   if (!isAdmin) {
     return (
@@ -243,7 +250,7 @@ export default function AdminModeration() {
     return (
       <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-soft">
         <p className="text-sm text-muted">לא הצלחנו לטעון את התור.</p>
-        <button type="button" onClick={() => void load()} className={`${BTN_GHOST} mt-4`}>
+        <button type="button" onClick={reload} className={`${BTN_GHOST} mt-4`}>
           נסו שוב
         </button>
       </div>
@@ -257,9 +264,23 @@ export default function AdminModeration() {
 
   return (
     <div>
-      <p role="status" aria-live="polite" className="min-h-5 text-sm text-accent-text">
-        {notice}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p role="status" aria-live="polite" className="min-h-5 text-sm text-accent-text">
+          {notice.text}
+          {/* nonce: an invisible toggle so a repeated identical message is still
+              a DOM change (and therefore re-announced). */}
+          {notice.n % 2 === 1 ? "​" : ""}
+        </p>
+        <button
+          type="button"
+          onClick={reload}
+          disabled={loading}
+          className={BTN_GHOST}
+          aria-label="רענון תור המודרציה"
+        >
+          רענון
+        </button>
+      </div>
 
       {empty && (
         <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-soft">
@@ -303,6 +324,17 @@ export default function AdminModeration() {
                     >
                       דחה
                     </button>
+                    {r.target_type === "post" && (
+                      <a
+                        href={`/community/post/${encodeURIComponent(r.target_id)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={BTN_GHOST}
+                        aria-label="פתיחת הפוסט המדווח בלשונית חדשה"
+                      >
+                        פתיחת הפוסט ↗
+                      </a>
+                    )}
                   </div>
                 </Card>
               );
@@ -327,6 +359,16 @@ export default function AdminModeration() {
                     </span>
                     <span>·</span>
                     <span>{when(p.created_at)}</span>
+                    {(p.reportCount ?? 0) > 0 && (
+                      <span className="inline-flex items-center rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 font-semibold text-danger-text">
+                        {p.reportCount} דיווחים פתוחים
+                      </span>
+                    )}
+                    {p.authorBanned && (
+                      <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 font-semibold">
+                        המשתמש חסום
+                      </span>
+                    )}
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{clip(p.body)}</p>
                   {p.moderation_note && (
@@ -378,6 +420,16 @@ export default function AdminModeration() {
                     <span className="font-semibold text-ink">{r.author || "משתמש/ת"}</span>
                     <span>·</span>
                     <span>{when(r.created_at)}</span>
+                    {(r.reportCount ?? 0) > 0 && (
+                      <span className="inline-flex items-center rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 font-semibold text-danger-text">
+                        {r.reportCount} דיווחים פתוחים
+                      </span>
+                    )}
+                    {r.authorBanned && (
+                      <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 font-semibold">
+                        המשתמש חסום
+                      </span>
+                    )}
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">{clip(r.body)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">

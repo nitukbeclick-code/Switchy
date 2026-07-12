@@ -11,10 +11,10 @@
 // layer + auth context — never touches Supabase directly.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { MAX_BIO, updateMyProfile } from "@/lib/community";
-import { uploadMedia, validateMedia } from "@/lib/media-upload";
+import { AVATAR_MAX_DIM, downscaleImage, uploadMedia, validateMedia } from "@/lib/media-upload";
 
 const MAX_NAME = 40;
 
@@ -49,7 +49,12 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
 
   // Seed the form from the current profile once it's available, and re-seed if the
   // signed-in user changes. Local edits win until the next profile identity change.
-  useEffect(() => {
+  // Adjusted during render (guarded prev-id pattern) — no setState in an effect.
+  const [seededProfileId, setSeededProfileId] = useState<string | null | undefined>(
+    undefined,
+  );
+  if ((profile?.id ?? null) !== seededProfileId) {
+    setSeededProfileId(profile?.id ?? null);
     setName(profile?.name ?? "");
     setBio(profile?.bio ?? "");
     setAvatarUrl(profile?.avatar_url ?? null);
@@ -57,7 +62,7 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
     setDigestOptIn(profile?.community_digest_opt_in ?? false);
     setSaved(false);
     setError(null);
-  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   if (!user) {
     return (
@@ -91,7 +96,11 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
 
     setUploading(true);
     try {
-      const media = await uploadMedia(user.id, file);
+      // Downscale in the browser first (canvas → ≤256px longest edge) — an avatar
+      // never needs a full-resolution photo. Fail-soft: on any canvas problem the
+      // original file uploads as before.
+      const scaled = await downscaleImage(file, AVATAR_MAX_DIM);
+      const media = await uploadMedia(user.id, scaled);
       setAvatarUrl(media.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "העלאת התמונה נכשלה. נסו שוב.");
@@ -119,7 +128,8 @@ export default function ProfileEditor({ onSaved }: ProfileEditorProps) {
       const ok = await updateMyProfile(user.id, {
         name: trimmed,
         bio: bio.trim().slice(0, MAX_BIO),
-        avatar_url: avatarUrl ?? "",
+        // null clears the avatar honestly ("" is not a URL and renders a broken img).
+        avatar_url: avatarUrl,
         community_notify_opt_out: optOut,
         community_digest_opt_in: digestOptIn,
       });

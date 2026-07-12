@@ -91,6 +91,51 @@ export async function uploadMedia(userId: string, blob: Blob, durationMs?: numbe
   return { type: v.kind, url: data.publicUrl, durationMs: durationMs ?? null };
 }
 
+// ── Image downscale (canvas) ─────────────────────────────────────────────────
+
+/** Longest edge for an uploaded avatar — a 4000px selfie becomes a ~256px square-ish
+ *  thumbnail before it ever leaves the browser. */
+export const AVATAR_MAX_DIM = 256;
+
+/** Downscale an image blob in the browser (canvas) so its longest edge is at most
+ *  `maxDim` px. FAIL-SOFT by design: any decode/canvas/encode problem — or a
+ *  "downscale" that didn't actually shrink the bytes — returns the ORIGINAL blob,
+ *  so the upload path never breaks because of this optimization. GIFs are passed
+ *  through untouched (canvas would flatten the animation). */
+export async function downscaleImage(blob: Blob, maxDim = AVATAR_MAX_DIM): Promise<Blob> {
+  if (!blob.type.startsWith("image/") || blob.type === "image/gif") return blob;
+  let objectUrl: string | null = null;
+  try {
+    objectUrl = URL.createObjectURL(blob);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("image decode failed"));
+      el.src = objectUrl as string;
+    });
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return blob;
+    const scale = maxDim / Math.max(w, h);
+    if (scale >= 1) return blob; // already small enough
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return blob;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const out = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    // Only take the re-encode when it genuinely shrank the payload.
+    return out && out.size > 0 && out.size < blob.size ? out : blob;
+  } catch {
+    return blob;
+  } finally {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+}
+
 // ── Voice recording (MediaRecorder) ──────────────────────────────────────────
 
 export interface Recorder {

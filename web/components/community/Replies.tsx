@@ -22,6 +22,8 @@ import {
   createReply,
   deleteReply,
   editReply,
+  fetchMyReactions,
+  fetchReactions,
   fetchReplies,
   MAX_BODY,
   orderByAccepted,
@@ -31,20 +33,27 @@ import {
   type CommunityReply,
   type Media,
 } from "@/lib/community";
-import {
-  startRecording,
-  uploadMedia,
-  validateMedia,
-  type Recorder,
-} from "@/lib/media-upload";
+import { uploadMedia, validateMedia } from "@/lib/media-upload";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 // Shared render helpers. renderBody here stays mentions-only (no linkProviders):
 // reply bodies bold @mentions but deliberately don't linkify provider names.
 import { initial, relativeTime, renderBody } from "@/lib/community-render";
+import ConfirmDanger from "./ConfirmDanger";
 import MediaView from "./MediaView";
 import MentionTextarea from "./MentionTextarea";
-import ReactionBar from "./ReactionBar";
+import ReactionBar, {
+  ReplyReactionHydrationContext,
+  type ReactionHydration,
+} from "./ReactionBar";
+// The SHARED voice-recording hook + cap — parity with the post composer, so a
+// reply voice note obeys the same MAX_VOICE_MS auto-stop and shows a timer.
+import {
+  formatElapsed,
+  MAX_VOICE_MS,
+  useVoiceRecorder,
+  VOICE_WARN_MS,
+} from "./PostComposer";
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -106,6 +115,9 @@ function ReplyItem({
   const [draft, setDraft] = useState(reply.body);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+  // A failed delete must be VISIBLE (it used to fail silently — the row just
+  // stayed put with no explanation).
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const media: Media | null = reply.media_url
     ? {
@@ -118,11 +130,13 @@ function ReplyItem({
   const handleDelete = useCallback(async () => {
     if (busy) return;
     setBusy(true);
+    setDeleteError(null);
     const ok = await deleteReply(reply.id);
     if (ok) {
       onDelete(reply.id);
     } else {
       setBusy(false);
+      setDeleteError("מחיקת התגובה נכשלה. נסו שוב.");
     }
   }, [busy, reply.id, onDelete]);
 
@@ -160,6 +174,8 @@ function ReplyItem({
 
   const smallBtn =
     "inline-flex min-h-11 items-center justify-center rounded-lg px-2 py-1 text-xs font-medium text-muted transition-colors hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
+  const smallDangerBtn =
+    "inline-flex min-h-11 items-center justify-center rounded-lg px-2 py-1 text-xs font-medium text-danger-text transition-colors hover:bg-danger/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60";
 
   return (
     <div
@@ -205,7 +221,7 @@ function ReplyItem({
               className="block w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-start text-sm text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             />
             {editError && (
-              <p role="alert" className="mt-1 text-xs text-accent-text">
+              <p role="alert" className="mt-1 text-xs text-danger-text">
                 {editError}
               </p>
             )}
@@ -282,17 +298,25 @@ function ReplyItem({
             </button>
           )}
           {isOwn && (
-            <button
-              type="button"
-              onClick={handleDelete}
+            <ConfirmDanger
+              label={busy ? "מוחק…" : "מחיקה"}
+              confirmLabel="לאשר מחיקה?"
+              ariaLabel="מחיקת התגובה שלי"
               disabled={busy}
-              aria-label="מחיקת התגובה שלי"
-              className={isOwn && !editing ? smallBtn : `ms-auto ${smallBtn}`}
-            >
-              {busy ? "מוחק…" : "מחיקה"}
-            </button>
+              onConfirm={() => void handleDelete()}
+              dismissLabel="ביטול"
+              dangerClassName={`${!editing ? "" : "ms-auto "}${smallDangerBtn}`}
+              confirmClassName={`${!editing ? "" : "ms-auto "}${smallDangerBtn} bg-danger/10`}
+              dismissClassName={smallBtn}
+            />
           )}
         </div>
+
+        {deleteError && (
+          <p role="alert" className="mt-1 text-xs text-danger-text">
+            {deleteError}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -325,30 +349,48 @@ function ReplyComposer({
   const [pendingBlob, setPendingBlob] = useState<Blob | null>(null);
   const [pendingDurationMs, setPendingDurationMs] = useState<number | undefined>(undefined);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [recorder, setRecorder] = useState<Recorder | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Voice recording — the SHARED hook (same MAX_VOICE_MS auto-stop + timer as the
+  // post composer; unmount releases the mic). The finished blob stays PENDING and
+  // uploads on submit, matching this composer's picked-file behaviour.
+  const {
+    recording,
+    elapsed,
+    start: startVoiceRec,
+    stop: stopVoiceRec,
+  } = useVoiceRecorder({
+    onFinish: (blob, durationMs) => {
+      setMedia(null);
+      setPendingDurationMs(durationMs);
+      setPendingBlob(blob);
+    },
+    onError: (message) => setError(message),
+  });
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Local object-URL preview of a picked/recorded blob; revoked on change/unmount.
-  useEffect(() => {
-    if (!pendingBlob) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(pendingBlob);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [pendingBlob]);
+  // Clearing the preview when the pending blob is removed is adjusted during
+  // render (guarded) — the effect below only manages the object-URL lifecycle.
+  const [prevPendingBlob, setPrevPendingBlob] = useState<Blob | null>(pendingBlob);
+  if (pendingBlob !== prevPendingBlob) {
+    setPrevPendingBlob(pendingBlob);
+    if (!pendingBlob) setPreviewUrl(null);
+  }
 
-  // Stop a live mic recording if the composer unmounts mid-record — otherwise the
-  // MediaRecorder + getUserMedia stream leak and the OS mic indicator stays lit.
+  // Local object-URL preview of a picked/recorded blob; revoked on change/unmount.
+  // The URL is created in the effect (external system) and the state lands via
+  // rAF, so the effect body itself never sets state synchronously.
   useEffect(() => {
+    if (!pendingBlob) return;
+    const url = URL.createObjectURL(pendingBlob);
+    const raf = requestAnimationFrame(() => setPreviewUrl(url));
     return () => {
-      recorder?.cancel();
+      cancelAnimationFrame(raf);
+      URL.revokeObjectURL(url);
     };
-  }, [recorder]);
+  }, [pendingBlob]);
 
   const previewMedia: Media | null =
     previewUrl && pendingBlob
@@ -388,28 +430,14 @@ function ReplyComposer({
 
   const toggleRecording = useCallback(async () => {
     setError(null);
-    if (recorder) {
-      try {
-        const { blob, durationMs } = await recorder.stop();
-        setMedia(null);
-        setPendingDurationMs(durationMs);
-        setPendingBlob(blob);
-      } catch {
-        setError("ההקלטה נכשלה. נסו שוב.");
-      } finally {
-        setRecorder(null);
-      }
+    if (recording) {
+      await stopVoiceRec();
       return;
     }
-    try {
-      const r = await startRecording();
-      setRecorder(r);
-    } catch {
-      setError("לא ניתן לגשת למיקרופון. בדקו הרשאות.");
-    }
-  }, [recorder]);
+    await startVoiceRec();
+  }, [recording, startVoiceRec, stopVoiceRec]);
 
-  const canSubmit = (body.trim().length > 0 || !!pendingBlob) && !busy && !recorder;
+  const canSubmit = (body.trim().length > 0 || !!pendingBlob) && !busy && !recording;
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -418,7 +446,7 @@ function ReplyComposer({
         onRequireAuth();
         return;
       }
-      if (busy || recorder) return;
+      if (busy || recording) return;
       if (!body.trim() && !pendingBlob) return;
 
       setBusy(true);
@@ -456,7 +484,7 @@ function ReplyComposer({
     [
       user,
       busy,
-      recorder,
+      recording,
       body,
       pendingBlob,
       pendingDurationMs,
@@ -539,7 +567,7 @@ function ReplyComposer({
       )}
 
       {error && (
-        <p role="alert" className="mt-2 text-xs text-accent-text">
+        <p role="alert" className="mt-2 text-xs text-danger-text">
           {error}
         </p>
       )}
@@ -557,7 +585,7 @@ function ReplyComposer({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={busy || !!recorder}
+          disabled={busy || recording}
           aria-label="צירוף תמונה או וידאו"
           className="inline-flex items-center gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
         >
@@ -567,19 +595,29 @@ function ReplyComposer({
 
         <button
           type="button"
-          onClick={toggleRecording}
+          onClick={() => void toggleRecording()}
           disabled={busy}
-          aria-label={recorder ? "עצירת ההקלטה" : "הקלטת הודעה קולית"}
-          aria-pressed={!!recorder}
+          aria-label={recording ? "עצירת ההקלטה" : "הקלטת הודעה קולית"}
+          aria-pressed={recording}
           className="inline-flex items-center gap-1 rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
         >
           <span aria-hidden="true">🎤</span>
-          {recorder ? "עצירה" : "קול"}
+          {recording ? "עצירה" : "קול"}
         </button>
 
-        {recorder && (
-          <span className="text-xs text-accent-text" aria-live="polite">
-            מקליט…
+        {recording && (
+          <span className="inline-flex items-center gap-1.5 text-xs">
+            {/* Only the static state is a live region; the ticking timer is
+                hidden from AT so it is not re-announced every 250ms. */}
+            <span className="text-accent-text" role="status" aria-live="polite">
+              מקליט…
+            </span>
+            <span className="tabular-nums text-muted" dir="ltr" aria-hidden="true">
+              {formatElapsed(elapsed)}
+            </span>
+            {elapsed >= MAX_VOICE_MS - VOICE_WARN_MS && (
+              <span className="text-muted">מתקרב למגבלת ההקלטה</span>
+            )}
           </span>
         )}
 
@@ -609,6 +647,7 @@ export default function Replies({
   onRequireAuth,
   postAuthorId,
   initialAcceptedReplyId = null,
+  onReplyCountChange,
 }: {
   postId: string;
   onRequireAuth: () => void;
@@ -616,6 +655,9 @@ export default function Replies({
   postAuthorId?: string | null;
   /** The reply already marked as the accepted answer (from the feed row). */
   initialAcceptedReplyId?: string | null;
+  /** Live reply-count delta (+1 on a new reply, -1 on delete) so the parent card's
+   *  💬 counter stays truthful without a refetch. */
+  onReplyCountChange?: (delta: number) => void;
 }) {
   const { user } = useAuth();
   const [replies, setReplies] = useState<CommunityReply[]>([]);
@@ -626,18 +668,56 @@ export default function Replies({
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   // The post author's chosen "best answer" (optimistic; seeded from the feed row).
   const [acceptedReplyId, setAcceptedReplyId] = useState<string | null>(initialAcceptedReplyId);
+  // Batched reply-reaction hydration for the WHOLE thread — one fetchReactions +
+  // fetchMyReactions round-trip instead of two per reply bar (the old N+1).
+  // Provided to the bars via ReplyReactionHydrationContext.
+  const [replyReactions, setReplyReactions] = useState<Map<string, ReactionHydration>>(
+    () => new Map(),
+  );
 
-  // Re-seed if the post identity / its stored accepted answer changes.
-  useEffect(() => {
+  // Re-seed if the post identity / its stored accepted answer changes — adjusted
+  // during render (guarded prev-value pattern), never via a setState-in-effect.
+  const acceptedSeed = `${postId} ${initialAcceptedReplyId ?? ""}`;
+  const [prevAcceptedSeed, setPrevAcceptedSeed] = useState(acceptedSeed);
+  if (acceptedSeed !== prevAcceptedSeed) {
+    setPrevAcceptedSeed(acceptedSeed);
     setAcceptedReplyId(initialAcceptedReplyId);
-  }, [postId, initialAcceptedReplyId]);
+  }
+
+  // The reload skeleton for a NEW thread/viewer is adjusted during render off the
+  // same key the fetch effect uses; the effect only starts the fetch (state lands
+  // in the continuations).
+  const threadKey = `${postId} ${user?.id ?? ""}`;
+  const [prevThreadKey, setPrevThreadKey] = useState(threadKey);
+  if (threadKey !== prevThreadKey) {
+    setPrevThreadKey(threadKey);
+    setLoading(true);
+  }
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     fetchReplies(postId, user?.id)
       .then((rows) => {
-        if (active) setReplies(rows);
+        if (!active) return;
+        setReplies(rows);
+        // Hydrate the thread's reply reactions in ONE batch per concern.
+        const ids = rows.map((r) => r.id);
+        void Promise.all([
+          fetchReactions("reply", ids),
+          fetchMyReactions("reply", ids),
+        ]).then(([summaries, mine]) => {
+          if (!active) return;
+          setReplyReactions(() => {
+            const next = new Map<string, ReactionHydration>();
+            for (const id of ids) {
+              next.set(id, {
+                summaries: summaries.get(id) ?? [],
+                mine: mine.get(id) ?? null,
+              });
+            }
+            return next;
+          });
+        });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -647,17 +727,33 @@ export default function Replies({
     };
   }, [postId, user?.id]);
 
-  const handleReplied = useCallback((reply: CommunityReply) => {
-    setReplies((prev) => (prev.some((r) => r.id === reply.id) ? prev : [...prev, reply]));
-    setReplyingTo(null); // close any open inline composer
-  }, []);
+  const handleReplied = useCallback(
+    (reply: CommunityReply) => {
+      setReplies((prev) => (prev.some((r) => r.id === reply.id) ? prev : [...prev, reply]));
+      // A brand-new reply has no reactions yet — seed an empty batched entry so
+      // its bar renders immediately instead of waiting on the thread batch.
+      setReplyReactions((prev) => {
+        if (prev.has(reply.id)) return prev;
+        const next = new Map(prev);
+        next.set(reply.id, { summaries: [], mine: null });
+        return next;
+      });
+      setReplyingTo(null); // close any open inline composer
+      onReplyCountChange?.(1);
+    },
+    [onReplyCountChange],
+  );
 
-  const handleDeleted = useCallback((id: string) => {
-    setReplies((prev) => prev.filter((r) => r.id !== id));
-    // If the deleted reply was the accepted answer, clear it locally (the DB FK
-    // ON DELETE SET NULL already cleared it server-side).
-    setAcceptedReplyId((cur) => (cur === id ? null : cur));
-  }, []);
+  const handleDeleted = useCallback(
+    (id: string) => {
+      setReplies((prev) => prev.filter((r) => r.id !== id));
+      // If the deleted reply was the accepted answer, clear it locally (the DB FK
+      // ON DELETE SET NULL already cleared it server-side).
+      setAcceptedReplyId((cur) => (cur === id ? null : cur));
+      onReplyCountChange?.(-1);
+    },
+    [onReplyCountChange],
+  );
 
   const uid = user?.id ?? null;
   const isPostAuthor = !!uid && !!postAuthorId && uid === postAuthorId;
@@ -679,6 +775,9 @@ export default function Replies({
   const CHILD_PREVIEW = 2;
 
   return (
+    // Provider (no DOM) for the thread-batched reply reactions — reaches every
+    // <ReactionBar target="reply"> below without threading through <ReplyItem>.
+    <ReplyReactionHydrationContext.Provider value={replyReactions}>
     <section aria-label="תגובות לפוסט" className="mt-3 space-y-3">
       {loading ? (
         <ul className="space-y-3" aria-hidden="true">
@@ -778,5 +877,6 @@ export default function Replies({
 
       <ReplyComposer postId={postId} onReplied={handleReplied} onRequireAuth={onRequireAuth} />
     </section>
+    </ReplyReactionHydrationContext.Provider>
   );
 }

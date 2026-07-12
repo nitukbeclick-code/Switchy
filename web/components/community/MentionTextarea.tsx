@@ -43,6 +43,9 @@ export default function MentionTextarea({ value, onChange, ...rest }: MentionTex
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<MentionCandidate[]>([]);
   const [active, setActive] = useState(0);
+  // Flip the listbox ABOVE the textarea when there isn't room below (e.g. a
+  // composer near the bottom of the viewport), so options are never clipped.
+  const [openUp, setOpenUp] = useState(false);
   // The @token currently being completed (position in the text).
   const tokenRef = useRef<{ query: string; start: number } | null>(null);
   const seqRef = useRef(0); // guards out-of-order async results
@@ -69,6 +72,13 @@ export default function MentionTextarea({ value, onChange, ...rest }: MentionTex
       if (seq !== seqRef.current) return; // a newer keystroke superseded this
       setItems(cands);
       setActive(0);
+      // Decide the flip at open time: not enough space below AND more above → up.
+      const anchor = ref.current;
+      if (cands.length > 0 && anchor && typeof window !== "undefined") {
+        const rect = anchor.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        setOpenUp(spaceBelow < 240 && rect.top > spaceBelow);
+      }
       setOpen(cands.length > 0);
     });
   }, [close]);
@@ -154,8 +164,12 @@ export default function MentionTextarea({ value, onChange, ...rest }: MentionTex
           id={listId}
           role="listbox"
           aria-label="הצעות לאזכור"
-          className="popover absolute z-30 mt-1 max-h-56 w-64 max-w-full overflow-auto rounded-2xl border border-border bg-surface p-1 shadow-float"
-          style={{ ["--popover-origin" as string]: "top start" }}
+          className={`popover absolute z-30 max-h-56 w-64 max-w-full overflow-auto rounded-2xl border border-border bg-surface p-1 shadow-float ${
+            openUp ? "bottom-full mb-1" : "mt-1"
+          }`}
+          style={{
+            ["--popover-origin" as string]: openUp ? "bottom start" : "top start",
+          }}
         >
           {items.map((c, i) => (
             <li key={c.id} role="none">

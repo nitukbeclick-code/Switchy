@@ -143,12 +143,17 @@ export default function CommunityFeed() {
   }, [searchParamsKey]);
 
   // Seed the active tab from the deep-link channel ONCE on mount, so a later manual
-  // tab click is never fought by this. Runs a single time regardless of re-renders.
+  // tab click is never fought by this. Runs a single time regardless of re-renders;
+  // the state lands via rAF so the effect body itself never sets state (same idiom
+  // as the intro banner below).
   const tabSeededRef = useRef(false);
   useEffect(() => {
     if (tabSeededRef.current) return;
     tabSeededRef.current = true;
-    if (prefill?.channel) setTab(prefill.channel);
+    const channel = prefill?.channel;
+    if (!channel) return;
+    const raf = requestAnimationFrame(() => setTab(channel));
+    return () => cancelAnimationFrame(raf);
   }, [prefill]);
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -159,6 +164,11 @@ export default function CommunityFeed() {
   const [loading, setLoading] = useState(true); // first page of the current tab
   const [loadingMore, setLoadingMore] = useState(false);
   const [reachedEnd, setReachedEnd] = useState(false);
+  // A FAILED first-page load is not an empty feed — it renders a retry card.
+  const [feedError, setFeedError] = useState(false);
+  // Bumped by the retry button so the first-page effect re-runs (event-driven
+  // reload — the codebase pattern; no setState-in-effect needed).
+  const [reloadKey, setReloadKey] = useState(0);
   // The first page waits for the block list to settle so a signed-in viewer fetches
   // once (not twice). Announcements go to a small sr-only polite region, so the
   // whole post list is never a live region.
@@ -200,19 +210,32 @@ export default function CommunityFeed() {
   const hydrationGen = useRef(0);
 
   // Like/bookmark/reaction state is per-viewer — start over when the account
-  // changes. (Declared BEFORE the fetch effect below so the reset runs first.)
-  useEffect(() => {
-    hydrationGen.current += 1;
-    hydratedIds.current = new Set();
+  // changes. The STATE maps reset during render (guarded prev-value pattern);
+  // the bookkeeping refs reset inside the batch effect below (refs must not be
+  // touched during render), which runs before any new ids are collected.
+  const [prevHydrationViewer, setPrevHydrationViewer] = useState<string | null>(
+    user?.id ?? null,
+  );
+  if ((user?.id ?? null) !== prevHydrationViewer) {
+    setPrevHydrationViewer(user?.id ?? null);
     setHydration(new Map());
     setReactionHydration(new Map());
-  }, [user?.id]);
+  }
+  const hydrationViewerRef = useRef<string | null>(user?.id ?? null);
 
   // Hydrate any not-yet-hydrated on-screen posts (feed, or search results while
   // searching) in one batch. Deliberately NOT cancelled on re-run: an in-flight
   // page batch is still valid when more posts arrive — only a viewer change
   // invalidates it (via the generation counter).
   useEffect(() => {
+    const viewer = user?.id ?? null;
+    if (hydrationViewerRef.current !== viewer) {
+      // Account changed: drop the old viewer's bookkeeping so every on-screen
+      // post re-hydrates for the new one, and invalidate in-flight batches.
+      hydrationViewerRef.current = viewer;
+      hydrationGen.current += 1;
+      hydratedIds.current = new Set();
+    }
     const ids: string[] = [];
     for (const p of results ?? posts) {
       if (!hydratedIds.current.has(p.id)) {
@@ -335,16 +358,25 @@ export default function CommunityFeed() {
   );
 
   // ── Load the viewer's block list (or clear it when signed out) ────────────────
+  // The synchronous part (guest → empty list, ready immediately; account change →
+  // not-ready until the fetch lands) is adjusted during render; the effect only
+  // runs the fetch, with state landing in its .then continuation.
+  const blocksViewer = ready ? (user?.id ?? null) : undefined; // undefined = auth pending
+  const [prevBlocksViewer, setPrevBlocksViewer] = useState<string | null | undefined>(
+    undefined,
+  );
+  if (blocksViewer !== prevBlocksViewer) {
+    setPrevBlocksViewer(blocksViewer);
+    if (blocksViewer !== undefined) {
+      setBlocked([]);
+      setBlocksReady(blocksViewer === null); // guests have no block list to wait for
+    }
+  }
   useEffect(() => {
     if (!ready) return;
     const uid = user?.id ?? null;
-    if (!uid) {
-      setBlocked([]);
-      setBlocksReady(true);
-      return;
-    }
+    if (!uid) return;
     let active = true;
-    setBlocksReady(false);
     void fetchMyBlocks(uid).then((ids) => {
       if (active) {
         setBlocked(ids);
@@ -357,45 +389,68 @@ export default function CommunityFeed() {
   }, [ready, user?.id]);
 
   // ── Load the first page whenever the tab, sort, viewer, or blocks change ──────
+  // The skeleton flip (loading=true, end-of-feed reset) is adjusted during render
+  // off the same query key the fetch effect uses, so the effect body only starts
+  // the fetch — every state write lands in the .then continuation.
+  const feedQueryKey =
+    ready && blocksReady
+      ? JSON.stringify([tab, sort, unanswered, user?.id ?? null, blocked, reloadKey])
+      : null;
+  const [prevFeedQueryKey, setPrevFeedQueryKey] = useState<string | null>(null);
+  if (feedQueryKey !== null && feedQueryKey !== prevFeedQueryKey) {
+    setPrevFeedQueryKey(feedQueryKey);
+    setLoading(true);
+    setReachedEnd(false);
+  }
   useEffect(() => {
     if (!ready || !blocksReady) return;
     let active = true;
-    setLoading(true);
-    setReachedEnd(false);
     void fetchFeed({
       channel: tab,
       viewerId: user?.id ?? null,
       blocked,
       limit: PAGE_SIZE,
       unansweredOnly: unanswered,
-    }).then((rows) => {
+    }).then((page) => {
       if (!active) return;
-      setPosts(sortPosts(rows, sort));
-      setReachedEnd(rows.length < PAGE_SIZE);
+      setFeedError(page.error);
+      setPosts(sortPosts(page.rows, sort));
+      setReachedEnd(!page.error && page.rows.length < PAGE_SIZE);
       setLoading(false);
     });
     return () => {
       active = false;
     };
-  }, [ready, blocksReady, tab, sort, unanswered, user?.id, blocked, sortPosts]);
+  }, [ready, blocksReady, tab, sort, unanswered, user?.id, blocked, sortPosts, reloadKey]);
 
   // ── Debounced community search (on `search` + `tab`) ──────────────────────────
   // An empty query restores the feed (results = null). A non-empty query runs
   // searchPosts scoped to the active channel; the guard drops out-of-order or
-  // post-unmount responses so a fast typist never sees stale results.
-  useEffect(() => {
-    const q = search.trim();
-    if (!q) {
+  // post-unmount responses so a fast typist never sees stale results. The
+  // synchronous mode flip (feed↔searching) is adjusted during render; the effect
+  // only owns the debounce timer + fetch, with state landing in the .then.
+  const searchKey = `${tab} ${search}`;
+  const [prevSearchKey, setPrevSearchKey] = useState(searchKey);
+  if (searchKey !== prevSearchKey) {
+    setPrevSearchKey(searchKey);
+    if (!search.trim()) {
       setResults(null);
       setSearching(false);
-      return;
+    } else {
+      setSearching(true);
     }
+  }
+  useEffect(() => {
+    const q = search.trim();
+    if (!q) return;
     let active = true;
-    setSearching(true);
     const timer = setTimeout(() => {
       void searchPosts(search, tab).then((rows) => {
         if (!active) return;
-        setResults(rows);
+        // The search RPC doesn't know the viewer's block list — filter here with
+        // the SAME list the Realtime INSERT handler uses, so a blocked author
+        // never resurfaces through search.
+        setResults(rows.filter((p) => !blockedRef.current.includes(p.user_id)));
         setSearching(false);
       });
     }, 300);
@@ -579,10 +634,12 @@ export default function CommunityFeed() {
   }, [pendingNew, sortPosts]);
 
   // A tab / sort switch refetches the feed from scratch — any buffered posts are
-  // now stale, so drop them.
-  useEffect(() => {
+  // now stale, so drop them (adjusted during render, guarded).
+  const [prevTabSort, setPrevTabSort] = useState(`${tab} ${sort}`);
+  if (`${tab} ${sort}` !== prevTabSort) {
+    setPrevTabSort(`${tab} ${sort}`);
     setPendingNew([]);
-  }, [tab, sort]);
+  }
 
   // ── Drop a deleted post (from <PostCard>) ─────────────────────────────────────
   const handleDeleted = useCallback((id: string) => {
@@ -602,7 +659,7 @@ export default function CommunityFeed() {
     // sharing the exact oldest timestamp would be skipped. We pass the same oldest
     // cursor and rely on the id de-dupe below rather than dropping tie posts; the
     // lastOlderCursor guard breaks the loop if a page brings back no NEW ids.
-    const older = await fetchFeed({
+    const page = await fetchFeed({
       channel: tab,
       before: oldest,
       viewerId: user?.id ?? null,
@@ -610,6 +667,14 @@ export default function CommunityFeed() {
       limit: PAGE_SIZE,
       unansweredOnly: unanswered,
     });
+    if (page.error) {
+      // A failed older-page fetch is NOT the end of the feed — keep the pager
+      // alive and tell the reader (the sr-only status region announces it too).
+      setStatusMsg("טעינת פוסטים נוספים נכשלה. נסו שוב.");
+      setLoadingMore(false);
+      return;
+    }
+    const older = page.rows;
     let addedCount = 0;
     setPosts((prev) => {
       const seen = new Set(prev.map((p) => p.id));
@@ -939,6 +1004,24 @@ export default function CommunityFeed() {
             <PostSkeleton />
             <PostSkeleton />
             <PostSkeleton />
+          </div>
+        ) : feedError ? (
+          /* An honest failure card — a failed load must never masquerade as an
+             empty feed. */
+          <div className="bento p-8 text-center" role="alert">
+            <p className="text-base font-semibold text-ink">
+              לא הצלחנו לטעון את הפיד
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              בדקו את החיבור לאינטרנט ונסו שוב.
+            </p>
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              ניסיון חוזר
+            </button>
           </div>
         ) : posts.length === 0 ? (
           <div className="bento p-8 text-center">

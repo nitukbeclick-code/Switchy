@@ -131,7 +131,11 @@ export interface NewContent {
   media?: Media | null;
 }
 
-const FEED_COLS =
+/** The columns the web reads off the community_feed VIEW. Exported so the
+ *  contract test (community-contract.test.ts) can pin it against the canonical
+ *  view definition fixture — a column dropped from the view must fail a test,
+ *  not silently null out in production. */
+export const FEED_COLS =
   "id,user_id,author,avatar,channel,body,media_type,media_url,media_duration_ms,created_at,is_flagged,moderation_note,like_count,reply_count,is_pinned,edited_at,provider_slug,accepted_reply_id";
 const REPLY_COLS =
   "id,post_id,user_id,author,avatar,body,media_type,media_url,media_duration_ms,created_at,is_flagged,parent_reply_id,edited_at";
@@ -153,10 +157,24 @@ export interface FeedQuery {
   unansweredOnly?: boolean;
 }
 
-/** A page of feed posts, newest first. Public rows are readable with the anon key;
- *  flagged rows are hidden by RLS-independent filtering here (is_flagged=false) EXCEPT
- *  the viewer's own (shown with an "under review" note). */
-export async function fetchFeed(q: FeedQuery = {}): Promise<CommunityPost[]> {
+/** A page of feed posts plus an honest error flag — a failed query is NOT an
+ *  empty feed, so the UI can show a retry card instead of "אין פוסטים". */
+export interface FeedPage {
+  rows: CommunityPost[];
+  /** true when the query itself failed (network / PostgREST error). */
+  error: boolean;
+}
+
+/** Only values that are safe to interpolate into a PostgREST filter expression
+ *  (uuids from auth/session rows). Anything else is dropped, never trusted. */
+const UUIDISH = /^[0-9a-fA-F-]{32,40}$/;
+
+/** A page of feed posts, newest first. The visibility filters are pushed INTO the
+ *  PostgREST query (a client-side-only filter would shorten pages and read as a
+ *  false end-of-feed): flagged rows are excluded EXCEPT the viewer's own (shown
+ *  with an "under review" note), and blocked authors are excluded server-side.
+ *  Both are re-applied locally as cheap defense-in-depth. */
+export async function fetchFeed(q: FeedQuery = {}): Promise<FeedPage> {
   const sb = getBrowserSupabase();
   const limit = Math.min(50, Math.max(1, q.limit ?? 20));
   let query = sb
@@ -168,17 +186,27 @@ export async function fetchFeed(q: FeedQuery = {}): Promise<CommunityPost[]> {
   // "Unanswered" = no replies yet (reply_count is the aggregate on community_feed).
   if (q.unansweredOnly) query = query.eq("reply_count", 0);
   if (q.before) query = query.lt("created_at", q.before);
+  // Flagged rows are hidden from everyone except their author, in the query.
+  if (q.viewerId && UUIDISH.test(q.viewerId)) {
+    query = query.or(`is_flagged.eq.false,user_id.eq.${q.viewerId}`);
+  } else {
+    query = query.eq("is_flagged", false);
+  }
+  // Blocked authors never come back at all (so pages stay full-length).
+  const blockedIds = (q.blocked ?? []).filter((id) => UUIDISH.test(id));
+  if (blockedIds.length) {
+    query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
+  }
   const { data, error } = await query;
-  if (error || !data) return [];
+  if (error || !data) return { rows: [], error: true };
   let rows = data as unknown as CommunityPost[];
-  // Hide flagged content from everyone except its author.
+  // Defense-in-depth: re-apply both filters locally.
   rows = rows.filter((p) => !p.is_flagged || p.user_id === q.viewerId);
-  // Hide blocked authors.
   if (q.blocked && q.blocked.length) {
     const set = new Set(q.blocked);
     rows = rows.filter((p) => !set.has(p.user_id));
   }
-  return rows;
+  return { rows, error: false };
 }
 
 export async function fetchReplies(postId: string, viewerId?: string | null): Promise<CommunityReply[]> {
@@ -192,14 +220,26 @@ export async function fetchReplies(postId: string, viewerId?: string | null): Pr
   return (data as unknown as CommunityReply[]).filter((r) => !r.is_flagged || r.user_id === viewerId);
 }
 
-export async function fetchPostsByUser(userId: string, viewerId?: string | null): Promise<CommunityPost[]> {
+/** Page size for a profile's posts. Exported so the profile UI can say an honest
+ *  "50+" when a full page came back (there may be more) and page older posts with
+ *  the same cursor pattern as the feed. */
+export const PROFILE_PAGE_SIZE = 50;
+
+export async function fetchPostsByUser(
+  userId: string,
+  viewerId?: string | null,
+  opts?: { before?: string | null; limit?: number },
+): Promise<CommunityPost[]> {
   const sb = getBrowserSupabase();
-  const { data, error } = await sb
+  const limit = Math.min(PROFILE_PAGE_SIZE, Math.max(1, opts?.limit ?? PROFILE_PAGE_SIZE));
+  let query = sb
     .from("community_feed")
     .select(FEED_COLS)
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
+  if (opts?.before) query = query.lt("created_at", opts.before);
+  const { data, error } = await query;
   if (error || !data) return [];
   return (data as unknown as CommunityPost[]).filter((p) => !p.is_flagged || p.user_id === viewerId);
 }
@@ -537,22 +577,32 @@ export async function setBookmark(postId: string, userId: string, on: boolean): 
   return !error;
 }
 
+/** Bound on the private "שמורים" tab — both queries are capped so a heavy
+ *  bookmarker can't trigger an unbounded id list + feed read. */
+export const MAX_BOOKMARKED_POSTS = 100;
+
 /** The viewer's OWN bookmarked posts (for the private "שמורים" profile tab). Bookmarks
  *  are private to the owner (post_bookmarks RLS is own-row), so this is only meaningful
- *  for the signed-in owner viewing their own profile. */
+ *  for the signed-in owner viewing their own profile. Bounded (newest first). */
 export async function fetchMyBookmarkedPosts(): Promise<CommunityPost[]> {
   const sb = getBrowserSupabase();
   const { data: sess } = await sb.auth.getSession();
   const uid = sess.session?.user.id;
   if (!uid) return [];
-  const { data: bm } = await sb.from("post_bookmarks").select("post_id").eq("user_id", uid);
+  const { data: bm } = await sb
+    .from("post_bookmarks")
+    .select("post_id")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false })
+    .limit(MAX_BOOKMARKED_POSTS);
   const ids = (bm ?? []).map((r: { post_id: string }) => r.post_id);
   if (ids.length === 0) return [];
   const { data } = await sb
     .from("community_feed")
     .select(FEED_COLS)
     .in("id", ids)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(MAX_BOOKMARKED_POSTS);
   return ((data as unknown as CommunityPost[]) ?? []).filter((p) => !p.is_flagged || p.user_id === uid);
 }
 
@@ -656,6 +706,33 @@ export async function setReaction(
 
 // ── Report / block ───────────────────────────────────────────────────────────
 
+/** Hebrew report-reason presets, offered before the free-text field. The chosen
+ *  preset travels in the EXISTING community_reports.body (no schema change). */
+export const REPORT_REASONS = [
+  "ספאם או פרסומת",
+  "תוכן פוגעני או מטריד",
+  "מידע שגוי או מטעה",
+  "אחר",
+] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+const reportedKey = (targetType: "post" | "reply", targetId: string) =>
+  `swc:reported:${targetType}:${targetId}`;
+
+/** true when THIS browser session already sent a report for this target — used
+ *  to block an accidental double-report. Best-effort (sessionStorage may be
+ *  unavailable in private mode); the server keeps every report regardless. */
+export function hasReportedThisSession(
+  targetType: "post" | "reply",
+  targetId: string,
+): boolean {
+  try {
+    return sessionStorage.getItem(reportedKey(targetType, targetId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export async function reportContent(
   targetType: "post" | "reply",
   targetId: string,
@@ -668,6 +745,14 @@ export async function reportContent(
     reporter_user_id: reporterId,
     body: body.slice(0, 1000),
   });
+  if (!error) {
+    // Remember per-session so the UI can block a double-report of the same target.
+    try {
+      sessionStorage.setItem(reportedKey(targetType, targetId), "1");
+    } catch {
+      /* best-effort only */
+    }
+  }
   return !error;
 }
 
@@ -711,6 +796,23 @@ export async function markNotificationRead(id: number): Promise<void> {
     .eq("id", id);
 }
 
+/** Mark ALL of the viewer's unread notifications read in ONE update
+ *  (is('read_at', null) — instead of one round-trip per row). RLS scopes the
+ *  update to the caller's own rows; the explicit user filter keeps the query
+ *  narrow. Returns false when signed out or the write failed. */
+export async function markAllNotificationsRead(): Promise<boolean> {
+  const sb = getBrowserSupabase();
+  const { data: sess } = await sb.auth.getSession();
+  const uid = sess.session?.user.id;
+  if (!uid) return false;
+  const { error } = await sb
+    .from("community_notifications")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", uid)
+    .is("read_at", null);
+  return !error;
+}
+
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 export interface PublicProfile {
@@ -744,7 +846,8 @@ export async function updateMyProfile(
   userId: string,
   patch: {
     name?: string;
-    avatar_url?: string;
+    /** null clears the avatar (never send "" — an empty string is not a URL). */
+    avatar_url?: string | null;
     community_notify_opt_out?: boolean;
     community_digest_opt_in?: boolean;
     bio?: string;
@@ -756,13 +859,16 @@ export async function updateMyProfile(
 
 // ── Mentions (display + autocomplete) ────────────────────────────────────────
 
-/** Same @-name grammar the community-notify function resolves (Hebrew+Latin+_). */
-export const MENTION_RE = /@([A-Za-z0-9_א-׿]+)/g;
+/** Same @-name grammar the community-notify edge function resolves (Hebrew block
+ *  incl. points + Latin + digits + _). MUST stay source-identical to the edge's
+ *  MENTION_RE — the parity is pinned by community-contract.test.ts, which reads
+ *  the edge source as a fixture. */
+export const MENTION_RE = /@([A-Za-z0-9_֐-׿]+)/g;
 
 /** A single-token name only — this is exactly what community-notify can resolve, so
  *  the autocomplete never suggests a name (e.g. one with a space) whose @mention
  *  would silently fail to notify. */
-const MENTIONABLE_NAME = /^[A-Za-z0-9_א-׿]+$/;
+const MENTIONABLE_NAME = /^[A-Za-z0-9_֐-׿]+$/;
 
 export interface MentionCandidate {
   id: string;

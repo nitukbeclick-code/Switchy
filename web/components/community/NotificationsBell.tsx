@@ -33,6 +33,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   fetchNotifications,
+  markAllNotificationsRead,
   markNotificationRead,
   type CommunityNotification,
 } from "@/lib/community";
@@ -109,7 +110,9 @@ export default function NotificationsBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CommunityNotification[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Starts true: the first load is in flight the moment a signed-in bell mounts
+  // (load() flips it false in its continuation — never synchronously).
+  const [loading, setLoading] = useState(true);
 
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -128,9 +131,10 @@ export default function NotificationsBell() {
   const unread = items.filter((n) => n.read_at === null).length;
 
   // ── Poll: load on mount + every 60s while signed in. ────────────────────────
+  // No synchronous setState here — `loading` starts true and is (re)armed by the
+  // render-adjust below on account change; every write lands after the await.
   const load = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
     try {
       const rows = await fetchNotifications(30);
       if (mountedRef.current) {
@@ -156,20 +160,42 @@ export default function NotificationsBell() {
     }
   }, [user]);
 
+  // Signed out (or switched to a null user): clear so no stale rows linger; a
+  // NEW signed-in viewer re-arms the loading state until their first fetch.
+  // Adjusted during render (guarded) — no synchronous setState in the effect.
+  const [prevUserId, setPrevUserId] = useState<string | null>(user?.id ?? null);
+  if ((user?.id ?? null) !== prevUserId) {
+    setPrevUserId(user?.id ?? null);
+    if (!user) setItems([]);
+    setLoading(!!user);
+  }
+
   useEffect(() => {
     mountedRef.current = true;
     if (!user) {
-      // Signed out (or switched to a null user): clear so no stale rows linger.
-      setItems([]);
       return () => {
         mountedRef.current = false;
       };
     }
     void load();
-    const id = window.setInterval(() => void load(), POLL_MS);
+    // The interval PAUSES while the tab is hidden (no point polling a page nobody
+    // is looking at), and a return to the tab — visibility flip or window focus —
+    // refreshes immediately so the badge is fresh the moment it's seen again.
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      void load();
+    }, POLL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const onFocus = () => void load();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
     return () => {
       mountedRef.current = false;
       window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
     };
   }, [user, load]);
 
@@ -308,7 +334,9 @@ export default function NotificationsBell() {
     [markRead, router],
   );
 
-  // Mark everything unread as read.
+  // Mark everything unread as read — ONE is('read_at', null) update instead of
+  // a round-trip per row. Optimistic; a failed write reverts + forgets the local
+  // stamps so a later refetch shows the true (unread) server state.
   const markAllRead = useCallback(async () => {
     const unreadRows = items.filter((n) => n.read_at === null);
     if (unreadRows.length === 0) return;
@@ -317,15 +345,21 @@ export default function NotificationsBell() {
     setItems((prev) =>
       prev.map((x) => (x.read_at === null ? { ...x, read_at: stamp } : x)),
     );
-    await Promise.all(
-      unreadRows.map((n) =>
-        markNotificationRead(n.id).catch(() => {
-          // Forget the optimistic read for the rows whose write failed so a
-          // later refetch reflects the true server state.
-          locallyReadRef.current.delete(n.id);
-        }),
-      ),
-    );
+    let ok = false;
+    try {
+      ok = await markAllNotificationsRead();
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      for (const n of unreadRows) locallyReadRef.current.delete(n.id);
+      if (mountedRef.current) {
+        const revertIds = new Set(unreadRows.map((n) => n.id));
+        setItems((prev) =>
+          prev.map((x) => (revertIds.has(x.id) ? { ...x, read_at: null } : x)),
+        );
+      }
+    }
   }, [items]);
 
   // Nothing to show for signed-out visitors (notifications are per-user).

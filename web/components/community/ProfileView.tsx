@@ -23,12 +23,19 @@
 // prefers-reduced-motion is handled by the shared .card/.reveal utilities.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   fetchMyBookmarkedPosts,
+  fetchMyBookmarks,
+  fetchMyLikes,
+  fetchMyReactions,
+  fetchPostMedia,
   fetchPostsByUser,
   fetchPublicProfile,
+  fetchReactions,
+  PROFILE_PAGE_SIZE,
   type CommunityPost,
+  type PostHydration,
   type PublicProfile,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
@@ -36,6 +43,7 @@ import { initial } from "@/lib/community-render";
 import AuthModal from "@/components/auth/AuthModal";
 import PostCard from "./PostCard";
 import ProfileEditor from "./ProfileEditor";
+import { ReactionHydrationContext, type ReactionHydration } from "./ReactionBar";
 
 // ── Header avatar ──────────────────────────────────────────────────────────────
 
@@ -86,6 +94,10 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  // A FULL first page means there may be more — the stats then say "N+" and the
+  // pager offers older posts (same cursor pattern as the feed).
+  const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Tabs. "posts" is always available; "saved" is owner-only. The owner's bookmarks
   // are private, so they load lazily on the first open of the "saved" tab.
@@ -98,6 +110,79 @@ export default function ProfileView({ userId }: { userId: string }) {
   const [authOpen, setAuthOpen] = useState(false);
   const onRequireAuth = useCallback(() => setAuthOpen(true), []);
 
+  // ── Batched per-post hydration (likes / bookmarks / gallery / reactions) ──────
+  // ONE round-trip per concern for every not-yet-hydrated on-screen post (both
+  // tabs) instead of every <PostCard>/<ReactionBar> fanning out its own requests
+  // (the old N+1 on profiles). Same mechanics as <CommunityFeed>: likes/bookmarks/
+  // gallery flow down as the hydration prop; reactions via ReactionHydrationContext.
+  const [hydration, setHydration] = useState<Map<string, PostHydration>>(new Map());
+  const [reactionHydration, setReactionHydration] = useState<Map<string, ReactionHydration>>(
+    new Map(),
+  );
+  const hydratedIds = useRef<Set<string>>(new Set());
+  const hydrationGen = useRef(0);
+
+  // Per-viewer state — start over when the account changes. The STATE maps
+  // reset during render (guarded); the bookkeeping refs reset inside the batch
+  // effect below (refs must not be touched during render).
+  const [prevHydrationViewer, setPrevHydrationViewer] = useState<string | null>(
+    user?.id ?? null,
+  );
+  if ((user?.id ?? null) !== prevHydrationViewer) {
+    setPrevHydrationViewer(user?.id ?? null);
+    setHydration(new Map());
+    setReactionHydration(new Map());
+  }
+  const hydrationViewerRef = useRef<string | null>(user?.id ?? null);
+
+  useEffect(() => {
+    const viewer = user?.id ?? null;
+    if (hydrationViewerRef.current !== viewer) {
+      hydrationViewerRef.current = viewer;
+      hydrationGen.current += 1;
+      hydratedIds.current = new Set();
+    }
+    const ids: string[] = [];
+    for (const p of [...posts, ...(saved ?? [])]) {
+      if (!hydratedIds.current.has(p.id)) {
+        hydratedIds.current.add(p.id);
+        ids.push(p.id);
+      }
+    }
+    if (ids.length === 0) return;
+    const gen = hydrationGen.current;
+    void Promise.all([
+      fetchMyLikes(ids),
+      fetchMyBookmarks(ids),
+      fetchPostMedia(ids),
+      fetchReactions("post", ids),
+      fetchMyReactions("post", ids),
+    ]).then(([likes, bookmarks, media, reactions, myReactions]) => {
+      if (gen !== hydrationGen.current) return; // viewer changed mid-flight
+      setHydration((prev) => {
+        const next = new Map(prev);
+        for (const id of ids) {
+          next.set(id, {
+            liked: likes.has(id),
+            bookmarked: bookmarks.has(id),
+            gallery: media.get(id) ?? [],
+          });
+        }
+        return next;
+      });
+      setReactionHydration((prev) => {
+        const next = new Map(prev);
+        for (const id of ids) {
+          next.set(id, {
+            summaries: reactions.get(id) ?? [],
+            mine: myReactions.get(id) ?? null,
+          });
+        }
+        return next;
+      });
+    });
+  }, [posts, saved, user?.id]);
+
   // Load the header profile + the user's posts. Shared by the initial effect and
   // the post-save refresh; passes the real viewer id so the owner's own flagged
   // posts stay visible to them.
@@ -109,14 +194,23 @@ export default function ProfileView({ userId }: { userId: string }) {
     ]);
     setProfile(prof);
     setPosts(list);
+    setHasMorePosts(list.length >= PROFILE_PAGE_SIZE);
     setLoading(false);
   }, [userId, user?.id]);
 
+  // The skeleton flip for a NEW target/viewer is adjusted during render off the
+  // same key the fetch effect uses; the effect body only starts the fetch, with
+  // every state write landing in the .then continuation.
+  const profileKey = ready ? `${userId} ${user?.id ?? ""}` : null;
+  const [prevProfileKey, setPrevProfileKey] = useState<string | null>(null);
+  if (profileKey !== null && profileKey !== prevProfileKey) {
+    setPrevProfileKey(profileKey);
+    setLoading(true);
+  }
   useEffect(() => {
     // Wait for the initial auth check so we pass the real viewer id on first load.
     if (!ready) return;
     let active = true;
-    setLoading(true);
     void Promise.all([
       fetchPublicProfile(userId),
       fetchPostsByUser(userId, user?.id),
@@ -124,12 +218,30 @@ export default function ProfileView({ userId }: { userId: string }) {
       if (!active) return;
       setProfile(prof);
       setPosts(list);
+      setHasMorePosts(list.length >= PROFILE_PAGE_SIZE);
       setLoading(false);
     });
     return () => {
       active = false;
     };
   }, [ready, userId, user?.id]);
+
+  // ── "Load older" pager (posts tab) — same time-cursor pattern as the feed. ────
+  const loadOlder = useCallback(async () => {
+    if (loadingMore || !hasMorePosts || posts.length === 0) return;
+    let oldest = posts[0].created_at;
+    for (const p of posts) {
+      if (p.created_at < oldest) oldest = p.created_at;
+    }
+    setLoadingMore(true);
+    const older = await fetchPostsByUser(userId, user?.id, { before: oldest });
+    setPosts((prev) => {
+      const seen = new Set(prev.map((p) => p.id));
+      return [...prev, ...older.filter((p) => !seen.has(p.id))];
+    });
+    setHasMorePosts(older.length >= PROFILE_PAGE_SIZE);
+    setLoadingMore(false);
+  }, [loadingMore, hasMorePosts, posts, userId, user?.id]);
 
   // Remove a post from both lists when its own card deletes it (a post can be shown
   // under "posts" and, if the owner bookmarked their own post, under "saved").
@@ -155,15 +267,46 @@ export default function ProfileView({ userId }: { userId: string }) {
     void load();
   }, [load]);
 
+  // ── Tablist keyboard support (RTL): the tabs flow right→left, so ArrowLeft
+  // advances and ArrowRight goes back; Home/End jump. Roving tabindex + focus
+  // follows selection (WAI-ARIA tabs pattern). ─────────────────────────────────
+  const postsTabRef = useRef<HTMLButtonElement | null>(null);
+  const savedTabRef = useRef<HTMLButtonElement | null>(null);
+
+  const onTablistKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const order: ("posts" | "saved")[] = isOwn ? ["posts", "saved"] : ["posts"];
+      if (order.length < 2) return;
+      const idx = Math.max(0, order.indexOf(activeTab));
+      let next: number | null = null;
+      if (e.key === "ArrowLeft") next = (idx + 1) % order.length;
+      else if (e.key === "ArrowRight") next = (idx - 1 + order.length) % order.length;
+      else if (e.key === "Home") next = 0;
+      else if (e.key === "End") next = order.length - 1;
+      if (next === null || next === idx) {
+        if (next !== null) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      const target = order[next];
+      if (target === "saved") handleSelectSaved();
+      else setActiveTab("posts");
+      (target === "saved" ? savedTabRef : postsTabRef).current?.focus();
+    },
+    [isOwn, activeTab, handleSelectSaved],
+  );
+
   const displayName = (profile?.name ?? "").trim() || "משתמש";
   const verified = !!profile?.is_verified_customer;
   const bio = (profile?.bio ?? "").trim();
   const memberSinceLine = memberSince(profile?.created_at ?? null);
 
   // Truthful stats derived only from the posts we actually loaded — no server
-  // aggregate is fetched, so these never claim more than what is on screen.
+  // aggregate is fetched, so these never claim more than what is on screen. When
+  // a full page came back there may be more, so the honest label is "N+".
   const postCount = posts.length;
   const likesReceived = posts.reduce((sum, p) => sum + p.like_count, 0);
+  const plus = hasMorePosts ? "+" : "";
 
   // A finished load with no profile means this id doesn't map to a real member
   // (bad / stale / deleted). Show an explicit not-found card rather than a generic
@@ -190,6 +333,9 @@ export default function ProfileView({ userId }: { userId: string }) {
   }
 
   return (
+    // Provider (no DOM) for the page-batched post reactions — reaches every post
+    // <ReactionBar> in both tabs without threading through <PostCard>.
+    <ReactionHydrationContext.Provider value={reactionHydration}>
     <section className="mx-auto w-full max-w-2xl" aria-label="פרופיל קהילה">
       {/* Header */}
       <header className="card p-5 sm:p-6">
@@ -232,14 +378,15 @@ export default function ProfileView({ userId }: { userId: string }) {
                 <p className="mt-1 text-xs text-muted">{memberSinceLine}</p>
               )}
 
-              {/* Truthful stats — reflect the posts loaded on this page only. */}
+              {/* Truthful stats — reflect the posts loaded on this page only;
+                  "N+" when a full page means there may be more. */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-                  <span className="tabular-nums">{postCount}</span>
+                  <span className="tabular-nums">{`${postCount}${plus}`}</span>
                   <span className="ms-1">פוסטים</span>
                 </span>
                 <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-                  <span className="tabular-nums">{likesReceived}</span>
+                  <span className="tabular-nums">{`${likesReceived}${plus}`}</span>
                   <span className="ms-1">לייקים שהתקבלו</span>
                 </span>
               </div>
@@ -269,14 +416,17 @@ export default function ProfileView({ userId }: { userId: string }) {
       <div
         role="tablist"
         aria-label="תצוגות פרופיל"
+        onKeyDown={onTablistKeyDown}
         className="mt-4 flex items-center gap-2 border-b border-border"
       >
         <button
+          ref={postsTabRef}
           type="button"
           role="tab"
           id="profile-tab-posts"
           aria-controls="profile-panel-posts"
           aria-selected={activeTab === "posts"}
+          tabIndex={activeTab === "posts" ? 0 : -1}
           onClick={() => setActiveTab("posts")}
           className={`-mb-px inline-flex min-h-[44px] items-center rounded-t-lg border-b-2 px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
             activeTab === "posts"
@@ -289,11 +439,13 @@ export default function ProfileView({ userId }: { userId: string }) {
 
         {isOwn && (
           <button
+            ref={savedTabRef}
             type="button"
             role="tab"
             id="profile-tab-saved"
             aria-controls="profile-panel-saved"
             aria-selected={activeTab === "saved"}
+            tabIndex={activeTab === "saved" ? 0 : -1}
             onClick={handleSelectSaved}
             className={`-mb-px inline-flex min-h-[44px] items-center rounded-t-lg border-b-2 px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               activeTab === "saved"
@@ -347,17 +499,34 @@ export default function ProfileView({ userId }: { userId: string }) {
             </p>
           </div>
         ) : (
-          <ul className="space-y-4">
-            {posts.map((post) => (
-              <li key={post.id} className="reveal">
-                <PostCard
-                  post={post}
-                  onRequireAuth={onRequireAuth}
-                  onDeleted={handleDeleted}
-                />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="space-y-4">
+              {posts.map((post) => (
+                <li key={post.id} className="reveal">
+                  <PostCard
+                    post={post}
+                    onRequireAuth={onRequireAuth}
+                    onDeleted={handleDeleted}
+                    hydration={hydration.get(post.id) ?? null}
+                  />
+                </li>
+              ))}
+            </ul>
+
+            {/* Pager — only when a full page hinted there may be older posts. */}
+            {hasMorePosts && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => void loadOlder()}
+                  disabled={loadingMore}
+                  className="interactive press inline-flex items-center justify-center rounded-xl border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+                >
+                  {loadingMore ? "טוען…" : "טעינת פוסטים ישנים יותר"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -406,6 +575,7 @@ export default function ProfileView({ userId }: { userId: string }) {
                     post={post}
                     onRequireAuth={onRequireAuth}
                     onDeleted={handleDeleted}
+                    hydration={hydration.get(post.id) ?? null}
                   />
                 </li>
               ))}
@@ -416,5 +586,6 @@ export default function ProfileView({ userId }: { userId: string }) {
 
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </section>
+    </ReactionHydrationContext.Provider>
   );
 }

@@ -33,7 +33,9 @@ import {
   fetchMyBookmarks,
   fetchMyLikes,
   fetchPostMedia,
+  hasReportedThisSession,
   MAX_BODY,
+  REPORT_REASONS,
   reportContent,
   setBlock,
   setBookmark,
@@ -42,12 +44,14 @@ import {
   type CommunityPost,
   type Media,
   type PostHydration,
+  type ReportReason,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import Link from "next/link";
 import { providerBySlug } from "@/lib/providers.generated";
 import { initial, relativeTime, renderBody } from "@/lib/community-render";
+import ConfirmDanger from "./ConfirmDanger";
 import MediaGallery from "./MediaGallery";
 import MediaView from "./MediaView";
 import ReactionBar from "./ReactionBar";
@@ -108,6 +112,7 @@ function OverflowMenu({
   const menuId = useId();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Close on outside click / Escape while open.
   useEffect(() => {
@@ -131,6 +136,16 @@ function OverflowMenu({
     };
   }, [open]);
 
+  // Move keyboard focus INTO the menu when it opens (first action), so a
+  // keyboard user isn't left on the trigger with an open menu behind it.
+  useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      menuRef.current?.querySelector<HTMLElement>("button:not([disabled])")?.focus();
+    }, 20);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   const runAndClose = useCallback((fn: () => void) => {
     fn();
     setOpen(false);
@@ -145,7 +160,9 @@ function OverflowMenu({
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         aria-label="פעולות נוספות"
         className="flex h-11 w-11 min-h-11 min-w-11 items-center justify-center rounded-full text-lg leading-none text-muted transition-colors hover:bg-accent/10 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
@@ -154,6 +171,7 @@ function OverflowMenu({
 
       {open && (
         <div
+          ref={menuRef}
           id={menuId}
           aria-label="פעולות על הפוסט"
           className="popover absolute end-0 top-full z-20 mt-1 min-w-44 rounded-2xl border border-border bg-surface p-1 shadow-float"
@@ -195,14 +213,17 @@ function OverflowMenu({
             </button>
           )}
           {isOwn && (
-            <button
-              type="button"
-              onClick={() => runAndClose(onDelete)}
+            <ConfirmDanger
+              label={deleting ? "מוחק…" : "מחיקת הפוסט"}
+              confirmLabel="לאשר מחיקה לצמיתות?"
+              ariaLabel="מחיקת הפוסט שלי"
               disabled={deleting}
-              className={`${itemClass} text-danger-text hover:bg-danger/10`}
-            >
-              {deleting ? "מוחק…" : "מחיקת הפוסט"}
-            </button>
+              onConfirm={() => runAndClose(onDelete)}
+              dismissLabel="ביטול"
+              dangerClassName={`${itemClass} text-danger-text hover:bg-danger/10`}
+              confirmClassName={`${itemClass} bg-danger/10 font-semibold text-danger-text hover:bg-danger/15`}
+              dismissClassName={itemClass}
+            />
           )}
         </div>
       )}
@@ -251,40 +272,66 @@ export default function PostCard({
   const [notice, setNotice] = useState<string | null>(null);
   const [noticeError, setNoticeError] = useState(false);
 
+  // Report-with-reason: the inline form (Hebrew preset + optional free text). A
+  // second report on the same post in this session is blocked up-front.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<ReportReason>(REPORT_REASONS[0]);
+  const [reportText, setReportText] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+
+  // Live reply count — <Replies> reports +1/-1 so the 💬 counter stays truthful
+  // while the thread is open, without a refetch.
+  const [replyCount, setReplyCount] = useState(post.reply_count);
+
   // Extra gallery images (beyond the primary media_url attachment).
   const [gallery, setGallery] = useState<Media[]>([]);
 
   const repliesId = useId();
 
-  // Keep the visible like count in sync if the post prop is replaced (e.g. re-sort).
-  useEffect(() => {
-    setLikeCount(post.like_count);
-  }, [post.like_count]);
+  // Keep the visible counters / body / edited marker / pinned state in sync if
+  // the post prop is replaced (e.g. a feed re-sort). Adjusted during render
+  // (guarded prev-value pattern) — no synchronous setState in effects.
+  const [prevPost, setPrevPost] = useState(post);
+  if (prevPost !== post) {
+    setPrevPost(post);
+    if (prevPost.like_count !== post.like_count) setLikeCount(post.like_count);
+    if (prevPost.reply_count !== post.reply_count) setReplyCount(post.reply_count);
+    if (prevPost.body !== post.body) {
+      setBody(post.body);
+      setDraft(post.body);
+    }
+    if (prevPost.edited_at !== post.edited_at) setEditedAt(post.edited_at);
+    if (prevPost.is_pinned !== post.is_pinned) setPinnedLocal(post.is_pinned);
+  }
 
-  // Keep the visible body + edited marker in sync if the post prop is replaced.
-  useEffect(() => {
-    setBody(post.body);
-    setDraft(post.body);
-  }, [post.body]);
-
-  useEffect(() => {
-    setEditedAt(post.edited_at);
-  }, [post.edited_at]);
-
-  // Keep the pinned state in sync if the post prop is replaced.
-  useEffect(() => {
-    setPinnedLocal(post.is_pinned);
-  }, [post.is_pinned]);
-
-  // Hydrate the viewer's own like + bookmark state for this post on mount —
-  // ONLY when standalone (`hydration` prop absent). Inside a list, the parent
-  // batches this for the whole page instead of one round-trip per card.
-  useEffect(() => {
+  // Signed out (or account switch to signed-out): no like/bookmark state.
+  const [prevViewerId, setPrevViewerId] = useState<string | null>(user?.id ?? null);
+  if ((user?.id ?? null) !== prevViewerId) {
+    setPrevViewerId(user?.id ?? null);
     if (!user) {
       setLiked(false);
       setBookmarked(false);
-      return;
     }
+  }
+
+  // Apply the parent's batched hydration when it lands — adjusted during render,
+  // once per entry identity. The feed keeps each post's entry referentially
+  // stable across map merges, so this runs once per resolved entry and never
+  // clobbers a later optimistic like/bookmark flip.
+  const [appliedHydration, setAppliedHydration] = useState<PostHydration | null>(null);
+  if (hydration && hydration !== appliedHydration) {
+    setAppliedHydration(hydration);
+    setLiked(hydration.liked);
+    setBookmarked(hydration.bookmarked);
+    setGallery(hydration.gallery);
+  }
+
+  // Hydrate the viewer's own like + bookmark state for this post on mount —
+  // ONLY when standalone (`hydration` prop absent). Inside a list, the parent
+  // batches this for the whole page instead of one round-trip per card. State
+  // lands in the .then continuations only.
+  useEffect(() => {
+    if (!user) return;
     if (hydration !== undefined) return; // parent-owned (batched at the list level)
     let active = true;
     void fetchMyLikes([post.id]).then((set) => {
@@ -310,16 +357,6 @@ export default function PostCard({
       active = false;
     };
   }, [post.id, hydration]);
-
-  // Apply the parent's batched hydration when it lands. The feed keeps each
-  // post's entry referentially stable across map merges, so this runs once per
-  // resolved entry and never clobbers a later optimistic like/bookmark flip.
-  useEffect(() => {
-    if (!hydration) return;
-    setLiked(hydration.liked);
-    setBookmarked(hydration.bookmarked);
-    setGallery(hydration.gallery);
-  }, [hydration]);
 
   const media: Media | null = post.media_url
     ? {
@@ -373,16 +410,45 @@ export default function PostCard({
     setShowReplies((v) => !v);
   }, []);
 
-  // ── Report ───────────────────────────────────────────────────────────────────
-  const handleReport = useCallback(async () => {
+  const handleReplyCountChange = useCallback((delta: number) => {
+    setReplyCount((c) => Math.max(0, c + delta));
+  }, []);
+
+  // ── Report (opens the reason form; a same-session repeat is blocked) ─────────
+  const handleReport = useCallback(() => {
     if (!user) {
       onRequireAuth();
       return;
     }
-    const ok = await reportContent("post", post.id, user.id, "");
-    setNotice(ok ? "תודה, הדיווח התקבל וייבדק." : "הדיווח נכשל. נסו שוב.");
-    setNoticeError(!ok);
+    if (hasReportedThisSession("post", post.id)) {
+      setNotice("כבר שלחתם דיווח על התוכן הזה — הוא ממתין לבדיקה.");
+      setNoticeError(false);
+      return;
+    }
+    setNotice(null);
+    setNoticeError(false);
+    setReportReason(REPORT_REASONS[0]);
+    setReportText("");
+    setReportOpen(true);
   }, [user, post.id, onRequireAuth]);
+
+  const handleReportSubmit = useCallback(async () => {
+    if (!user || reportBusy) return;
+    setReportBusy(true);
+    const detail = reportText.trim();
+    // The chosen preset + optional free text travel in the EXISTING report body.
+    const body = detail ? `${reportReason} — ${detail}` : reportReason;
+    const ok = await reportContent("post", post.id, user.id, body);
+    setReportBusy(false);
+    if (ok) {
+      setReportOpen(false);
+      setNotice("תודה, הדיווח התקבל וייבדק.");
+      setNoticeError(false);
+    } else {
+      setNotice("הדיווח נכשל. נסו שוב.");
+      setNoticeError(true);
+    }
+  }, [user, reportBusy, reportReason, reportText, post.id]);
 
   // ── Block ────────────────────────────────────────────────────────────────────
   const handleBlock = useCallback(async () => {
@@ -636,6 +702,68 @@ export default function PostCard({
         </p>
       )}
 
+      {/* Report-with-reason form (opened from the ⋯ menu) */}
+      {reportOpen && (
+        <div className="mt-3 rounded-xl border border-border bg-background p-3">
+          <p className="text-xs font-semibold text-ink">מה הסיבה לדיווח?</p>
+          <div
+            role="radiogroup"
+            aria-label="סיבת הדיווח"
+            className="mt-2 flex flex-wrap gap-1.5"
+          >
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                role="radio"
+                aria-checked={reportReason === r}
+                onClick={() => setReportReason(r)}
+                disabled={reportBusy}
+                className={`inline-flex min-h-9 items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60 ${
+                  reportReason === r
+                    ? "border-accent bg-accent/10 text-accent-text"
+                    : "border-border bg-surface text-muted hover:text-ink"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <label htmlFor={`report-detail-${post.id}`} className="sr-only">
+            פרטים נוספים לדיווח
+          </label>
+          <textarea
+            id={`report-detail-${post.id}`}
+            dir="rtl"
+            rows={2}
+            value={reportText}
+            maxLength={500}
+            onChange={(e) => setReportText(e.target.value)}
+            disabled={reportBusy}
+            placeholder="פרטים נוספים (לא חובה)"
+            className="mt-2 w-full resize-y rounded-xl border border-border bg-surface px-3 py-2 text-xs text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleReportSubmit()}
+              disabled={reportBusy}
+              className="inline-flex min-h-9 items-center justify-center rounded-xl bg-accent px-4 py-1.5 text-xs font-semibold text-accent-contrast transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            >
+              {reportBusy ? "שולח…" : "שליחת דיווח"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportOpen(false)}
+              disabled={reportBusy}
+              className="inline-flex min-h-9 items-center justify-center rounded-xl border border-border px-4 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            >
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Reactions (multi-emoji, on top of the binary like) */}
       <div className="mt-3">
         <ReactionBar
@@ -669,7 +797,7 @@ export default function PostCard({
           className={`${actionBtn} text-muted hover:text-ink`}
         >
           <span aria-hidden="true">💬</span>
-          <span className="nums-tabular tabular-nums">{post.reply_count}</span>
+          <span className="nums-tabular tabular-nums">{replyCount}</span>
         </button>
 
         <button
@@ -693,6 +821,7 @@ export default function PostCard({
             onRequireAuth={onRequireAuth}
             postAuthorId={post.user_id}
             initialAcceptedReplyId={post.accepted_reply_id}
+            onReplyCountChange={handleReplyCountChange}
           />
         </div>
       )}

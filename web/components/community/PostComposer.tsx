@@ -22,7 +22,7 @@
 // visible focus rings, prefers-reduced-motion neutral.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   CHANNELS,
   MAX_BODY,
@@ -59,17 +59,161 @@ export interface PostComposerProps {
 
 /** Hard cap on a single voice note (ms) — auto-stops before the audio size
  *  budget is exceeded, so a long recording fails fast in-UI instead of only at
- *  upload with a generic error. */
-const MAX_VOICE_MS = 5 * 60 * 1000;
+ *  upload with a generic error. Shared with <Replies>' ReplyComposer via
+ *  useVoiceRecorder so the post and reply caps can never drift apart. */
+export const MAX_VOICE_MS = 5 * 60 * 1000;
 /** How long before the cap to surface a subtle "approaching the limit" note. */
-const VOICE_WARN_MS = 30 * 1000;
+export const VOICE_WARN_MS = 30 * 1000;
 
 /** mm:ss from a live recording length (ms). */
-function formatElapsed(ms: number): string {
+export function formatElapsed(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+/** The SHARED voice-recording hook — timer, MAX_VOICE_MS auto-stop, unmount
+ *  cleanup (mic released, OS indicator off). Used by this composer AND the reply
+ *  composer in <Replies>, so both enforce the same cap with the same countdown.
+ *  `onFinish` receives the recorded blob (the caller decides upload-now vs
+ *  attach-pending); `onError` receives a ready Hebrew message. */
+export function useVoiceRecorder({
+  onFinish,
+  onError,
+}: {
+  onFinish: (blob: Blob, durationMs: number) => void | Promise<void>;
+  onError: (message: string) => void;
+}): {
+  recording: boolean;
+  /** Live elapsed ms while recording (ticks 4×/s). */
+  elapsed: number;
+  start: () => Promise<void>;
+  stop: () => Promise<void>;
+  cancel: () => void;
+} {
+  const recorderRef = useRef<Recorder | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const startedRef = useRef(0);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // The latest callbacks, readable from the long-lived interval/stop closures.
+  const onFinishRef = useRef(onFinish);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onFinishRef.current = onFinish;
+    onErrorRef.current = onError;
+  });
+
+  const stopTick = useCallback(() => {
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+  }, []);
+
+  const stop = useCallback(async () => {
+    const rec = recorderRef.current;
+    if (!rec) return;
+    recorderRef.current = null;
+    stopTick();
+    setRecording(false);
+    try {
+      const { blob, durationMs } = await rec.stop();
+      await onFinishRef.current(blob, durationMs);
+    } catch (err) {
+      onErrorRef.current(
+        err instanceof Error ? err.message : "ההקלטה נכשלה. נסו שוב.",
+      );
+    }
+  }, [stopTick]);
+
+  const start = useCallback(async () => {
+    if (recorderRef.current) return;
+    try {
+      const rec = await startRecording();
+      recorderRef.current = rec;
+      startedRef.current = Date.now();
+      setElapsed(0);
+      setRecording(true);
+      tickRef.current = setInterval(() => {
+        const next = Date.now() - startedRef.current;
+        setElapsed(next);
+        // Auto-stop at the cap so a recording never exceeds the size budget.
+        if (next >= MAX_VOICE_MS) void stop();
+      }, 250);
+    } catch {
+      onErrorRef.current("לא ניתן לגשת למיקרופון. בדקו את ההרשאות ונסו שוב.");
+    }
+  }, [stop]);
+
+  const cancel = useCallback(() => {
+    stopTick();
+    try {
+      recorderRef.current?.cancel();
+    } catch {
+      /* ignore */
+    }
+    recorderRef.current = null;
+    setRecording(false);
+    setElapsed(0);
+  }, [stopTick]);
+
+  // Unmount safety: release the mic + timer (no setState — just the hardware).
+  useEffect(() => {
+    return () => {
+      if (tickRef.current) clearInterval(tickRef.current);
+      try {
+        recorderRef.current?.cancel();
+      } catch {
+        /* ignore */
+      }
+      recorderRef.current = null;
+    };
+  }, []);
+
+  return { recording, elapsed, start, stop, cancel };
+}
+
+// ── Draft autosave (sessionStorage) ──────────────────────────────────────────
+// The typed body + channel survive an accidental refresh/navigation within the
+// session. A catalogue deep-link prefill WINS over a saved draft. Best-effort:
+// storage may be unavailable (private mode) — the composer still works.
+
+const DRAFT_KEY = "swc:composer-draft";
+
+function saveDraft(body: string, channel: Channel): void {
+  try {
+    if (body.trim()) {
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ body, channel }));
+    } else {
+      sessionStorage.removeItem(DRAFT_KEY);
+    }
+  } catch {
+    /* best-effort */
+  }
+}
+
+function clearDraft(): void {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* best-effort */
+  }
+}
+
+function readDraft(): { body: string; channel?: string } | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw) as { body?: unknown; channel?: unknown };
+    const body = typeof j.body === "string" ? j.body : "";
+    if (!body.trim()) return null;
+    return { body, channel: typeof j.channel === "string" ? j.channel : undefined };
+  } catch {
+    return null;
+  }
 }
 
 /** Avatar bubble — a plain <img> when there's a URL (UNTRUSTED, used only as src),
@@ -113,13 +257,35 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
   const [busy, setBusy] = useState(false); // uploading media OR submitting
   const [uploading, setUploading] = useState(false); // media upload in flight
   const [error, setError] = useState<string | null>(null);
+  // Non-blocking notice (e.g. a partial gallery attach after a SUCCESSFUL post) —
+  // deliberately separate from `error` so it survives the post-submit reset.
+  const [notice, setNotice] = useState<string | null>(null);
 
-  // Voice recording state.
-  const recorderRef = useRef<Recorder | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const recStartRef = useRef(0);
-  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Voice recording — the shared hook (timer + MAX_VOICE_MS auto-stop). The
+  // finished blob uploads immediately and becomes the primary attachment.
+  const {
+    recording,
+    elapsed,
+    start: startVoiceRec,
+    stop: stopVoice,
+    cancel: cancelVoice,
+  } = useVoiceRecorder({
+    onFinish: async (blob, durationMs) => {
+      if (!user) return;
+      setBusy(true);
+      setUploading(true);
+      try {
+        const uploaded = await uploadMedia(user.id, blob, durationMs);
+        setMedia(uploaded);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "העלאת ההקלטה נכשלה. נסו שוב.");
+      } finally {
+        setUploading(false);
+        setBusy(false);
+      }
+    },
+    onError: (message) => setError(message),
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,30 +299,35 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
   // video) OR the extra-image gallery isn't full.
   const canAttachMore = media === null || extra.length < MAX_GALLERY;
 
-  // Cleanup any in-flight recording / timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (tickRef.current) clearInterval(tickRef.current);
-      try {
-        recorderRef.current?.cancel();
-      } catch {
-        /* ignore */
-      }
-    };
-  }, []);
-
-  // Seed once from a catalogue deep-link prefill. Guarded so a re-render (or the
-  // parent passing a new object identity) never overwrites what the user typed.
+  // Seed once from a catalogue deep-link prefill; with NO prefill, restore the
+  // session-saved draft (prefill wins). Guarded so a re-render (or the parent
+  // passing a new object identity) never overwrites what the user typed. The
+  // draft read must stay OFF the render path (sessionStorage is client-only —
+  // reading it during render would desync SSR markup), so the state lands via
+  // rAF — the same idiom as the feed's intro banner.
   const seededRef = useRef(false);
   useEffect(() => {
-    if (seededRef.current || !prefill) return;
+    if (seededRef.current) return;
     seededRef.current = true;
-    if (prefill.channel && (CHANNELS as readonly string[]).includes(prefill.channel)) {
-      setChannel(prefill.channel);
-    }
-    setBody((prefill.draft ?? "").slice(0, MAX_BODY));
-    setProviderSlug(prefill.providerSlug ?? null);
-    setProviderName(prefill.providerName ?? null);
+    const raf = requestAnimationFrame(() => {
+      if (prefill) {
+        if (prefill.channel && (CHANNELS as readonly string[]).includes(prefill.channel)) {
+          setChannel(prefill.channel);
+        }
+        setBody((prefill.draft ?? "").slice(0, MAX_BODY));
+        setProviderSlug(prefill.providerSlug ?? null);
+        setProviderName(prefill.providerName ?? null);
+        return;
+      }
+      const draft = readDraft();
+      if (draft) {
+        setBody(draft.body.slice(0, MAX_BODY));
+        if (draft.channel && (CHANNELS as readonly string[]).includes(draft.channel)) {
+          setChannel(draft.channel as Channel);
+        }
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [prefill]);
 
   // ── Signed-out prompt ──────────────────────────────────────────────────────
@@ -240,66 +411,11 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
     }
   }
 
-  // ── Media: voice recording ───────────────────────────────────────────────────
+  // ── Media: voice recording (shared hook — see useVoiceRecorder above) ────────
   async function startVoice() {
     if (!user || recording || busy) return;
     setError(null);
-    try {
-      const rec = await startRecording();
-      recorderRef.current = rec;
-      recStartRef.current = Date.now();
-      setElapsed(0);
-      setRecording(true);
-      tickRef.current = setInterval(() => {
-        const next = Date.now() - recStartRef.current;
-        setElapsed(next);
-        // Auto-stop at the cap so a recording never exceeds the size budget.
-        if (next >= MAX_VOICE_MS) {
-          void stopVoice();
-        }
-      }, 250);
-    } catch {
-      setError("לא ניתן לגשת למיקרופון. בדקו את ההרשאות ונסו שוב.");
-    }
-  }
-
-  function stopTick() {
-    if (tickRef.current) {
-      clearInterval(tickRef.current);
-      tickRef.current = null;
-    }
-  }
-
-  async function stopVoice() {
-    const rec = recorderRef.current;
-    if (!rec || !user) return;
-    stopTick();
-    setRecording(false);
-    setBusy(true);
-    setUploading(true);
-    try {
-      const { blob, durationMs } = await rec.stop();
-      recorderRef.current = null;
-      const uploaded = await uploadMedia(user.id, blob, durationMs);
-      setMedia(uploaded);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "העלאת ההקלטה נכשלה. נסו שוב.");
-    } finally {
-      setUploading(false);
-      setBusy(false);
-    }
-  }
-
-  function cancelVoice() {
-    stopTick();
-    setRecording(false);
-    try {
-      recorderRef.current?.cancel();
-    } catch {
-      /* ignore */
-    }
-    recorderRef.current = null;
-    setElapsed(0);
+    await startVoiceRec();
   }
 
   function removeMedia() {
@@ -317,6 +433,7 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
     e.preventDefault();
     if (!user || !canSubmit) return;
     setError(null);
+    setNotice(null);
     setBusy(true);
     try {
       const author: AuthorRef = {
@@ -338,11 +455,21 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
         return;
       }
       // Attach any extra gallery images BEFORE handing up, so the card's fetch
-      // sees them. Owner-only + DB-capped at MAX_GALLERY by RLS.
+      // sees them. Owner-only + DB-capped at MAX_GALLERY by RLS. A PARTIAL attach
+      // must not block the (already successful) post — surface an honest,
+      // non-blocking notice instead.
       if (extra.length > 0) {
-        await addPostMedia(post.id, extra);
+        const added = await addPostMedia(post.id, extra);
+        if (added < extra.length) {
+          setNotice(
+            added === 0
+              ? "הפוסט פורסם, אך התמונות הנוספות לא צורפו."
+              : `הפוסט פורסם, אך צורפו רק ${added} מתוך ${extra.length} תמונות נוספות.`,
+          );
+        }
       }
-      // Clear the composer and hand the new post up to the feed.
+      // Clear the composer (and the session draft) and hand the new post up.
+      clearDraft();
       setBody("");
       setMedia(null);
       setExtra([]);
@@ -380,7 +507,11 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
               <select
                 id={channelId}
                 value={channel}
-                onChange={(e) => setChannel(e.target.value as Channel)}
+                onChange={(e) => {
+                  const next = e.target.value as Channel;
+                  setChannel(next);
+                  saveDraft(body, next);
+                }}
                 disabled={busy || recording}
                 className="interactive w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
               >
@@ -420,7 +551,11 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
             <MentionTextarea
               id={bodyId}
               value={body}
-              onChange={(v) => setBody(v.slice(0, MAX_BODY))}
+              onChange={(v) => {
+                const next = v.slice(0, MAX_BODY);
+                setBody(next);
+                saveDraft(next, channel);
+              }}
               maxLength={MAX_BODY}
               rows={3}
               dir="rtl"
@@ -511,6 +646,13 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
             {error && (
               <p role="alert" className="mt-3 text-sm text-danger-text">
                 {error}
+              </p>
+            )}
+
+            {/* Non-blocking notice (e.g. partial gallery attach on a successful post) */}
+            {notice && (
+              <p role="status" aria-live="polite" className="mt-3 text-sm text-danger-text">
+                {notice}
               </p>
             )}
 

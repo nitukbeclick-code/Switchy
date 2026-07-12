@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { initial, relativeTime, renderBody } from "@/lib/community-render";
+import { clip, heDate, initial, relativeTime, renderBody } from "@/lib/community-render";
 
 // ────────────────────────────────────────────────────────────────────────────
 // lib/community-render.tsx — the shared community presentation helpers, hoisted
@@ -32,6 +32,49 @@ describe("relativeTime", () => {
 
   it("clamps a future (clock-skewed) timestamp to 'just now'", () => {
     expect(relativeTime(isoAgo(-60_000))).toBe("לפני רגע");
+  });
+});
+
+describe("clip", () => {
+  it("returns short strings untouched (after whitespace normalisation)", () => {
+    expect(clip("שאלה קצרה", 60)).toBe("שאלה קצרה");
+  });
+
+  it("collapses runs of whitespace (incl. newlines) to single spaces and trims", () => {
+    expect(clip("  שורה\nראשונה\t\tושנייה  ", 60)).toBe("שורה ראשונה ושנייה");
+  });
+
+  it("clips to n chars with an ellipsis — total length never exceeds n", () => {
+    const out = clip("א".repeat(100), 10);
+    expect(out.length).toBeLessThanOrEqual(10);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out).toBe("א".repeat(9) + "…");
+  });
+
+  it("does NOT clip a string of exactly n chars (no gratuitous ellipsis)", () => {
+    const exact = "ב".repeat(10);
+    expect(clip(exact, 10)).toBe(exact);
+  });
+
+  it("trims a trailing space left at the cut point before appending the ellipsis", () => {
+    // cut lands right after "אב " → the dangling space is trimmed, not kept.
+    expect(clip("אב גדהוזחט", 4)).toBe("אב…");
+  });
+
+  it("returns an empty string for empty/whitespace-only input", () => {
+    expect(clip("", 10)).toBe("");
+    expect(clip("   \n ", 10)).toBe("");
+  });
+});
+
+describe("heDate", () => {
+  it("formats an ISO timestamp as an absolute Hebrew date", () => {
+    expect(heDate("2026-07-06T12:00:00Z")).toBe("6 ביולי 2026");
+  });
+
+  it("returns an empty string for an unparseable timestamp (never 'Invalid Date')", () => {
+    expect(heDate("not-a-date")).toBe("");
+    expect(heDate("")).toBe("");
   });
 });
 

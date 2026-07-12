@@ -401,6 +401,46 @@ export function breadcrumbSchema(items: Crumb[]): Json {
   };
 }
 
+// ── ItemList (lean positioned links — the community Q&A hub) ─────────────────
+/**
+ * A LEAN `ItemList` of positioned on-site links: each element is a bare
+ * `ListItem` with `position` + absolute `url` (+ optional `name`) — no inlined
+ * entity per item. Built for the /community/questions hub, which enumerates its
+ * answered-Q&A permalinks for engines without re-serializing any post content
+ * (the permalink page itself carries the full QAPage node); any page listing
+ * plain internal links can reuse it.
+ *
+ * HONESTY: every `url` must be a real on-site page the caller actually renders
+ * a link to, and `name` (when given) must be the real visible anchor text —
+ * nothing is fabricated. Returns `null` when there are no links, so callers can
+ * render it unconditionally without emitting an empty list.
+ */
+export function linkItemListSchema(args: {
+  /** Accessible name of the list (e.g. "שאלות ותשובות — קהילת חוסך"). */
+  name?: string;
+  /** The listed links (real on-site urls, absolute or site-relative). */
+  links: Array<{ url: string; name?: string }>;
+}): Json | null {
+  const links = (args.links ?? []).filter((l) => l && l.url);
+  if (links.length === 0) return null;
+  const schema: Json = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    numberOfItems: links.length,
+    itemListElement: links.map((l, i) => {
+      const el: Json = {
+        "@type": "ListItem",
+        position: i + 1,
+        url: absUrl(l.url),
+      };
+      if (l.name) el.name = l.name;
+      return el;
+    }),
+  };
+  if (args.name) schema.name = args.name;
+  return schema;
+}
+
 // ── Article (guide) ──────────────────────────────────────────────────────────
 /**
  * Shared brand Organization node used as Article `author`/`publisher`. Inlined

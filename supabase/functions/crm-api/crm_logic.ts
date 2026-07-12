@@ -7,7 +7,9 @@
 export const SNIPPET_LEN = 60;
 export const MAX_REPLY_LEN = 4000; // matches the body.slice cap on the stored row
 export const EVENT_PREVIEW_LEN = 80; // crm_events.preview cap — a short, PII-light snippet
-export const MAX_NOTE_LEN = 5000; // cap on the editable leads.notes field
+export const MAX_NOTE_LEN = 5000; // THE note cap — both addNote and setLeadNote clamp to this
+export const LIST_LIMIT = 200; // the historical hard window for the list actions
+export const THREAD_MSG_CAP = 300; // getThread reads at most the newest 300 messages
 
 // Allowed status values, mirrored from the Flutter CRM DTOs (lib/services/
 // backend/backend.dart). Writes AND filter params are validated against these.
@@ -79,9 +81,49 @@ export function isValidMeetingStatus(status: string): boolean {
   return MEETING_STATUSES.has(status);
 }
 
-/** Clamp a requested page size into the 1..100 window (default 50). */
+// Valid listLeads sort directions. "" = the default (newest-first); "recent" is
+// the console's explicit name for that same default; "oldest" flips to ASC.
+// Anything else is a 400 — a bad sort can never silently fall back.
+export const LEAD_SORTS: ReadonlySet<string> = new Set(["", "recent", "oldest"]);
+
+// Loose UUID shape check for the id params (leadId/meetingId/contactId/
+// conversationId/uid — every one of those columns is a Postgres uuid). Rejecting
+// a non-UUID early gives a clean 400 instead of a guaranteed-empty query (and a
+// misleading 404), and keeps garbage out of the PostgREST filter entirely.
+const UUIDISH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** True when [v] looks like a canonical UUID (case-insensitive, 8-4-4-4-12). */
+export function isUuidish(v: string): boolean {
+  return UUIDISH_RE.test(v);
+}
+
+/** Clamp a requested page size into the 1..100 window (default 50, floored to
+ *  an integer so a fractional limit can never reach the PostgREST query). */
 export function clampLimit(raw: unknown): number {
-  return Math.min(100, Math.max(1, Number(raw) || 50));
+  return Math.min(100, Math.max(1, Math.floor(Number(raw) || 50)));
+}
+
+/** Clamp an optional list page size into 1..LIST_LIMIT. Default LIST_LIMIT —
+ *  the historical 200-row window — so an omitted/invalid limit changes nothing. */
+export function clampListLimit(raw: unknown): number {
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n <= 0) return LIST_LIMIT;
+  return Math.min(LIST_LIMIT, n);
+}
+
+/** Clamp an optional list offset into 0..100000 (default 0). */
+export function clampOffset(raw: unknown): number {
+  const n = Math.floor(Number(raw));
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(100_000, n);
+}
+
+/** The computed window for the batched last-message read: enough newest-first
+ *  rows that every candidate conversation realistically surfaces its latest
+ *  message (10 per conversation, floor 200), hard-capped at 1000 so one giant
+ *  inbox can never turn the snippet lookup into an unbounded table scan. */
+export function lastMessagesLimit(convCount: number): number {
+  return Math.min(1000, Math.max(200, convCount * 10));
 }
 
 /**

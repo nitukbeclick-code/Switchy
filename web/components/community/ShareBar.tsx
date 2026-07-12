@@ -47,9 +47,24 @@ export default function ShareBar({
     trackEvent("post_shared", { method: "whatsapp" });
   }, [body, absoluteUrl]);
 
+  // Native share sheet FIRST when the platform offers one (mobile), falling back
+  // to a clipboard copy. The capability check happens at CLICK time only — never
+  // at render — so the server-rendered markup can't mismatch on hydration.
   const onCopy = useCallback(async () => {
+    const url = absoluteUrl();
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      try {
+        await navigator.share({ url });
+        trackEvent("post_shared", { method: "native" });
+        return;
+      } catch (err) {
+        // The user closed the sheet — respect the cancel, don't surprise-copy.
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        /* share failed for another reason — fall through to the clipboard */
+      }
+    }
     try {
-      await navigator.clipboard.writeText(absoluteUrl());
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       trackEvent("post_shared", { method: "copy" });
       window.setTimeout(() => setCopied(false), 1800);
@@ -69,11 +84,16 @@ export default function ShareBar({
           type="button"
           onClick={onCopy}
           className={BTN}
-          aria-label={copied ? "הקישור הועתק" : "העתקת קישור לפוסט"}
+          aria-label={copied ? "הקישור הועתק" : "שיתוף או העתקת קישור לפוסט"}
         >
           {copied ? "הועתק ✓" : "העתק קישור"}
         </button>
       )}
+      {/* Screen readers hear the copy confirmation even though the visual is just
+          the button's text swap. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? "הקישור הועתק" : ""}
+      </span>
     </span>
   );
 }

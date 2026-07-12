@@ -79,6 +79,17 @@ export type ChatSession = {
   transcript: SessionTurn[];
   toolCalls: ToolCallRecord[];
   slots: SessionSlots;
+  // OPTIMISTIC-CONCURRENCY token captured at load time, so a save can detect a
+  // lost race (two isolates handling close-together turns of one conversation)
+  // and SILENTLY DROP the losing write instead of clobbering the winner's memory:
+  //   • whatsapp → ai_state.rev — a save-stamped uuid INSIDE the jsonb (the
+  //     conversations table has no updated_at column; no DDL needed).
+  //   • site/app → the ai_sessions row's updated_at timestamp.
+  // undefined ⇒ the row didn't exist at load / pre-dates the token — the save
+  // then conditions on "still versionless" (whatsapp) or inserts-if-new (site),
+  // so a concurrent writer that landed first still wins. Memory stays a bonus:
+  // a dropped save costs one turn of memory, never a reply.
+  version?: string;
 };
 
 export const MAX_TRANSCRIPT = 12; // 6 user+bot turns
@@ -173,10 +184,15 @@ export function safeSessionId(raw: unknown): string {
 async function loadAiSession(key: string): Promise<ChatSession> {
   const base = emptySession("site", key);
   if (!key) return base;
-  const rows = await fetchRows<{ messages?: unknown }>(
-    `/rest/v1/ai_sessions?select=messages&session_id=eq.${encodeURIComponent(key)}&limit=1`,
+  const rows = await fetchRows<{ messages?: unknown; updated_at?: unknown }>(
+    `/rest/v1/ai_sessions?select=messages,updated_at&session_id=eq.${encodeURIComponent(key)}&limit=1`,
   );
   if (!rows || rows.length === 0) return base;
+  // Optimistic-concurrency token: the row's updated_at as PostgREST serialized
+  // it (fed back verbatim into an eq filter on save).
+  if (typeof rows[0].updated_at === "string" && rows[0].updated_at) {
+    base.version = rows[0].updated_at;
+  }
   const m = rows[0].messages;
   if (Array.isArray(m)) {
     // Legacy shape: a bare transcript array.
@@ -206,6 +222,10 @@ async function loadWhatsappSession(conversationId: string): Promise<ChatSession>
   const st = rows[0].ai_state;
   if (!st || typeof st !== "object") return base;
   const o = st as Record<string, unknown>;
+  // Optimistic-concurrency token: the rev the last save stamped INSIDE the
+  // jsonb (whatsapp_conversations has no updated_at column). Absent on legacy
+  // rows / non-agent writes — the save then conditions on "rev still absent".
+  if (typeof o.rev === "string" && o.rev) base.version = o.rev.slice(0, 64);
   // Top-level slots written by the webhook's mergeContext.
   base.slots = clipSlots(o);
   const agent = o.agent;
@@ -239,11 +259,40 @@ function cap(session: ChatSession): ChatSession {
   };
 }
 
+// OPTIMISTIC CONCURRENCY (both backings): a save is CONDITIONAL on the version
+// captured at load. When the condition matches zero rows another writer got
+// there first — the losing save is SILENTLY DROPPED (one jlog breadcrumb, no
+// retry, no error): re-applying it would clobber the winner's freshly-written
+// memory with our stale copy, which is exactly the lost-update this closes.
+
 async function saveAiSession(s: ChatSession, ip?: string): Promise<boolean> {
   const messages = { transcript: s.transcript, toolCalls: s.toolCalls, slots: s.slots };
+  if (s.version) {
+    // The row existed at load → conditional PATCH on the captured updated_at.
+    const r = await serviceFetch(
+      `/rest/v1/ai_sessions?session_id=eq.${encodeURIComponent(s.key)}&updated_at=eq.${
+        encodeURIComponent(s.version)
+      }`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ messages, ip: ip || null, updated_at: new Date().toISOString() }),
+      },
+    );
+    if (!r || !r.ok) return false;
+    const rows = await r.json().catch(() => []);
+    if (!Array.isArray(rows) || rows.length === 0) {
+      jlog({ at: "session.save", channel: s.channel, ok: false, lostRace: true });
+      return false; // lost the race — drop silently
+    }
+    return true;
+  }
+  // No version (row absent at load) → insert ONLY if still new. A row created
+  // concurrently wins; ignore-duplicates makes our save the silent loser instead
+  // of a merge that would overwrite the winner's transcript.
   const r = await serviceFetch(`/rest/v1/ai_sessions?on_conflict=session_id`, {
     method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
     body: JSON.stringify({
       session_id: s.key,
       messages,
@@ -251,21 +300,46 @@ async function saveAiSession(s: ChatSession, ip?: string): Promise<boolean> {
       updated_at: new Date().toISOString(),
     }),
   });
-  return !!r && r.ok;
+  if (!r || !r.ok) return false;
+  const rows = await r.json().catch(() => []);
+  if (!Array.isArray(rows) || rows.length === 0) {
+    jlog({ at: "session.save", channel: s.channel, ok: false, lostRace: true });
+    return false; // conflict — someone created the session first
+  }
+  return true;
 }
 
 async function saveWhatsappSession(s: ChatSession): Promise<boolean> {
   // Preserve the webhook's top-level slots AND nest the agent envelope under
-  // ai_state.agent. PATCH the whole ai_state jsonb (the webhook does the same).
+  // ai_state.agent. PATCH the whole ai_state jsonb (the webhook does the same),
+  // stamping a NEW rev and CONDITIONING on the rev captured at load — the
+  // conversations table has no updated_at column, so the version token lives
+  // inside the jsonb itself (ai_state->>rev; zero DDL). A legacy/fresh row (no
+  // rev) conditions on the rev still being absent, so a concurrent save that
+  // landed first (and stamped one) still wins.
   const aiState: Record<string, unknown> = {
     ...s.slots,
     agent: { transcript: s.transcript, toolCalls: s.toolCalls, slots: s.slots },
+    rev: crypto.randomUUID(),
   };
+  const cond = s.version
+    ? `&ai_state->>rev=eq.${encodeURIComponent(s.version)}`
+    : `&ai_state->>rev=is.null`;
   const r = await serviceFetch(
-    `/rest/v1/whatsapp_conversations?id=eq.${encodeURIComponent(s.key)}`,
-    { method: "PATCH", body: JSON.stringify({ ai_state: aiState }) },
+    `/rest/v1/whatsapp_conversations?id=eq.${encodeURIComponent(s.key)}${cond}`,
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ ai_state: aiState }),
+    },
   );
-  return !!r && r.ok;
+  if (!r || !r.ok) return false;
+  const rows = await r.json().catch(() => []);
+  if (!Array.isArray(rows) || rows.length === 0) {
+    jlog({ at: "session.save", channel: s.channel, ok: false, lostRace: true });
+    return false; // lost the race — drop silently (memory is a bonus)
+  }
+  return true;
 }
 
 // Persist the capped session. Best-effort: never throws; returns whether the

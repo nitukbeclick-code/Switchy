@@ -3,16 +3,23 @@
 // amount guard (callbacks.ts), the /commands menu contract (commands.ts), plus
 // additional parseTriage / parseSavingAmount edge cases that pin the
 // security-relevant invariants (attacker-controlled model output / rep replies
-// must never escape their clamps). All pure — no network, no env, no Deno.serve.
+// must never escape their clamps). Mostly pure — no network, no Deno.serve; the
+// pipeline-counter tests stub fetch + env (restored) to pin the HEAD probes.
 // Run from supabase/functions/:
 //   deno task test
 
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import type { Cfg } from "../_shared/types.ts";
-import { integrationsStatus } from "../notify-lead/index.ts";
+import {
+  integrationsStatus,
+  parseExactCount,
+  PIPELINE_FAILURE_EVENTS,
+  pipelineFailureCounts,
+} from "../notify-lead/index.ts";
 import { isLoneZeroAmount, parseSavingAmount } from "../notify-lead/callbacks.ts";
 import { BOT_COMMANDS } from "../notify-lead/commands.ts";
 import { parseTriage } from "../notify-lead/triage.ts";
+import { withFetchStub } from "./_capture_handler.ts";
 
 // A fully-zeroed Cfg; tests flip exactly the fields under test so nothing else
 // can leak in and accidentally pass an assertion.
@@ -169,4 +176,100 @@ Deno.test("parseTriage returns the empty result for blank / unparseable input", 
   assertEquals(salvaged.score, 0);
   assertEquals(salvaged.draft, "");
   assert(salvaged.line.length > 0);
+});
+
+// ── pipeline failure counters (?action=health + the rep console) ───────────────
+// The two silent lead-pipeline failure modes the WhatsApp bot records into
+// security_audit_log (handoff_lead_insert_failed / voice_transcription_failed)
+// are surfaced as 24h counts. Contract: real counts from HEAD + count=exact,
+// and an HONEST null (unknown) — never a false 0 — when a probe fails.
+
+Deno.test("parseExactCount reads the PostgREST exact count and fails soft", () => {
+  assertEquals(parseExactCount("0-0/57"), 57);
+  assertEquals(parseExactCount("*/0"), 0);
+  assertEquals(parseExactCount("0-0/*"), null); // count not computed
+  assertEquals(parseExactCount(null), null);
+  assertEquals(parseExactCount("garbage"), null);
+});
+
+Deno.test("PIPELINE_FAILURE_EVENTS is exactly the two audited pipeline failure modes", () => {
+  assertEquals([...PIPELINE_FAILURE_EVENTS], [
+    "handoff_lead_insert_failed",
+    "voice_transcription_failed",
+  ]);
+});
+
+// Set env for the duration of `fn`, restoring the PREVIOUS values (sibling test
+// files leak SUPABASE_* at module load, so both set and restore).
+async function withEnvVars(env: Record<string, string>, fn: () => Promise<void>): Promise<void> {
+  const saved = new Map<string, string | undefined>();
+  for (const [k, v] of Object.entries(env)) {
+    saved.set(k, Deno.env.get(k));
+    Deno.env.set(k, v);
+  }
+  try {
+    await fn();
+  } finally {
+    for (const [k, v] of saved) {
+      if (v === undefined) Deno.env.delete(k);
+      else Deno.env.set(k, v);
+    }
+  }
+}
+
+Deno.test("pipelineFailureCounts: 24h-scoped HEAD probes; a failed probe is null, never 0", async () => {
+  const urls: string[] = [];
+  await withEnvVars(
+    { SUPABASE_URL: "https://nl-test.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc-stub" },
+    async () => {
+      await withFetchStub([
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/security_audit_log") &&
+            u.includes("event=eq.handoff_lead_insert_failed") &&
+            (init?.method ?? "GET") === "HEAD",
+          respond: (u) => {
+            urls.push(u);
+            return new Response(null, { status: 200, headers: { "content-range": "0-0/3" } });
+          },
+        },
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/security_audit_log") &&
+            u.includes("event=eq.voice_transcription_failed") &&
+            (init?.method ?? "GET") === "HEAD",
+          respond: (u) => {
+            urls.push(u);
+            return new Response("boom", { status: 500 }); // probe failure
+          },
+        },
+      ], async () => {
+        const counts = await pipelineFailureCounts();
+        assertEquals(counts.handoff_lead_insert_failed, 3); // the real count
+        assertEquals(counts.voice_transcription_failed, null); // honest unknown
+      });
+    },
+  );
+  assertEquals(urls.length, 2, "one probe per failure event");
+  // Both probes are scoped to the trailing 24h window.
+  for (const u of urls) assert(u.includes("created_at=gte."), "24h window filter present");
+});
+
+Deno.test("pipelineFailureCounts: a zero count is a REAL 0 (distinct from a failed probe)", async () => {
+  await withEnvVars(
+    { SUPABASE_URL: "https://nl-test.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc-stub" },
+    async () => {
+      await withFetchStub([
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/security_audit_log") && (init?.method ?? "GET") === "HEAD",
+          respond: () => new Response(null, { status: 200, headers: { "content-range": "*/0" } }),
+        },
+      ], async () => {
+        const counts = await pipelineFailureCounts();
+        assertEquals(counts.handoff_lead_insert_failed, 0);
+        assertEquals(counts.voice_transcription_failed, 0);
+      });
+    },
+  );
 });

@@ -2,16 +2,23 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 // <CrmMeetings> — the Zoom-booking pipeline as a filterable list. Reads crm-api
-// `listMeetings` (service_role, admin-gated), which returns a deliberately light,
+// `listMeetings` (service_role, access-gated), which returns a deliberately light,
 // PII-safe shape (name, phone, provider, date/slot, status — no email/join_url/
-// notes; those load one-at-a-time in the drawer). Filter by lifecycle status;
-// each row opens the detail drawer (join link + status changer + timeline).
+// notes; those load one-at-a-time in the drawer). Filter by lifecycle status and
+// search by name/phone — the search is CLIENT-side over the loaded window (the
+// list action has no search param), so it's instant. Both are mirrored to the
+// URL and survive refresh/tab-switch. Export the current view as CSV (id column;
+// honest "-partial" filename when the 200-row window is full). Overlapping loads
+// are sequence-guarded so a slow older response can't overwrite a newer filter.
+// Each row opens the detail drawer (join link + status changer + timeline).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
-import { type CrmMeeting, fetchCrmMeetings, MEETING_STATUSES, type MeetingStatus } from "@/lib/crm-admin";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { type CrmMeeting, fetchCrmMeetings, isMeetingStatus, MEETING_STATUSES, type MeetingStatus } from "@/lib/crm-admin";
+import { buildCsv, csvFileName, downloadCsv } from "@/lib/csv";
 import CrmMeetingDrawer from "./CrmMeetingDrawer";
-import { BTN_GHOST, MEETING_STATUS_META, MeetingStatusPill, NoticeCard, when } from "./ui";
+import { BTN_GHOST, MEETING_STATUS_META, MeetingStatusPill, mirrorUrlParams, NoticeCard, when } from "./ui";
 
 type Filter = MeetingStatus | "all";
 
@@ -32,26 +39,35 @@ function MeetingsSkeleton() {
 }
 
 export default function CrmMeetings() {
-  const [filter, setFilter] = useState<Filter>("all");
+  // Filter + search initialize from the URL (mirrored below on every change).
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => {
+    const v = params.get("meeting_status");
+    return isMeetingStatus(v) ? v : "all";
+  });
+  const [searchInput, setSearchInput] = useState(() => params.get("meeting_q") ?? "");
   const [meetings, setMeetings] = useState<CrmMeeting[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Orders overlapping loads (rapid filter switches) so a slower, older
+  // response can never overwrite a newer filter's rows.
+  const loadSeq = useRef(0);
 
   // Fetch the current filter's meetings. Loading/error resets are event-driven:
   // the useState initializers cover the mount load, and every later load starts
   // from an event (`changeFilter`, `reload`) that resets first — so the load
   // effect never sets state synchronously (react-hooks/set-state-in-effect):
   // state only lands in the .then continuation.
-  const load = useCallback(
-    () =>
-      fetchCrmMeetings({ status: filter === "all" ? undefined : filter }).then((res) => {
-        if (res) setMeetings(res.meetings);
-        else setError(true);
-        setLoading(false);
-      }),
-    [filter],
-  );
+  const load = useCallback(() => {
+    const seq = ++loadSeq.current;
+    return fetchCrmMeetings({ status: filter === "all" ? undefined : filter }).then((res) => {
+      if (seq !== loadSeq.current) return; // stale — a newer load owns the view
+      if (res) setMeetings(res.meetings);
+      else setError(true);
+      setLoading(false);
+    });
+  }, [filter]);
 
   useEffect(() => {
     void load();
@@ -71,9 +87,45 @@ export default function CrmMeetings() {
       setLoading(true);
       setError(false);
       setFilter(next);
+      mirrorUrlParams({ meeting_status: next === "all" ? null : next });
     },
     [filter],
   );
+
+  // Client-side search over the loaded window — instant, no round-trip. The
+  // (trimmed) query is mirrored to the URL as it's typed.
+  const changeSearch = useCallback((v: string) => {
+    setSearchInput(v);
+    mirrorUrlParams({ meeting_q: v.trim() || null });
+  }, []);
+
+  const shown = useMemo(() => {
+    const q = searchInput.trim().toLowerCase();
+    if (!q) return meetings ?? [];
+    return (meetings ?? []).filter(
+      (m) => (m.name || "").toLowerCase().includes(q) || (m.phone || "").includes(q),
+    );
+  }, [meetings, searchInput]);
+
+  // Export the CURRENT view as CSV (same in-browser builder as the leads export
+  // — no new endpoint, formula-injection-guarded). id column + honest
+  // "-partial" filename when the 200-row server window is full.
+  const exportCsv = useCallback(() => {
+    if (shown.length === 0) return;
+    const headers = ["id", "שם", "טלפון", "מועד", "ספק", "סטטוס", "נציג", "מקור"];
+    const rows = shown.map((m) => [
+      m.id,
+      m.name,
+      m.phone,
+      meetingWhen(m),
+      m.provider ?? "",
+      MEETING_STATUS_META[m.status]?.label ?? m.status,
+      m.claimedBy ?? "",
+      m.source ?? "",
+    ]);
+    const partial = (meetings?.length ?? 0) >= 200;
+    downloadCsv(csvFileName(`meetings-${filter}`, partial), buildCsv(headers, rows));
+  }, [shown, meetings, filter]);
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "הכול" },
@@ -103,6 +155,26 @@ export default function CrmMeetings() {
         })}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => changeSearch(e.target.value)}
+          placeholder="חיפוש שם / טלפון"
+          aria-label="חיפוש פגישות"
+          className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+        />
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={shown.length === 0}
+          className={`${BTN_GHOST} ms-auto text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+          title="ייצוא התצוגה הנוכחית כקובץ CSV"
+        >
+          ייצוא CSV
+        </button>
+      </div>
+
       {loading ? (
         <MeetingsSkeleton />
       ) : error || !meetings ? (
@@ -117,10 +189,12 @@ export default function CrmMeetings() {
         </NoticeCard>
       ) : meetings.length === 0 ? (
         <NoticeCard>אין פגישות בסטטוס הזה.</NoticeCard>
+      ) : shown.length === 0 ? (
+        <NoticeCard>לא נמצאו פגישות תואמות לחיפוש.</NoticeCard>
       ) : (
         <>
           <p className="text-xs text-muted">
-            {meetings.length.toLocaleString("he-IL")} פגישות{meetings.length >= 200 ? " (מוצגות 200 האחרונות)" : ""}
+            {shown.length.toLocaleString("he-IL")} פגישות{meetings.length >= 200 ? " (מוצגות 200 האחרונות)" : ""}
           </p>
 
           {/* Desktop: a semantic table. */}
@@ -137,7 +211,7 @@ export default function CrmMeetings() {
                 </tr>
               </thead>
               <tbody>
-                {meetings.map((m) => (
+                {shown.map((m) => (
                   // A plain <tr> keeps row/cell semantics (the scope="col" headers
                   // stay associated); the row onClick is a pointer-only convenience.
                   // Keyboard/AT access lives on the real name-cell <button> below
@@ -170,7 +244,7 @@ export default function CrmMeetings() {
 
           {/* Mobile: cards. */}
           <ul className="space-y-2 md:hidden">
-            {meetings.map((m) => (
+            {shown.map((m) => (
               // Plain <li>: the card onClick is a pointer-only convenience;
               // keyboard/AT access lives on the real name <button> (same
               // pattern as CrmLeads — no role="button" on the container).

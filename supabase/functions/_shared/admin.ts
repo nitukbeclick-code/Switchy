@@ -87,10 +87,21 @@ export async function requireCrmAccess(req: Request): Promise<CrmAccess | null> 
   const uid = await uidFromJwt(jwt);
   if (!uid) return null;
 
+  // Both role sources in parallel — the two reads are independent, so this
+  // shaves a round-trip off EVERY crm-api request. The checks below keep the
+  // exact sequential semantics: is_admin is consulted first (and an admin is
+  // admitted even if the member read failed — that read is irrelevant to them);
+  // a failed read on the path that would decide the caller still fails closed.
+  const [adminRows, memberRows] = await Promise.all([
+    fetchRows<{ is_admin?: unknown }>(
+      `/rest/v1/profiles?select=is_admin&id=eq.${encodeURIComponent(uid)}&limit=1`,
+    ),
+    fetchRows<{ role?: unknown }>(
+      `/rest/v1/crm_members?select=role&uid=eq.${encodeURIComponent(uid)}&limit=1`,
+    ),
+  ]);
+
   // 1) is_admin → the full superset (unchanged from requireAdmin).
-  const adminRows = await fetchRows<{ is_admin?: unknown }>(
-    `/rest/v1/profiles?select=is_admin&id=eq.${encodeURIComponent(uid)}&limit=1`,
-  );
   if (adminRows === null) {
     jlog({ at: "admin.requireCrmAccess", ok: false, error: "profile read failed" });
     return null; // DB error ⇒ fail closed
@@ -100,9 +111,6 @@ export async function requireCrmAccess(req: Request): Promise<CrmAccess | null> 
   }
 
   // 2) otherwise a graded crm_members role (service-role read; RLS-exempt).
-  const memberRows = await fetchRows<{ role?: unknown }>(
-    `/rest/v1/crm_members?select=role&uid=eq.${encodeURIComponent(uid)}&limit=1`,
-  );
   if (memberRows === null) {
     jlog({ at: "admin.requireCrmAccess", ok: false, error: "member read failed" });
     return null; // DB error ⇒ fail closed

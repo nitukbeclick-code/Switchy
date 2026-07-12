@@ -158,6 +158,32 @@ async function logRelayAudit(
   });
 }
 
+// crm_events PARITY with the CRM-app path: the console's activity feed streams
+// public.crm_events, and crm-api writes takeover/handback/rep_reply rows for
+// every action taken FROM the console — but the SAME actions taken from the
+// Telegram side were invisible there (the feed showed the customer's messages
+// with no trace of who took over or what the rep replied). Mirror crm-api's
+// exact vocabulary (actor 'rep'; event 'takeover' / 'handback' / 'rep_reply';
+// preview whitespace-collapsed + clipped to 80, NEVER bytes) so one feed reads
+// consistently regardless of which surface the rep used. Best-effort: an audit
+// miss never blocks or fails the relay action it describes.
+async function logCrmActivity(ev: {
+  conversationId?: string | null;
+  contactId?: string | null;
+  actor: string; // 'rep' / 'bot' / 'customer' / 'system'
+  event: string; // 'takeover' / 'handback' / 'rep_reply' / …
+  preview?: string;
+}): Promise<void> {
+  const preview = String(ev.preview ?? "").trim().replace(/\s+/g, " ").slice(0, 80) || null;
+  await insertRow("crm_events", {
+    conversation_id: ev.conversationId || null,
+    contact_id: ev.contactId || null,
+    actor: ev.actor,
+    event: ev.event,
+    preview,
+  });
+}
+
 // Exported for unit tests. Fail-close: an empty allowlist means the bot is not
 // fully configured, so nobody is authorized. The config guard in index.ts
 // rejects updates before they reach here, but keep this defensive in case a
@@ -375,6 +401,16 @@ async function handleRelayTakeover(
     contact_id: convo.contact_id ?? null,
     relay_tg_chat_id: relayChat,
   });
+  // Activity-feed parity: the console must see a Telegram takeover exactly like
+  // a CRM-app one (crm-api actTakeOver writes the same event). Best-effort.
+  const takeoverRep = tgDisplayName(cb.from);
+  await logCrmActivity({
+    conversationId: convo.id,
+    contactId: convo.contact_id ?? null,
+    actor: "rep",
+    event: "takeover",
+    preview: takeoverRep ? `נציג ${takeoverRep} השתלט על השיחה (טלגרם)` : "נציג השתלט על השיחה (טלגרם)",
+  });
   await answer("השתלטת על השיחה 🤝 — כתוב/כתבי כאן וההודעה תגיע ללקוח");
   // Richer takeover brief: the lead dossier (name/category/provider/notes) + the
   // last few customer messages, with a short note for any media (bill photo /
@@ -421,6 +457,14 @@ async function handleRelayHandback(
     lead_id: leadId,
     conversation_id: convo.id,
     contact_id: convo.contact_id ?? null,
+  });
+  // Activity-feed parity with crm-api actHandBack (same event vocabulary).
+  await logCrmActivity({
+    conversationId: convo.id,
+    contactId: convo.contact_id ?? null,
+    actor: "rep",
+    event: "handback",
+    preview: "השיחה הוחזרה לבוט האוטומטי (טלגרם)",
   });
   await answer("הוחזר לבוט 🤖");
   await sendTelegram(
@@ -1383,6 +1427,16 @@ async function relayRepReplyToCustomer(
     contact_id: contactId,
     delivered: Boolean(wamid),
     preview: body.slice(0, 120),
+  });
+  // Activity-feed parity with crm-api actSendReply: the console's thread view
+  // streams crm_events, and a rep reply relayed FROM Telegram must show there
+  // exactly like one sent from the console ('rep_reply', clipped preview).
+  await logCrmActivity({
+    conversationId: convo.id,
+    contactId,
+    actor: "rep",
+    event: "rep_reply",
+    preview: body,
   });
   if (!wrote) {
     await sendTelegram(cfg, "⚠️ שמירת ההודעה נכשלה — בדקו אם נשלחה ללקוח.");

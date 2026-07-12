@@ -2,14 +2,15 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 // crm-admin.ts — the CRM management data layer. Talks ONLY to the crm-api edge
-// function (the server authority), sending the signed-in admin's access token so
-// requireAdmin() can verify profiles.is_admin server-side.
+// function (the server authority), sending the signed-in member's access token so
+// requireCrmAccess() (admin / viewer / rep, fail-closed) can authorize every
+// action server-side and canDo() can gate each one per role.
 //
 // SECURITY (the spine of the whole CRM): the browser NEVER reads `leads` /
 // `whatsapp_*` / `lead_events` directly — the PR#107 lockdown hides every PII
 // column (phone/email/notes/source_ip/actual_saving/consent_*) from the anon +
 // authenticated keys. Every read AND write goes through crm-api, which runs as
-// service_role behind the admin gate and returns only column-limited, PII-safe
+// service_role behind the access gate and returns only column-limited, PII-safe
 // shapes. This module mirrors web/lib/community-admin.ts.
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -21,6 +22,13 @@ const FN = `${SUPABASE_URL}/functions/v1/crm-api`;
 /** The lead pipeline stages (single source of truth mirrors crm_logic.LEAD_STATUSES). */
 export type LeadStatus = "new" | "contacted" | "won" | "lost";
 export const LEAD_STATUSES: readonly LeadStatus[] = ["new", "contacted", "won", "lost"];
+
+/** Narrow an arbitrary wire string to a known pipeline stage. The wire type is
+ *  deliberately `string` (a server can add a stage before the console updates);
+ *  narrow with this before indexing stage-keyed maps. */
+export function isLeadStatus(v: string | null | undefined): v is LeadStatus {
+  return !!v && (LEAD_STATUSES as readonly string[]).includes(v);
+}
 
 export interface CrmPipeline {
   new: number;
@@ -50,7 +58,7 @@ export interface CrmLead {
   phone: string;
   provider: string | null;
   source: string | null;
-  status: LeadStatus;
+  status: string; // wire-wide: narrow with isLeadStatus before keying stage maps
   createdAt: string | null;
   claimedBy: string | null;
 }
@@ -65,7 +73,9 @@ export interface RepStat {
 
 /** Per-rep performance leaderboard (claimed / won / lost + real booked saving). */
 export function fetchRepLeaderboard(): Promise<{ reps: RepStat[]; sampled: number; capped: boolean } | null> {
-  return crmPost<{ reps: RepStat[]; sampled: number; capped: boolean }>("repLeaderboard");
+  return crmRead<{ reps: RepStat[]; sampled: number; capped: boolean }>("repLeaderboard", {}, (j) =>
+    hasArray(j, "reps"),
+  ).then((r) => r.data);
 }
 
 // Bearer + apikey headers from the live browser session, or null when there is no
@@ -90,28 +100,158 @@ function isJsonObject(j: unknown): j is Record<string, unknown> {
   return typeof j === "object" && j !== null && !Array.isArray(j);
 }
 
-// POST {action,...payload} to crm-api and return the parsed JSON body, or null on
-// ANY failure (no session / not admin / network / non-2xx / non-object body).
-// Never throws — the UI render-gates on is_admin for UX and treats null as
-// "couldn't load".
-async function crmPost<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
+/** Shape-guard helper: `key` is present and is an array. Extra/unknown fields on
+ *  the body are deliberately tolerated (the server adds fields additively). */
+export function hasArray(j: Record<string, unknown>, key: string): boolean {
+  return Array.isArray(j[key]);
+}
+
+/** Shape-guard helper: `key` is present and is a plain object. */
+export function hasObject(j: Record<string, unknown>, key: string): boolean {
+  return isJsonObject(j[key]);
+}
+
+// ── Typed failures ────────────────────────────────────────────────────────────
+
+/** Why a CRM fetch failed — typed so the console can show the real reason (in
+ *  Hebrew) instead of a generic "couldn't load", and can suppress the retry
+ *  button when retrying cannot help (401/403). */
+export interface CrmFailure {
+  /** HTTP status; 0 = network error / thrown fetch, 401 also covers "no session". */
+  status: number;
+  /** Display-ready Hebrew message (server-supplied detail folded in when present). */
+  message: string;
+  /** false on 401/403 — an immediate retry can never succeed. */
+  retryable: boolean;
+}
+
+/** A fetch outcome: data XOR a typed failure (never both, never neither). */
+export type CrmFetch<T> = { data: T; failure: null } | { data: null; failure: CrmFailure };
+
+const NO_SESSION_FAILURE: CrmFailure = {
+  status: 401,
+  message: "נדרשת התחברות כדי לצפות בקונסולה.",
+  retryable: false,
+};
+
+const NETWORK_FAILURE: CrmFailure = {
+  status: 0,
+  message: "שגיאת רשת — לא הצלחנו להגיע לשרת. בדקו את החיבור ונסו שוב.",
+  retryable: true,
+};
+
+const BAD_SHAPE_FAILURE: CrmFailure = {
+  status: 200,
+  message: "השרת החזיר תשובה בלתי צפויה. ייתכן שגרסת הקונסולה אינה מעודכנת — רעננו את הדף.",
+  retryable: true,
+};
+
+/** Map a non-2xx response (+ its parsed body, when it is JSON) to a CrmFailure.
+ *  401/403 get fixed Hebrew copy and are non-retryable; anything else surfaces
+ *  the server's own message when one exists. */
+function failureFor(status: number, body: unknown): CrmFailure {
+  if (status === 401) {
+    return { status, message: "פג תוקף ההתחברות. התחברו מחדש כדי להמשיך.", retryable: false };
+  }
+  if (status === 403) {
+    return { status, message: "אין לך הרשאה לפעולה הזו.", retryable: false };
+  }
+  let detail: string | null = null;
+  if (isJsonObject(body)) {
+    if (typeof body.error === "string" && body.error) detail = body.error;
+    else if (typeof body.message === "string" && body.message) detail = body.message;
+  }
+  return {
+    status,
+    message: detail ? `הבקשה נכשלה: ${detail}` : `הבקשה נכשלה (שגיאת שרת ${status}). נסו שוב.`,
+    retryable: true,
+  };
+}
+
+// POST {action,...payload} to crm-api and return a typed outcome. Never throws.
+// A 2xx body must be a plain JSON object AND pass the caller's shape `guard`
+// (when given) — otherwise it degrades to a BAD_SHAPE failure instead of
+// blind-casting and crashing a component that dereferences a missing field.
+async function crmRequest<T>(
+  action: string,
+  payload: Record<string, unknown> = {},
+  guard?: (j: Record<string, unknown>) => boolean,
+): Promise<CrmFetch<T>> {
   const h = await authHeaders();
-  if (!h) return null;
+  if (!h) return { data: null, failure: NO_SESSION_FAILURE }; // no network round-trip
   try {
     const r = await fetch(FN, { method: "POST", headers: h, body: JSON.stringify({ action, ...payload }) });
-    if (!r.ok) return null;
-    const j: unknown = await r.json();
-    return isJsonObject(j) ? (j as T) : null;
+    let j: unknown = null;
+    try {
+      j = await r.json();
+    } catch {
+      j = null;
+    }
+    if (!r.ok) return { data: null, failure: failureFor(r.status, j) };
+    if (!isJsonObject(j) || (guard && !guard(j))) return { data: null, failure: BAD_SHAPE_FAILURE };
+    return { data: j as T, failure: null };
   } catch {
-    return null;
+    return { data: null, failure: NETWORK_FAILURE };
   }
 }
 
+// ── In-flight dedupe (READS only) ─────────────────────────────────────────────
+//
+// Several console views fire the same read at the same moment (e.g. a Realtime
+// event refreshing the dashboard AND the inbox list). Identical in-flight reads
+// share one request; entries clear as soon as the promise settles, so this is a
+// coalescer, never a cache — no response is ever served stale.
+//
+// WRITES are never deduped (each must hit the server), and `listSellableLeads`
+// is deliberately EXCLUDED even though it is a read: every call to it writes a
+// crm_lead_export audit row server-side, and coalescing would under-count the
+// audited views of that controlled §7b surface.
+const DEDUPED_READS = new Set([
+  "overview",
+  "slaMetrics",
+  "listLeads",
+  "getLeadDetail",
+  "listMeetings",
+  "getMeeting",
+  "listContacts",
+  "listConversations",
+  "getThread",
+  "listMembers",
+  "repLeaderboard",
+]);
+
+const inFlight = new Map<string, Promise<CrmFetch<unknown>>>();
+
+/** A read through crmRequest, coalescing identical in-flight calls (see above). */
+function crmRead<T>(
+  action: string,
+  payload: Record<string, unknown> = {},
+  guard?: (j: Record<string, unknown>) => boolean,
+): Promise<CrmFetch<T>> {
+  if (!DEDUPED_READS.has(action)) return crmRequest<T>(action, payload, guard);
+  const key = `${action}:${JSON.stringify(payload)}`;
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<CrmFetch<T>>;
+  const p = crmRequest<T>(action, payload, guard).finally(() => {
+    inFlight.delete(key);
+  });
+  inFlight.set(key, p as Promise<CrmFetch<unknown>>);
+  return p;
+}
+
+// POST a WRITE (or a legacy null-contract read) and return the parsed JSON body,
+// or null on ANY failure (no session / no access / network / non-2xx / bad shape).
+// Never throws — the UI render-gates on is_admin for UX and treats null as
+// "couldn't load" / "failed".
+function crmPost<T>(action: string, payload: Record<string, unknown> = {}): Promise<T | null> {
+  return crmRequest<T>(action, payload).then((r) => r.data);
+}
+
 /** Pipeline counts (by lead status) + the most recent conversations. */
-export function fetchCrmOverview(): Promise<CrmOverview | null> {
+export function fetchCrmOverview(): Promise<CrmFetch<CrmOverview>> {
   // Shape guard: the dashboard dereferences pipeline/recent unguarded, so an
-  // unexpected 2xx body must land in its existing null → retry state.
-  return crmPost<CrmOverview>("overview").then((j) => (j && j.pipeline && Array.isArray(j.recent) ? j : null));
+  // unexpected 2xx body must land in its existing failure → retry state.
+  return crmRead<CrmOverview>("overview", {}, (j) => hasObject(j, "pipeline") && hasArray(j, "recent"));
 }
 
 export interface CrmSla {
@@ -124,8 +264,8 @@ export interface CrmSla {
 }
 
 /** Speed-to-lead health: median first-response time + uncontacted / SLA-breach counts. */
-export function fetchCrmSla(): Promise<{ sla: CrmSla } | null> {
-  return crmPost<{ sla: CrmSla }>("slaMetrics");
+export function fetchCrmSla(): Promise<CrmFetch<{ sla: CrmSla }>> {
+  return crmRead<{ sla: CrmSla }>("slaMetrics", {}, (j) => hasObject(j, "sla"));
 }
 
 export type LeadSort = "recent" | "oldest";
@@ -134,12 +274,16 @@ export type LeadSort = "recent" | "oldest";
  *  search, and a created-at sort direction. */
 export function fetchCrmLeads(
   opts?: { status?: LeadStatus; search?: string; sort?: LeadSort },
-): Promise<{ leads: CrmLead[] } | null> {
-  return crmPost<{ leads: CrmLead[] }>("listLeads", {
-    ...(opts?.status ? { status: opts.status } : {}),
-    ...(opts?.search ? { search: opts.search } : {}),
-    ...(opts?.sort === "oldest" ? { sort: "oldest" } : {}),
-  });
+): Promise<CrmFetch<{ leads: CrmLead[] }>> {
+  return crmRead<{ leads: CrmLead[] }>(
+    "listLeads",
+    {
+      ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.search ? { search: opts.search } : {}),
+      ...(opts?.sort === "oldest" ? { sort: "oldest" } : {}),
+    },
+    (j) => hasArray(j, "leads"),
+  );
 }
 
 // ── Sellable leads (third-party-sharing feed — read-only, audited) ─────────────
@@ -158,11 +302,16 @@ export interface CrmSellableLead {
 
 /** The READ-ONLY consented-sharing feed: ONLY leads with an explicit
  *  consent_share_at (the exporter's legal gate). Every call is audited server-side
- *  (crm_lead_export). This never pushes anything to a buyer. */
+ *  (crm_lead_export) — which is why this read is NEVER deduped/coalesced. This
+ *  never pushes anything to a buyer. */
 export function fetchSellableLeads(opts?: { status?: LeadStatus }): Promise<{ leads: CrmSellableLead[] } | null> {
-  return crmPost<{ leads: CrmSellableLead[] }>("listSellableLeads", {
-    ...(opts?.status ? { status: opts.status } : {}),
-  });
+  return crmRequest<{ leads: CrmSellableLead[] }>(
+    "listSellableLeads",
+    {
+      ...(opts?.status ? { status: opts.status } : {}),
+    },
+    (j) => hasArray(j, "leads"),
+  ).then((r) => r.data);
 }
 
 // ── CRM members (per-rep roles — C.2, admin-only) ─────────────────────────────
@@ -181,7 +330,7 @@ export interface CrmMember {
 /** The CRM roster (admin-only). Each row is a member's uid + their graded role +
  *  their own name/email — no other profile field is exposed (server allowlist). */
 export function fetchMembers(): Promise<{ members: CrmMember[] } | null> {
-  return crmPost<{ members: CrmMember[] }>("listMembers");
+  return crmRead<{ members: CrmMember[] }>("listMembers", {}, (j) => hasArray(j, "members")).then((r) => r.data);
 }
 
 /** Grant/change a member's role, or revoke it (role="none"). Admin-only, audited
@@ -201,7 +350,7 @@ export interface CrmLeadDetail {
   source: string | null;
   callbackTime: string | null;
   city: string | null;
-  status: LeadStatus;
+  status: string; // wire-wide: narrow with isLeadStatus before keying stage maps
   createdAt: string | null;
   claimedBy: string | null;
   claimedAt: string | null;
@@ -222,11 +371,15 @@ export interface CrmLeadEvent {
   createdAt: string | null;
 }
 
-/** One lead's full CRM detail + its activity timeline, or null on failure. */
+/** One lead's full CRM detail + its activity timeline. */
 export function fetchCrmLeadDetail(
   leadId: string,
-): Promise<{ lead: CrmLeadDetail; events: CrmLeadEvent[] } | null> {
-  return crmPost<{ lead: CrmLeadDetail; events: CrmLeadEvent[] }>("getLeadDetail", { leadId });
+): Promise<CrmFetch<{ lead: CrmLeadDetail; events: CrmLeadEvent[] }>> {
+  return crmRead<{ lead: CrmLeadDetail; events: CrmLeadEvent[] }>(
+    "getLeadDetail",
+    { leadId },
+    (j) => hasObject(j, "lead") && hasArray(j, "events"),
+  );
 }
 
 /** Move a lead to a new pipeline stage (server validates + audits). true on success. */
@@ -271,6 +424,11 @@ export const MEETING_STATUSES: readonly MeetingStatus[] = [
   "expired",
   "completed",
 ];
+
+/** Narrow an arbitrary wire string to a known meeting lifecycle status. */
+export function isMeetingStatus(v: string | null | undefined): v is MeetingStatus {
+  return !!v && (MEETING_STATUSES as readonly string[]).includes(v);
+}
 
 export interface CrmMeeting {
   id: string;
@@ -318,16 +476,24 @@ export interface CrmMeetingEvent {
 
 /** Upcoming-first meeting list, optionally filtered to one status. */
 export function fetchCrmMeetings(opts?: { status?: MeetingStatus }): Promise<{ meetings: CrmMeeting[] } | null> {
-  return crmPost<{ meetings: CrmMeeting[] }>("listMeetings", {
-    ...(opts?.status ? { status: opts.status } : {}),
-  });
+  return crmRead<{ meetings: CrmMeeting[] }>(
+    "listMeetings",
+    {
+      ...(opts?.status ? { status: opts.status } : {}),
+    },
+    (j) => hasArray(j, "meetings"),
+  ).then((r) => r.data);
 }
 
 /** One meeting's full detail + its status timeline. */
 export function fetchCrmMeetingDetail(
   meetingId: string,
 ): Promise<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] } | null> {
-  return crmPost<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] }>("getMeeting", { meetingId });
+  return crmRead<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] }>(
+    "getMeeting",
+    { meetingId },
+    (j) => hasObject(j, "meeting") && hasArray(j, "events"),
+  ).then((r) => r.data);
 }
 
 /** Move a meeting to a new lifecycle status (server validates + audits). */
@@ -363,10 +529,14 @@ export interface CrmContact {
 export function fetchCrmContacts(
   opts?: { status?: ContactStatus; search?: string },
 ): Promise<{ contacts: CrmContact[] } | null> {
-  return crmPost<{ contacts: CrmContact[] }>("listContacts", {
-    ...(opts?.status ? { status: opts.status } : {}),
-    ...(opts?.search ? { search: opts.search } : {}),
-  });
+  return crmRead<{ contacts: CrmContact[] }>(
+    "listContacts",
+    {
+      ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.search ? { search: opts.search } : {}),
+    },
+    (j) => hasArray(j, "contacts"),
+  ).then((r) => r.data);
 }
 
 /** Move a contact to a new lifecycle status (server validates + audits). */
@@ -418,16 +588,24 @@ export interface CrmThread {
 /** The conversation list, optionally filtered by status + a free-text name/phone search. */
 export function fetchCrmConversations(
   opts?: { status?: ConversationStatus; search?: string },
-): Promise<{ conversations: CrmConversation[] } | null> {
-  return crmPost<{ conversations: CrmConversation[] }>("listConversations", {
-    ...(opts?.status ? { status: opts.status } : {}),
-    ...(opts?.search ? { search: opts.search } : {}),
-  });
+): Promise<CrmFetch<{ conversations: CrmConversation[] }>> {
+  return crmRead<{ conversations: CrmConversation[] }>(
+    "listConversations",
+    {
+      ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.search ? { search: opts.search } : {}),
+    },
+    (j) => hasArray(j, "conversations"),
+  );
 }
 
 /** One conversation: the contact + its ordered messages (oldest→newest). */
-export function fetchCrmThread(conversationId: string): Promise<CrmThread | null> {
-  return crmPost<CrmThread>("getThread", { conversationId });
+export function fetchCrmThread(conversationId: string): Promise<CrmFetch<CrmThread>> {
+  return crmRead<CrmThread>(
+    "getThread",
+    { conversationId },
+    (j) => hasObject(j, "contact") && hasArray(j, "messages"),
+  );
 }
 
 /** Send a rep reply. This IMPLICITLY takes the conversation over from the bot. */

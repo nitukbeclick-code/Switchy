@@ -34,7 +34,22 @@ export async function fetchRows<T = Record<string, unknown>>(path: string): Prom
 }
 
 // PATCH that reports how many rows actually changed (0 = no match / lost race).
+// Fail-soft: a failed call also reads 0 — fine for cron-style callers that only
+// need "did my guarded claim land?". A caller that must tell a missing row (404)
+// apart from a DB outage (502) uses patchCountResult below.
 export async function patchCount(path: string, body: Record<string, unknown>): Promise<number> {
+  return (await patchCountResult(path, body)) ?? 0;
+}
+
+// Like patchCount, but keeps failure distinguishable (mirrors insertRowResult):
+// null = the PATCH itself failed (transport/HTTP), a number = how many rows the
+// filter matched (0 = no such row / lost race). This is what lets a mutation
+// endpoint answer an honest 404 for a bad id while still answering 502 when the
+// DB errored — instead of collapsing both into a blind ok:true.
+export async function patchCountResult(
+  path: string,
+  body: Record<string, unknown>,
+): Promise<number | null> {
   try {
     const r = await serviceFetch(path, {
       method: "PATCH",
@@ -43,13 +58,13 @@ export async function patchCount(path: string, body: Record<string, unknown>): P
     });
     if (!r || !r.ok) {
       jlog({ at: "patchCount", path, ok: false, status: r?.status });
-      return 0;
+      return null;
     }
     const rows = await r.json().catch(() => []);
     return Array.isArray(rows) ? rows.length : 0;
   } catch (e) {
     jlog({ at: "patchCount", path, ok: false, error: String(e) });
-    return 0;
+    return null;
   }
 }
 

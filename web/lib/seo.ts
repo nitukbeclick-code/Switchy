@@ -71,6 +71,22 @@ function brandedTitle(title: string): string {
   return `${base}${BRAND_SUFFIX}`;
 }
 
+/**
+ * Optional `og:type article` extension for {@link pageMetadata}. When present,
+ * the page's OpenGraph block switches from `website` to `article` and carries
+ * `article:published_time` / `article:modified_time`.
+ *
+ * HONESTY: timestamps must be the REAL creation/edit stamps of the content
+ * (e.g. a community post's `created_at` / `edited_at`) — a field with no real
+ * value is simply omitted, never invented.
+ */
+export interface PageArticleMeta {
+  /** REAL publish timestamp (ISO). Omitted from the OG block when absent. */
+  publishedTime?: string;
+  /** REAL last-modified timestamp (ISO). Omitted when the content was never edited. */
+  modifiedTime?: string;
+}
+
 export interface PageMetaInput {
   /** The page's visible title (bare — the layout template brands the <title>). */
   title: string;
@@ -80,6 +96,8 @@ export interface PageMetaInput {
   path: string;
   /** Optional robots override (e.g. national city pages → noindex, follow). */
   robots?: Metadata["robots"];
+  /** Optional og:type article extension (real timestamps only — see {@link PageArticleMeta}). */
+  article?: PageArticleMeta;
 }
 
 /**
@@ -93,25 +111,38 @@ export interface PageMetaInput {
  *   the shallow merge would otherwise drop the inherited image).
  * - `twitter.card` is `summary_large_image` with the same shared image.
  * - `robots`, when given, is forwarded (used by the national city pages).
+ * - `article`, when given, switches `og:type` to `article` and adds the REAL
+ *   `article:published_time` / `article:modified_time` stamps (each omitted when
+ *   absent — never fabricated). Everything else stays identical.
  */
 export function pageMetadata(input: PageMetaInput): Metadata {
-  const { title, description, path, robots } = input;
+  const { title, description, path, robots, article } = input;
   const url = absUrl(path);
   const ogTitle = brandedTitle(title);
+
+  const ogBase = {
+    locale: "he_IL",
+    siteName: SITE_NAME,
+    url,
+    title: ogTitle,
+    description,
+    images: [OG_IMAGE],
+  };
+  const openGraph: Metadata["openGraph"] = article
+    ? {
+        ...ogBase,
+        type: "article",
+        // Real timestamps only; an undefined field is dropped by Next's resolver.
+        publishedTime: article.publishedTime,
+        modifiedTime: article.modifiedTime,
+      }
+    : { ...ogBase, type: "website" };
 
   const meta: Metadata = {
     title,
     description,
     alternates: { canonical: path },
-    openGraph: {
-      type: "website",
-      locale: "he_IL",
-      siteName: SITE_NAME,
-      url,
-      title: ogTitle,
-      description,
-      images: [OG_IMAGE],
-    },
+    openGraph,
     twitter: {
       card: "summary_large_image",
       title: ogTitle,

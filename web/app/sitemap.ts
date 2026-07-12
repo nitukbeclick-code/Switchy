@@ -25,8 +25,10 @@ export const revalidate = 3600;
 
 // The answered, non-flagged community-Q&A permalinks — the SAME ANON, public gate
 // the /community/questions hub uses (is_flagged=false, reply_count≥1). Only the
-// indexable post pages are emitted; /community itself stays noindex. Best-effort:
-// a failed read returns none so the sitemap never breaks on a network hiccup.
+// indexable post pages are emitted; /community itself stays noindex. lastModified
+// is the post's real freshness: max(created_at, edited_at) — an author edit is a
+// genuine content change crawlers should see. Best-effort: a failed read returns
+// none so the sitemap never breaks on a network hiccup.
 async function communityPermalinks(now: Date): Promise<MetadataRoute.Sitemap> {
   try {
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -34,17 +36,26 @@ async function communityPermalinks(now: Date): Promise<MetadataRoute.Sitemap> {
     });
     const { data } = await sb
       .from("community_feed")
-      .select("id,created_at")
+      .select("id,created_at,edited_at")
       .eq("is_flagged", false)
       .gte("reply_count", 1)
       .order("created_at", { ascending: false })
       .limit(500);
-    return ((data as { id: string; created_at: string }[] | null) ?? []).map((p) => ({
-      url: `${SITE_URL}/community/post/${p.id}`,
-      lastModified: p.created_at ? new Date(p.created_at) : now,
-      changeFrequency: "monthly" as const,
-      priority: 0.4,
-    }));
+    type Row = { id: string; created_at: string | null; edited_at: string | null };
+    return ((data as Row[] | null) ?? []).map((p) => {
+      const created = p.created_at ? Date.parse(p.created_at) : NaN;
+      const edited = p.edited_at ? Date.parse(p.edited_at) : NaN;
+      const ts = Math.max(
+        Number.isNaN(created) ? 0 : created,
+        Number.isNaN(edited) ? 0 : edited,
+      );
+      return {
+        url: `${SITE_URL}/community/post/${p.id}`,
+        lastModified: ts > 0 ? new Date(ts) : now,
+        changeFrequency: "monthly" as const,
+        priority: 0.4,
+      };
+    });
   } catch {
     return [];
   }

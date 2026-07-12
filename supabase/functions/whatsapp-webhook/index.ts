@@ -1149,11 +1149,12 @@ function buildChatFallback(plans: Plan[], recommend: boolean, ctx: ConvContext):
 // round-trip inside the body), so this serialises per conversation in practice.
 //
 // SCOPE: in serverless this only serialises within ONE warm isolate. Two isolates
-// (cold-start fan-out) still race; true cross-isolate safety would need a DB
-// version/lock (optimistic concurrency on ai_state). This is a pragmatic, zero-
-// dependency mitigation matched to Switchy's low QPS — most close-together turns
-// from one number land on the same warm isolate. Fail-soft: the chain swallows the
-// inner result/throw so one turn's failure never blocks the next.
+// (cold-start fan-out) still race on the LOAD side; the SAVE side is now guarded
+// cross-isolate by optimistic concurrency on ai_state (_shared/session.ts stamps
+// ai_state.rev and saves with a conditional PATCH — the losing save is silently
+// dropped instead of clobbering the winner's memory). This chain remains the
+// cheap first line so most same-isolate turns never race at all. Fail-soft: the
+// chain swallows the inner result/throw so one turn's failure never blocks the next.
 const _convChains = new Map<string, Promise<void>>();
 
 async function handleMessage(m: Row, profileName: string | undefined, aiKeys: AiKeys): Promise<void> {
@@ -1783,6 +1784,129 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   if (pendingQuestionLog) await pendingQuestionLog;
 }
 
+// ── Meta batch extraction (every entry / every change) ──────────────────────
+// Meta batches webhook deliveries: ONE POST can carry MULTIPLE entry items, each
+// with MULTIPLE changes. The old handler read entry[0].changes[0] only, so every
+// other message in a batch was silently dropped (an invisible customer message —
+// the bot simply never answered). This flattens the WHOLE batch, carrying each
+// change's own contacts[0].profile.name (a batch can span senders), plus every
+// value.statuses receipt. In-batch wamid DEDUP is a safety net on top of the DB
+// dedup (whatsapp_messages.wa_message_id ignore-duplicates): Meta occasionally
+// repeats the same message object across entries of one delivery, and skipping
+// it here avoids even starting the per-message pipeline. Pure + total (never
+// throws, tolerates any malformed shape) so the batch contract is testable.
+export type WebhookBatch = {
+  messages: { message: Row; profileName?: string }[];
+  statuses: Row[];
+};
+
+export function extractWebhookEvents(body: unknown): WebhookBatch {
+  const out: WebhookBatch = { messages: [], statuses: [] };
+  const seenWamids = new Set<string>();
+  const entries = Array.isArray((body as Row)?.entry) ? (body as { entry: unknown[] }).entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray((entry as Row)?.changes)
+      ? (entry as { changes: unknown[] }).changes
+      : [];
+    for (const change of changes) {
+      const value = (change as Row)?.value;
+      if (!value || typeof value !== "object") continue;
+      const v = value as Row & {
+        contacts?: { profile?: { name?: string } }[];
+        messages?: unknown[];
+        statuses?: unknown[];
+      };
+      const rawName = v.contacts?.[0]?.profile?.name;
+      const profileName = typeof rawName === "string" && rawName ? rawName : undefined;
+      if (Array.isArray(v.messages)) {
+        for (const m of v.messages) {
+          if (!m || typeof m !== "object") continue;
+          const wamid = (m as Row).id ? String((m as Row).id) : "";
+          if (wamid) {
+            if (seenWamids.has(wamid)) continue; // in-batch duplicate → skip
+            seenWamids.add(wamid);
+          }
+          out.messages.push({ message: m as Row, profileName });
+        }
+      }
+      if (Array.isArray(v.statuses)) {
+        for (const st of v.statuses) {
+          if (st && typeof st === "object") out.statuses.push(st as Row);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// ── Delivery receipts (value.statuses) ──────────────────────────────────────
+// Meta reports the lifecycle of OUR outbound messages via value.statuses:
+// sent → delivered → read (or failed). These used to be dropped on the floor, so
+// whatsapp_messages.status froze at 'sent' forever and the CRM couldn't tell a
+// delivered reply from a silently-failed one. Each receipt updates the stored
+// row by its wamid — fail-soft PER RECEIPT (one bad receipt never blocks the
+// rest of the batch, and a DB miss is logged, never thrown).
+
+// The only statuses we mirror (Meta's closed set for message receipts). Anything
+// else (unknown/future values) is ignored rather than written blindly.
+const RECEIPT_STATUSES = new Set(["sent", "delivered", "read", "failed"]);
+
+// Parse one raw receipt into {wamid, status}, or null when it isn't a receipt we
+// mirror (missing id / unknown status). Pure + total.
+export function parseStatusReceipt(st: Row): { wamid: string; status: string } | null {
+  const wamid = String(st?.id ?? "").trim();
+  const status = String(st?.status ?? "").trim().toLowerCase();
+  if (!wamid || !RECEIPT_STATUSES.has(status)) return null;
+  return { wamid, status };
+}
+
+// The extra PostgREST filter that keeps receipt writes MONOTONIC when Meta
+// delivers them out of order: 'read' must never be downgraded back to
+// 'delivered'/'sent', and a terminal 'failed' is never overwritten by a stale
+// lower receipt. 'failed' itself is Graph's definitive verdict and may
+// overwrite anything. Pure so the ladder is pinned in tests.
+export function receiptStatusFilter(status: string): string {
+  switch (status) {
+    case "sent":
+      return "&status=not.in.(delivered,read,failed)";
+    case "delivered":
+      return "&status=not.in.(read,failed)";
+    case "read":
+      return "&status=not.in.(failed)";
+    default: // "failed" — definitive
+      return "";
+  }
+}
+
+// Apply a batch of receipts. Best-effort + fail-soft per receipt; logs one
+// summary line (counts only — a wamid is not PII but adds nothing here).
+async function ingestStatusReceipts(statuses: Row[]): Promise<void> {
+  if (!statuses.length) return;
+  let applied = 0;
+  let skipped = 0;
+  let failed = 0;
+  for (const st of statuses) {
+    const rec = parseStatusReceipt(st);
+    if (!rec) {
+      skipped++;
+      continue;
+    }
+    try {
+      const r = await serviceFetch(
+        `/rest/v1/whatsapp_messages?wa_message_id=eq.${encodeURIComponent(rec.wamid)}${
+          receiptStatusFilter(rec.status)
+        }`,
+        { method: "PATCH", body: JSON.stringify({ status: rec.status }) },
+      );
+      if (r && r.ok) applied++;
+      else failed++;
+    } catch (_e) {
+      failed++; // fail-soft per receipt — the rest of the batch still lands
+    }
+  }
+  jlog({ at: "wa.receipts", ok: failed === 0, total: statuses.length, applied, skipped, failed });
+}
+
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
 // The real request logic. Wrapped by the Deno.serve handler below so any
@@ -1813,17 +1937,22 @@ async function handle(req: Request): Promise<Response> {
     }
     try {
       const body = JSON.parse(raw);
-      const value = body?.entry?.[0]?.changes?.[0]?.value;
-      const messages = value?.messages;
-      if (Array.isArray(messages) && messages.length) {
+      // EVERY entry/change in the Meta batch is processed (the old code read
+      // entry[0].changes[0] only and dropped the rest), with in-batch wamid
+      // dedup as a safety net on top of the DB-level dedup.
+      const batch = extractWebhookEvents(body);
+      // Delivery receipts first — cheap DB-only writes, fail-soft per receipt.
+      if (batch.statuses.length) await ingestStatusReceipts(batch.statuses);
+      if (batch.messages.length) {
         const aiKeys: AiKeys = {
           gemini: await geminiKey(),
           groq: Deno.env.get("GROQ_API_KEY") ?? "",
           cerebras: Deno.env.get("CEREBRAS_API_KEY") ?? "",
           openrouter: Deno.env.get("OPENROUTER_API_KEY") ?? "",
         };
-        const profileName: string | undefined = value?.contacts?.[0]?.profile?.name;
-        for (const m of messages) await handleMessage(m as Row, profileName, aiKeys);
+        for (const ev of batch.messages) {
+          await handleMessage(ev.message, ev.profileName, aiKeys);
+        }
       }
     } catch (e) {
       jlog({ at: "wa.post", ok: false, error: String(e) });

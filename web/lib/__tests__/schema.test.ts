@@ -3,11 +3,13 @@ import {
   productSchema,
   comparisonSchema,
   itemListSchema,
+  linkItemListSchema,
   aggregateRatingSchema,
   reviewSchema,
   knowledgeWebSchema,
   webPageSchema,
   relatedLinksSchema,
+  breadcrumbSchema,
   articleSchema,
   howToSchema,
   pageAggregateOfferSchema,
@@ -440,6 +442,86 @@ describe("knowledgeWebSchema — provider-node @id dedupe", () => {
       expect(specs[0]["@type"]).toBe("UnitPriceSpecification");
       expect(specs[0].priceCurrency).toBe("ILS");
     }
+  });
+});
+
+describe("breadcrumbSchema — positioned trail, urls resolved to absolute", () => {
+  it("builds a BreadcrumbList with 1-based positions and absolute item urls (the Q&A permalink trail)", () => {
+    const schema = breadcrumbSchema([
+      { name: "בית", url: "/" },
+      { name: "שאלות ותשובות", url: "/community/questions" },
+      { name: "כמה עולה סיב אופטי?", url: "/community/post/abc-123" },
+    ]);
+    expect(schema).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+    });
+    const els = schema.itemListElement as Array<Record<string, unknown>>;
+    expect(els).toHaveLength(3);
+    expect(els[0]).toEqual({
+      "@type": "ListItem",
+      position: 1,
+      name: "בית",
+      item: `${SITE_URL}/`,
+    });
+    expect(els[1]).toMatchObject({
+      position: 2,
+      item: `${SITE_URL}/community/questions`,
+    });
+    expect(els[2]).toMatchObject({
+      position: 3,
+      name: "כמה עולה סיב אופטי?",
+      item: `${SITE_URL}/community/post/abc-123`,
+    });
+  });
+
+  it("passes an already-absolute url through untouched", () => {
+    const schema = breadcrumbSchema([{ name: "x", url: `${SITE_URL}/compare` }]);
+    const els = schema.itemListElement as Array<Record<string, unknown>>;
+    expect(els[0].item).toBe(`${SITE_URL}/compare`);
+  });
+});
+
+describe("linkItemListSchema — lean ItemList for the Q&A hub", () => {
+  it("returns null when there are no links (no empty list emitted)", () => {
+    expect(linkItemListSchema({ links: [] })).toBeNull();
+    expect(linkItemListSchema({ name: "x", links: [] })).toBeNull();
+  });
+
+  it("emits LEAN positioned ListItems — position + absolute url (+name), NO inlined entity", () => {
+    const schema = linkItemListSchema({
+      name: "שאלות ותשובות — קהילת חוסך",
+      links: [
+        { url: "/community/post/a", name: "שאלה ראשונה" },
+        { url: "/community/post/b" },
+      ],
+    });
+    expect(schema).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "שאלות ותשובות — קהילת חוסך",
+      numberOfItems: 2,
+    });
+    const els = schema!.itemListElement as Array<Record<string, unknown>>;
+    expect(els[0]).toEqual({
+      "@type": "ListItem",
+      position: 1,
+      url: `${SITE_URL}/community/post/a`,
+      name: "שאלה ראשונה",
+    });
+    // Lean: a link without a name emits position+url ONLY — nothing inlined.
+    expect(els[1]).toEqual({
+      "@type": "ListItem",
+      position: 2,
+      url: `${SITE_URL}/community/post/b`,
+    });
+    // No per-item `item` node (that's the difference from itemListSchema's refs).
+    expect(els[0].item).toBeUndefined();
+  });
+
+  it("omits the list name when not supplied", () => {
+    const schema = linkItemListSchema({ links: [{ url: "/community/post/a" }] });
+    expect(schema!.name).toBeUndefined();
   });
 });
 

@@ -91,12 +91,19 @@ function clientIp(req: Request): string {
 // just yields no cache hits for those hashes (they get translated fresh).
 async function loadCache(lang: string, hashes: string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  for (let i = 0; i < hashes.length; i += CACHE_IN_CHUNK) {
-    const chunk = hashes.slice(i, i + CACHE_IN_CHUNK);
+  // Fire every chunk lookup CONCURRENTLY (was a serial await-in-loop). On the cold
+  // path a page's hashes span 2-3 chunks; parallelising them removes 1-2 serial DB
+  // round trips from the critical path. Fail-soft per chunk: a failed chunk yields
+  // no hits for its hashes (they get translated fresh) and never breaks the others.
+  const chunks: string[][] = [];
+  for (let i = 0; i < hashes.length; i += CACHE_IN_CHUNK) chunks.push(hashes.slice(i, i + CACHE_IN_CHUNK));
+  const results = await Promise.all(chunks.map((chunk) => {
     const inList = chunk.map((h) => `"${h}"`).join(",");
-    const rows = await fetchRows<{ source_hash: string; translated: string }>(
+    return fetchRows<{ source_hash: string; translated: string }>(
       `/rest/v1/site_translations?select=source_hash,translated&lang=eq.${encodeURIComponent(lang)}&source_hash=in.(${inList})`,
     );
+  }));
+  for (const rows of results) {
     if (rows) for (const r of rows) out.set(r.source_hash, r.translated);
   }
   return out;
@@ -197,36 +204,32 @@ async function handle(req: Request): Promise<Response> {
       else missing.push(s);
     }
 
-    // 2) Global daily budget gate — atomically reserve this request's model work.
-    //    Best-effort: on a DB error we proceed (fail-open); the per-request caps +
-    //    in-memory limiter still apply. `false` => over budget => the misses stay
-    //    Hebrew (they already default to their original below).
-    const budgetOk = await rpcScalar<boolean>("translate_budget_consume", {
-      p_n: missing.length,
-      p_cap: DAILY_MODEL_BUDGET,
-    });
-
-    // 3) Model for the misses (masked → translate → restore → double-verify).
+    // 2) Model for the misses (masked → translate → restore → double-verify).
     const english = langEnglishName(lang);
     const system = buildSystemPrompt(english);
     const toCache: { source_hash: string; lang: string; source_text: string; translated: string }[] = [];
+    let verifyRejections = 0; // model replied but the sentinel/price guards rejected it
 
-    // Translate one batch. On a PARSE FAILURE (e.g. the model truncated the JSON
-    // array for a verbose script) split the batch and retry each half, so a lost
-    // tail never drops the WHOLE batch to Hebrew. Each survivor must pass BOTH
-    // guards — ordered/complete sentinels AND a restored-token re-match — before it
-    // is trusted or cached; anything else keeps the Hebrew original.
+    // Translate one batch. On a PARSE FAILURE of a NON-EMPTY reply (e.g. the model
+    // truncated the JSON array for a verbose script) split the batch and retry each
+    // half, so a lost tail never drops the WHOLE batch to Hebrew. We do NOT split
+    // when the reply is empty — generateReply returns "" when the entire provider
+    // chain failed/timed out, and recursing on that re-ran the dead chain up to
+    // 2n−1× (a budget + latency leak) for a result that can't improve. Each survivor
+    // must pass BOTH guards — ordered/complete sentinels AND a restored-token
+    // re-match — before it is trusted or cached; anything else keeps the Hebrew.
     const translateBatch = async (batch: string[]): Promise<void> => {
       const protectedBatch = batch.map((s) => protectText(s));
       const maskedArr = protectedBatch.map((p) => p.masked);
       let out: string[] | null = null;
+      let reply = "";
       try {
-        const reply = await generateReply(keys, system, [], JSON.stringify(maskedArr), MODEL_MAX_TOKENS, undefined, TRANSLATE_AI_OPTS);
+        reply = await generateReply(keys, system, [], JSON.stringify(maskedArr), MODEL_MAX_TOKENS, undefined, TRANSLATE_AI_OPTS);
         out = parseTranslations(reply, maskedArr.length);
       } catch (e) {
         jlog({ at: "translate.model", ok: false, lang, error: String(e) });
       }
-      if (out === null && batch.length > 1) {
+      if (out === null && reply.trim().length > 0 && batch.length > 1) {
         const mid = Math.ceil(batch.length / 2);
         await translateBatch(batch.slice(0, mid));
         await translateBatch(batch.slice(mid));
@@ -243,22 +246,60 @@ async function handle(req: Request): Promise<Response> {
             return;
           }
         }
-        resolved.set(src, src); // fail-soft: keep the Hebrew original
+        // Fail-soft: keep the Hebrew original. If the model DID return something for
+        // this slot but it failed a guard, that's a verify rejection — count it so
+        // the debited-vs-cached gap is visible in the logs.
+        if (masked != null) verifyRejections++;
+        resolved.set(src, src);
       });
     };
 
-    if (budgetOk !== false) {
-      // Translate every batch CONCURRENTLY (was serial). A page's misses split into
-      // a handful of batches; running them in parallel collapses N× model latency
-      // into ~1× — the single biggest speed win here. Each batch is independently
-      // fail-soft (its strings keep their Hebrew original on any error), so one slow
-      // or failing batch never blocks or breaks the others.
-      await Promise.all(
-        [...batchStrings(missing, batchCapFor(lang), 3500)].map((batch) => translateBatch(batch)),
-      );
+    if (missing.length > 0) {
+      // Global daily budget GATE — a zero-cost peek (p_n:0 neither reserves nor
+      // refunds, so no schema change): `false` only once today's budget is already
+      // spent, in which case the misses stay Hebrew. We CHARGE below, after verify,
+      // for exactly what we cached. Fail-open on a DB error (null).
+      const budgetOk = await rpcScalar<boolean>("translate_budget_consume", {
+        p_n: 0,
+        p_cap: DAILY_MODEL_BUDGET,
+      });
+
+      if (budgetOk !== false) {
+        // Translate every batch CONCURRENTLY (was serial). A page's misses split into
+        // a handful of batches; running them in parallel collapses N× model latency
+        // into ~1× — the single biggest speed win here. Each batch is independently
+        // fail-soft (its strings keep their Hebrew original on any error), so one slow
+        // or failing batch never blocks or breaks the others.
+        await Promise.all(
+          [...batchStrings(missing, batchCapFor(lang), 3500)].map((batch) => translateBatch(batch)),
+        );
+      }
+
+      // Cache only genuinely-translated rows (never cache a fail-soft identity).
+      const cacheable = toCache.filter((r) => r.translated !== r.source_text);
+      await saveCache(cacheable);
+
+      // Charge the daily budget AFTER model+verify, for exactly the count we cached
+      // — so debited == cached (the old pre-charge billed every miss, ~79% of which
+      // failed verify or fell soft). A small overshoot past the ceiling is possible
+      // and acceptable; the next request sees it spent and skips the model.
+      if (cacheable.length > 0) {
+        await rpcScalar<boolean>("translate_budget_consume", {
+          p_n: cacheable.length,
+          p_cap: DAILY_MODEL_BUDGET,
+        });
+      }
+      jlog({
+        at: "translate.budget",
+        lang,
+        budgetOk,
+        missing: missing.length,
+        cached: cacheable.length,
+        debited: cacheable.length,
+        verifyRejections,
+        ratio: Number((cacheable.length / missing.length).toFixed(3)),
+      });
     }
-    // Cache only genuinely-translated rows (never cache a fail-soft identity).
-    await saveCache(toCache.filter((r) => r.translated !== r.source_text));
   }
 
   // Align output to the original input order; anything not translated → itself.

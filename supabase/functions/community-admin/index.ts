@@ -11,7 +11,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // through a SECURITY DEFINER RPC that ALSO re-checks is_admin (defense-in-depth) and
 // writes a security_audit_log row.
 //
-// GET  → the queue: open reports + is_flagged posts + is_flagged replies (bounded).
+// GET  → the queue: open reports + is_flagged posts + is_flagged replies (bounded),
+//        ENRICHED with reportCount (open reports per flagged item) + authorBanned
+//        (profiles.is_banned) via TWO extra bounded service-role reads. Additive
+//        and fail-soft: if an enrichment read fails, the fields are simply absent
+//        (never a fabricated 0/false).
 // POST → { action: 'approve'|'remove'|'ban'|'unban'|'resolve'|'dismiss', ... }.
 // Missing/invalid admin ⇒ 401. Deploy: supabase functions deploy community-admin
 //
@@ -40,6 +44,70 @@ async function callRpc(name: string, args: Record<string, unknown>): Promise<boo
   return !!r && r.ok;
 }
 
+// ── Queue enrichment ─────────────────────────────────────────────────────────
+// Two extra BOUNDED service-role reads per queue load (never per row): the open-
+// report counts for the flagged items and the ban flag of their authors. `in.()`
+// id lists are capped so a pathological queue can't build an unbounded URL.
+
+const ENRICH_IDS_CAP = 200;
+
+type FlaggedRow = { id?: unknown; user_id?: unknown } & Record<string, unknown>;
+
+function uniqueIds(rows: FlaggedRow[], key: "id" | "user_id"): string[] {
+  const out = new Set<string>();
+  for (const r of rows) {
+    const v = r[key];
+    // Only uuid-ish values are ever interpolated into the in.() filter.
+    if (typeof v === "string" && /^[0-9a-fA-F-]{32,40}$/.test(v)) out.add(v);
+    if (out.size >= ENRICH_IDS_CAP) break;
+  }
+  return [...out];
+}
+
+/** Attach reportCount / authorBanned to the flagged rows IN PLACE (additive).
+ *  Each field is only written when its read succeeded — a failed read leaves the
+ *  rows unannotated instead of faking 0 / false. */
+async function enrichFlagged(posts: FlaggedRow[], replies: FlaggedRow[]): Promise<void> {
+  const flagged = [...posts, ...replies];
+  if (flagged.length === 0) return;
+  const targetIds = uniqueIds(flagged, "id");
+  const authorIds = uniqueIds(flagged, "user_id");
+  const [reportRows, profileRows] = await Promise.all([
+    targetIds.length
+      ? fetchRows<{ target_id?: unknown }>(
+        `/rest/v1/community_reports?select=target_id&status=eq.open` +
+          `&target_id=in.(${targetIds.join(",")})&limit=1000`,
+      )
+      : Promise.resolve([]),
+    authorIds.length
+      ? fetchRows<{ id?: unknown; is_banned?: unknown }>(
+        `/rest/v1/profiles?select=id,is_banned&id=in.(${authorIds.join(",")})` +
+          `&limit=${ENRICH_IDS_CAP}`,
+      )
+      : Promise.resolve([]),
+  ]);
+  if (reportRows !== null) {
+    const counts = new Map<string, number>();
+    for (const r of reportRows) {
+      if (typeof r.target_id === "string") {
+        counts.set(r.target_id, (counts.get(r.target_id) ?? 0) + 1);
+      }
+    }
+    for (const row of flagged) {
+      if (typeof row.id === "string") row.reportCount = counts.get(row.id) ?? 0;
+    }
+  }
+  if (profileRows !== null) {
+    const banned = new Set<string>();
+    for (const p of profileRows) {
+      if (typeof p.id === "string" && p.is_banned === true) banned.add(p.id);
+    }
+    for (const row of flagged) {
+      if (typeof row.user_id === "string") row.authorBanned = banned.has(row.user_id);
+    }
+  }
+}
+
 async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors() });
 
@@ -54,7 +122,11 @@ async function handle(req: Request): Promise<Response> {
       fetchRows(u.posts),
       fetchRows(u.replies),
     ]);
-    return json({ reports: reports ?? [], flaggedPosts: posts ?? [], flaggedReplies: replies ?? [] });
+    const flaggedPosts = (posts ?? []) as FlaggedRow[];
+    const flaggedReplies = (replies ?? []) as FlaggedRow[];
+    // Additive enrichment (reportCount / authorBanned) — two bounded reads total.
+    await enrichFlagged(flaggedPosts, flaggedReplies);
+    return json({ reports: reports ?? [], flaggedPosts, flaggedReplies });
   }
 
   // ── Actions ─────────────────────────────────────────────────────────────────

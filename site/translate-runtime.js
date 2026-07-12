@@ -118,35 +118,139 @@
   var observer = null;
   var busy = false;
 
+  // ── network/state-machine tuning ─────────────────────────────────────────────
+  var FETCH_TIMEOUT = 12000; // ms per fetch before we abort it
+  var RETRY_MAX = 2; // extra attempts after the first (1–2×) on a failed batch
+  var MAX_INFLIGHT = 4; // cap on concurrent background fetches (also eases the 90/min/IP limit)
+  var MAX_NEED = 100; // unique untranslated strings per POST (server cap is 120)
+  var MAX_NEED_CHARS = 18000; // summed source chars per POST (server cap is 24000)
+  var FAIL_TTL = 3 * 60 * 1000; // how long a failure stamp suppresses auto-apply-on-load
+  var CACHE_KEY_CAP = 40; // max swi18n:c:* localStorage entries kept
+  var SEEN_CAP = 2000; // max strings tracked for cross-page __shared promotion
+
+  var controllers = []; // live AbortControllers (aborted on restore / new switch)
+  var queuedLang = null; // a language requested while a switch was in flight
+  var committed = false; // did the CURRENT switch apply ≥1 real translation yet?
+  var switchSeq = 0; // bumped on every switch/restore to invalidate stale async work
+
   // ── config / storage ───────────────────────────────────────────────────────
   function endpoint() { return cfg.url.replace(/\/$/, "") + "/functions/v1/translate"; }
   function memFor(lang) { return (mem[lang] = mem[lang] || {}); }
   function pageKey(lang) { return "swi18n:c:" + lang + ":" + location.pathname; }
+  // Cross-page cache of "chrome" strings (menu/footer/header) that recur on 2+
+  // pages, so a new page's first visit doesn't re-fetch them over the network.
+  function sharedKey(lang) { return "swi18n:c:" + lang + ":__shared"; }
+  // Bookkeeping: which source strings we've seen (on ANY page) for this language —
+  // the basis for promoting a string to __shared the second time it appears.
+  function seenKey(lang) { return "swi18n:seen:" + lang; }
 
+  function mergeInto(m, raw) {
+    if (!raw) return;
+    try {
+      var obj = JSON.parse(raw);
+      for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) m[k] = obj[k];
+    } catch (e) { /* corrupt entry — ignore */ }
+  }
   function loadPageCache(lang) {
     try {
-      var raw = localStorage.getItem(pageKey(lang));
-      if (!raw) return;
-      var obj = JSON.parse(raw);
       var m = memFor(lang);
-      for (var k in obj) if (Object.prototype.hasOwnProperty.call(obj, k)) m[k] = obj[k];
+      mergeInto(m, localStorage.getItem(sharedKey(lang))); // shared chrome first …
+      mergeInto(m, localStorage.getItem(pageKey(lang))); // … page-specific overlays it
     } catch (e) { /* storage blocked — memory-only */ }
   }
+
+  // All swi18n:c:* cache keys (optionally excluding one, and optionally keeping the
+  // shared entries so eviction targets page entries first).
+  function cacheKeys(exclude, keepShared) {
+    var ks = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("swi18n:c:") !== 0 || k === exclude) continue;
+        if (keepShared && /:__shared$/.test(k)) continue;
+        ks.push(k);
+      }
+    } catch (e) {}
+    return ks;
+  }
+  // Keep the cache-key population under CACHE_KEY_CAP by dropping oldest page keys
+  // (localStorage key order ≈ insertion order in practice; shared keys are spared).
+  function pruneCache(keep) {
+    try {
+      var ks = cacheKeys(keep, true);
+      var over = (ks.length + 1) - CACHE_KEY_CAP;
+      for (var i = 0; i < over; i++) { try { localStorage.removeItem(ks[i]); } catch (e) {} }
+    } catch (e) {}
+  }
+  // setItem that survives a quota error: evict oldest swi18n:c:* entries one at a
+  // time and retry (shared entries last). Returns true on success.
+  function setItemEvicting(key, value) {
+    try { localStorage.setItem(key, value); pruneCache(key); return true; } catch (e) {}
+    var ks = cacheKeys(key, /*keepShared*/ true).concat(cacheKeys(key, false).filter(function (k) { return /:__shared$/.test(k); }));
+    for (var i = 0; i < ks.length; i++) {
+      try { localStorage.removeItem(ks[i]); } catch (e2) {}
+      try { localStorage.setItem(key, value); return true; } catch (e3) {}
+    }
+    return false;
+  }
+
   function savePageCache(lang) {
     try {
-      // Persist only the strings that live on THIS page, to keep entries small.
-      var out = {}, m = memFor(lang), i;
+      // Persist only the strings that live on THIS page (skip detached nodes), to
+      // keep the per-page entry small.
+      var out = {}, m = memFor(lang), i, seen = {};
       for (i = 0; i < records.length; i++) {
-        var o = records[i].orig;
-        if (m[o] != null) out[o] = m[o];
+        var rec = records[i], o = rec.orig;
+        if (m[o] != null && !seen[o] && recIsConnected(rec)) { seen[o] = 1; out[o] = m[o]; }
       }
-      localStorage.setItem(pageKey(lang), JSON.stringify(out));
+      // Persist the cheap language pref BEFORE the heavy cache entry (quota-safety)
+      // — but ONLY once the switch has actually committed a real translation, so a
+      // failed attempt never leaves a broken preference behind for a fresh visitor.
+      if (committed) rememberLang(lang);
+      setItemEvicting(pageKey(lang), JSON.stringify(out));
+      promoteShared(lang, out); // move cross-page chrome strings into __shared
     } catch (e) { /* over quota / blocked — ignore */ }
   }
+
+  // Promote strings seen on a PRIOR page into the shared cache (they are the
+  // chrome/menu/footer that recur site-wide). Heuristic — see the seen map below.
+  function promoteShared(lang, pageOut) {
+    try {
+      var prior = {};
+      mergeInto(prior, localStorage.getItem(seenKey(lang)));
+      var shared = {};
+      mergeInto(shared, localStorage.getItem(sharedKey(lang)));
+      var changed = false, k, count = 0, key;
+      for (k in pageOut) {
+        if (!Object.prototype.hasOwnProperty.call(pageOut, k)) continue;
+        if (prior[k] === 1 && shared[k] == null) { shared[k] = pageOut[k]; changed = true; }
+      }
+      for (key in prior) if (Object.prototype.hasOwnProperty.call(prior, key)) count++;
+      for (k in pageOut) {
+        if (!Object.prototype.hasOwnProperty.call(pageOut, k)) continue;
+        if (prior[k] !== 1) { if (count >= SEEN_CAP) break; prior[k] = 1; count++; }
+      }
+      if (changed) setItemEvicting(sharedKey(lang), JSON.stringify(shared));
+      try { localStorage.setItem(seenKey(lang), JSON.stringify(prior)); } catch (e) {}
+    } catch (e) { /* best-effort */ }
+  }
+
   function rememberLang(lang) {
     try { lang === SOURCE ? localStorage.removeItem("swi18n:lang") : localStorage.setItem("swi18n:lang", lang); } catch (e) {}
   }
   function storedLang() { try { return localStorage.getItem("swi18n:lang") || SOURCE; } catch (e) { return SOURCE; } }
+
+  // ── failure stamp — suppress auto-apply-on-load briefly after a total failure ─
+  function setFailStamp() { try { sessionStorage.setItem("swi18n:fail", String(Date.now())); } catch (e) {} }
+  function clearFailStamp() { try { sessionStorage.removeItem("swi18n:fail"); } catch (e) {} }
+  function failStampActive() {
+    try {
+      var v = sessionStorage.getItem("swi18n:fail");
+      if (!v) return false;
+      if (Date.now() - (parseInt(v, 10) || 0) > FAIL_TTL) { sessionStorage.removeItem("swi18n:fail"); return false; }
+      return true;
+    } catch (e) { return false; }
+  }
 
   // ── collection ──────────────────────────────────────────────────────────────
   function translatableText(s) {
@@ -193,38 +297,146 @@
   }
 
   // ── network ──────────────────────────────────────────────────────────────────
-  function chunk(arr, n) { var out = [], i; for (i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; }
-
+  // A single POST, bounded by a 12s abort timeout. Its AbortController is tracked in
+  // `controllers` so a restore-to-Hebrew (or a new switch) can cancel it in flight.
+  // A 429 throws an error carrying retryAfter (seconds) so the retry honours it.
   function fetchTranslations(lang, texts) {
-    return fetch(endpoint(), {
+    var ctrl = null, timer = null;
+    try { ctrl = ("AbortController" in window) ? new AbortController() : null; } catch (e) { ctrl = null; }
+    var opts = {
       method: "POST",
       headers: { "Content-Type": "application/json", apikey: cfg.anonKey, Authorization: "Bearer " + cfg.anonKey },
       body: JSON.stringify({ lang: lang, texts: texts })
-    }).then(function (r) {
+    };
+    if (ctrl) {
+      opts.signal = ctrl.signal;
+      controllers.push(ctrl);
+      timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, FETCH_TIMEOUT);
+    }
+    var cleanup = function () {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (ctrl) { var ix = controllers.indexOf(ctrl); if (ix !== -1) controllers.splice(ix, 1); }
+    };
+    return fetch(endpoint(), opts).then(function (r) {
+      if (r.status === 429) {
+        var ra = (r.headers && r.headers.get) ? r.headers.get("Retry-After") : null;
+        var e429 = new Error("translate 429");
+        e429.retryAfter = ra ? (parseInt(ra, 10) || 0) : 0;
+        throw e429;
+      }
       if (!r.ok) throw new Error("translate " + r.status);
       return r.json();
     }).then(function (j) {
+      cleanup();
       return (j && Array.isArray(j.translations)) ? j.translations : texts;
+    }, function (e) {
+      cleanup();
+      throw e;
     });
   }
 
+  function backoffDelay(attempt, retryAfterSec) {
+    if (retryAfterSec && retryAfterSec > 0) return Math.min(retryAfterSec * 1000, 20000);
+    return Math.min(400 * Math.pow(2, attempt - 1), 8000); // 400ms, 800ms, …
+  }
+  // fetchTranslations + up to RETRY_MAX retries with backoff (honouring Retry-After).
+  function fetchTranslationsRetrying(lang, texts, tries) {
+    tries = (tries == null) ? RETRY_MAX : tries;
+    var attempt = 0;
+    var run = function () {
+      return fetchTranslations(lang, texts).then(null, function (e) {
+        // An AbortError is an INTENTIONAL cancel (restore-to-Hebrew / new switch /
+        // 12s timeout-then-abort) — never retry it; let it propagate and fail soft.
+        if (e && e.name === "AbortError") throw e;
+        attempt++;
+        if (attempt > tries) throw e;
+        var d = backoffDelay(attempt, e && e.retryAfter);
+        return new Promise(function (resolve) { setTimeout(resolve, d); }).then(run);
+      });
+    };
+    return run();
+  }
+
+  // Cancel every in-flight fetch (used when the user returns to Hebrew or starts a
+  // new switch): the pending POSTs reject with an AbortError and fail soft.
+  function abortAll() {
+    for (var i = 0; i < controllers.length; i++) { try { controllers[i].abort(); } catch (e) {} }
+    controllers = [];
+  }
+
   // ── apply / restore ──────────────────────────────────────────────────────────
+  function recEl(rec) { return rec.kind === "text" ? rec.node : rec.el; }
+  function recIsConnected(rec) { var el = recEl(rec); return !!(el && el.isConnected); }
+
+  // Apply one record. Returns 1 when a REAL translation was applied, 0 when it fell
+  // back to the Hebrew original (mem never stores fail-soft echoes, so a present
+  // value is always genuine). Callers sum this to know whether a switch succeeded.
   function applyRecord(rec, lang) {
     var m = memFor(lang);
     var t = m[rec.orig];
     // Unresolved strings fall back to the Hebrew ORIGINAL — never left as stale
-    // text from a previously-applied language. Pairs with translateRecords not
-    // caching fail-soft Hebrew echoes: a cold string shows Hebrew now and is
-    // re-attempted on the next visit (e.g. once the DB cache is warmed).
+    // text from a previously-applied language. A cold string shows Hebrew now and
+    // is re-attempted on the next visit (e.g. once the DB cache is warmed).
     var v = t != null ? t : rec.orig;
-    if (rec.kind === "text") { rec.node.nodeValue = v; }
-    else { rec.el.setAttribute(rec.attr, v); }
+    if (rec.kind === "text") { if (!rec.node) return 0; rec.node.nodeValue = v; }
+    else { if (!rec.el) return 0; rec.el.setAttribute(rec.attr, v); }
+    return (t != null && t !== rec.orig) ? 1 : 0;
+  }
+  // Apply a batch's OWN records only (not every page record) and return the count
+  // of genuine translations applied.
+  function applyBatch(recs, lang) {
+    var n = 0;
+    for (var k = 0; k < recs.length; k++) n += applyRecord(recs[k], lang);
+    return n;
   }
   function restoreAll() {
     for (var i = 0; i < records.length; i++) {
       var rec = records[i];
-      if (rec.kind === "text") { rec.node.nodeValue = rec.orig; }
-      else { rec.el.setAttribute(rec.attr, rec.orig); }
+      if (rec.kind === "text") { if (rec.node) rec.node.nodeValue = rec.orig; }
+      else if (rec.el) {
+        rec.el.setAttribute(rec.attr, rec.orig);
+        // Drop the "already recorded" marker so a later switch re-collects this
+        // attribute (otherwise placeholder/aria-label translations are lost forever
+        // after one round-trip through Hebrew).
+        rec.el.removeAttribute("data-swi18n-" + rec.attr);
+      }
+    }
+  }
+
+  // Drop records whose node/element has left the DOM.
+  function pruneRecords(recs) {
+    var out = [];
+    for (var i = 0; i < recs.length; i++) if (recIsConnected(recs[i])) out.push(recs[i]);
+    return out;
+  }
+  // Records still needing translation (not resolved elsewhere) AND still connected.
+  function pruneUnresolved(lang, recs) {
+    var m = memFor(lang), out = [], i, rec;
+    for (i = 0; i < recs.length; i++) {
+      rec = recs[i];
+      if (m[rec.orig] != null) continue;
+      if (!recIsConnected(rec)) continue;
+      out.push(rec);
+    }
+    return out;
+  }
+  // Split records into on-screen (within the viewport + one screen of margin) vs the
+  // rest, so the visible text is translated FIRST. Hidden/zero-box records (display
+  // none, collapsed accordions) fall to the background group.
+  function splitByViewport(recs, visible, rest) {
+    var vh = window.innerHeight || document.documentElement.clientHeight || 0;
+    var margin = vh; // +1 screen ahead
+    for (var i = 0; i < recs.length; i++) {
+      var rec = recs[i];
+      var el = rec.kind === "text" ? rec.node.parentElement : rec.el;
+      var inView = true;
+      if (el && el.getBoundingClientRect) {
+        try {
+          var r = el.getBoundingClientRect();
+          inView = (r.bottom >= -margin && r.top <= vh + margin && (r.width > 0 || r.height > 0));
+        } catch (e) { inView = true; }
+      }
+      (inView ? visible : rest).push(rec);
     }
   }
 
@@ -234,54 +446,187 @@
     html.setAttribute("dir", RTL[lang] ? "rtl" : "ltr");
   }
 
-  // Translate a set of records into `lang`: fill the memory cache for any strings
-  // it is missing (via the edge fn), then apply. Fail-soft — a failed fetch just
-  // leaves those strings in Hebrew.
-  function translateRecords(lang, recs) {
+  // Group records into batches, each capped by UNIQUE untranslated strings AND
+  // their summed chars (so one POST stays within the server's limits). Records
+  // already resolved in memory add no `need` but ride along in their batch so they
+  // are painted from cache. Each batch carries its own records → applied in isolation.
+  function batchRecords(lang, recs, maxNeed, maxChars) {
     var m = memFor(lang);
-    var need = [];
-    var seen = {};
+    var batches = [];
+    var curRecs = [], curNeed = [], curSeen = {}, curChars = 0;
+    var flush = function () {
+      if (curRecs.length) batches.push({ recs: curRecs, need: curNeed });
+      curRecs = []; curNeed = []; curSeen = {}; curChars = 0;
+    };
     for (var i = 0; i < recs.length; i++) {
-      var o = recs[i].orig;
-      if (m[o] == null && !seen[o]) { seen[o] = 1; need.push(o); }
+      var rec = recs[i], o = rec.orig;
+      var isNeed = (m[o] == null && !curSeen[o]);
+      if (isNeed && curNeed.length > 0 && (curNeed.length >= maxNeed || curChars + o.length > maxChars)) flush();
+      curRecs.push(rec);
+      if (m[o] == null && !curSeen[o]) { curSeen[o] = 1; curNeed.push(o); curChars += o.length + 4; }
     }
-    var apply = function () { for (var k = 0; k < recs.length; k++) applyRecord(recs[k], lang); };
-    if (need.length === 0) { apply(); return Promise.resolve(); }
-    var batches = chunk(need, 100);
-    return Promise.all(batches.map(function (b) {
-      return fetchTranslations(lang, b).then(function (res) {
-        for (var j = 0; j < b.length; j++) {
-          var tr = res[j];
-          // Store ONLY a genuine translation. The edge fn echoes the Hebrew
-          // source for any string that failed its verify guards; caching that
-          // echo would freeze the string in Hebrew forever — leave it unresolved
-          // so it re-attempts next visit (e.g. once the DB cache is warmed).
-          if (tr != null && tr !== b[j]) m[b[j]] = tr;
+    flush();
+    return batches;
+  }
+
+  // Run a list of {recs, need} batches with at most `limit` fetches in flight.
+  // Applies each batch to ITS OWN records as it lands (progressive paint), fires
+  // `onFirst` the first time any batch applies a real translation, and pushes a
+  // failed batch's records to `unresolved` (if given) for a later retry pass.
+  // Resolves with the total count of genuine translations applied.
+  function runBatches(lang, batches, limit, unresolved, onFirst) {
+    return new Promise(function (resolve) {
+      if (!batches.length) { resolve(0); return; }
+      var idx = 0, active = 0, total = 0;
+      var pump = function () {
+        if (idx >= batches.length && active === 0) { resolve(total); return; }
+        while (active < limit && idx < batches.length) {
+          (function (batch) {
+            active++;
+            var m = memFor(lang);
+            var need = batch.need;
+            var done = function () {
+              active--;
+              // Only paint if we're STILL in this language — a batch that resolves
+              // after the user returned to Hebrew (or switched again) must not stamp
+              // stale text over the restored page.
+              var applied = (current === lang) ? applyBatch(batch.recs, lang) : 0;
+              total += applied;
+              if (applied > 0 && onFirst) onFirst();
+              pump();
+            };
+            if (!need || need.length === 0) { done(); return; }
+            fetchTranslationsRetrying(lang, need, RETRY_MAX).then(function (res) {
+              for (var j = 0; j < need.length; j++) {
+                var tr = res[j];
+                // Store ONLY a genuine translation — the edge fn echoes the Hebrew
+                // source for any string that failed its verify guards; caching that
+                // echo would freeze it in Hebrew forever. Leave it unresolved so it
+                // re-attempts next visit (e.g. once the DB cache is warmed).
+                if (tr != null && tr !== need[j]) m[need[j]] = tr;
+              }
+              done();
+            }, function () {
+              if (unresolved) for (var u = 0; u < batch.recs.length; u++) unresolved.push(batch.recs[u]);
+              done();
+            });
+          })(batches[idx++]);
         }
-        apply(); // progressive paint: show each batch as it lands, not all-at-once
-      }).catch(function () { /* keep Hebrew for this batch */ });
-    })).then(function () { apply(); savePageCache(lang); });
+      };
+      pump();
+    });
+  }
+
+  // Translate a set of records into `lang` (fail-soft), with a concurrency cap.
+  // Resolves with the count of genuine translations applied.
+  function translateGroup(lang, recs, limit, unresolved, onFirst) {
+    var live = pruneRecords(recs);
+    if (!live.length) return Promise.resolve(0);
+    var batches = batchRecords(lang, live, MAX_NEED, MAX_NEED_CHARS);
+    return runBatches(lang, batches, limit, unresolved, onFirst).then(function (count) {
+      savePageCache(lang);
+      return count;
+    });
+  }
+
+  // Fired once, the first time a switch applies a REAL translation: only now do we
+  // flip direction, remember the language, show the banner and start observing —
+  // so a total failure leaves the page RTL-Hebrew and honest. Idempotent.
+  function commitSwitch(lang, myGen) {
+    if (switchSeq !== myGen || committed) return;
+    committed = true;
+    setDir(lang);
+    rememberLang(lang);
+    clearFailStamp();
+    hideToast(); // clear any leftover failure notice from a previous attempt
+    showBanner(lang);
+    startObserver();
+    syncTriggers();
+  }
+
+  // Orchestrate one switch: visible text FIRST (closes the progress bar the moment
+  // it applies), then the rest at idle with a ≤4 pool, then one retry pass for
+  // records still unresolved. Resolves when ALL of that is done.
+  function runSwitch(lang, myGen) {
+    var visible = [], rest = [];
+    splitByViewport(records, visible, rest);
+    var unresolved = [];
+    var onFirst = function () { commitSwitch(lang, myGen); };
+    return translateGroup(lang, visible, MAX_INFLIGHT, unresolved, onFirst).then(function () {
+      if (switchSeq !== myGen) return;
+      hideBar(); setTriggersBusy(false); // close progress/aria-busy on the VISIBLE apply
+    }).then(function () {
+      if (switchSeq !== myGen) return;
+      return new Promise(function (resolve) {
+        var go = function () {
+          if (switchSeq !== myGen) { resolve(); return; }
+          translateGroup(lang, rest, MAX_INFLIGHT, unresolved, onFirst).then(function () {
+            if (switchSeq !== myGen) { resolve(); return; }
+            var stillUn = pruneUnresolved(lang, unresolved);
+            if (!stillUn.length) { resolve(); return; }
+            translateGroup(lang, stillUn, MAX_INFLIGHT, null, onFirst).then(resolve, resolve);
+          }, resolve);
+        };
+        if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 2000 }); else setTimeout(go, 60);
+      });
+    });
+  }
+
+  // Total failure: nothing translated. Roll the page back to RTL-Hebrew WITHOUT
+  // erasing any previously-working stored preference (the short-lived fail stamp
+  // suppresses the auto-retry on the next load; after it lapses the stored lang is
+  // retried, in case this was a transient outage).
+  function rollbackToSource() {
+    restoreAll();
+    current = SOURCE;
+    setDir(SOURCE);
+    hideBanner();
+    if (observer) { observer.disconnect(); observer = null; }
+  }
+
+  // Runs once a switch's whole pipeline settles (unless it was superseded).
+  function finishSwitch(lang, myGen) {
+    if (switchSeq !== myGen) return; // superseded by a restore or a queued switch
+    busy = false;
+    hideBar(); setTriggersBusy(false);
+    if (!committed) { rollbackToSource(); showToast(lang); setFailStamp(); }
+    records = pruneRecords(records);
+    syncTriggers();
+    if (queuedLang && queuedLang !== current) { var q = queuedLang; queuedLang = null; setLang(q); }
+    else { queuedLang = null; }
   }
 
   // ── dynamic content ──────────────────────────────────────────────────────────
   var pending = null;
+  var obsRoots = []; // accumulated across observer callbacks, drained on the debounce
+  var ATTR_SEL = "[placeholder],[aria-label],[title],[alt]";
   function startObserver() {
     if (observer) return;
     observer = new MutationObserver(function (muts) {
       if (current === SOURCE) return;
-      var roots = [];
       for (var i = 0; i < muts.length; i++) {
         var mu = muts[i];
-        for (var j = 0; j < mu.addedNodes.length; j++) {
-          var n = mu.addedNodes[j];
-          if (n.nodeType === 1) roots.push(n);
-          else if (n.nodeType === 3 && n.parentElement) roots.push(n.parentElement);
+        if (mu.type === "characterData") {
+          // Text of an existing node changed (dynamic copy) — re-scan its parent.
+          if (mu.target && mu.target.parentElement) obsRoots.push(mu.target.parentElement);
+        } else if (mu.type === "attributes") {
+          // A translatable attribute changed on some element (incl. an injected
+          // root the app mounts into) — re-scan that element if it matches.
+          var el = mu.target;
+          if (el && el.nodeType === 1 && el.matches && el.matches(ATTR_SEL)) obsRoots.push(el);
+        } else {
+          for (var j = 0; j < mu.addedNodes.length; j++) {
+            var n = mu.addedNodes[j];
+            if (n.nodeType === 1) obsRoots.push(n);
+            else if (n.nodeType === 3 && n.parentElement) obsRoots.push(n.parentElement);
+          }
         }
       }
-      if (roots.length === 0) return;
+      if (obsRoots.length === 0) return;
       if (pending) clearTimeout(pending);
       pending = setTimeout(function () {
         pending = null;
+        var roots = obsRoots; obsRoots = [];
         if (current === SOURCE) return; // restored to Hebrew before this fired
         var fresh = [];
         for (var r = 0; r < roots.length; r++) {
@@ -290,10 +635,10 @@
         }
         if (fresh.length === 0) return;
         records = records.concat(fresh);
-        translateRecords(current, fresh);
+        translateGroup(current, fresh, MAX_INFLIGHT, null, null);
       }, 250);
     });
-    observer.observe(document.body, { childList: true, subtree: true, characterData: false });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ATTRS });
   }
 
   // ── injected styles (menu + banner + progress bar), dark-aware ────────────────
@@ -314,6 +659,11 @@
       "justify-content:center;padding:9px 16px;background:#0f1720;color:#eef2f5;font-size:13.5px;line-height:1.4}",
       ".swi18n-banner button{background:rgba(255,255,255,.14);color:#fff;border:0;",
       "border-radius:8px;padding:5px 12px;cursor:pointer;font:inherit;font-size:13px}",
+      ".swi18n-toast{position:fixed;inset-inline:0;bottom:0;z-index:2147482500;display:flex;gap:12px;",
+      "align-items:center;justify-content:center;padding:10px 16px;background:#7f1d1d;color:#fff;",
+      "font-size:13.5px;line-height:1.4;direction:rtl}",
+      ".swi18n-toast button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;",
+      "padding:5px 12px;cursor:pointer;font:inherit;font-size:13px}",
       ".swi18n-bar{position:fixed;inset-block-start:0;inset-inline:0;height:4px;z-index:2147483600;",
       "background:linear-gradient(90deg,transparent,#16A34A,transparent);background-size:40% 100%;",
       "background-repeat:no-repeat;animation:swi18n-slide 1s linear infinite}",
@@ -377,34 +727,72 @@
   }
   function hideBanner() { var b = document.querySelector(".swi18n-banner"); if (b) b.remove(); }
 
+  // Honest, non-blocking failure notice (Hebrew — the page stays Hebrew on failure)
+  // with a retry that re-attempts the same language. Auto-dismisses after a while.
+  function showToast(lang) {
+    hideToast();
+    ensureStyle();
+    var t = document.createElement("div");
+    t.className = "swi18n-toast"; t.setAttribute("data-no-translate", "");
+    t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); t.dir = "rtl";
+    var span = document.createElement("span");
+    span.textContent = "התרגום אינו זמין כרגע — נסו שוב";
+    t.appendChild(span);
+    var btn = document.createElement("button"); btn.type = "button"; btn.textContent = "נסו שוב";
+    btn.addEventListener("click", function () { hideToast(); clearFailStamp(); setLang(lang); });
+    t.appendChild(btn);
+    document.body.appendChild(t);
+    try { setTimeout(function () { hideToast(); }, 8000); } catch (e) {}
+  }
+  function hideToast() { var t = document.querySelector(".swi18n-toast"); if (t) t.remove(); }
+
   // ── public: switch language ──────────────────────────────────────────────────
   function setLang(lang) {
-    if (busy) return;
+    // Reject a bogus code before touching any state.
     if (lang !== SOURCE && !LANGS.some(function (l) { return l.code === lang; })) return;
-    if (lang === current) { closeMenu(); return; }
     ensureStyle();
 
+    // Returning to Hebrew ALWAYS works — even mid-translate. Abort in-flight fetches,
+    // invalidate any pending background/idle work (switchSeq++), and restore. This is
+    // deliberately BEFORE the busy guard so a stuck switch can never trap the user.
     if (lang === SOURCE) {
+      abortAll();
+      switchSeq++;
+      queuedLang = null; busy = false; committed = false;
       restoreAll();
       records = []; seenText = new WeakSet();
       current = SOURCE; rememberLang(SOURCE);
-      setDir(SOURCE); hideBanner(); hideBar();
-      if (pending) { clearTimeout(pending); pending = null; } // no queued re-translate
+      setDir(SOURCE); hideBanner(); hideBar(); hideToast(); setTriggersBusy(false);
+      if (pending) { clearTimeout(pending); pending = null; }
+      obsRoots = [];
       if (observer) { observer.disconnect(); observer = null; }
       syncTriggers(); closeMenu();
       return;
     }
 
-    busy = true; showBar(); setTriggersBusy(true); closeMenu();
-    setDir(lang);
-    // Fresh scan of the whole page for this switch (only when coming from Hebrew).
+    if (lang === current) { closeMenu(); return; } // already showing / committing to it
+    if (busy) { queuedLang = lang; closeMenu(); return; } // queue; run when the current switch settles
+
+    // A page without Supabase config can't translate — fail honestly rather than
+    // throw synchronously in endpoint() and strand busy.
+    if (!cfg.url || !cfg.anonKey) { showToast(lang); closeMenu(); return; }
+
+    busy = true; committed = false; queuedLang = null;
+    var myGen = ++switchSeq;
+    showBar(); setTriggersBusy(true); hideToast(); closeMenu();
+    // Do NOT flip direction yet — the page stays RTL-Hebrew until the first REAL
+    // translation lands (commitSwitch), so a total failure never shows a broken
+    // LTR/foreign-lang mirror with untranslated Hebrew.
     if (current === SOURCE) { records = []; seenText = new WeakSet(); records = collect(document.body); }
     loadPageCache(lang);
-    current = lang; rememberLang(lang); syncTriggers();
-    translateRecords(lang, records).then(function () {
-      showBanner(lang); startObserver();
-    }).catch(function () {}).then(function () {
-      busy = false; hideBar(); setTriggersBusy(false); syncTriggers();
+    current = lang; syncTriggers(); // optimistic badge; setDir/banner/remember deferred to success
+
+    // Promise.resolve().then so a synchronous throw in the kickoff can never leave
+    // busy=true forever; finishSwitch always runs.
+    Promise.resolve().then(function () {
+      return runSwitch(lang, myGen);
+    }).then(null, function () {}).then(function () {
+      finishSwitch(lang, myGen);
     });
   }
 
@@ -513,7 +901,7 @@
       records = collect(document.body);
       loadPageCache(current);
       showBanner(current);
-      translateRecords(current, records);
+      translateGroup(current, records, MAX_INFLIGHT, null, null);
     }, 80);
   }
   function patchHistory() {
@@ -538,11 +926,18 @@
     seenText = new WeakSet();
     ensureStyle();
     patchHistory();
-    // Re-apply a previously chosen language across navigation.
+    // Re-apply a previously chosen language across navigation — unless a recent
+    // total failure stamped this session (then stay Hebrew until it lapses so a
+    // broken state can't replay on every load).
     var want = storedLang();
-    if (want !== SOURCE && cfg.url && cfg.anonKey) {
+    if (want !== SOURCE && cfg.url && cfg.anonKey && !failStampActive()) {
       // Defer to idle so first paint (Hebrew) isn't blocked.
-      var go = function () { setLang(want); };
+      var go = function () {
+        // Re-read inside the idle callback: the user may have made a fresh manual
+        // choice (or returned to Hebrew) before this fired — never override it.
+        var w = storedLang();
+        if (w !== SOURCE && current === SOURCE && !failStampActive()) setLang(w);
+      };
       if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 300);
     } else {
       setDir(current);

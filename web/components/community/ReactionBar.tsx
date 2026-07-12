@@ -10,12 +10,13 @@
 // switches; picking your current emoji removes it. Optimistic, with revert on
 // failure. Guests are routed to onRequireAuth().
 //
-// Data: batched at the list level when available — <CommunityFeed> hydrates the
-// summaries + the viewer's own emoji for a whole PAGE of posts in one
-// fetchReactions + fetchMyReactions round-trip and provides the entries via
-// ReactionHydrationContext (a context, not a prop, so it reaches this bar without
-// threading through <PostCard>). A bar with no provider in scope — standalone
-// contexts, and every reply bar (the feed batches posts only) — keeps the original
+// Data: batched at the list level when available — <CommunityFeed> / <ProfileView>
+// hydrate the summaries + the viewer's own emoji for a whole PAGE of posts in one
+// fetchReactions + fetchMyReactions round-trip and provide the entries via
+// ReactionHydrationContext, and <Replies> does the same for a whole THREAD of
+// replies via ReplyReactionHydrationContext (contexts, not props, so they reach
+// this bar without threading through <PostCard>/<ReplyItem>). A bar with no
+// provider in its target's scope — standalone contexts — keeps the original
 // self-hydration on mount. Writes go through lib/community (browser JWT → RLS).
 // No Supabase access here.
 //
@@ -52,14 +53,22 @@ export interface ReactionHydration {
 }
 
 /** POST-reaction hydration a LIST provides for a whole page of ids in one
- *  fetchReactions + fetchMyReactions round-trip (<CommunityFeed>), instead of two
- *  requests per bar (the old N+1). A context rather than a prop because the bar
- *  sits inside <PostCard>, which doesn't (and shouldn't) know about reactions.
- *  Per-bar semantics (target="post" only — reply bars always self-fetch):
+ *  fetchReactions + fetchMyReactions round-trip (<CommunityFeed> / <ProfileView>),
+ *  instead of two requests per bar (the old N+1). A context rather than a prop
+ *  because the bar sits inside <PostCard>, which doesn't (and shouldn't) know
+ *  about reactions. Per-bar semantics (consulted by target="post" bars only):
  *    no provider          → standalone → self-fetch on mount (fallback preserved)
  *    provider, id missing → the page batch is still in flight → wait, don't fetch
  *    provider, entry set  → apply the batched entry. */
 export const ReactionHydrationContext =
+  createContext<Map<string, ReactionHydration> | null>(null);
+
+/** REPLY-reaction hydration a THREAD provides for all its reply ids in one
+ *  fetchReactions + fetchMyReactions round-trip (<Replies>), instead of two
+ *  requests per reply bar. A separate context from the post one so a reply bar
+ *  nested under a post-providing list never mistakes the post batch for its own.
+ *  Same tri-state semantics, consulted by target="reply" bars only. */
+export const ReplyReactionHydrationContext =
   createContext<Map<string, ReactionHydration> | null>(null);
 
 export interface ReactionBarProps {
@@ -95,16 +104,38 @@ export default function ReactionBar({ target, targetId, userId, onRequireAuth }:
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const pickerId = useId();
 
-  const hydrationMap = useContext(ReactionHydrationContext);
-  // `undefined` = standalone (no provider, or a reply bar — the feed batches posts
-  // only) → self-fetch; `null` = the parent's page batch is still in flight → wait
-  // for it; an object = the batched entry, applied below.
-  const hydration =
-    target === "post" && hydrationMap ? (hydrationMap.get(targetId) ?? null) : undefined;
+  const postHydrationMap = useContext(ReactionHydrationContext);
+  const replyHydrationMap = useContext(ReplyReactionHydrationContext);
+  const hydrationMap = target === "post" ? postHydrationMap : replyHydrationMap;
+  // `undefined` = standalone (no provider for THIS target scope) → self-fetch;
+  // `null` = the parent's batch is still in flight → wait for it; an object =
+  // the batched entry, applied below.
+  const hydration = hydrationMap ? (hydrationMap.get(targetId) ?? null) : undefined;
+
+  // Signed out (or the account changed to signed-out): the viewer has no "my
+  // reaction". Adjusted during render (guarded — the endorsed React pattern) so
+  // no effect ever calls setState synchronously.
+  const [prevUserId, setPrevUserId] = useState(userId);
+  if (userId !== prevUserId) {
+    setPrevUserId(userId);
+    if (!userId) setMine(null);
+  }
+
+  // Apply the parent's batched entry when it lands — adjusted during render,
+  // once per entry identity. The feed keeps each entry referentially stable
+  // across map merges, so this runs once per resolved entry and never clobbers
+  // a later optimistic reaction flip.
+  const [appliedHydration, setAppliedHydration] = useState<ReactionHydration | null>(null);
+  if (hydration && hydration !== appliedHydration) {
+    setAppliedHydration(hydration);
+    setSummaries(hydration.summaries);
+    setMine(hydration.mine);
+  }
 
   // Hydrate summary + the viewer's own reaction on mount / when the target changes
   // — ONLY when standalone. Inside a providing list the batched entry supplies both
-  // in one round-trip per PAGE instead of two per bar.
+  // in one round-trip per PAGE instead of two per bar. State lands in the .then
+  // continuations only.
   useEffect(() => {
     if (hydration !== undefined) return; // parent-owned (batched at the list level)
     let active = true;
@@ -115,22 +146,11 @@ export default function ReactionBar({ target, targetId, userId, onRequireAuth }:
       void fetchMyReactions(target, [targetId]).then((m) => {
         if (active) setMine(m.get(targetId) ?? null);
       });
-    } else {
-      setMine(null);
     }
     return () => {
       active = false;
     };
   }, [target, targetId, userId, hydration]);
-
-  // Apply the parent's batched entry when it lands. The feed keeps each entry
-  // referentially stable across map merges, so this runs once per resolved entry
-  // and never clobbers a later optimistic reaction flip.
-  useEffect(() => {
-    if (!hydration) return;
-    setSummaries(hydration.summaries);
-    setMine(hydration.mine);
-  }, [hydration]);
 
   // Close the picker on outside-click / Escape.
   useEffect(() => {

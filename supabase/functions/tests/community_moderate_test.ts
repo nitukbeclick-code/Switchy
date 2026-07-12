@@ -284,3 +284,66 @@ Deno.test("community-moderate does NOT flag legitimate content (flag=false verdi
     Deno.env.delete("GROQ_API_KEY");
   }
 });
+
+// ── the REAL flag PATCH, against a working DB stub ─────────────────────────────
+// Every earlier test runs WITHOUT SUPABASE_URL, so the flag write is only ever
+// observed as its fail-soft "no-match" shadow. This one wires a working DB stub
+// and pins the actual PATCH: scoped to EXACTLY the one row id (URL-encoded — no
+// over-broad filter that could flag other rows) with the documented body
+// (is_flagged + a Hebrew moderation_note + flagged_at), and the success
+// response {ok:true, flagged:true} once the write lands.
+
+Deno.test("community-moderate flags via an id-scoped PATCH with the is_flagged/moderation_note body", async () => {
+  const ROW_ID = "weird id/1"; // needs URL-encoding — pins the enc contract too
+  Deno.env.set("GROQ_API_KEY", "groq-test");
+  Deno.env.set("SUPABASE_URL", "https://mod-test.supabase.co");
+  Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "svc-stub");
+  const patches: Array<{ url: string; body: Record<string, unknown> }> = [];
+  try {
+    await withFetchStub([
+      { match: (u) => u.includes("api.groq.com"), respond: () => groqContent("flag-high") },
+      { match: (u) => u.includes("api.telegram.org"), respond: () => jsonResponse({ ok: true, result: {} }) },
+      {
+        match: (u, init) =>
+          u.includes("/rest/v1/community_replies") && (init?.method ?? "GET") === "PATCH",
+        respond: (u, init) => {
+          patches.push({ url: u, body: JSON.parse(String(init?.body ?? "{}")) });
+          return jsonResponse([{ id: ROW_ID }]); // representation → patchCount=1
+        },
+      },
+      // The rest of the PostgREST surface (report count read, the audit insert,
+      // a possible config RPC) → benign.
+      { match: (u) => u.includes("mod-test.supabase.co"), respond: () => jsonResponse([], 200) },
+    ], async () => {
+      const r = await post(SECRET, insert("community_replies", {
+        id: ROW_ID,
+        body: "Buy followers cheap! 10000 followers for $5 — www.spam-offer.top",
+      }));
+      assertEquals(r.status, 200);
+      const j = await r.json();
+      assertEquals(j.ok, true);
+      assertEquals(j.flagged, true); // the write landed — no fail-soft shadow
+    });
+  } finally {
+    Deno.env.delete("GROQ_API_KEY");
+    Deno.env.delete("SUPABASE_URL");
+    Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  }
+  assertEquals(patches.length, 1, "exactly one flag PATCH");
+  // Scoped to EXACTLY this row id, URL-encoded — nothing broader.
+  const u = new URL(patches[0].url);
+  assertEquals(u.pathname, "/rest/v1/community_replies");
+  assertEquals(u.search, `?id=eq.${encodeURIComponent(ROW_ID)}`);
+  // The documented flag body: held for a human, never deleted.
+  assertEquals(patches[0].body.is_flagged, true);
+  assert(
+    typeof patches[0].body.moderation_note === "string" &&
+      (patches[0].body.moderation_note as string).length > 0,
+    "a Hebrew moderation note for the reviewer",
+  );
+  assert(
+    Number.isFinite(Date.parse(String(patches[0].body.flagged_at))),
+    "flagged_at is a real timestamp",
+  );
+  assertEquals(Object.keys(patches[0].body).sort(), ["flagged_at", "is_flagged", "moderation_note"]);
+});

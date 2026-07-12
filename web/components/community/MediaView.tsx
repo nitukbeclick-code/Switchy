@@ -10,11 +10,16 @@
 // deliberately avoided (arbitrary storage hosts aren't in the image allow-list),
 // so a plain <img> is used with the required eslint-disable above it.
 //
+// HONESTY/CLS: image/video containers reserve their space with an aspect-ratio
+// (no layout shift while the bytes arrive), and a media element that fails to
+// load renders an explicit "המדיה אינה זמינה" fallback instead of a broken box.
+//
 // Design: premium-2026 tokens only, rounded-2xl, hairline border, capped height,
 // RTL-safe (logical properties), dark-mode via tokens, reduced-motion neutral
 // (no motion here). Audio (and video, when known) shows a formatted duration.
 // ────────────────────────────────────────────────────────────────────────────
 
+import { useState } from "react";
 import type { Media } from "@/lib/community";
 
 /** mm:ss from a millisecond duration (e.g. 5200 → "0:05"). */
@@ -26,12 +31,28 @@ function formatDuration(ms?: number | null): string | null {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+/** The honest not-available card (broken URL / removed object / codec error). */
+function MediaFallback() {
+  return (
+    <div
+      role="status"
+      className="mt-2 flex items-center justify-center gap-2 rounded-2xl border border-border bg-background px-3 py-6 text-sm text-muted"
+    >
+      <span aria-hidden="true">🖼️</span>
+      המדיה אינה זמינה
+    </div>
+  );
+}
+
 export default function MediaView({ media }: { media: Media }) {
   const duration = formatDuration(media.durationMs);
+  const [failed, setFailed] = useState(false);
+
+  if (failed) return <MediaFallback />;
 
   if (media.type === "image") {
     return (
-      <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-background">
+      <div className="mt-2 aspect-[4/3] max-h-[32rem] overflow-hidden rounded-2xl border border-border bg-background">
         {/* Plain <img>: URL used only as src; next/image can't serve arbitrary
             storage hosts. eslint-disable is required per project convention. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -40,7 +61,8 @@ export default function MediaView({ media }: { media: Media }) {
           alt="תמונה שצורפה לפוסט בקהילה"
           loading="lazy"
           decoding="async"
-          className="block max-h-[32rem] w-full object-contain"
+          onError={() => setFailed(true)}
+          className="block h-full w-full object-contain"
         />
       </div>
     );
@@ -54,7 +76,8 @@ export default function MediaView({ media }: { media: Media }) {
           preload="metadata"
           playsInline
           aria-label="וידאו שצורף לפוסט בקהילה"
-          className="block max-h-[32rem] w-full bg-black"
+          onError={() => setFailed(true)}
+          className="block aspect-video max-h-[32rem] w-full bg-black"
           src={media.url}
         />
         {duration && (
@@ -79,6 +102,7 @@ export default function MediaView({ media }: { media: Media }) {
         controls
         preload="metadata"
         aria-label="הקלטה קולית שצורפה לפוסט בקהילה"
+        onError={() => setFailed(true)}
         className="min-w-0 flex-1"
         src={media.url}
       />

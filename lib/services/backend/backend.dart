@@ -1120,6 +1120,23 @@ abstract interface class Backend {
   /// channel so the feed refreshes automatically when someone posts.
   Stream<void> communityChanges();
 
+  /// One page of the community feed, newest-first. [channel] filters to a
+  /// single channel (null or 'הכל' = all channels).
+  ///
+  /// Paging / visibility contract (mirrors the web's `fetchFeed` in
+  /// web/lib/community.ts): a fetch must never return the unbounded feed.
+  /// `SupabaseBackend` caps a page at `SupabaseBackend.feedPageSize` (50)
+  /// rows, hides flagged posts from everyone EXCEPT their author (the owner
+  /// still sees their own under-review post), and — as a Dart-legal override
+  /// widening — accepts an extra optional `before` cursor
+  /// (`fetchPosts(channel: …, before: oldestLoaded.timestamp)`) returning the
+  /// next page of strictly-older posts (`created_at < before`). The abstract
+  /// signature here stays narrow ON PURPOSE: adding `before` to the interface
+  /// would invalidate every existing implementer override ([LocalBackend],
+  /// test fakes), while an override MAY add optional named parameters — so
+  /// only `SupabaseBackend` carries the cursor, and a caller that pages holds
+  /// it as `SupabaseBackend` (existing callers keep calling through [Backend]
+  /// unchanged).
   Future<List<CommunityPost>> fetchPosts({String? channel});
   Future<CommunityPost> createPost(PostInput post);
   Future<void> deletePost(String id);

@@ -126,6 +126,84 @@ describe("pageMetadata", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// The optional og:type article extension (community Q&A permalinks). Invariants:
+// without `article` NOTHING changes (og:type stays website, no article:* fields);
+// with it, og:type flips to article and ONLY the REAL timestamps passed in are
+// carried — an absent modifiedTime is never invented from publishedTime.
+// ────────────────────────────────────────────────────────────────────────────
+
+describe("pageMetadata — og:type article extension", () => {
+  const path = "/community/post/abc";
+
+  it("defaults to og:type website with NO article timestamps when `article` is omitted", () => {
+    const m = pageMetadata({ title: "כ", description: "ת", path });
+    const og = m.openGraph as Record<string, unknown>;
+    expect(og.type).toBe("website");
+    expect(og.publishedTime).toBeUndefined();
+    expect(og.modifiedTime).toBeUndefined();
+  });
+
+  it("switches og:type to article and carries the REAL published/modified times", () => {
+    const m = pageMetadata({
+      title: "שאלה מהקהילה",
+      description: "ת",
+      path,
+      article: {
+        publishedTime: "2026-07-01T10:00:00Z",
+        modifiedTime: "2026-07-03T08:00:00Z",
+      },
+    });
+    const og = m.openGraph as Record<string, unknown>;
+    expect(og.type).toBe("article");
+    expect(og.publishedTime).toBe("2026-07-01T10:00:00Z");
+    expect(og.modifiedTime).toBe("2026-07-03T08:00:00Z");
+  });
+
+  it("never invents a modified time — an unedited post carries publishedTime only", () => {
+    const m = pageMetadata({
+      title: "כ",
+      description: "ת",
+      path,
+      article: { publishedTime: "2026-07-01T10:00:00Z" },
+    });
+    const og = m.openGraph as Record<string, unknown>;
+    expect(og.type).toBe("article");
+    expect(og.publishedTime).toBe("2026-07-01T10:00:00Z");
+    expect(og.modifiedTime).toBeUndefined();
+  });
+
+  it("keeps everything else identical: canonical, og:url, branded title, image, locale, twitter", () => {
+    const base = pageMetadata({ title: "כותרת", description: "תיאור", path });
+    const article = pageMetadata({
+      title: "כותרת",
+      description: "תיאור",
+      path,
+      article: { publishedTime: "2026-07-01T10:00:00Z" },
+    });
+    expect(article.alternates?.canonical).toBe(base.alternates?.canonical);
+    const ogB = base.openGraph as Record<string, unknown>;
+    const ogA = article.openGraph as Record<string, unknown>;
+    expect(ogA.url).toBe(ogB.url);
+    expect(ogA.title).toBe(ogB.title);
+    expect(ogA.locale).toBe("he_IL");
+    expect(JSON.stringify(ogA.images)).toContain("/opengraph-image.png");
+    expect(article.twitter).toEqual(base.twitter);
+  });
+
+  it("composes with the robots override (the answered-only permalink combo)", () => {
+    const m = pageMetadata({
+      title: "כ",
+      description: "ת",
+      path,
+      robots: { index: true, follow: true },
+      article: { publishedTime: "2026-07-01T10:00:00Z" },
+    });
+    expect(m.robots).toEqual({ index: true, follow: true });
+    expect((m.openGraph as Record<string, unknown>).type).toBe("article");
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 // Fact-dense, catalogue-derived meta descriptions. The load-bearing invariant is
 // TRUTH-ONLY: every figure (plan count, provider count, price floor, provider
 // names) is derived from the SAME plan list the page renders — never fabricated.

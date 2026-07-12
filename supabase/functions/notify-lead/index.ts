@@ -109,6 +109,61 @@ export function integrationsStatus(cfg: Cfg): { zoom: boolean; calendar: boolean
   };
 }
 
+// ── Pipeline failure counters (last 24h) ─────────────────────────────────────
+// The two silent lead-pipeline failure modes the WhatsApp bot records into
+// security_audit_log (whatsapp-webhook: a blocked handoff-lead INSERT and a
+// voice note that produced no transcript). They used to be visible only to
+// someone grepping the audit table; surfacing a 24h count in ?action=health and
+// on the rep console turns a silent lead loss into an observable signal.
+// Counts are HONEST: a failed probe reports null (unknown), never a false 0.
+
+// Parse the total out of a PostgREST Content-Range header ("0-0/57", "*/0").
+// null on a missing/uncomputed ("0-0/*") count. Pure + exported for tests.
+export function parseExactCount(header: string | null): number | null {
+  const m = /\/(\d+)\s*$/.exec(String(header ?? ""));
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+export const PIPELINE_FAILURE_EVENTS = [
+  "handoff_lead_insert_failed",
+  "voice_transcription_failed",
+] as const;
+
+// Exact count of one audit event since `sinceIso` via HEAD + Prefer count=exact
+// (zero rows transferred). null on any transport/HTTP/parse failure (fail-soft).
+async function countAuditEvents(event: string, sinceIso: string): Promise<number | null> {
+  try {
+    const r = await serviceFetch(
+      `/rest/v1/security_audit_log?event=eq.${encodeURIComponent(event)}&created_at=gte.${
+        encodeURIComponent(sinceIso)
+      }&select=id`,
+      { method: "HEAD", headers: { Prefer: "count=exact" } },
+    );
+    if (!r || !r.ok) return null;
+    return parseExactCount(r.headers.get("content-range"));
+  } catch (_) {
+    return null;
+  }
+}
+
+// { handoff_lead_insert_failed: n|null, voice_transcription_failed: n|null } for
+// the trailing 24 hours. Probes run in parallel; each is independently fail-soft.
+export async function pipelineFailureCounts(
+  now = Date.now(),
+): Promise<Record<string, number | null>> {
+  const sinceIso = new Date(now - 24 * 3_600_000).toISOString();
+  const counts = await Promise.all(
+    PIPELINE_FAILURE_EVENTS.map((e) => countAuditEvents(e, sinceIso)),
+  );
+  const out: Record<string, number | null> = {};
+  PIPELINE_FAILURE_EVENTS.forEach((e, i) => {
+    out[e] = counts[i];
+  });
+  return out;
+}
+
 // Service-role table-grant probe: confirm the function's service-role key can
 // actually read public.leads. A 200 → "ok", a 401/403 → "forbidden" (grants
 // missing), anything else → "error". Fail-soft: never throws into the handler.
@@ -139,15 +194,17 @@ async function handle(req: Request): Promise<Response> {
       const authed = !!cfg.webhookSecret &&
         (await safeEqual(req.headers.get("x-webhook-secret") ?? "", cfg.webhookSecret));
       const entry = (present: boolean, source: string) => (authed ? { present, source } : { present });
-      // Ops probes (gated): the table-grant check hits the DB with the service
-      // role, so only run + expose it for the authed team — anonymous health
-      // stays a cheap config snapshot.
-      const grant = authed ? await leadsGrantProbe() : undefined;
+      // Ops probes (gated): the table-grant check + the pipeline failure
+      // counters hit the DB with the service role, so only run + expose them
+      // for the authed team — anonymous health stays a cheap config snapshot.
+      const [grant, pipeline] = authed
+        ? await Promise.all([leadsGrantProbe(), pipelineFailureCounts()])
+        : [undefined, undefined];
       return json({
         ok: true,
         function: "notify-lead",
         integrations: integrationsStatus(cfg),
-        ...(authed ? { leads_table_grant: grant } : {}),
+        ...(authed ? { leads_table_grant: grant, pipeline } : {}),
         configured: {
           telegram_bot_token: entry(!!cfg.tgToken, cfg.src.telegram_bot_token),
           telegram_chat_id: entry(!!cfg.tgChat, cfg.src.telegram_chat_id),
@@ -267,13 +324,17 @@ async function handle(req: Request): Promise<Response> {
     let body: { initData?: string } = {};
     try { body = await req.json(); } catch (_) { /* empty */ }
     const res = await handleConsoleData(cfg, body.initData ?? "");
-    // Fold the integrations status into the payload so the console health strip
-    // (BOT-2) can render it. Only merge into a 200 JSON body; pass auth failures
-    // (401, etc.) through untouched.
+    // Fold the integrations status + the 24h pipeline failure counters into the
+    // payload so the console health strip (BOT-2) can render them. Only merge
+    // into a 200 JSON body; pass auth failures (401, etc.) through untouched.
     if (res.status === 200) {
       try {
         const payload = await res.clone().json() as Record<string, unknown>;
-        return json({ ...payload, integrations: integrationsStatus(cfg) }, res.status);
+        return json({
+          ...payload,
+          integrations: integrationsStatus(cfg),
+          pipeline: await pipelineFailureCounts(),
+        }, res.status);
       } catch (_) { /* non-JSON body — return as-is */ }
     }
     return res;

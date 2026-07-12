@@ -808,12 +808,39 @@ class SupabaseBackend implements Backend {
         isFlagged: r['is_flagged'] as bool? ?? false,
       );
 
+  /// Hard cap on rows per feed fetch — the web's `fetchFeed` ceiling
+  /// (web/lib/community.ts). Keeps a refresh / Realtime ping from
+  /// re-downloading the entire community_feed.
+  static const int feedPageSize = 50;
+
+  /// PostgREST disjunction that keeps a flagged post visible ONLY to its
+  /// author: a row is returned when it isn't flagged OR the viewer owns it,
+  /// so an owner still sees their own under-review post. Mirrors the web's
+  /// viewer filter in `fetchFeed` (web/lib/community.ts), enforced
+  /// server-side here so flagged rows never leave the server for other users.
+  static String flaggedVisibilityFilter(String uid) =>
+      'is_flagged.eq.false,user_id.eq.$uid';
+
   @override
-  Future<List<CommunityPost>> fetchPosts({String? channel}) async {
-    // `community_feed` is the view with like_count / reply_count.
+  Future<List<CommunityPost>> fetchPosts({String? channel, DateTime? before}) async {
+    // `community_feed` is the view with like_count / reply_count. Query shape
+    // mirrors web/lib/community.ts fetchFeed: newest-first, one bounded page
+    // of [feedPageSize] rows, flagged rows only for their owner, and [before]
+    // as the load-older cursor — strictly-older-than on created_at, so pass
+    // the OLDEST loaded post's timestamp to fetch the next page.
     var query = _db.from('community_feed').select();
     if (channel != null && channel != 'הכל') query = query.eq('channel', channel);
-    final rows = await _t(query.order('created_at', ascending: false));
+    final uid = _uid;
+    // Signed-out viewers get the public (non-flagged) feed; a signed-in owner
+    // additionally sees their own flagged posts.
+    query = uid == null
+        ? query.eq('is_flagged', false)
+        : query.or(flaggedVisibilityFilter(uid));
+    if (before != null) {
+      query = query.lt('created_at', before.toUtc().toIso8601String());
+    }
+    final rows = await _t(
+        query.order('created_at', ascending: false).limit(feedPageSize));
     return (rows as List).map((r) => _postFromRow(r as Map<String, dynamic>)).toList();
   }
 

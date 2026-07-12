@@ -29,6 +29,11 @@ export interface ModPost {
   body: string;
   moderation_note: string | null;
   created_at: string;
+  /** How many OPEN reports point at this post — server-side enrichment (additive;
+   *  absent when the enrichment read failed, so 0 is never faked). */
+  reportCount?: number;
+  /** The author is currently banned (profiles.is_banned) — server-side enrichment. */
+  authorBanned?: boolean;
 }
 export interface ModReply {
   id: string;
@@ -37,6 +42,10 @@ export interface ModReply {
   author: string;
   body: string;
   created_at: string;
+  /** See ModPost.reportCount. */
+  reportCount?: number;
+  /** See ModPost.authorBanned. */
+  authorBanned?: boolean;
 }
 export interface ModerationQueue {
   reports: ModReport[];

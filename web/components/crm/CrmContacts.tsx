@@ -2,13 +2,16 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 // <CrmContacts> — the WhatsApp-contact lifecycle board. Reads crm-api
-// `listContacts` (service_role, admin-gated, light allowlist DTO) and writes via
+// `listContacts` (service_role, access-gated, light allowlist DTO) and writes via
 // `setContactStatus` (validated + audited). Filter by lifecycle status, search by
-// name/phone (debounced), and move a contact through its lifecycle with a per-row
-// status picker. Presentation only; all authority is server-side.
+// name/phone (debounced) — both mirrored to the URL so they survive refresh/
+// tab-switch — move a contact through its lifecycle with a per-row status picker,
+// and export the current view as CSV (id column; honest "-partial" filename when
+// the 200-row window is full). Presentation only; all authority is server-side.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CONTACT_STATUSES,
   type ContactStatus,
@@ -16,7 +19,8 @@ import {
   fetchCrmContacts,
   setCrmContactStatus,
 } from "@/lib/crm-admin";
-import { BTN_GHOST, CONTACT_STATUS_META, NoticeCard, when } from "./ui";
+import { buildCsv, csvFileName, downloadCsv } from "@/lib/csv";
+import { BTN_GHOST, CONTACT_STATUS_META, mirrorUrlParams, NoticeCard, when } from "./ui";
 
 type Filter = ContactStatus | "all";
 
@@ -60,9 +64,14 @@ function StatusSelect({
 }
 
 export default function CrmContacts() {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  // Filter + search initialize from the URL (mirrored below on every change).
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => {
+    const v = params.get("contact_status");
+    return v && (CONTACT_STATUSES as readonly string[]).includes(v) ? (v as ContactStatus) : "all";
+  });
+  const [searchInput, setSearchInput] = useState(() => params.get("contact_q") ?? "");
+  const [search, setSearch] = useState(() => (params.get("contact_q") ?? "").trim());
   const [contacts, setContacts] = useState<CrmContact[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -82,6 +91,7 @@ export default function CrmContacts() {
       setLoading(true);
       setError(false);
       setSearch(next);
+      mirrorUrlParams({ contact_q: next || null });
     }, 300);
     return () => clearTimeout(t);
   }, [searchInput, search]);
@@ -122,9 +132,28 @@ export default function CrmContacts() {
       setLoading(true);
       setError(false);
       setFilter(next);
+      mirrorUrlParams({ contact_status: next === "all" ? null : next });
     },
     [filter],
   );
+
+  // Export the CURRENT view as CSV (same in-browser builder as the leads export
+  // — no new endpoint, formula-injection-guarded). id column + honest
+  // "-partial" filename when the 200-row server window is full.
+  const exportCsv = useCallback(() => {
+    if (!contacts || contacts.length === 0) return;
+    const headers = ["id", "שם", "טלפון", "סטטוס", "ליד מקושר", "הודעה אחרונה"];
+    const rows = contacts.map((c) => [
+      c.id,
+      c.name,
+      c.phone,
+      CONTACT_STATUS_META[c.status]?.label ?? c.status,
+      c.leadId ?? "",
+      c.lastMessageAt ?? "",
+    ]);
+    const partial = contacts.length >= 200;
+    downloadCsv(csvFileName(`contacts-${filter}`, partial), buildCsv(headers, rows));
+  }, [contacts, filter]);
 
   const changeStatus = useCallback(
     async (contactId: string, status: ContactStatus) => {
@@ -169,14 +198,25 @@ export default function CrmContacts() {
         })}
       </div>
 
-      <input
-        type="search"
-        value={searchInput}
-        onChange={(e) => setSearchInput(e.target.value)}
-        placeholder="חיפוש שם / טלפון"
-        aria-label="חיפוש אנשי קשר"
-        className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="חיפוש שם / טלפון"
+          aria-label="חיפוש אנשי קשר"
+          className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+        />
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={!contacts || contacts.length === 0}
+          className={`${BTN_GHOST} ms-auto text-xs disabled:cursor-not-allowed disabled:opacity-50`}
+          title="ייצוא התצוגה הנוכחית כקובץ CSV"
+        >
+          ייצוא CSV
+        </button>
+      </div>
 
       {/* Always-mounted polite live region (same pattern as the inbox reply
           notice) so a failed status change is announced, not swallowed. */}

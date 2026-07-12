@@ -1,15 +1,24 @@
 "use client";
 
 // ────────────────────────────────────────────────────────────────────────────
-// <CrmAnalytics> — the owner observability panel: the activity funnel, agent
-// tool-call success (by tool + channel), the admin-action audit histogram, and
-// cron health. Reads admin-metrics (admin-gated, read-only). Every number is a
-// faithful projection of real rows — empty data shows honest zeros, never
-// fabricated activity.
+// <CrmAnalytics> — the owner observability panel: the activity funnel (bars +
+// per-day sparklines from the series already in memory + stage-to-stage
+// conversion ratios), agent tool-call success (by tool + channel), the
+// admin-action audit histogram, cron health, and a sortable per-rep leaderboard.
+// Reads admin-metrics (admin-gated, read-only). Every number is a faithful
+// projection of real rows — empty data shows honest zeros, never fabricated
+// activity. Overlapping window loads are sequence-guarded so a slow older
+// response can't overwrite a newer window's data.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
-import { type AdminMetrics, fetchAdminMetrics, fetchRepLeaderboard, type RepStat } from "@/lib/crm-admin";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type AdminMetrics,
+  fetchAdminMetrics,
+  fetchRepLeaderboard,
+  type MetricEventSeries,
+  type RepStat,
+} from "@/lib/crm-admin";
 import { BTN_GHOST, NoticeCard, StatCard } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
@@ -29,6 +38,26 @@ const EVENT_LABEL: Record<string, string> = {
   meetingRequest: "בקשות פגישה",
 };
 
+// Consecutive funnel stages whose ratio is a real conversion the owner tracks.
+// Computed from the SAME window totals already on screen — nothing re-fetched,
+// nothing invented; a pair renders only when its "from" stage has events.
+const FUNNEL_STEPS: { from: string; to: string; label: string }[] = [
+  { from: "appOpen", to: "leadStart", label: "פתיחה ← התחלת ליד" },
+  { from: "leadStart", to: "leadSubmit", label: "התחלת ליד ← שליחה" },
+  { from: "leadSubmit", to: "meetingRequest", label: "שליחה ← בקשת פגישה" },
+];
+
+// Leaderboard sorting: column key + direction. Numeric columns default to
+// descending (biggest first); the rep name toggles alphabetically.
+type RepSortKey = "rep" | "claimed" | "won" | "lost" | "totalSaving";
+const REP_COLUMNS: { key: RepSortKey; label: string }[] = [
+  { key: "rep", label: "נציג" },
+  { key: "claimed", label: "לידים" },
+  { key: "won", label: "נסגרו" },
+  { key: "lost", label: "אבודים" },
+  { key: "totalSaving", label: "חיסכון שנרשם" },
+];
+
 function chip(active: boolean): string {
   return `interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
     active
@@ -37,13 +66,39 @@ function chip(active: boolean): string {
   }`;
 }
 
-function Bar({ label, value, max, suffix }: { label: string; value: number; max: number; suffix?: string }) {
+// A tiny inline per-day trend from MetricEventSeries.days — the series is
+// ALREADY in memory from the same admin-metrics response, so this adds zero
+// network cost. Decorative (the totals carry the numbers) → aria-hidden.
+function Sparkline({ days }: { days: MetricEventSeries["days"] }) {
+  if (days.length < 2) return null;
+  const sorted = [...days].sort((a, b) => a.day.localeCompare(b.day));
+  const max = sorted.reduce((m, d) => Math.max(m, d.events), 0);
+  const W = 96;
+  const H = 24;
+  const points = sorted
+    .map((d, i) => {
+      const x = (i / (sorted.length - 1)) * W;
+      const y = H - 1 - (max > 0 ? (d.events / max) * (H - 2) : 0);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-6 w-24 shrink-0 text-accent" aria-hidden="true">
+      <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function Bar({ label, value, max, suffix, trend }: { label: string; value: number; max: number; suffix?: string; trend?: MetricEventSeries["days"] }) {
   const w = max > 0 && value > 0 ? Math.max(2, (value / max) * 100) : 0;
   return (
     <div>
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="truncate text-foreground">{label}</span>
-        <span className="shrink-0 tabular-nums text-muted">{suffix ?? he(value)}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          {trend && <Sparkline days={trend} />}
+          <span className="tabular-nums text-muted">{suffix ?? he(value)}</span>
+        </span>
       </div>
       <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-background">
         <div className="h-full rounded-full bg-accent" style={{ width: `${w}%` }} />
@@ -69,21 +124,25 @@ export default function CrmAnalytics() {
   // The rep leaderboard is lifetime-to-date (not time-windowed), so it loads once
   // and is best-effort — a failure just hides the section, never blocks the panel.
   const [reps, setReps] = useState<{ reps: RepStat[]; capped: boolean } | null>(null);
+  const [repSort, setRepSort] = useState<{ key: RepSortKey; dir: 1 | -1 }>({ key: "totalSaving", dir: -1 });
+  // Orders overlapping window loads (rapid 7/30/90 switches) so a slower, older
+  // response can never overwrite a newer window's data.
+  const loadSeq = useRef(0);
 
   // Fetch a window's metrics. Loading/error resets are event-driven: the
   // useState initializers cover the mount load, and every later load starts
   // from an event (`changeDays`, `reload`) that resets first — so the load
   // effect never sets state synchronously (react-hooks/set-state-in-effect):
   // state only lands in the .then continuation.
-  const load = useCallback(
-    (d: number) =>
-      fetchAdminMetrics(d).then((m) => {
-        if (m) setData(m);
-        else setError(true);
-        setLoading(false);
-      }),
-    [],
-  );
+  const load = useCallback((d: number) => {
+    const seq = ++loadSeq.current;
+    return fetchAdminMetrics(d).then((m) => {
+      if (seq !== loadSeq.current) return; // stale — a newer window owns the view
+      if (m) setData(m);
+      else setError(true);
+      setLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     void load(days);
@@ -114,7 +173,34 @@ export default function CrmAnalytics() {
     })();
   }, []);
 
+  // Click a column header: same column flips direction, a new column starts at
+  // its natural order (name ascending, numbers descending).
+  const sortReps = useCallback((key: RepSortKey) => {
+    setRepSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === 1 ? -1 : 1 } : { key, dir: key === "rep" ? 1 : -1 },
+    );
+  }, []);
+
+  const sortedReps = useMemo(() => {
+    if (!reps) return [];
+    const { key, dir } = repSort;
+    return [...reps.reps].sort((a, b) => {
+      const cmp = key === "rep" ? a.rep.localeCompare(b.rep) : a[key] - b[key];
+      return cmp * dir;
+    });
+  }, [reps, repSort]);
+
   const windows = [7, 30, 90];
+
+  // Hoisted once per render (previously an O(n²) reduce inside the bars' map).
+  const events = data?.analytics.events ?? [];
+  const maxEventTotal = events.reduce((m, e) => Math.max(m, e.total), 0);
+  const eventTotals = new Map(events.map((e) => [e.event, e.total]));
+  const conversions = FUNNEL_STEPS.map((s) => {
+    const from = eventTotals.get(s.from) ?? 0;
+    const to = eventTotals.get(s.to) ?? 0;
+    return { ...s, from, to, rate: from > 0 ? to / from : null };
+  }).filter((c) => c.from > 0);
 
   return (
     <div className="space-y-6">
@@ -125,15 +211,34 @@ export default function CrmAnalytics() {
             <table className="w-full text-right text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted">
-                  <th scope="col" className="px-3 py-2 font-medium">נציג</th>
-                  <th scope="col" className="px-3 py-2 font-medium">לידים</th>
-                  <th scope="col" className="px-3 py-2 font-medium">נסגרו</th>
-                  <th scope="col" className="px-3 py-2 font-medium">אבודים</th>
-                  <th scope="col" className="px-3 py-2 font-medium">חיסכון שנרשם</th>
+                  {REP_COLUMNS.map((c) => {
+                    const active = repSort.key === c.key;
+                    return (
+                      <th
+                        key={c.key}
+                        scope="col"
+                        aria-sort={active ? (repSort.dir === 1 ? "ascending" : "descending") : "none"}
+                        className="px-3 py-2 font-medium"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => sortReps(c.key)}
+                          className={`inline-flex items-center gap-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                            active ? "text-accent-text" : ""
+                          }`}
+                        >
+                          {c.label}
+                          <span aria-hidden="true" className="text-[10px]">
+                            {active ? (repSort.dir === 1 ? "▲" : "▼") : ""}
+                          </span>
+                        </button>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {reps.reps.map((r) => (
+                {sortedReps.map((r) => (
                   <tr key={r.rep} className="border-b border-border/60 last:border-0">
                     <td className="px-3 py-2 font-medium text-ink">{r.rep}</td>
                     <td className="px-3 py-2 tabular-nums text-muted">{he(r.claimed)}</td>
@@ -185,18 +290,37 @@ export default function CrmAnalytics() {
             {data.analytics.total === 0 ? (
               <p className="text-xs text-muted">אין עדיין נתוני פעילות בחלון הזה.</p>
             ) : (
-              <div className="space-y-3">
-                {[...data.analytics.events]
-                  .sort((a, b) => b.total - a.total)
-                  .map((e) => (
-                    <Bar
-                      key={e.event}
-                      label={EVENT_LABEL[e.event] ?? e.event}
-                      value={e.total}
-                      max={data.analytics.events.reduce((m, x) => Math.max(m, x.total), 0)}
-                    />
-                  ))}
-              </div>
+              <>
+                {conversions.length > 0 && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {conversions.map((c) => (
+                      <span
+                        key={`${c.from}-${c.to}`}
+                        title={`${he(c.to)} מתוך ${he(c.from)}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-muted"
+                      >
+                        {c.label}
+                        <span className="font-semibold tabular-nums text-ink">
+                          {c.rate == null ? "—" : pct(c.rate)}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-3">
+                  {[...events]
+                    .sort((a, b) => b.total - a.total)
+                    .map((e) => (
+                      <Bar
+                        key={e.event}
+                        label={EVENT_LABEL[e.event] ?? e.event}
+                        value={e.total}
+                        max={maxEventTotal}
+                        trend={e.days}
+                      />
+                    ))}
+                </div>
+              </>
             )}
           </Section>
 

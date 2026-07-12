@@ -7,8 +7,71 @@ import { escHtml, renderEmail } from "../_shared/email.ts";
 
 // A weekly digest looks back over the last week's activity.
 export const WINDOW_DAYS = 7;
-// Hard cap on a single run so a misfire can never fan out unbounded email.
-export const MAX_RECIPIENTS = 2000;
+// Recipients are fetched in id-cursor PAGES (not one capped query): the old
+// single `limit=2000` read silently DROPPED every opted-in member past #2000 —
+// a full, invisible under-send. Paging keeps each URL small and reaches everyone.
+export const RECIPIENT_PAGE = 1000;
+// Hard bound on pages per run so a misfire can never fan out unbounded email
+// (RECIPIENT_PAGE × MAX_RECIPIENT_PAGES = 25,000 recipients absolute ceiling).
+export const MAX_RECIPIENT_PAGES = 25;
+// The unread-notifications read is CHUNKED: `user_id=in.(…)` with 2000 uuids
+// built a ~74KB URL that PostgREST/edge proxies can reject — and a rejected
+// read meant EVERY member silently got no digest. 100-150 ids per request keeps
+// each URL ~4.5KB; 120 balances request count vs. headroom.
+export const UNREAD_CHUNK = 120;
+
+/** Split ids into chunks of ≤ `size` (order-preserving). Pure + total. */
+export function chunkIds(ids: string[], size = UNREAD_CHUNK): string[][] {
+  const n = Math.max(1, Math.floor(size));
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += n) out.push(ids.slice(i, i + n));
+  return out;
+}
+
+/** Fetch ALL rows of an id-ordered table through an injected page fetcher
+ *  (cursorId = the last id of the previous page; "" for the first page).
+ *  Stops on a short page (exhausted), a failed page (fail-soft: returns what
+ *  was already fetched + failed:true), or the maxPages misfire bound
+ *  (truncated:true). Injected I/O ⇒ unit-testable without a DB. */
+export async function fetchAllPaged<T extends { id: string }>(
+  fetchPage: (cursorId: string) => Promise<T[] | null>,
+  pageSize: number,
+  maxPages: number,
+): Promise<{ rows: T[]; pages: number; failed: boolean; truncated: boolean }> {
+  const rows: T[] = [];
+  let cursor = "";
+  for (let page = 0; page < maxPages; page++) {
+    const got = await fetchPage(cursor);
+    if (got === null) return { rows, pages: page, failed: true, truncated: false };
+    rows.push(...got);
+    if (got.length < pageSize) return { rows, pages: page + 1, failed: false, truncated: false };
+    cursor = got[got.length - 1].id;
+  }
+  return { rows, pages: maxPages, failed: false, truncated: true };
+}
+
+/** Read unread-notification rows for `ids` in chunks of `size` via an injected
+ *  chunk fetcher. Fail-soft PER CHUNK: a failed chunk is counted and skipped
+ *  (those members are simply not mailed this week — under-send is always safer
+ *  than a fabricated digest), the remaining chunks still land. Pure over the
+ *  injected I/O ⇒ unit-testable without a DB. */
+export async function fetchUnreadChunked(
+  ids: string[],
+  fetchChunk: (chunk: string[]) => Promise<NotifRow[] | null>,
+  size = UNREAD_CHUNK,
+): Promise<{ rows: NotifRow[]; failedChunks: number }> {
+  const rows: NotifRow[] = [];
+  let failedChunks = 0;
+  for (const chunk of chunkIds(ids, size)) {
+    const got = await fetchChunk(chunk);
+    if (got === null) {
+      failedChunks++;
+      continue;
+    }
+    rows.push(...got);
+  }
+  return { rows, failedChunks };
+}
 
 // ── unread notification grouping ──────────────────────────────────────────────
 

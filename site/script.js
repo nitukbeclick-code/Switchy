@@ -264,7 +264,15 @@
   const note = $('leadNote');
   const sendLead = async (lead) => {
     const cfg = window.CHOSECH_SUPABASE;
-    if (!cfg || !cfg.url || !cfg.anonKey) return; // backend parked — local-only
+    if (!cfg || !cfg.url || !cfg.anonKey) {
+      // Backend parked (window.CHOSECH_SUPABASE missing) — the visitor still
+      // gets the local thank-you exactly as before, but ops must SEE that the
+      // lead never reached the backend: a misconfigured deploy used to drop
+      // every form submission with zero signal. Telemetry-only — no UI change.
+      try { console.warn('CHOSECH: window.CHOSECH_SUPABASE is not configured — the lead was NOT sent to a backend.'); } catch (_) { /* best-effort */ }
+      track('lead_form_error', { source: location.pathname, reason: 'not_configured' });
+      return; // backend parked — local-only
+    }
     let res;
     try {
       res = await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/leads', {

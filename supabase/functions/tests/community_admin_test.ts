@@ -219,3 +219,93 @@ Deno.test("community-admin POST returns 500 when the RPC fails", async () => {
     })
   );
 });
+
+// ── live handler: GET queue enrichment (reportCount / authorBanned) ────────────
+// Two extra BOUNDED service-role reads per queue load: open-report counts for the
+// flagged items + the authors' ban flags. Additive + fail-soft.
+
+const POST_ID = "11111111-1111-1111-1111-111111111111";
+const AUTHOR_ID = "22222222-2222-2222-2222-222222222222";
+
+function enrichedRoutes(opts: { enrichFail?: boolean } = {}) {
+  const enrichStatus = opts.enrichFail ? 500 : 200;
+  return [
+    { match: (u: string) => u.includes("/auth/v1/user"), respond: () => jsonResponse({ id: ADMIN }) },
+    {
+      // requireAdmin's profile gate — distinct from the enrichment profiles read.
+      match: (u: string) => u.includes("/rest/v1/profiles") && u.includes("select=is_admin"),
+      respond: () => jsonResponse([{ is_admin: true }]),
+    },
+    {
+      // Enrichment read #2: ban flags for the flagged authors.
+      match: (u: string) => u.includes("/rest/v1/profiles") && u.includes("select=id,is_banned"),
+      respond: () =>
+        opts.enrichFail
+          ? new Response("boom", { status: enrichStatus })
+          : jsonResponse([{ id: AUTHOR_ID, is_banned: true }]),
+    },
+    {
+      // Enrichment read #1: open reports pointing at the flagged content.
+      match: (u: string) => u.includes("/rest/v1/community_reports") && u.includes("select=target_id"),
+      respond: () =>
+        opts.enrichFail
+          ? new Response("boom", { status: enrichStatus })
+          : jsonResponse([{ target_id: POST_ID }, { target_id: POST_ID }]),
+    },
+    {
+      // Queue read: open reports (id-shaped select).
+      match: (u: string) => u.includes("/rest/v1/community_reports"),
+      respond: () => jsonResponse([]),
+    },
+    {
+      match: (u: string) => u.includes("/rest/v1/community_posts"),
+      respond: () =>
+        jsonResponse([{
+          id: POST_ID,
+          user_id: AUTHOR_ID,
+          author: "דנה",
+          channel: "סלולר",
+          body: "buy followers",
+          moderation_note: "ספאם",
+          created_at: "2026-07-01T00:00:00Z",
+        }]),
+    },
+    { match: (u: string) => u.includes("/rest/v1/community_replies"), respond: () => jsonResponse([]) },
+  ];
+}
+
+Deno.test("community-admin GET enriches flagged rows with reportCount + authorBanned via two bounded reads", async () => {
+  await withAdminEnv(() =>
+    withFetchStub(enrichedRoutes(), async (calls) => {
+      const r = await handler(authed("GET"));
+      assertEquals(r.status, 200);
+      const j = await r.json();
+      assertEquals(j.flaggedPosts.length, 1);
+      assertEquals(j.flaggedPosts[0].reportCount, 2);
+      assertEquals(j.flaggedPosts[0].authorBanned, true);
+      // Exactly TWO enrichment reads, both bounded + filtered to the flagged ids.
+      const reportReads = calls.filter((u) => u.includes("select=target_id"));
+      const banReads = calls.filter((u) => u.includes("select=id,is_banned"));
+      assertEquals(reportReads.length, 1);
+      assertEquals(banReads.length, 1);
+      assert(reportReads[0].includes("status=eq.open"), "counts only OPEN reports");
+      assert(reportReads[0].includes(`target_id=in.(${POST_ID})`), "scoped to the flagged ids");
+      assert(reportReads[0].includes("limit="), "bounded");
+      assert(banReads[0].includes(`id=in.(${AUTHOR_ID})`), "scoped to the flagged authors");
+      assert(banReads[0].includes("limit="), "bounded");
+    })
+  );
+});
+
+Deno.test("community-admin GET enrichment is fail-soft: failed reads leave the fields ABSENT (never a fake 0/false)", async () => {
+  await withAdminEnv(() =>
+    withFetchStub(enrichedRoutes({ enrichFail: true }), async () => {
+      const r = await handler(authed("GET"));
+      assertEquals(r.status, 200); // the queue itself still loads
+      const j = await r.json();
+      assertEquals(j.flaggedPosts.length, 1);
+      assertEquals("reportCount" in j.flaggedPosts[0], false);
+      assertEquals("authorBanned" in j.flaggedPosts[0], false);
+    })
+  );
+});

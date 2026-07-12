@@ -8,6 +8,9 @@
 //   • initial(name)     — avatar-fallback monogram (first rendered char).
 //   • renderBody(body)  — post/reply body split into escaped text + @mention
 //                         (bold) [+ optional catalogue-provider link] segments.
+//   • clip(s, n)        — whitespace-collapsed hard clip with an ellipsis (the
+//                         permalink title/description + Q&A hub row formula).
+//   • heDate(iso)       — absolute Hebrew date ("6 ביולי 2026") for <time>.
 //
 // NOTE: <NotificationsBell> keeps its OWN relativeTime on purpose — it uses
 // floor-based rounding, "ממש עכשיו" phrasing and month→year bridging, so folding
@@ -42,6 +45,23 @@ export function relativeTime(iso: string): string {
   if (mo < 12) return mo === 1 ? "לפני חודש" : `לפני ${mo} חודשים`;
   const yr = Math.round(day / 365);
   return yr === 1 ? "לפני שנה" : `לפני ${yr} שנים`;
+}
+
+/** Collapse whitespace and hard-clip to `n` chars, appending an ellipsis when
+ *  clipped (total length stays ≤ n). The single formula behind the permalink's
+ *  title/description/JSON-LD question name and the Q&A hub rows — hoisted here so
+ *  the metadata and the rendered body can never disagree on the same text. */
+export function clip(s: string, n: number): string {
+  const t = (s ?? "").replace(/\s+/g, " ").trim();
+  return t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
+}
+
+/** Absolute Hebrew date, e.g. "6 ביולי 2026" (for <time> next to permalinks/rows).
+ *  Empty string for an unparseable timestamp — never an "Invalid Date" render. */
+export function heDate(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
 }
 
 /** First rendered char of a name, for the avatar fallback monogram. */

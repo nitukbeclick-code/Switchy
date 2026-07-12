@@ -1,19 +1,27 @@
 "use client";
 
 // ────────────────────────────────────────────────────────────────────────────
-// <CrmInbox> — the WhatsApp inbox: a conversation list (filter + search) beside a
+// <CrmInbox> — the WhatsApp inbox: a conversation list (filter + debounced
+// search, both mirrored to the URL so they survive refresh/tab-switch) beside a
 // message thread with a reply box and bot takeover / hand-back. All through
-// crm-api (admin-gated, service_role, audited): sending a reply implicitly takes
-// the conversation off the bot. Message bodies are text-only (never bytes/PII
-// beyond the text). Two-pane on desktop; single-pane with a back affordance on
-// mobile.
+// crm-api (access-gated, service_role, audited): sending a reply implicitly takes
+// the conversation over from the bot; an explicit takeover is stamped with the
+// signed-in rep's display name. Conversation rows and the thread header carry
+// the linked lead's pipeline stage + the detected intent, and a "פרטי הליד"
+// button opens the full lead drawer straight from the thread. Message bodies are
+// text-only (never bytes/PII beyond the text). The thread autoscrolls on new
+// messages ONLY while the rep is already near the bottom — scrolled-up reading
+// is never yanked away. Two-pane on desktop; single-pane with a back affordance
+// on mobile.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CONVERSATION_STATUSES,
   type ConversationStatus,
   type CrmConversation,
+  type CrmFailure,
   type CrmMessage,
   type CrmThread,
   crmHandBack,
@@ -22,10 +30,26 @@ import {
   fetchCrmThread,
   sendCrmReply,
 } from "@/lib/crm-admin";
+import { useAuth } from "@/lib/auth-context";
 import { useCrmEvents } from "@/lib/use-crm-events";
-import { BTN_GHOST, BTN_PRIMARY, CONVERSATION_STATUS_META, ConversationStatusPill, NoticeCard, when } from "./ui";
+import CrmLeadDrawer from "./CrmLeadDrawer";
+import {
+  BTN_GHOST,
+  BTN_PRIMARY,
+  CONVERSATION_STATUS_META,
+  ConversationStatusPill,
+  ErrorNotice,
+  mirrorUrlParams,
+  NoticeCard,
+  StatusPill,
+  when,
+} from "./ui";
 
 type Filter = ConversationStatus | "all";
+
+// How close to the bottom (px) still counts as "following the conversation" —
+// within this, a thread refresh autoscrolls; further up it never yanks the view.
+const NEAR_BOTTOM_PX = 120;
 
 function chip(active: boolean): string {
   return `interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
@@ -70,21 +94,36 @@ function ListSkeleton() {
 }
 
 export default function CrmInbox() {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  // Filter + search initialize from the URL (mirrored below on every change).
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => {
+    const v = params.get("conv_status");
+    return v && (CONVERSATION_STATUSES as readonly string[]).includes(v) ? (v as ConversationStatus) : "all";
+  });
+  const [searchInput, setSearchInput] = useState(() => params.get("conv_q") ?? "");
+  const [search, setSearch] = useState(() => (params.get("conv_q") ?? "").trim());
   const [convs, setConvs] = useState<CrmConversation[] | null>(null);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState(false);
+  const [listFailure, setListFailure] = useState<CrmFailure | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [thread, setThread] = useState<CrmThread | null>(null);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadError, setThreadError] = useState(false);
+  const [threadFailure, setThreadFailure] = useState<CrmFailure | null>(null);
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  // The lead whose full drawer is open (entered from the thread header).
+  const [leadDrawerId, setLeadDrawerId] = useState<string | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
+  // The scrollable message pane + whether the rep is near its bottom. The flag
+  // updates on scroll (an event), and the thread effect reads it to decide
+  // whether an update may autoscroll. Starts true: a fresh thread opens pinned
+  // to its newest message.
+  const threadPaneRef = useRef<HTMLDivElement | null>(null);
+  const nearBottomRef = useRef(true);
   // Stale-response guards. `listSeq` orders overlapping list loads (rapid
   // filter/search switches) so a slower, older response can't overwrite the
   // newer filter's rows. `selectedIdRef` mirrors the live selection so a
@@ -94,6 +133,9 @@ export default function CrmInbox() {
   const listSeq = useRef(0);
   const selectedIdRef = useRef<string | null>(null);
 
+  const { profile } = useAuth();
+  const repName = (profile?.name ?? "").trim() || "מנהל";
+
   // Single entry point for changing the selection: the ref updates
   // synchronously, before any in-flight fetch can resolve. Selecting a NEW
   // conversation also resets the thread pane here, in the click — so the
@@ -101,11 +143,13 @@ export default function CrmInbox() {
   const selectConversation = useCallback((id: string | null) => {
     if (id === selectedIdRef.current) return; // re-click on the same row — no-op, same as before
     selectedIdRef.current = id;
+    nearBottomRef.current = true; // a fresh thread opens pinned to its newest message
     setSelectedId(id);
     if (id) {
       setThreadLoading(true);
       setThread(null);
       setThreadError(false);
+      setThreadFailure(null);
     }
   }, []);
 
@@ -113,7 +157,7 @@ export default function CrmInbox() {
   // current view on failure, so a live update never flashes the list or thread.
   // Loading/error resets are event-driven: the useState initializers cover the
   // mount load, and every later load starts from an event (`changeFilter`, the
-  // search submit, retry, `afterMutation`, the Realtime callback) that resets
+  // search debounce, retry, `afterMutation`, the Realtime callback) that resets
   // first — so the load effects never set state synchronously
   // (react-hooks/set-state-in-effect): state only lands in the .then continuations.
   const loadList = useCallback((silent = false) => {
@@ -123,10 +167,11 @@ export default function CrmInbox() {
       search: search || undefined,
     }).then((res) => {
       if (seq !== listSeq.current) return; // stale — a newer load owns the list
-      if (res) {
-        setConvs(res.conversations);
+      if (res.data) {
+        setConvs(res.data.conversations);
         setListLoading(false);
       } else if (!silent) {
+        setListFailure(res.failure);
         setListError(true);
         setListLoading(false);
       }
@@ -141,6 +186,7 @@ export default function CrmInbox() {
   const reloadList = useCallback(() => {
     setListLoading(true);
     setListError(false);
+    setListFailure(null);
     void loadList();
   }, [loadList]);
 
@@ -150,10 +196,28 @@ export default function CrmInbox() {
       if (next === filter) return; // same chip — no reload, same as before
       setListLoading(true);
       setListError(false);
+      setListFailure(null);
       setFilter(next);
+      mirrorUrlParams({ conv_status: next === "all" ? null : next });
     },
     [filter],
   );
+
+  // Debounce the search box so we don't fire a request per keystroke; when the
+  // (trimmed) query actually changes, reset the view here in the timeout
+  // callback — the load effect then refetches.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const next = searchInput.trim();
+      if (next === search) return; // unchanged query — no reload, same as before
+      setListLoading(true);
+      setListError(false);
+      setListFailure(null);
+      setSearch(next);
+      mirrorUrlParams({ conv_q: next || null });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput, search]);
 
   const loadThread = useCallback((id: string, silent = false): Promise<void> => {
     // Never load (or show a skeleton for) a conversation that isn't the
@@ -164,8 +228,11 @@ export default function CrmInbox() {
       // The rep may have switched conversations while this fetch was in flight;
       // only the latest-selected conversation's response is allowed to land.
       if (id !== selectedIdRef.current) return;
-      if (t) setThread(t);
-      else if (!silent) setThreadError(true);
+      if (t.data) setThread(t.data);
+      else if (!silent) {
+        setThreadFailure(t.failure);
+        setThreadError(true);
+      }
       if (!silent) setThreadLoading(false);
     });
   }, []);
@@ -180,6 +247,7 @@ export default function CrmInbox() {
     setThreadLoading(true);
     setThread(null);
     setThreadError(false);
+    setThreadFailure(null);
     void loadThread(selectedId);
   }, [selectedId, loadThread]);
 
@@ -187,15 +255,27 @@ export default function CrmInbox() {
   // inbound message, rep reply, takeover). Silent so it never flashes; fail-soft.
   useCrmEvents(() => {
     setListError(false); // a silent refresh starts by clearing any stale error
+    setListFailure(null);
     void loadList(true);
     if (selectedId) {
       setThreadError(false);
+      setThreadFailure(null);
       void loadThread(selectedId, true);
     }
   });
 
+  // Track whether the rep is following the newest messages; updated on scroll
+  // (an event), read by the autoscroll effect below.
+  const onThreadScroll = useCallback(() => {
+    const el = threadPaneRef.current;
+    if (!el) return;
+    nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+  }, []);
+
   useEffect(() => {
-    threadEndRef.current?.scrollIntoView({ block: "end" });
+    // Autoscroll only while pinned near the bottom — a rep reading history two
+    // screens up keeps their place when a Realtime refresh lands new messages.
+    if (nearBottomRef.current) threadEndRef.current?.scrollIntoView({ block: "end" });
   }, [thread]);
 
   const afterMutation = useCallback(async () => {
@@ -203,10 +283,12 @@ export default function CrmInbox() {
       setThreadLoading(true);
       setThread(null);
       setThreadError(false);
+      setThreadFailure(null);
       await loadThread(selectedId);
     }
     setListLoading(true);
     setListError(false);
+    setListFailure(null);
     void loadList();
   }, [selectedId, loadThread, loadList]);
 
@@ -215,6 +297,7 @@ export default function CrmInbox() {
     if (!body || !selectedId || sending) return;
     setSending(true);
     setNotice("");
+    nearBottomRef.current = true; // sending pins the view to the new message
     const ok = await sendCrmReply(selectedId, body);
     setSending(false);
     if (ok) {
@@ -229,11 +312,13 @@ export default function CrmInbox() {
     if (!selectedId || busy) return;
     setBusy(true);
     setNotice("");
-    const ok = await crmTakeOver(selectedId);
+    // The takeover is stamped with the rep's display name so the customer-side
+    // trail and the console both show WHO took the conversation.
+    const ok = await crmTakeOver(selectedId, repName);
     setBusy(false);
     if (ok) await afterMutation();
     else setNotice("המעבר לטיפול אנושי נכשל.");
-  }, [selectedId, busy, afterMutation]);
+  }, [selectedId, busy, repName, afterMutation]);
 
   const onHandBack = useCallback(async () => {
     if (!selectedId || busy) return;
@@ -252,6 +337,8 @@ export default function CrmInbox() {
 
   const selectedConv = convs?.find((c) => c.conversationId === selectedId) ?? null;
   const isHuman = selectedConv?.status === "human";
+  const threadLeadId = thread?.contact.leadId ?? null;
+  const threadLeadStatus = thread?.contact.leadStatus ?? selectedConv?.leadStatus ?? null;
 
   return (
     <div className="space-y-3">
@@ -263,28 +350,14 @@ export default function CrmInbox() {
             </button>
           ))}
         </div>
-        <form
-          className="ms-auto flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const next = searchInput.trim();
-            if (next === search) return; // unchanged query — no reload, same as before
-            setListLoading(true);
-            setListError(false);
-            setSearch(next);
-          }}
-        >
-          <input
-            type="search"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="חיפוש שם / טלפון"
-            className="w-40 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-          />
-          <button type="submit" className={`${BTN_GHOST} min-h-9 px-3`}>
-            חפש
-          </button>
-        </form>
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="חיפוש שם / טלפון"
+          aria-label="חיפוש שיחות"
+          className="ms-auto w-40 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+        />
       </div>
 
       <div className="grid gap-3 md:grid-cols-[20rem_1fr]">
@@ -293,9 +366,7 @@ export default function CrmInbox() {
           {listLoading ? (
             <ListSkeleton />
           ) : listError || !convs ? (
-            <NoticeCard action={<button type="button" onClick={reloadList} className={BTN_GHOST}>נסו שוב</button>}>
-              לא הצלחנו לטעון שיחות.
-            </NoticeCard>
+            <ErrorNotice failure={listFailure} fallback="לא הצלחנו לטעון שיחות." onRetry={reloadList} />
           ) : convs.length === 0 ? (
             <NoticeCard>אין שיחות תואמות.</NoticeCard>
           ) : (
@@ -318,6 +389,12 @@ export default function CrmInbox() {
                         <span className="truncate text-sm font-semibold text-ink">{c.name || "ללא שם"}</span>
                         <ConversationStatusPill status={c.status} />
                       </div>
+                      {(c.leadStatus || c.intent) && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {c.leadStatus && <StatusPill status={c.leadStatus} />}
+                          {c.intent && <span className="truncate text-[10px] font-medium text-muted">{c.intent}</span>}
+                        </div>
+                      )}
                       <div className="mt-1 flex items-center justify-between gap-2">
                         <span className="truncate text-xs text-foreground">{c.lastSnippet || "—"}</span>
                         {c.lastAt && <span className="shrink-0 text-[10px] text-muted">{when(c.lastAt)}</span>}
@@ -351,30 +428,48 @@ export default function CrmInbox() {
                       </p>
                     )}
                   </div>
+                  {threadLeadStatus && <StatusPill status={threadLeadStatus} />}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {selectedConv && <ConversationStatusPill status={selectedConv.status} />}
+                  {threadLeadId && (
+                    <button
+                      type="button"
+                      onClick={() => setLeadDrawerId(threadLeadId)}
+                      className={`${BTN_GHOST} min-h-9 px-3`}
+                    >
+                      פרטי הליד
+                    </button>
+                  )}
                   {isHuman ? (
                     <button type="button" disabled={busy} onClick={() => void onHandBack()} className={`${BTN_GHOST} min-h-9 px-3`}>
                       החזר לבוט
                     </button>
                   ) : (
-                    <button type="button" disabled={busy} onClick={() => void onTakeOver()} className={`${BTN_GHOST} min-h-9 px-3`}>
-                      השתלט
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void onTakeOver()}
+                      title={`השיחה תסומן כמטופלת על ידי ${repName}`}
+                      className={`${BTN_GHOST} min-h-9 px-3`}
+                    >
+                      השתלט ({repName})
                     </button>
                   )}
                 </div>
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto p-3">
+              <div ref={threadPaneRef} onScroll={onThreadScroll} className="flex-1 space-y-2 overflow-y-auto p-3">
                 {threadLoading ? (
                   <p className="text-sm text-muted">טוען…</p>
                 ) : threadError || !thread ? (
                   <div className="text-center">
-                    <p className="text-sm text-muted">לא הצלחנו לטעון את השיחה.</p>
-                    <button type="button" onClick={retryThread} className={`${BTN_GHOST} mt-3`}>
-                      נסו שוב
-                    </button>
+                    <p className="text-sm font-medium text-danger-text">{threadFailure?.message || "לא הצלחנו לטעון את השיחה."}</p>
+                    {(threadFailure ? threadFailure.retryable : true) && (
+                      <button type="button" onClick={retryThread} className={`${BTN_GHOST} mt-3`}>
+                        נסו שוב
+                      </button>
+                    )}
                   </div>
                 ) : thread.messages.length === 0 ? (
                   <p className="text-center text-sm text-muted">אין הודעות בשיחה הזו.</p>
@@ -419,6 +514,20 @@ export default function CrmInbox() {
           )}
         </div>
       </div>
+
+      {leadDrawerId && (
+        <CrmLeadDrawer
+          key={leadDrawerId}
+          leadId={leadDrawerId}
+          onClose={() => setLeadDrawerId(null)}
+          onChanged={() => {
+            // A status/claim change from the drawer may move the linked lead's
+            // pill on the list/thread — refresh both silently.
+            void loadList(true);
+            if (selectedId) void loadThread(selectedId, true);
+          }}
+        />
+      )}
     </div>
   );
 }

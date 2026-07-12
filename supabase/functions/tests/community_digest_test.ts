@@ -15,11 +15,16 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import {
   buildDigestEmail,
+  chunkIds,
   digestSubject,
   eligibleRecipients,
+  fetchAllPaged,
+  fetchUnreadChunked,
   groupUnread,
   kindLines,
+  type NotifRow,
   signUnsub,
+  UNREAD_CHUNK,
   verifyUnsub,
 } from "../community-digest/lib.ts";
 import { captureServeHandler, jsonResponse, withFetchStub } from "./_capture_handler.ts";
@@ -106,6 +111,105 @@ Deno.test("buildDigestEmail OMITS the community-activity line when the count is 
   assert(!buildDigestEmail({ ...base, weeklyNewPosts: null }).includes("פוסטים חדשים"));
   // A null name degrades to the generic greeting, never "null".
   assertStringIncludes(buildDigestEmail({ ...base }), "שלום,");
+});
+
+// ── unread-query chunking + recipient cursor (the silent under-send fixes) ────
+// The old single unread query interpolated up to 2000 uuids into ONE in.(…)
+// filter (a ~74KB URL a proxy can reject → the WHOLE run silently sent nothing),
+// and the old recipient read hard-capped at 2000 rows (every member past the
+// cap silently never got a digest). These pin the chunker + the id-cursor pager.
+
+Deno.test("chunkIds splits in order at the chunk size (default 100-150 per request)", () => {
+  assert(UNREAD_CHUNK >= 100 && UNREAD_CHUNK <= 150, "chunk size stays in the 100-150 uuid band");
+  const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`);
+  const chunks = chunkIds(ids, 120);
+  assertEquals(chunks.map((c) => c.length), [120, 120, 10]);
+  assertEquals(chunks.flat(), ids); // order-preserving, nothing dropped
+  assertEquals(chunkIds([], 120), []);
+  assertEquals(chunkIds(["a"], 120), [["a"]]);
+});
+
+Deno.test("fetchUnreadChunked issues one bounded request per chunk and concatenates", async () => {
+  const ids = Array.from({ length: 250 }, (_, i) => `u${i}`);
+  const seen: string[][] = [];
+  const { rows, failedChunks } = await fetchUnreadChunked(
+    ids,
+    (chunk) => {
+      seen.push(chunk);
+      return Promise.resolve(chunk.map((id) => ({ user_id: id, kind: "reply" } as NotifRow)));
+    },
+    120,
+  );
+  assertEquals(seen.length, 3, "250 ids at 120/chunk → 3 requests");
+  assert(seen.every((c) => c.length <= 120), "no request carries more than the chunk cap");
+  assertEquals(rows.length, 250);
+  assertEquals(failedChunks, 0);
+  // The chunked result groups identically to one big read (nothing lost/dup'd).
+  assertEquals(groupUnread(rows).size, 250);
+});
+
+Deno.test("fetchUnreadChunked is fail-soft PER CHUNK — one failed chunk never kills the run", async () => {
+  const ids = Array.from({ length: 30 }, (_, i) => `u${i}`);
+  let call = 0;
+  const { rows, failedChunks } = await fetchUnreadChunked(
+    ids,
+    (chunk) => {
+      call++;
+      if (call === 2) return Promise.resolve(null); // the middle chunk's read fails
+      return Promise.resolve(chunk.map((id) => ({ user_id: id, kind: "like" } as NotifRow)));
+    },
+    10,
+  );
+  assertEquals(failedChunks, 1);
+  // The OTHER chunks' members still get their digest (under-send beats fabrication).
+  assertEquals(rows.length, 20);
+});
+
+Deno.test("fetchAllPaged follows the id cursor past the first page and stops on a short page", async () => {
+  const cursors: string[] = [];
+  const page1 = Array.from({ length: 3 }, (_, i) => ({ id: `p1-${i}` }));
+  const page2 = [{ id: "p2-0" }];
+  const res = await fetchAllPaged<{ id: string }>(
+    (cursorId) => {
+      cursors.push(cursorId);
+      return Promise.resolve(cursorId === "" ? page1 : page2);
+    },
+    3, // pageSize — page1 is full, page2 is short
+    10,
+  );
+  assertEquals(cursors, ["", "p1-2"]); // the second request cursors past page1's last id
+  assertEquals(res.rows.length, 4);
+  assertEquals(res.pages, 2);
+  assertEquals(res.failed, false);
+  assertEquals(res.truncated, false);
+});
+
+Deno.test("fetchAllPaged: a failed LATER page degrades to the rows already fetched", async () => {
+  const res = await fetchAllPaged<{ id: string }>(
+    (cursorId) =>
+      Promise.resolve(cursorId === "" ? Array.from({ length: 2 }, (_, i) => ({ id: `r${i}` })) : null),
+    2,
+    10,
+  );
+  assertEquals(res.failed, true);
+  assertEquals(res.rows.length, 2, "partial recipients still get their digest");
+  // …while a failed FIRST page yields nothing (the caller keeps its honest note).
+  const first = await fetchAllPaged<{ id: string }>(() => Promise.resolve(null), 2, 10);
+  assertEquals(first, { rows: [], pages: 0, failed: true, truncated: false });
+});
+
+Deno.test("fetchAllPaged: the maxPages misfire bound reports truncation (never silent)", async () => {
+  const res = await fetchAllPaged<{ id: string }>(
+    (cursorId) => {
+      const base = cursorId === "" ? 0 : Number(cursorId.slice(1)) + 1;
+      return Promise.resolve([{ id: `i${base}` }, { id: `i${base + 1}` }]); // always a full page
+    },
+    2,
+    3,
+  );
+  assertEquals(res.truncated, true);
+  assertEquals(res.pages, 3);
+  assertEquals(res.rows.length, 6);
 });
 
 // ── one-click unsubscribe HMAC ───────────────────────────────────────────────

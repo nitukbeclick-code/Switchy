@@ -416,12 +416,27 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
    the old hardcoded rgba forced a light pane onto the dark theme). */
 .nav.scrolled { border-bottom-color: var(--line); box-shadow: 0 4px 18px rgba(15,27,34,.05); background: color-mix(in srgb, var(--cream) 88%, transparent); }
 .nav__inner { display: flex; align-items: center; gap: 18px; height: 68px; }
-.brand { display: flex; align-items: center; gap: 9px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+/* The mark is a true brand TILE: Switchy green (same family as the robot logo
+   and the CTA accent) with the rising-bars glyph reversed to white, breathing
+   room via padding, and the CTA's inset-highlight + soft green shadow so the
+   logo and the primary button speak one language. Hexes are FIXED on purpose —
+   a logo is a constant asset and must not re-tint per theme. */
 .brand__mark {
-  width: 32px; height: 32px; display: grid; place-items: center;
-  background: var(--lime); color: var(--green-d); border-radius: 9px; font-size: 17px; font-weight: 900;
+  width: 34px; height: 34px; padding: 5px; box-sizing: border-box;
+  background: linear-gradient(150deg, #22C55E, #16A34A 55%, #15803D);
+  color: #fff; border-radius: 10px; flex: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 4px 10px rgba(22,163,74,.30);
+  transition: transform .18s var(--ease), box-shadow .18s;
 }
-.brand__name { font-size: 22px; font-weight: 800; color: var(--green-d); }
+@media (hover: hover) and (pointer: fine) {
+  .brand:hover .brand__mark { transform: rotate(-5deg) scale(1.06); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 6px 14px rgba(22,163,74,.38); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand__mark { transition: none; }
+  .brand:hover .brand__mark { transform: none; }
+}
+.brand__name { font-size: 22px; font-weight: 800; color: var(--green-d); letter-spacing: .01em; }
 .brand--light .brand__name { color: #fff; }
 .nav__links { display: flex; gap: 26px; margin-inline-start: auto; }
 .nav__links a { position: relative; font-weight: 600; color: var(--muted); transition: color .15s; padding-bottom: 2px; border-radius: 6px; }

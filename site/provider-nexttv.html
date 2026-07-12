@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.min.css?v=1b767203" />
+  <link rel="stylesheet" href="styles.min.css?v=c33d3090" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -112,36 +112,38 @@
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>
-      <a class="nav__ico nav__ico--ai" href="index.html#switchy-ai" aria-label="SWITCHY AI — היועץ החכם">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>
-      </a>
-      <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>
-      </a>
-      <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
-      </button>
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
-        <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-sun"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-moon"/></svg></span>
-      </button>
+      <div class="nav__tools">
+        <a class="nav__ai" href="index.html#switchy-ai" data-tip="היועץ החכם" aria-label="SWITCHY AI — היועץ החכם">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg><span aria-hidden="true">AI</span>
+        </a>
+        <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate data-tip="שפה / Language" aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
+        </button>
+        <button class="theme-toggle" id="themeToggle" type="button" data-tip="בהיר / כהה" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+          <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-sun"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-moon"/></svg></span>
+        </button>
+      </div>
       <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
+      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
+      <p class="nav__mobile-label">ניווט</p>
       <a href="plans.html">כל החבילות</a>
-      <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="providers.html">ספקים</a>
       <a href="/community">קהילה</a>
-      <a href="book.html">תיאום פגישת וידאו</a>
-      <a href="index.html#switchy-ai">SWITCHY AI — היועץ החכם</a>
-      <a href="app.html">האפליקציה</a>
+      <p class="nav__mobile-label">כלים</p>
+      <a href="index.html#switchy-ai"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>SWITCHY AI — היועץ החכם</a>
+      <a href="book.html"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>תיאום פגישת וידאו</a>
+      <a href="index.html#calculator"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7h7M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01M8.5 15h.01M12 15h.01M15.5 15h.01"/></svg>מחשבון חיסכון</a>
+      <a href="app.html"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>האפליקציה</a>
+      <p class="nav__mobile-label">מדריכים פופולריים</p>
       <a href="guides.html">כל המדריכים</a>
       <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
       <a class="nav__mobile-sub" href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
       <a class="nav__mobile-sub" href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
       <a class="nav__mobile-sub" href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
-      <a href="index.html#calculator">מחשבון</a>
-      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>
   <main id="main">
@@ -193,7 +195,7 @@
             </tbody>
           </table>
         </div>
-        <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון הטבלה (11 ביולי 2026). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
+        <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון הטבלה (12 ביולי 2026). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
       </div>
     </section>
       <div class="container" style="max-width:640px"><a class="zoom-cta" href="book.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg><span>מתלבטים לגבי NextTV? נשווה יחד — <b>פגישת Zoom חינם, בלי התחייבות</b> ←</span></a></div>
@@ -313,7 +315,7 @@
           <ul class="trust-points">
             <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg><span><b>מתודולוגיה שקופה.</b> אנחנו משווים את כל 18 החברות ומדרגים לפי ערך — מחיר, גמישות והמחיר שאחרי המבצע — עם הסבר לכל המלצה. <a href="about.html">המתודולוגיה המלאה ←</a></span></li>
             <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-shield"/></svg><span><b>גילוי נאות.</b> השירות חינמי לכם. אנחנו מקבלים עמלת תיווך מחברות התקשורת כשעוברים דרכנו — העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על הדירוג.</span></li>
-            <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg><span><b>מחירים אמיתיים.</b> המחירים כוללים מע״מ ונכונים למועד עדכון האתר (11 ביולי 2026). מחירים ותנאים עשויים להשתנות — תמיד כדאי לאמת מול הספק לפני התקשרות.</span></li>
+            <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg><span><b>מחירים אמיתיים.</b> המחירים כוללים מע״מ ונכונים למועד עדכון האתר (12 ביולי 2026). מחירים ותנאים עשויים להשתנות — תמיד כדאי לאמת מול הספק לפני התקשרות.</span></li>
           </ul>
         </div>
       </div>

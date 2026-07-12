@@ -412,7 +412,9 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 /* Nav anchors carry no class — exempt them (and the drawer/mega-menu) from the
    global a:not([class]) underline so the bar reads as chrome, not body copy. */
 .nav__links a, .nav__mobile a, .mega-menu__panel a { text-decoration: none; }
-.nav.scrolled { border-bottom-color: var(--line); box-shadow: 0 4px 18px rgba(15,27,34,.05); background: rgba(246,248,249,.95); }
+/* Scrolled state stays FROSTED (token-mixed, so dark mode gets a dark glass —
+   the old hardcoded rgba forced a light pane onto the dark theme). */
+.nav.scrolled { border-bottom-color: var(--line); box-shadow: 0 4px 18px rgba(15,27,34,.05); background: color-mix(in srgb, var(--cream) 88%, transparent); }
 .nav__inner { display: flex; align-items: center; gap: 18px; height: 68px; }
 .brand { display: flex; align-items: center; gap: 9px; }
 .brand__mark {
@@ -434,17 +436,10 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .nav__links a[aria-current="page"] { color: var(--accent-ink); font-weight: 700; }
 .nav__links a[aria-current="page"]::after { transform: scaleX(1); }
 .nav__mobile a[aria-current="page"] { color: var(--accent-ink); font-weight: 700; }
-/* Compact, quieter nav CTA — it lives on EVERY viewport, so it must not
-   compete with the page-level primaries below it. */
-.nav__cta { margin-inline-start: 6px; padding: 9px 16px; font-size: 14px; border-radius: 12px;
+/* The bar's single visual anchor — one step up from the old compact pill, still
+   quiet enough not to compete with page-level primaries below it. */
+.nav__cta { margin-inline-start: 4px; padding: 10px 18px; font-size: 15px; border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24); }
-.nav__wa { display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#25d366;color:#fff;flex-shrink:0;transition:transform .15s,box-shadow .15s; }
-@media (hover: hover) and (pointer: fine) {
-  .nav__wa:hover { transform:scale(1.1);box-shadow:0 4px 14px rgba(37,211,102,.4); }
-}
-.nav__wa svg { width:20px;height:20px; }
-.nav__zoom-link { display:flex;align-items:center;gap:4px; }
-.nav__zoom-icon { width:14px;height:14px;flex-shrink:0; }
 /* ── Theme toggle (light/dark) ───────────────────────────────────────────────
    An icon-only control (sun in dark mode → switch to light; moon in light mode →
    switch to dark). 44px hit area, a quiet glass hover, and the standard focus
@@ -462,11 +457,13 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .theme-toggle__sun { display: none; }
 :root[data-theme="dark"] .theme-toggle__moon { display: none; }
 :root[data-theme="dark"] .theme-toggle__sun { display: grid; }
-/* ── Header shortcut icons (Zoom scheduler · SWITCHY AI) ─────────────────────
-   Two quick-access controls that sit beside the theme toggle, sharing its 44px
-   hit area, quiet mint hover and focus ring. All marks inherit currentColor
-   (so they tint on hover like the toggle) and share one 22px optical glyph
-   size so the utility row reads as an even set. */
+/* ── Utility cluster (SWITCHY AI · language · theme) ─────────────────────────
+   The header's tools live in ONE grouped cluster, separated from the primary
+   links by a hairline divider — three visual groups (brand · nav · tools+CTA)
+   instead of a flat row of twelve. All controls share the 44px hit area, quiet
+   mint hover, focus ring and a 22px optical glyph size. */
+.nav__tools { display: flex; align-items: center; gap: 2px; }
+.nav__tools::before { content: ""; width: 1px; height: 24px; background: var(--line); margin-inline-end: 12px; flex: none; }
 .nav__ico {
   flex: none; width: 44px; height: 44px; display: grid; place-items: center;
   background: none; border: 0; cursor: pointer; color: var(--green-d);
@@ -474,9 +471,31 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .nav__ico:hover { background: var(--mint); color: var(--accent-ink); }
 .nav__ico:focus-visible { box-shadow: var(--ring-flush); outline: none; }
-.nav__ico--ai svg { width: 22px; height: 22px; }
 .nav__ico--lang svg { width: 22px; height: 22px; }
-.nav__ico--zoom svg { width: 22px; height: 22px; display: block; }
+/* SWITCHY AI as a labelled pill — an icon alone said nothing to a sighted
+   visitor; the "AI" chip gives it a name without adding a full text link. */
+.nav__ai {
+  display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px;
+  margin-inline-end: 4px; border-radius: 999px; border: 1px solid var(--line);
+  color: var(--green-d); font-weight: 800; font-size: 12.5px; letter-spacing: .04em;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.nav__ai svg { width: 19px; height: 19px; flex: none; }
+.nav__ai:hover { background: var(--mint); color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.nav__ai:focus-visible { box-shadow: var(--ring-flush); outline: none; }
+/* Hover tooltips for the icon-only tools (pointer devices only) — sighted
+   users get the same name assistive tech already had via aria-label. */
+@media (hover: hover) and (pointer: fine) {
+  .nav [data-tip] { position: relative; }
+  .nav [data-tip]::after {
+    content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%;
+    transform: translateX(-50%); padding: 5px 9px; border-radius: 8px;
+    background: var(--ink); color: var(--cream); font-size: 11.5px; font-weight: 600;
+    letter-spacing: 0; white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity .15s .25s; z-index: 60;
+  }
+  .nav [data-tip]:hover::after { opacity: 1; }
+}
 /* flex-shrink/min-width guard: without it the icon row squeezes the burger to a
    ~20px sliver that clips off-screen at 390px (header scrollWidth > viewport). */
 .nav__toggle { display: none; background: none; border: 0; width: 44px; min-width: 44px; height: 44px; flex-shrink: 0; cursor: pointer; padding: 10px; }
@@ -496,7 +515,11 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .nav__mobile--legacy { display: none; }
 .nav__mobile a { padding: 13px 6px; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--ink); border-bottom: 1px solid var(--line); }
-.nav__mobile .btn { margin-top: 10px; }
+/* The drawer is GROUPED, not a flat list: the CTA leads, then labelled
+   sections (ניווט · כלים · מדריכים פופולריים). */
+.nav__mobile .btn { margin: 10px 0 4px; border-bottom: 0; justify-content: center; }
+.nav__mobile-label { margin: 16px 2px 2px; font-size: 11.5px; font-weight: 800; letter-spacing: .05em; color: var(--muted); }
+.nav__mobile-ico { width: 18px; height: 18px; flex: none; margin-inline-end: 10px; color: var(--accent-ink); }
 
 /* ── Hero ────────────────────────────────────────────────────────────── */
 .hero { padding: 56px 0 40px; position: relative; }
@@ -1667,10 +1690,11 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 }
 @media (max-width: 520px) { .footer__inner { grid-template-columns: 1fr; } }
 @media (max-width: 760px) {
-  .nav__links, .nav__cta, .nav__wa { display: none; }
-  /* Secondary icon actions fold into the drawer on phones (תיאום פגישה + the AI
-     section are both linked there) — the burger must never fight them for room. */
-  .nav__ico--zoom, .nav__ico--ai { display: none; }
+  .nav__links, .nav__cta { display: none; }
+  /* The AI pill folds into the drawer on phones (its row lives under כלים) —
+     the burger must never fight it for room. Language + theme stay: they're
+     one-tap utilities with no drawer equivalent. The cluster divider goes too. */
+  .nav__ai, .nav__tools::before { display: none; }
   .nav__toggle { display: block; }
   /* The drawer lives inside the sticky header, so page scroll can never reveal
      its tail — cap it to the viewport minus the 68px bar and scroll internally,

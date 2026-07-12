@@ -63,8 +63,19 @@ grant select, insert, delete on public.community_blocks to authenticated;
 -- consent/registration_ip. Expose ONLY the public-safe columns via a definer view
 -- (bypasses profiles RLS -> returns every row's public fields), granted to anon +
 -- authenticated (owner choice 2026-07-05: public profiles visible to everyone). No PII.
-create or replace view public.public_profiles as
-  select id, name, avatar_url, is_verified_customer, is_admin
+--
+-- HARDENED 2026-07 — this view must NEVER expose is_admin: leaking which accounts are
+-- administrators is account enumeration. An earlier revision of THIS block selected
+-- is_admin; it has been REMOVED. This is the FIRST delta to create public_profiles, so
+-- it exposes only the columns that exist at this point (name/avatar/verified badge);
+-- later deltas append verified_customer_at/created_at/bio, and
+-- security-views-hardening-2026-07.sql is the CANONICAL final definition (still no
+-- is_admin). Keep is_admin out of EVERY public_profiles definition. drop + recreate
+-- (not CREATE OR REPLACE — the latter cannot drop the legacy is_admin column, so a
+-- re-apply over the current view would otherwise fail or keep it).
+drop view if exists public.public_profiles;
+create view public.public_profiles as
+  select id, name, avatar_url, is_verified_customer
   from public.profiles;
 
 grant select on public.public_profiles to anon, authenticated;

@@ -78,8 +78,14 @@ create trigger leads_verify_customer
   for each row execute function public.verify_customer_on_lead_won();
 
 -- Expose an honest "since" to the public profile (still no PII).
-create or replace view public.public_profiles as
-  select id, name, avatar_url, is_verified_customer, is_admin, verified_customer_at
+-- HARDENED 2026-07 — is_admin removed (leaking it enables admin-account enumeration);
+-- keep it out of EVERY public_profiles definition. drop + recreate, not CREATE OR
+-- REPLACE — the latter cannot drop the legacy is_admin column on a re-apply over the
+-- current view. created_at/bio are appended by the later profile delta;
+-- security-views-hardening-2026-07.sql holds the canonical final column set.
+drop view if exists public.public_profiles;
+create view public.public_profiles as
+  select id, name, avatar_url, is_verified_customer, verified_customer_at
   from public.profiles;
 grant select on public.public_profiles to anon, authenticated;
 

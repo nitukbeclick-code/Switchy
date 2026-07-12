@@ -127,6 +127,16 @@
   var FAIL_TTL = 3 * 60 * 1000; // how long a failure stamp suppresses auto-apply-on-load
   var CACHE_KEY_CAP = 40; // max swi18n:c:* localStorage entries kept
   var SEEN_CAP = 2000; // max strings tracked for cross-page __shared promotion
+  var DICT_TIMEOUT = 8000; // ms before we give up on the static /i18n/<lang>.json fetch
+
+  // Static translation dictionaries: for the pre-warmed "core" languages the build
+  // ships /i18n/<lang>.json ({ source: translated }), so a switch fills memory from
+  // ONE cached static file — zero per-string model calls, near-instant. A language
+  // with no static file (or a network miss) simply falls through to the live edge
+  // fetch, exactly as before. staticTried[lang] = 1 once we've settled the fetch
+  // (loaded OR a definitive 404) so we never re-request it in the same session; a
+  // transient network error leaves it unset so the next switch may retry.
+  var staticTried = {};
 
   var controllers = []; // live AbortControllers (aborted on restore / new switch)
   var queuedLang = null; // a language requested while a switch was in flight
@@ -157,6 +167,36 @@
       mergeInto(m, localStorage.getItem(sharedKey(lang))); // shared chrome first …
       mergeInto(m, localStorage.getItem(pageKey(lang))); // … page-specific overlays it
     } catch (e) { /* storage blocked — memory-only */ }
+  }
+
+  // Where the pre-built dictionary for a language lives (same-origin static file,
+  // served from the CDN with the site; no auth). Root-absolute so it resolves the
+  // same on every page path.
+  function dictUrl(lang) { return "/i18n/" + lang + ".json"; }
+
+  // Fetch the static /i18n/<lang>.json ONCE per language and merge it into memory
+  // BEFORE any live fetch, so an already-warmed string resolves from cache and the
+  // switch makes zero network calls. Always resolves (never rejects) — a missing
+  // file or a transient error just leaves those strings for the live edge path.
+  function loadStaticDict(lang) {
+    if (lang === SOURCE || staticTried[lang]) return Promise.resolve();
+    if (!("fetch" in window)) { staticTried[lang] = 1; return Promise.resolve(); }
+    var ctrl = null, timer = null;
+    try { ctrl = ("AbortController" in window) ? new AbortController() : null; } catch (e) { ctrl = null; }
+    var opts = { credentials: "omit" };
+    if (ctrl) { opts.signal = ctrl.signal; timer = setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, DICT_TIMEOUT); }
+    var clear = function () { if (timer) { clearTimeout(timer); timer = null; } };
+    return fetch(dictUrl(lang), opts).then(function (r) {
+      if (r.status === 404) { staticTried[lang] = 1; clear(); return null; } // no static dict for this lang
+      if (!r.ok) throw new Error("dict " + r.status);
+      return r.text();
+    }, function (e) { throw e; }).then(function (text) {
+      clear();
+      if (text) { mergeInto(memFor(lang), text); staticTried[lang] = 1; }
+    }, function () {
+      // Transient (network/abort/parse) — do NOT mark tried, so a later switch retries.
+      clear();
+    });
   }
 
   // All swi18n:c:* cache keys (optionally excluding one, and optionally keeping the
@@ -788,8 +828,13 @@
     current = lang; syncTriggers(); // optimistic badge; setDir/banner/remember deferred to success
 
     // Promise.resolve().then so a synchronous throw in the kickoff can never leave
-    // busy=true forever; finishSwitch always runs.
+    // busy=true forever; finishSwitch always runs. Load the static /i18n dictionary
+    // FIRST (fail-soft): once merged, runSwitch finds every string already in memory
+    // and makes zero live fetches — the pre-warmed languages translate near-instantly.
     Promise.resolve().then(function () {
+      return loadStaticDict(lang);
+    }).then(function () {
+      if (switchSeq !== myGen) return; // superseded (restore / queued switch) while loading
       return runSwitch(lang, myGen);
     }).then(null, function () {}).then(function () {
       finishSwitch(lang, myGen);

@@ -26,18 +26,28 @@
 //   Optional env:
 //     BASE_URL   (required) origin of the DEPLOYED app (its LanguageSwitcher has
 //                already init'd the runtime with the Supabase URL + anon key).
-//     LANGS      comma-separated codes to warm (default: all, auto-read from the
-//                runtime's SwitchyI18n.LANGS).
+//                Point it at the STATIC marketing site to warm the guide/category
+//                pages (the heavy ones), or the web app to warm its tool screens —
+//                both share the same cache, so warming either populates it.
+//     LANGS      comma-separated codes to warm (default: the 6 CORE languages the
+//                build bakes into static /i18n/<lang>.json — en,ru,ar,fr,es,am).
+//                Pass "all" to warm every language SwitchyI18n.LANGS exposes.
 //     PASSES     translation passes per lang (default 2 — a string that fails the
 //                verify guard once often passes on a retry; cached rows are
 //                skipped so re-runs are cheap).
-//     ROUTES     comma-separated paths to crawl (default: the list below).
+//     ROUTES     comma-separated paths to crawl. Default: auto-derived from
+//                BASE_URL/sitemap.xml (every page), falling back to the built-in
+//                list below if the sitemap can't be read.
 //     DELAY_MS   pause between switches (default 900) — stay under the edge fn's
 //                PER_IP_LIMIT (90 req/min) and leave headroom for live traffic.
 //
-// Budget: the whole site is ~400-700 unique strings; 27 langs × ~700 ≈ ~18k
-// model translations, under DAILY_MODEL_BUDGET (40k/day). Safe to run in 1-2
-// off-peak passes; idempotent (already-cached rows are skipped).
+// Budget: warming all 283 static pages × 6 core langs is the full ~9,790-string
+// universe → up to ~58,740 model translations. That exceeds DAILY_MODEL_BUDGET
+// (40k/day), so either split across two off-peak runs (e.g. LANGS=en,ru,ar then
+// LANGS=fr,es,am) or raise the ceiling for the one-time warm. Idempotent — already
+// -cached rows are skipped, so ongoing runs only translate NEW/changed strings
+// (tens–hundreds), well within the free tier. After warming, run
+// `node tools/export-i18n.mjs` to snapshot the cache into the static dictionaries.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { chromium } from "playwright";
@@ -49,18 +59,43 @@ if (!BASE_URL) {
 }
 const PASSES = Number(process.env.PASSES || 2);
 const DELAY_MS = Number(process.env.DELAY_MS || 900);
-const ROUTES = (process.env.ROUTES || [
+// The 6 languages the build ships as static /i18n/<lang>.json — the default warm set.
+const CORE_LANGS = ["en", "ru", "ar", "fr", "es", "am"];
+const FALLBACK_ROUTES = [
   "/", "/cellular", "/internet", "/tv", "/triple", "/abroad",
   "/plans", "/compare", "/providers", "/wallet", "/quiz", "/bills",
   "/negotiate", "/book", "/community", "/market-pulse", "/switch-kit",
   "/street-prices", "/faq", "/guides", "/about", "/rights", "/how-it-works",
   "/privacy", "/terms", "/accessibility", "/referral",
-].join(",")).split(",").map((s) => s.trim()).filter(Boolean);
+];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Every page path to crawl: explicit ROUTES env wins; otherwise pull them all from
+// the deployed sitemap.xml (so a new guide/comparison page is warmed automatically),
+// falling back to the built-in list if the sitemap can't be read.
+async function resolveRoutes() {
+  if (process.env.ROUTES) return process.env.ROUTES.split(",").map((s) => s.trim()).filter(Boolean);
+  try {
+    const res = await fetch(BASE_URL.replace(/\/$/, "") + "/sitemap.xml");
+    if (res.ok) {
+      const xml = await res.text();
+      const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => {
+        try { return new URL(m[1]).pathname; } catch { return null; }
+      }).filter(Boolean);
+      const uniq = [...new Set(locs)];
+      if (uniq.length) { console.log(`Routes: ${uniq.length} paths from sitemap.xml`); return uniq; }
+    }
+  } catch { /* fall through */ }
+  console.log(`Routes: sitemap unavailable — using ${FALLBACK_ROUTES.length} built-in paths`);
+  return FALLBACK_ROUTES;
+}
+
 async function langsFor(page) {
-  if (process.env.LANGS) return process.env.LANGS.split(",").map((s) => s.trim()).filter(Boolean);
+  const raw = process.env.LANGS;
+  if (raw && raw.trim().toLowerCase() !== "all") return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!raw) return CORE_LANGS.slice(); // default: the baked core set
+  // LANGS=all → every language the runtime exposes.
   const codes = await page.evaluate(() =>
     (window.SwitchyI18n && window.SwitchyI18n.LANGS ? window.SwitchyI18n.LANGS.map((l) => l.code) : []));
   return codes.filter((c) => c && c !== "he");
@@ -78,6 +113,8 @@ async function switchAndWait(page, lang) {
     );
   } catch { /* a stubborn batch — move on; the next pass / visit retries */ }
 }
+
+const ROUTES = await resolveRoutes();
 
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const ctx = await browser.newContext({ locale: "he-IL" });

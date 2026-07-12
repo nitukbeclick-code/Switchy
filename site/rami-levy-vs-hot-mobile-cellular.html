@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.min.css?v=1b767203" />
+  <link rel="stylesheet" href="styles.min.css?v=286b327f" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -112,36 +112,38 @@
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>
-      <a class="nav__ico nav__ico--ai" href="index.html#switchy-ai" aria-label="SWITCHY AI — היועץ החכם">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>
-      </a>
-      <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>
-      </a>
-      <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
-      </button>
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
-        <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-sun"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-moon"/></svg></span>
-      </button>
+      <div class="nav__tools">
+        <a class="nav__ai" href="index.html#switchy-ai" data-tip="היועץ החכם" aria-label="SWITCHY AI — היועץ החכם">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg><span aria-hidden="true">AI</span>
+        </a>
+        <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate data-tip="שפה / Language" aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
+        </button>
+        <button class="theme-toggle" id="themeToggle" type="button" data-tip="בהיר / כהה" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+          <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-sun"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-moon"/></svg></span>
+        </button>
+      </div>
       <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
+      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
+      <p class="nav__mobile-label">ניווט</p>
       <a href="plans.html">כל החבילות</a>
-      <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="providers.html">ספקים</a>
       <a href="/community">קהילה</a>
-      <a href="book.html">תיאום פגישת וידאו</a>
-      <a href="index.html#switchy-ai">SWITCHY AI — היועץ החכם</a>
-      <a href="app.html">האפליקציה</a>
+      <p class="nav__mobile-label">כלים</p>
+      <a href="index.html#switchy-ai"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>SWITCHY AI — היועץ החכם</a>
+      <a href="book.html"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>תיאום פגישת וידאו</a>
+      <a href="index.html#calculator"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7h7M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01M8.5 15h.01M12 15h.01M15.5 15h.01"/></svg>מחשבון חיסכון</a>
+      <a href="app.html"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>האפליקציה</a>
+      <p class="nav__mobile-label">מדריכים פופולריים</p>
       <a href="guides.html">כל המדריכים</a>
       <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
       <a class="nav__mobile-sub" href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
       <a class="nav__mobile-sub" href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
       <a class="nav__mobile-sub" href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
-      <a href="index.html#calculator">מחשבון</a>
-      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>
   <main id="main">
@@ -209,7 +211,7 @@
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> רמי לוי</span><h2>מסלולי הסלולר של רמי לוי</h2><p>9 מסלולים · החל מ-₪14.90/חודש — ממוין מהזול ביותר.</p></header>
         <div class="plan-grid plan-grid--featured">
-<article class="plan" data-cat="cellular" data-text="רמי לוי זול להיות בקשר כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 4,000 מחוץ" data-price="14.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_zolkasher">
+<article class="plan" data-cat="cellular" data-text="רמי לוי זול להיות בקשר כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 4,000 מחוץ" data-price="15" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_zolkasher">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">93</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">זול להיות בקשר כשר <span class="plan__net">4G</span></div>
@@ -223,7 +225,7 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_zolkasher" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי זול להיות בקשר כשר"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-<article class="plan" data-cat="cellular" data-text="רמי לוי max כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 5,000 מחוץ" data-price="16.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_maxkasher">
+<article class="plan" data-cat="cellular" data-text="רמי לוי max כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 5,000 מחוץ" data-price="17" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_maxkasher">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">92</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">Max כשר <span class="plan__net">4G</span></div>
@@ -237,11 +239,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_ramilevy_maxkasher" aria-haspopup="dialog" aria-label="כל הפרטים על רמי לוי Max כשר"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-<article class="plan" data-cat="cellular" data-text="רמי לוי מבצע זוגות 250gb 5g 250gb גלישה 2,500 דק׳ ₪50 לזוג 2,500 ללא הגבלה 250gb" data-price="30" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couplepromo250">
+<article class="plan" data-cat="cellular" data-text="רמי לוי מבצע זוגות 250gb 5g 250gb גלישה 2,500 דק׳ ₪50 לזוג 250gb ללא הגבלה 2,500" data-price="30" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="rami-levy" data-id="cel_ramilevy_couplepromo250">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">91</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">מבצע זוגות 250GB <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -282,7 +284,7 @@
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow"><span class="plogo plogo--img" style="width:22px;height:22px"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async"></span> הוט מובייל</span><h2>מסלולי הסלולר של הוט מובייל</h2><p>6 מסלולים · החל מ-₪10.90/חודש — ממוין מהזול ביותר.</p></header>
         <div class="plan-grid plan-grid--featured">
-<article class="plan" data-cat="cellular" data-text="הוט מובייל 20gb data only 20gb גלישה sim דאטה לטאבלט/לפטופ/מודם 20gb" data-price="10.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly20">
+<article class="plan" data-cat="cellular" data-text="הוט מובייל 20gb data only 20gb גלישה sim דאטה לטאבלט/לפטופ/מודם 20gb" data-price="11" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly20">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/hot-mobile.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-hot-mobile.html">הוט מובייל</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">94</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">20GB Data Only <span class="plan__net">4G</span></div>
@@ -296,7 +298,7 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_hotmobile_dataonly20" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 20GB Data Only"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-<article class="plan" data-cat="cellular" data-text="הוט מובייל 150gb data only 150gb גלישה sim דאטה 150gb" data-price="21.9" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly150">
+<article class="plan" data-cat="cellular" data-text="הוט מובייל 150gb data only 150gb גלישה sim דאטה 150gb" data-price="22" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly150">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/hot-mobile.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-hot-mobile.html">הוט מובייל</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">90</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">150GB Data Only <span class="plan__net">4G</span></div>
@@ -310,11 +312,11 @@
         </div>
         <button type="button" class="plan__more" data-plan-more="cel_hotmobile_dataonly150" aria-haspopup="dialog" aria-label="כל הפרטים על הוט מובייל 150GB Data Only"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg> כל הפרטים על המסלול<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></button>
       </article>
-<article class="plan plan--premium" data-cat="cellular" data-text="הוט מובייל 5g gen 2000gb 2026 5g 2000gb גלישה גלישה חופשית באפליקציות 300 דק׳ ל-27 יעדים 6,000 300 דק׳ ל-27 יעדים 300 דק׳ 2000gb" data-price="59.9" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_5ggen2000">
+<article class="plan plan--premium" data-cat="cellular" data-text="הוט מובייל 5g gen 2000gb 2026 5g 2000gb גלישה גלישה חופשית באפליקציות 300 דק׳ ל-27 יעדים 2000gb 300 דק׳ 6,000 300 דק׳ ל-27 יעדים" data-price="60" data-after="" data-haspromo="false" data-5g="true" data-nocommit="true" data-abroad="true" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_5ggen2000">
         
         <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/hot-mobile.webp" alt="" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-hot-mobile.html">הוט מובייל</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">82</span><span class="plan__score-lbl">ציון ערך</span></span></div>
         <div class="plan__name">5G Gen 2000GB 2026 <span class="plan__net">5G</span></div>
-        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">6,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">300 דק׳ ל-27 יעדים</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">300 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">2000GB</span></div></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">2000GB</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">300 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">6,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">300 דק׳ ל-27 יעדים</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪59.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
@@ -361,26 +363,26 @@
           <a class="chip" href="cellcom-vs-golan-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> סלקום מול גולן טלקום</a>
           <a class="chip" href="partner-vs-hot-mobile-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> פרטנר מול הוט מובייל</a>
           <a class="chip" href="xphone-vs-rami-levy-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול רמי לוי</a>
-          <a class="chip" href="019mobile-vs-xphone-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול Xphone</a>
-          <a class="chip" href="019mobile-vs-hot-mobile-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול הוט מובייל</a>
-          <a class="chip" href="019mobile-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול פרטנר</a>
-          <a class="chip" href="019mobile-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול סלקום</a>
-          <a class="chip" href="019mobile-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול WeCom</a>
-          <a class="chip" href="rami-levy-vs-golan-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול גולן טלקום</a>
-          <a class="chip" href="rami-levy-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול פרטנר</a>
-          <a class="chip" href="rami-levy-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול סלקום</a>
-          <a class="chip" href="rami-levy-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול WeCom</a>
-          <a class="chip" href="xphone-vs-hot-mobile-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול הוט מובייל</a>
+          <a class="chip" href="xphone-vs-019mobile-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול 019 מובייל</a>
           <a class="chip" href="xphone-vs-golan-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול גולן טלקום</a>
-          <a class="chip" href="xphone-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול פרטנר</a>
+          <a class="chip" href="xphone-vs-hot-mobile-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול הוט מובייל</a>
           <a class="chip" href="xphone-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול סלקום</a>
+          <a class="chip" href="xphone-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול פרטנר</a>
           <a class="chip" href="xphone-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> Xphone מול WeCom</a>
-          <a class="chip" href="hot-mobile-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> הוט מובייל מול סלקום</a>
-          <a class="chip" href="hot-mobile-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> הוט מובייל מול WeCom</a>
+          <a class="chip" href="rami-levy-vs-golan-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול גולן טלקום</a>
+          <a class="chip" href="rami-levy-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול סלקום</a>
+          <a class="chip" href="rami-levy-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול פרטנר</a>
+          <a class="chip" href="rami-levy-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> רמי לוי מול WeCom</a>
+          <a class="chip" href="019mobile-vs-hot-mobile-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול הוט מובייל</a>
+          <a class="chip" href="019mobile-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול סלקום</a>
+          <a class="chip" href="019mobile-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול פרטנר</a>
+          <a class="chip" href="019mobile-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> 019 מובייל מול WeCom</a>
           <a class="chip" href="golan-vs-partner-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> גולן טלקום מול פרטנר</a>
           <a class="chip" href="golan-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> גולן טלקום מול WeCom</a>
-          <a class="chip" href="partner-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> פרטנר מול WeCom</a>
+          <a class="chip" href="hot-mobile-vs-cellcom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> הוט מובייל מול סלקום</a>
+          <a class="chip" href="hot-mobile-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> הוט מובייל מול WeCom</a>
           <a class="chip" href="cellcom-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> סלקום מול WeCom</a>
+          <a class="chip" href="partner-vs-wecom-cellular.html"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg> פרטנר מול WeCom</a>
         </div>
       </div>
     </section>

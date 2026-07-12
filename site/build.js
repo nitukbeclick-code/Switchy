@@ -1144,6 +1144,18 @@ function mobileGuideLinks() {
     .join('\n');
 }
 
+// Small leading glyphs for the drawer's "כלים" rows only — tools are actions,
+// so they get a visual anchor; plain navigation rows stay text-only. Inline
+// (not sprite) because each appears exactly once per page.
+const MOBILE_TOOL_ICONS = {
+  ai: '<rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/>',
+  video: '<rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/>',
+  calc: '<rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7h7M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01M8.5 15h.01M12 15h.01M15.5 15h.01"/>',
+  app: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
+};
+const mobileToolIcon = (name) =>
+  `<svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${MOBILE_TOOL_ICONS[name]}</svg>`;
+
 // The guides mega-menu follows the WAI-ARIA APG disclosure-navigation pattern:
 // plain links in a panel behind an aria-expanded trigger. Deliberately NO
 // role="menu"/aria-haspopup — those promise menuitem semantics (arrow-key model,
@@ -1169,33 +1181,35 @@ ${megaMenuColumns()}
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>
-      <a class="nav__ico nav__ico--ai" href="index.html#switchy-ai" aria-label="SWITCHY AI — היועץ החכם">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>
-      </a>
-      <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>
-      </a>
-      <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
-      </button>
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
-        <span class="theme-toggle__sun" aria-hidden="true">${svgIcon('sun')}</span><span class="theme-toggle__moon" aria-hidden="true">${svgIcon('moon')}</span>
-      </button>
+      <div class="nav__tools">
+        <a class="nav__ai" href="index.html#switchy-ai" data-tip="היועץ החכם" aria-label="SWITCHY AI — היועץ החכם">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg><span aria-hidden="true">AI</span>
+        </a>
+        <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate data-tip="שפה / Language" aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
+        </button>
+        <button class="theme-toggle" id="themeToggle" type="button" data-tip="בהיר / כהה" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+          <span class="theme-toggle__sun" aria-hidden="true">${svgIcon('sun')}</span><span class="theme-toggle__moon" aria-hidden="true">${svgIcon('moon')}</span>
+        </button>
+      </div>
       <a class="btn btn--primary nav__cta" href="${ctaHref}">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
+      <a class="btn btn--primary" href="${ctaHref}">השוו עכשיו</a>
+      <p class="nav__mobile-label">ניווט</p>
       <a href="plans.html">כל החבילות</a>
-      <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="providers.html">ספקים</a>
       <a href="/community">קהילה</a>
-      <a href="book.html">תיאום פגישת וידאו</a>
-      <a href="index.html#switchy-ai">SWITCHY AI — היועץ החכם</a>
-      <a href="app.html">האפליקציה</a>
+      <p class="nav__mobile-label">כלים</p>
+      <a href="index.html#switchy-ai">${mobileToolIcon('ai')}SWITCHY AI — היועץ החכם</a>
+      <a href="book.html">${mobileToolIcon('video')}תיאום פגישת וידאו</a>
+      <a href="index.html#calculator">${mobileToolIcon('calc')}מחשבון חיסכון</a>
+      <a href="app.html">${mobileToolIcon('app')}האפליקציה</a>
+      <p class="nav__mobile-label">מדריכים פופולריים</p>
       <a href="guides.html">כל המדריכים</a>
 ${mobileGuideLinks()}
-      <a href="index.html#calculator">מחשבון</a>
-      <a class="btn btn--primary" href="${ctaHref}">השוו עכשיו</a>
     </div>
   </header>`;
 

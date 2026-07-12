@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="build:catalogue-source" content="live" />
+  <meta name="build:catalogue-source" content="bundled" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light dark" />
   <!-- Theme guard: set data-theme before first paint (saved choice or system) so dark mode never flashes. -->
@@ -57,7 +57,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.min.css?v=1b767203" />
+  <link rel="stylesheet" href="styles.min.css?v=286b327f" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -209,36 +209,38 @@
         <a href="app.html">האפליקציה</a>
         <a href="book.html">פגישת ייעוץ</a>
       </nav>
-      <a class="nav__ico nav__ico--ai" href="#switchy-ai" aria-label="SWITCHY AI — היועץ החכם">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>
+      <div class="nav__tools">
+      <a class="nav__ai" href="#switchy-ai" data-tip="היועץ החכם" aria-label="SWITCHY AI — היועץ החכם">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg><span aria-hidden="true">AI</span>
       </a>
-      <a class="nav__ico nav__ico--zoom" href="book.html" aria-label="תיאום פגישת וידאו בזום">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>
-      </a>
-      <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
+      <button type="button" class="nav__ico nav__ico--lang" id="langBtn" data-no-translate data-tip="שפה / Language" aria-haspopup="true" aria-expanded="false" aria-label="בחירת שפה / Language">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.7 3.9 5.9 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.9-3.9-9s1.3-6.3 3.9-9z"/></svg>
       </button>
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+      <button class="theme-toggle" id="themeToggle" type="button" data-tip="בהיר / כהה" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
         <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
       </button>
+      </div>
       <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
+      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
+      <p class="nav__mobile-label">ניווט</p>
       <a href="plans.html">כל החבילות</a>
-      <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="providers.html">ספקים</a>
       <a href="/community">קהילה</a>
-      <a href="book.html">תיאום פגישת וידאו</a>
-      <a href="#switchy-ai">SWITCHY AI — היועץ החכם</a>
-      <a href="app.html">האפליקציה</a>
+      <p class="nav__mobile-label">כלים</p>
+      <a href="#switchy-ai"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg>SWITCHY AI — היועץ החכם</a>
+      <a href="book.html"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6.5" width="13" height="11" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>תיאום פגישת וידאו</a>
+      <a href="index.html#calculator"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7h7M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01M8.5 15h.01M12 15h.01M15.5 15h.01"/></svg>מחשבון חיסכון</a>
+      <a href="app.html"><svg class="nav__mobile-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>האפליקציה</a>
+      <p class="nav__mobile-label">מדריכים פופולריים</p>
       <a href="guides.html">כל המדריכים</a>
       <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
       <a class="nav__mobile-sub" href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
       <a class="nav__mobile-sub" href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
       <a class="nav__mobile-sub" href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
-      <a href="index.html#calculator">מחשבון</a>
-      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>
 
@@ -332,7 +334,7 @@
 
     <!-- ── Deal of the day ticker (items stamped by build.js) ──────────── -->
     <div class="ticker" id="dealTicker" aria-label="העסקאות הזולות היום">
-      <div class="container ticker__inner"><!--DEALS:START--><a class="ticker__item is-on" href="deals.html"><b>סלולר</b> הכי זול היום: הוט מובייל · <b dir="ltr">₪10.9</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>אינטרנט</b> הכי זול היום: פרטנר · <b dir="ltr">₪39</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>טלוויזיה</b> הכי זול היום: STING TV · <b dir="ltr">₪49</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>חבילה משולבת</b> הכי זול היום: NextTV · <b dir="ltr">₪119</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><!--DEALS:END--></div>
+      <div class="container ticker__inner"><!--DEALS:START--><a class="ticker__item is-on" href="deals.html"><b>סלולר</b> הכי זול היום: הוט מובייל · <b dir="ltr">₪11</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>אינטרנט</b> הכי זול היום: פרטנר · <b dir="ltr">₪39</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>טלוויזיה</b> הכי זול היום: STING TV · <b dir="ltr">₪49</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>חבילה משולבת</b> הכי זול היום: NextTV · <b dir="ltr">₪119</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><!--DEALS:END--></div>
     </div>
 
     <!-- ── Providers strip ──────────────────────────────────────────────── -->
@@ -978,7 +980,7 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js — it rewrites this value in
        place on every run (node build.js), so no hand-editing is needed. -->
-  <script>window.__HERO_PLANS__={"cellular":[{"p":"הוט מובייל","n":"20GB Data Only","pr":10.9,"a":null,"net":"4G"},{"p":"019 מובייל","n":"SIM Data 2GB","pr":12,"a":null,"net":"4G"},{"p":"רמי לוי","n":"זול להיות בקשר כשר","pr":14.9,"a":null,"net":"4G"},{"p":"רמי לוי","n":"Max כשר","pr":16.9,"a":null,"net":"4G"},{"p":"019 מובייל","n":"לכל החיים 12GB","pr":19.8,"a":null,"net":"4G"},{"p":"הוט מובייל","n":"150GB Data Only","pr":21.9,"a":null,"net":"4G"},{"p":"019 מובייל","n":"בול בפוני 30GB","pr":21.9,"a":null,"net":"4G"},{"p":"Xphone","n":"מחוברים","pr":22.5,"a":null,"net":"4G"}],"internet":[{"p":"פרטנר","n":"Fiber 1000Mb","pr":39,"a":159,"net":"סיב אופטי"},{"p":"גילת","n":"1GB מבצע אונליין","pr":49,"a":95,"net":"סיב אופטי"},{"p":"בזק","n":"אינטרנט 100 מגה (נחושת)","pr":65,"a":158,"net":"כבלים"},{"p":"פרטנר","n":"Fiber 600Mb","pr":69,"a":100,"net":"סיב אופטי"},{"p":"גילת","n":"1GB שנה","pr":79,"a":null,"net":"סיב אופטי"},{"p":"CCC","n":"דאבל 40 מגה (נחושת)","pr":80,"a":null,"net":"כבלים"},{"p":"CCC","n":"דאבל 100 מגה (נחושת)","pr":85,"a":null,"net":"כבלים"},{"p":"גולן טלקום","n":"אינטרנט סיבים משתלם","pr":89,"a":null,"net":"סיב אופטי"}],"tv":[{"p":"STING TV","n":"HBO Max Standard","pr":49,"a":150,"net":"סטרימינג"},{"p":"STING TV","n":"דיסני+","pr":49,"a":150,"net":"סטרימינג"},{"p":"STING TV","n":"מבית yes","pr":49,"a":null,"net":"סטרימינג"},{"p":"yes","n":"Sting+ by yes","pr":49,"a":null,"net":"סטרימינג"},{"p":"סלקום","n":"סלקום TV + Netflix","pr":69,"a":null,"net":"סטרימינג"},{"p":"NextTV","n":"אפליקציית Next TV","pr":69.9,"a":null,"net":"סטרימינג"},{"p":"HOT","n":"רק טלוויזיה","pr":89,"a":null,"net":"כבלים"},{"p":"פרטנר","n":"Partner TV + ספורט","pr":95,"a":null,"net":"סטרימינג"}],"triple":[{"p":"NextTV","n":"אינטרנט סיבים + TV 1GB","pr":119,"a":null,"net":"סיב אופטי"},{"p":"גולן טלקום","n":"טריפל המושלם","pr":139,"a":null,"net":"סיב אופטי"},{"p":"STING TV","n":"Sting+Fiber HBO Max","pr":149,"a":259,"net":"סיב אופטי"},{"p":"yes","n":"Sting+Fiber by yes","pr":149,"a":234,"net":"סיב אופטי"},{"p":"סלקום","n":"טריפל 1GB מונדיאל (מקרן)","pr":159,"a":null,"net":"סיב אופטי"},{"p":"NextTV","n":"אינטרנט סיבים + TV 2GB","pr":164,"a":null,"net":"סיב אופטי"},{"p":"HOT","n":"טריפל מונדיאל עד 1000Mb","pr":169,"a":null,"net":"סיב אופטי"},{"p":"סלקום","n":"טריפל 2.5GB","pr":179,"a":199,"net":"סיב אופטי"}]};</script>
+  <script>window.__HERO_PLANS__={"cellular":[{"p":"הוט מובייל","n":"20GB Data Only","pr":11,"a":null,"net":"4G"},{"p":"019 מובייל","n":"SIM Data 2GB","pr":12,"a":null,"net":"4G"},{"p":"רמי לוי","n":"זול להיות בקשר כשר","pr":15,"a":null,"net":"4G"},{"p":"רמי לוי","n":"Max כשר","pr":17,"a":null,"net":"4G"},{"p":"019 מובייל","n":"לכל החיים 12GB","pr":20,"a":null,"net":"4G"},{"p":"הוט מובייל","n":"150GB Data Only","pr":22,"a":null,"net":"4G"},{"p":"019 מובייל","n":"בול בפוני 30GB","pr":22,"a":null,"net":"4G"},{"p":"Xphone","n":"מחוברים","pr":23,"a":null,"net":"4G"}],"internet":[{"p":"פרטנר","n":"Fiber 1000Mb","pr":39,"a":159,"net":"סיב אופטי"},{"p":"גילת","n":"1GB מבצע אונליין","pr":49,"a":95,"net":"סיב אופטי"},{"p":"בזק","n":"אינטרנט 100 מגה (נחושת)","pr":65,"a":158,"net":"כבלים"},{"p":"פרטנר","n":"Fiber 600Mb","pr":69,"a":100,"net":"סיב אופטי"},{"p":"גילת","n":"1GB שנה","pr":79,"a":null,"net":"סיב אופטי"},{"p":"CCC","n":"דאבל 40 מגה (נחושת)","pr":80,"a":null,"net":"כבלים"},{"p":"CCC","n":"דאבל 100 מגה (נחושת)","pr":85,"a":null,"net":"כבלים"},{"p":"גולן טלקום","n":"אינטרנט סיבים משתלם","pr":89,"a":null,"net":"סיב אופטי"}],"tv":[{"p":"STING TV","n":"HBO Max Standard","pr":49,"a":150,"net":"סטרימינג"},{"p":"STING TV","n":"דיסני+","pr":49,"a":150,"net":"סטרימינג"},{"p":"STING TV","n":"מבית yes","pr":49,"a":null,"net":"סטרימינג"},{"p":"yes","n":"Sting+ by yes","pr":49,"a":null,"net":"סטרימינג"},{"p":"סלקום","n":"סלקום TV + Netflix","pr":69,"a":null,"net":"סטרימינג"},{"p":"NextTV","n":"אפליקציית Next TV","pr":70,"a":null,"net":"סטרימינג"},{"p":"HOT","n":"רק טלוויזיה","pr":89,"a":null,"net":"כבלים"},{"p":"פרטנר","n":"Partner TV + ספורט","pr":95,"a":null,"net":"סטרימינג"}],"triple":[{"p":"NextTV","n":"אינטרנט סיבים + TV 1GB","pr":119,"a":null,"net":"סיב אופטי"},{"p":"גולן טלקום","n":"טריפל המושלם","pr":139,"a":null,"net":"סיב אופטי"},{"p":"STING TV","n":"Sting+Fiber HBO Max","pr":149,"a":259,"net":"סיב אופטי"},{"p":"yes","n":"Sting+Fiber by yes","pr":149,"a":234,"net":"סיב אופטי"},{"p":"סלקום","n":"טריפל 1GB מונדיאל (מקרן)","pr":159,"a":null,"net":"סיב אופטי"},{"p":"NextTV","n":"אינטרנט סיבים + TV 2GB","pr":164,"a":null,"net":"סיב אופטי"},{"p":"HOT","n":"טריפל מונדיאל עד 1000Mb","pr":169,"a":null,"net":"סיב אופטי"},{"p":"סלקום","n":"טריפל 2.5GB","pr":179,"a":199,"net":"סיב אופטי"}]};</script>
   <script src="translate-runtime.min.js?v=21218b48" defer></script>
   <script src="script.min.js?v=a992a75d" defer></script>
 </body>

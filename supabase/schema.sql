@@ -760,6 +760,14 @@ create table if not exists public.meetings (
   confirmed_at     timestamptz,
   reminded_rep_at  timestamptz,
   gcal_event_id    text,                     -- Google Calendar event id (server-managed; google-logging-2026-06 §2)
+  -- Booker-facing email stamps (server-managed; meetings-user-emails-2026-07 §1):
+  -- confirmation_emailed_at = the booker got the confirmed-meeting email (confirm
+  -- paths + the hourly safety-net sweep, claim-before-send); reminded_user_at =
+  -- the T-24h reminder email (sweep only).
+  confirmation_emailed_at timestamptz,
+  reminded_user_at        timestamptz,
+  -- OTP proof for a verified-email self-serve booking (meeting-email-otp-2026-06 §3)
+  email_verified_at       timestamptz,
   source_ip        text,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
@@ -768,6 +776,15 @@ create table if not exists public.meetings (
 -- Reruns on a pre-existing database (meetings_guard below nulls this column,
 -- so it must exist): mirrors google-logging-2026-06.sql §2.
 alter table public.meetings add column if not exists gcal_event_id text;
+
+-- DRIFT-HEALED 2026-07: mirror the owner-applied delta files so a fresh install
+-- matches production. Booker-email idempotency stamps (meetings-user-emails-
+-- 2026-07.sql §1) + the email-OTP verification proof (meeting-email-otp-2026-06
+-- .sql §3). Reruns on a pre-existing database are no-ops.
+alter table public.meetings
+  add column if not exists confirmation_emailed_at timestamptz,
+  add column if not exists reminded_user_at        timestamptz,
+  add column if not exists email_verified_at       timestamptz;
 
 drop trigger if exists meetings_set_updated_at on public.meetings;
 create trigger meetings_set_updated_at before update on public.meetings
@@ -786,6 +803,23 @@ drop policy if exists "meetings_insert_anyone" on public.meetings;
 drop policy if exists "meetings_select_own" on public.meetings;
 create policy "meetings_select_own" on public.meetings
   for select using (auth.uid() = user_id);
+
+-- DRIFT-HEALED 2026-07: mirrors meetings-user-emails-2026-07.sql §3 (applied
+-- live). Web/edge-fn bookings insert with user_id NULL, so meetings_select_own
+-- can never match them and the booking is invisible to the very user who made
+-- it. The row's email IS verified (the meeting-book OTP flow) and
+-- auth.jwt()->>'email' is the caller's own Supabase-verified identity, so
+-- matching the two is safe: a user only ever matches rows carrying THEIR OWN
+-- jwt email; anonymous sessions have no email claim (->> yields NULL, matches
+-- nothing); policies OR together, so meetings_select_own keeps working; the
+-- column-scoped GRANT below still bounds WHAT can be read.
+drop policy if exists "meetings_select_by_jwt_email" on public.meetings;
+create policy "meetings_select_by_jwt_email" on public.meetings
+  for select to authenticated
+  using (
+    email is not null
+    and email = (auth.jwt() ->> 'email')
+  );
 
 -- Column-scope the SELECT: the app only ever reads status + schedule + the
 -- join link back (see SupabaseBackend.fetchLatestMeeting / meetingStream).

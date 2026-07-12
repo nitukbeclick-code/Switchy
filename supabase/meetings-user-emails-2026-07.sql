@@ -6,6 +6,9 @@
 --
 -- ⚠️ APPLY MANUALLY — draft migration, review and apply by the owner:
 --   supabase db execute --file supabase/meetings-user-emails-2026-07.sql
+-- MIRRORED 2026-07 into supabase/schema.sql (meetings §1 columns + the
+-- meetings_select_by_jwt_email policy) so fresh installs match — doc-only,
+-- this file stays the canonical owner-applied delta.
 -- (Do NOT auto-apply. The code is deploy-safe before this runs: the hourly
 --  booker-email sweep in renewal-reminders (mode "follow-up") claims each
 --  stamp column with a guarded PATCH — pre-migration that PATCH names an

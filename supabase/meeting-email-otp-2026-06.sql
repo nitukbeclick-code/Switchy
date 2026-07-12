@@ -38,5 +38,7 @@ create index if not exists meeting_email_otps_email_created_idx
 alter table public.meeting_email_otps enable row level security;
 
 -- ── 3. meetings: record the verified-email proof on the booked row ───────────
+-- MIRRORED 2026-07 into supabase/schema.sql (meetings §1) so fresh installs
+-- match — doc-only; this file stays the canonical owner-applied delta.
 alter table public.meetings
   add column if not exists email_verified_at timestamptz;

@@ -483,17 +483,30 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
 
   // ── Integration health strip (BOT-3 adds an integrations object to data) ──
   // Render only when the object is present; hide gracefully when it's absent so
-  // an older backend never shows an empty/misleading strip.
-  function renderHealth(intg){
+  // an older backend never shows an empty/misleading strip. "pipe" (optional)
+  // carries the 24h lead-pipeline failure counters — a warn pill is shown ONLY
+  // for a real positive count (truth-only: null/0/absent render nothing).
+  function renderHealth(intg, pipe){
     var box=document.getElementById("health");
-    if(!intg || typeof intg!=="object"){ box.hidden=true; box.innerHTML=""; return; }
-    var rows=[["zoom","Zoom"],["calendar","יומן Google"],["email","אימייל"]];
     var html="";
-    for(var i=0;i<rows.length;i++){
-      var key=rows[i][0]; if(!(key in intg)) continue;
-      var ok=!!intg[key];
-      html+='<span class="hpill '+(ok?"hpill--ok":"hpill--off")+'"><span class="dot"></span>'+
-        rows[i][1]+" "+(ok?"✓":"✕")+"</span>";
+    if(intg && typeof intg==="object"){
+      var rows=[["zoom","Zoom"],["calendar","יומן Google"],["email","אימייל"]];
+      for(var i=0;i<rows.length;i++){
+        var key=rows[i][0]; if(!(key in intg)) continue;
+        var ok=!!intg[key];
+        html+='<span class="hpill '+(ok?"hpill--ok":"hpill--off")+'"><span class="dot"></span>'+
+          rows[i][1]+" "+(ok?"✓":"✕")+"</span>";
+      }
+    }
+    if(pipe && typeof pipe==="object"){
+      var warns=[["handoff_lead_insert_failed","לידים שלא נקלטו"],["voice_transcription_failed","תמלולים שנכשלו"]];
+      for(var w=0;w<warns.length;w++){
+        var n=pipe[warns[w][0]];
+        if(typeof n==="number" && n>0){
+          html+='<span class="hpill hpill--off"><span class="dot"></span>⚠️ '+
+            warns[w][1]+" (24ש׳): "+n+"</span>";
+        }
+      }
     }
     box.innerHTML=html; box.hidden=!html;
   }
@@ -524,7 +537,7 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
       board=d; lastSync=Date.now();
       if(d.rep&&d.rep.name) document.getElementById("rep").textContent="שלום "+d.rep.name;
       if(MOCK) document.getElementById("banner").innerHTML='<div class="banner">תצוגה מקדימה — נתוני דוגמה (ללא טלגרם)</div>';
-      renderHealth(d.integrations);
+      renderHealth(d.integrations, d.pipeline);
       renderUpdated();
       render();
     }).catch(function(){

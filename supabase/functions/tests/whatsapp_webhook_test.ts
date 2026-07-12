@@ -36,7 +36,7 @@ Deno.env.set("WHATSAPP_VERIFY_TOKEN", "verify-tok");
 Deno.env.delete("WHATSAPP_TOKEN");
 
 import { __resetRateLimitForTests } from "../_shared/ratelimit.ts";
-import { captureServeHandler } from "./_capture_handler.ts";
+import { captureServeHandler, jsonResponse, withFetchStub } from "./_capture_handler.ts";
 
 // Capture the Deno.serve handler WITHOUT binding a port (Deno.serve is stubbed
 // during the dynamic import). We then pull the module's named pure helpers from
@@ -56,6 +56,9 @@ const {
   parseContentRangeCount,
   shouldSendRateNotice,
   __resetRateNoticeForTests,
+  extractWebhookEvents,
+  parseStatusReceipt,
+  receiptStatusFilter,
 } = await import(
   "../whatsapp-webhook/index.ts"
 );
@@ -690,4 +693,260 @@ Deno.test("VOICE: an over-long transcript is fed onward capped at 2000 chars", (
   assert(transcript.startsWith(routed), "the cap keeps the START of the spoken message");
   // A normal-length transcript passes through verbatim (the common case).
   assertEquals(capInbound("כמה עולה מסלול סלולר?"), "כמה עולה מסלול סלולר?");
+});
+
+// ── META BATCH: every entry/change is processed (not entry[0].changes[0]) ─────
+// Meta batches deliveries: ONE POST can carry multiple entry items, each with
+// multiple changes. The old handler read entry[0].changes[0] only and silently
+// dropped the rest — an invisible customer message. extractWebhookEvents
+// flattens the WHOLE batch (with per-change profile names, since a batch can
+// span senders) and collects every value.statuses receipt.
+
+Deno.test("BATCH: a two-entry payload yields EVERY message with its own change's profile name", () => {
+  const body = {
+    entry: [
+      {
+        changes: [
+          {
+            value: {
+              contacts: [{ profile: { name: "דנה" } }],
+              messages: [{ id: "wamid.A", from: "111", type: "text" }],
+            },
+          },
+          // A second CHANGE in the same entry — receipts only.
+          { value: { statuses: [{ id: "wamid.OUT1", status: "delivered" }] } },
+        ],
+      },
+      {
+        changes: [
+          {
+            value: {
+              contacts: [{ profile: { name: "יוסי" } }],
+              messages: [
+                { id: "wamid.B", from: "222", type: "text" },
+                { id: "wamid.C", from: "222", type: "text" },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  };
+  const batch = extractWebhookEvents(body);
+  assertEquals(batch.messages.map((m) => String(m.message.id)), ["wamid.A", "wamid.B", "wamid.C"]);
+  // Each message carries ITS OWN change's contact profile name.
+  assertEquals(batch.messages[0].profileName, "דנה");
+  assertEquals(batch.messages[1].profileName, "יוסי");
+  assertEquals(batch.messages[2].profileName, "יוסי");
+  // The receipt from the second change was collected too.
+  assertEquals(batch.statuses.length, 1);
+  assertEquals(String(batch.statuses[0].id), "wamid.OUT1");
+});
+
+Deno.test("BATCH: the same wamid repeated across entries is deduped in-batch (safety net)", () => {
+  const dup = { id: "wamid.DUP", from: "111", type: "text" };
+  const batch = extractWebhookEvents({
+    entry: [
+      { changes: [{ value: { messages: [dup] } }] },
+      { changes: [{ value: { messages: [dup, { id: "wamid.NEW", from: "111" }] } }] },
+    ],
+  });
+  assertEquals(batch.messages.map((m) => String(m.message.id)), ["wamid.DUP", "wamid.NEW"]);
+  // A message WITHOUT a wamid is never deduped away (it can't collide).
+  const noId = extractWebhookEvents({
+    entry: [{ changes: [{ value: { messages: [{ from: "1" }, { from: "2" }] } }] }],
+  });
+  assertEquals(noId.messages.length, 2);
+});
+
+Deno.test("BATCH: extractWebhookEvents is total on malformed payloads", () => {
+  assertEquals(extractWebhookEvents(null), { messages: [], statuses: [] });
+  assertEquals(extractWebhookEvents({}), { messages: [], statuses: [] });
+  assertEquals(extractWebhookEvents({ entry: "junk" }), { messages: [], statuses: [] });
+  assertEquals(extractWebhookEvents({ entry: [{}] }), { messages: [], statuses: [] });
+  assertEquals(extractWebhookEvents({ entry: [{ changes: [{}, { value: null }, { value: 4 }] }] }), {
+    messages: [],
+    statuses: [],
+  });
+  assertEquals(
+    extractWebhookEvents({ entry: [{ changes: [{ value: { messages: "x", statuses: 7 } }] }] }),
+    { messages: [], statuses: [] },
+  );
+});
+
+// ── RECEIPTS: value.statuses → whatsapp_messages.status by wamid ──────────────
+
+Deno.test("RECEIPTS: parseStatusReceipt accepts ONLY the closed sent/delivered/read/failed set", () => {
+  assertEquals(parseStatusReceipt({ id: "wamid.1", status: "delivered" }), { wamid: "wamid.1", status: "delivered" });
+  assertEquals(parseStatusReceipt({ id: "wamid.1", status: "READ" }), { wamid: "wamid.1", status: "read" });
+  assertEquals(parseStatusReceipt({ id: "wamid.1", status: "failed" }), { wamid: "wamid.1", status: "failed" });
+  assertEquals(parseStatusReceipt({ id: "wamid.1", status: "warned" }), null); // unknown → ignored
+  assertEquals(parseStatusReceipt({ id: "", status: "read" }), null); // no wamid
+  assertEquals(parseStatusReceipt({}), null);
+});
+
+Deno.test("RECEIPTS: receiptStatusFilter keeps out-of-order receipts monotonic", () => {
+  // A stale 'sent'/'delivered' must never downgrade 'read' (or overwrite 'failed').
+  assertEquals(receiptStatusFilter("sent"), "&status=not.in.(delivered,read,failed)");
+  assertEquals(receiptStatusFilter("delivered"), "&status=not.in.(read,failed)");
+  assertEquals(receiptStatusFilter("read"), "&status=not.in.(failed)");
+  // 'failed' is Graph's definitive verdict — no filter, it may overwrite anything.
+  assertEquals(receiptStatusFilter("failed"), "");
+});
+
+// Set env for the duration of `fn`, restoring the previous values afterwards —
+// sibling test files leak SUPABASE_* at module load, so both set AND restore.
+async function withEnvVars(env: Record<string, string>, fn: () => Promise<void>): Promise<void> {
+  const saved = new Map<string, string | undefined>();
+  for (const [k, v] of Object.entries(env)) {
+    saved.set(k, Deno.env.get(k));
+    Deno.env.set(k, v);
+  }
+  try {
+    await fn();
+  } finally {
+    for (const [k, v] of saved) {
+      if (v === undefined) Deno.env.delete(k);
+      else Deno.env.set(k, v);
+    }
+  }
+}
+
+Deno.test("RECEIPTS: statuses across TWO entries land as wamid-scoped PATCHes (fail-soft per receipt)", async () => {
+  const patches: Array<{ url: string; body: Record<string, unknown> }> = [];
+  await withEnvVars(
+    { SUPABASE_URL: "https://wa-batch.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc-stub" },
+    async () => {
+      await withFetchStub([
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "PATCH",
+          respond: (u, init) => {
+            patches.push({ url: u, body: JSON.parse(String(init?.body ?? "{}")) });
+            // FAIL-SOFT PER RECEIPT: the first PATCH 500s; later ones still run.
+            return patches.length === 1 ? new Response("boom", { status: 500 }) : jsonResponse([]);
+          },
+        },
+        // Any other PostgREST call from this host → benign empty.
+        { match: (u) => u.includes("wa-batch.supabase.co"), respond: () => jsonResponse([]) },
+      ], async () => {
+        const raw = JSON.stringify({
+          entry: [
+            { changes: [{ value: { statuses: [{ id: "wamid.R1", status: "delivered" }] } }] },
+            {
+              changes: [{
+                value: {
+                  statuses: [
+                    { id: "wamid.R2", status: "read" },
+                    { id: "wamid.R3", status: "bogus" }, // unknown status → never written
+                  ],
+                },
+              }],
+            },
+          ],
+        });
+        const sig = await signBody(raw);
+        const r = await Promise.resolve(waHandler(
+          new Request("https://edge/wa", {
+            method: "POST",
+            headers: { "x-hub-signature-256": sig },
+            body: raw,
+          }),
+        ));
+        // Meta always gets the 200 {ok:true} contract, even with a failed receipt.
+        assertEquals(r.status, 200);
+        assertEquals(await r.json(), { ok: true });
+      });
+    },
+  );
+  assertEquals(patches.length, 2, "both entries' valid receipts were written; the bogus one skipped");
+  // wamid-scoped URL + the monotonic guard + the bare {status} body.
+  assert(patches[0].url.includes("wa_message_id=eq.wamid.R1"));
+  assert(patches[0].url.includes("status=not.in.(read,failed)"), "delivered never downgrades read");
+  assertEquals(patches[0].body, { status: "delivered" });
+  assert(patches[1].url.includes("wa_message_id=eq.wamid.R2"));
+  assertEquals(patches[1].body, { status: "read" });
+});
+
+Deno.test("BATCH: messages in BOTH entries are handled end-to-end (two inbound rows stored)", async () => {
+  __resetRateLimitForTests();
+  const inbound: Array<Record<string, unknown>> = [];
+  await withEnvVars(
+    { SUPABASE_URL: "https://wa-batch2.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc-stub" },
+    async () => {
+      await withFetchStub([
+        // Contact upsert → echo a row keyed by the phone.
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/whatsapp_contacts") && (init?.method ?? "GET") === "POST",
+          respond: (_u, init) => {
+            const b = JSON.parse(String(init?.body ?? "{}"));
+            return jsonResponse([{ id: `c-${b.wa_phone}`, wa_phone: b.wa_phone }], 201);
+          },
+        },
+        // Open-conversation lookup → one live conversation.
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/whatsapp_conversations") && (init?.method ?? "GET") === "GET",
+          respond: () => jsonResponse([{ id: "conv-batch", status: "open", bot_enabled: true, ai_state: {} }]),
+        },
+        // Message inserts — capture the INBOUND rows (the assertion target).
+        {
+          match: (u, init) =>
+            u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "POST",
+          respond: (_u, init) => {
+            const b = JSON.parse(String(init?.body ?? "{}"));
+            if (b.direction === "in") inbound.push(b);
+            return jsonResponse([{ id: `m-${String(b.wa_message_id ?? "out")}` }], 201);
+          },
+        },
+        // Graph API (markRead / the opt-out confirmation send) → ok.
+        {
+          match: (u) => u.includes("graph.facebook.com"),
+          respond: () => jsonResponse({ messages: [{ id: "wamid.CONF" }] }),
+        },
+        // Everything else on this PostgREST host (patches, suppression, audit,
+        // crm_events, the config RPC) → benign empty.
+        { match: (u) => u.includes("wa-batch2.supabase.co"), respond: () => jsonResponse([]) },
+      ], async () => {
+        // Both messages are STOP texts — the deterministic §30A path (no AI),
+        // which still exercises the full store-inbound pipeline per message.
+        const raw = JSON.stringify({
+          entry: [
+            {
+              changes: [{
+                value: {
+                  contacts: [{ profile: { name: "דנה" } }],
+                  messages: [{ from: "972500000111", id: "wamid.E1", type: "text", text: { body: "הסר" } }],
+                },
+              }],
+            },
+            {
+              changes: [{
+                value: {
+                  contacts: [{ profile: { name: "יוסי" } }],
+                  messages: [{ from: "972500000222", id: "wamid.E2", type: "text", text: { body: "הסר" } }],
+                },
+              }],
+            },
+          ],
+        });
+        const sig = await signBody(raw);
+        const r = await Promise.resolve(waHandler(
+          new Request("https://edge/wa", {
+            method: "POST",
+            headers: { "x-hub-signature-256": sig },
+            body: raw,
+          }),
+        ));
+        assertEquals(r.status, 200);
+        assertEquals(await r.json(), { ok: true });
+      });
+    },
+  );
+  // The message in entry[1] — dropped entirely by the old entry[0].changes[0]
+  // reader — was stored exactly like the first one.
+  assertEquals(inbound.length, 2, "BOTH entries' messages reached the pipeline");
+  assertEquals(inbound.map((b) => b.wa_message_id).sort(), ["wamid.E1", "wamid.E2"]);
+  __resetRateLimitForTests();
 });

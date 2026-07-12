@@ -379,6 +379,17 @@ async function handleRepReply(message: TelegramMessage): Promise<boolean> {
     wa_message_id: wamid,
     status: wamid ? "sent" : "failed",
   });
+  // crm_events PARITY with the CRM-app path: a rep reply relayed from Telegram
+  // must appear on the console's activity feed exactly like one sent from the
+  // console (crm-api actSendReply writes the same 'rep_reply' row). Preview is
+  // whitespace-collapsed + clipped to 80 chars, never bytes. Best-effort.
+  await insertRow("crm_events", {
+    conversation_id: conversation.id,
+    contact_id: contact.id,
+    actor: "rep",
+    event: "rep_reply",
+    preview: text.trim().replace(/\s+/g, " ").slice(0, 80) || null,
+  });
   await serviceFetch(`/rest/v1/whatsapp_conversations?id=eq.${conversation.id}`, {
     method: "PATCH",
     body: JSON.stringify({ last_message_at: now }),

@@ -153,6 +153,7 @@ Deno.test("isRelayActive requires BOTH bot_enabled=false AND a non-empty relay t
 Deno.test("take-over flips bot_enabled=false + relay_tg_chat_id to the team group chat (not the rep's personal id, which a bot cannot DM)", async () => {
   const REP_CHAT = 987654;
   const convoPatch: Capture[] = [];
+  const crmEvents: Capture[] = [];
   const routes: Route[] = [
     { match: isRest("leads?id=eq."), respond: () => jsonRes([{ id: LEAD_ID, phone: "0501234567", name: "דנה" }]) },
     { match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET", respond: () => jsonRes([{ id: CONTACT_ID }]) },
@@ -164,6 +165,7 @@ Deno.test("take-over flips bot_enabled=false + relay_tg_chat_id to the team grou
       match: (c) => isRest("whatsapp_conversations")(c) && c.method === "PATCH",
       respond: (c) => { convoPatch.push(c); return jsonRes([{ id: CONV_ID }]); },
     },
+    { match: (c) => isRest("crm_events")(c) && c.method === "POST", respond: (c) => { crmEvents.push(c); return jsonRes({}, 201); } },
     { match: isTg, respond: tgOk },
   ];
   const s = installRoutes(routes);
@@ -181,6 +183,13 @@ Deno.test("take-over flips bot_enabled=false + relay_tg_chat_id to the team grou
     // Relay target is the TEAM GROUP (cfg.tgChat="-1001"), NOT the rep's personal
     // id (REP_CHAT) — a bot cannot message a user who never opened a chat with it.
     assertEquals(convoPatch[0].body.relay_tg_chat_id, "-1001");
+    // crm_events PARITY: the console's activity feed sees a Telegram takeover
+    // exactly like a CRM-app one (crm-api's vocabulary: actor 'rep', 'takeover').
+    assertEquals(crmEvents.length, 1);
+    assertEquals(crmEvents[0].body.event, "takeover");
+    assertEquals(crmEvents[0].body.actor, "rep");
+    assertEquals(crmEvents[0].body.conversation_id, CONV_ID);
+    assertEquals(crmEvents[0].body.contact_id, CONTACT_ID);
   } finally {
     s.restore();
   }
@@ -220,8 +229,10 @@ Deno.test("a rep reply to a RELAY-ACTIVE card sends to the customer + stores out
   const graphSends: Capture[] = [];
   const msgInserts: Capture[] = [];
   const auditInserts: Capture[] = [];
+  const crmEvents: Capture[] = [];
   const convoPatch: Capture[] = [];
   const routes: Route[] = [
+    { match: (c) => isRest("crm_events")(c) && c.method === "POST", respond: (c) => { crmEvents.push(c); return jsonRes({}, 201); } },
     { match: (c) => isRest("leads?id=eq.")(c), respond: () => jsonRes([{ status: "new", phone: "0501234567" }]) },
     {
       match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("wa_phone=ilike"),
@@ -267,6 +278,13 @@ Deno.test("a rep reply to a RELAY-ACTIVE card sends to the customer + stores out
     // audited (Reg.13)
     assertEquals(auditInserts.length, 1);
     assertEquals(auditInserts[0].body.event, "wa_relay_reply");
+    // crm_events PARITY: the relayed reply shows on the console feed exactly
+    // like a console-sent one (crm-api actSendReply's 'rep_reply', ≤80 preview).
+    assertEquals(crmEvents.length, 1);
+    assertEquals(crmEvents[0].body.event, "rep_reply");
+    assertEquals(crmEvents[0].body.actor, "rep");
+    assertEquals(crmEvents[0].body.conversation_id, CONV_ID);
+    assertEquals(crmEvents[0].body.preview, "היי, אשמח לעזור — מתי נוח לדבר?");
     // keeps bot_enabled=false (human stays in the loop); relay target NOT cleared
     assertEquals(convoPatch.length, 1);
     assertEquals(convoPatch[0].body.bot_enabled, false);
@@ -672,6 +690,7 @@ Deno.test("a won-ask reply with a single number still records the saving (preser
 Deno.test("hand-back flips bot_enabled=true + clears relay_tg_chat_id", async () => {
   const convoPatch: Capture[] = [];
   const auditInserts: Capture[] = [];
+  const crmEvents: Capture[] = [];
   const routes: Route[] = [
     { match: (c) => isRest("leads?id=eq.")(c), respond: () => jsonRes([{ id: LEAD_ID, phone: "0501234567", name: "דנה" }]) },
     { match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET", respond: () => jsonRes([{ id: CONTACT_ID }]) },
@@ -681,6 +700,7 @@ Deno.test("hand-back flips bot_enabled=true + clears relay_tg_chat_id", async ()
     },
     { match: (c) => isRest("whatsapp_conversations")(c) && c.method === "PATCH", respond: (c) => { convoPatch.push(c); return jsonRes([{ id: CONV_ID }]); } },
     { match: (c) => isRest("security_audit_log")(c) && c.method === "POST", respond: (c) => { auditInserts.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("crm_events")(c) && c.method === "POST", respond: (c) => { crmEvents.push(c); return jsonRes({}, 201); } },
     { match: isTg, respond: tgOk },
   ];
   const s = installRoutes(routes);
@@ -698,6 +718,12 @@ Deno.test("hand-back flips bot_enabled=true + clears relay_tg_chat_id", async ()
     assertEquals(convoPatch[0].body.relay_tg_chat_id, null);
     assertEquals(auditInserts.length, 1);
     assertEquals(auditInserts[0].body.event, "wa_relay_handback");
+    // crm_events PARITY: the console feed sees the Telegram hand-back exactly
+    // like a CRM-app one (crm-api actHandBack's actor 'rep' / event 'handback').
+    assertEquals(crmEvents.length, 1);
+    assertEquals(crmEvents[0].body.event, "handback");
+    assertEquals(crmEvents[0].body.actor, "rep");
+    assertEquals(crmEvents[0].body.conversation_id, CONV_ID);
   } finally {
     s.restore();
   }

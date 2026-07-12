@@ -17,6 +17,14 @@
 //     never hard-fails (it has its own template+hard fallback), and a session
 //     load/save failure just degrades to stateless.
 //
+// OPTIMISTIC CONCURRENCY (cross-isolate): the loaded ChatSession carries a
+// `version` token (_shared/session.ts — whatsapp: ai_state.rev inside the jsonb)
+// and saveSession issues a CONDITIONAL PATCH on it. Two isolates racing on the
+// same conversation therefore can't clobber each other's memory: the second
+// save matches zero rows and is SILENTLY DROPPED (saveSession returns false;
+// we deliberately do NOT retry — replaying a stale session over the winner's
+// fresh one would recreate the lost-update). The reply is never affected.
+//
 // WHAT THIS DOES NOT OWN (stays in index.ts, ABOVE the agent — the guard chain):
 //   HMAC signature verify · wamid dedup · §30A STOP/opt-out · §11 first-contact
 //   notice · bot_enabled human-takeover (silent) · per-contact hourly rate-limit.
@@ -160,7 +168,9 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
   }
 
   // 3) Persist memory: append this turn + the tools that ran, merge any slots.
-  //    Best-effort — a save failure never affects the reply.
+  //    Best-effort — a save failure never affects the reply. A save that LOSES
+  //    a cross-isolate race (session.version no longer matches) is dropped
+  //    silently by saveSession — see the optimistic-concurrency note above.
   try {
     appendTurn(session, "user", input.message);
     if (result.reply) appendTurn(session, "bot", result.reply);

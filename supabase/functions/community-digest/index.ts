@@ -33,11 +33,15 @@ import {
   buildDigestEmail,
   digestSubject,
   eligibleRecipients,
+  fetchAllPaged,
+  fetchUnreadChunked,
   groupUnread,
-  MAX_RECIPIENTS,
+  MAX_RECIPIENT_PAGES,
   type NotifRow,
+  RECIPIENT_PAGE,
   type RecipientRow,
   signUnsub,
+  UNREAD_CHUNK,
   verifyUnsub,
   WINDOW_DAYS,
 } from "./lib.ts";
@@ -148,15 +152,35 @@ async function handleCron(req: Request): Promise<Response> {
   // outside it, but a manual/off-hours trigger must still respect it).
   if (!dryRun && inQuietHours(israelHour())) return json({ ok: true, sent: 0, note: "quiet-hours" });
 
-  const recipients = await fetchRows<RecipientRow>(
-    `/rest/v1/profiles?community_digest_opt_in=eq.true&select=id,name,email,community_notify_opt_out` +
-      `&order=id.asc&limit=${MAX_RECIPIENTS}`,
+  // Recipients via an id-cursor pager (RECIPIENT_PAGE per request) — the old
+  // single limit=2000 read silently dropped every opted-in member past the cap
+  // (a full under-send). A failed FIRST page keeps the old honest note; a failed
+  // LATER page degrades to the members already fetched (partial > nothing).
+  const paged = await fetchAllPaged<RecipientRow>(
+    (cursorId) =>
+      fetchRows<RecipientRow>(
+        `/rest/v1/profiles?community_digest_opt_in=eq.true&select=id,name,email,community_notify_opt_out` +
+          `&order=id.asc&limit=${RECIPIENT_PAGE}` + (cursorId ? `&id=gt.${enc(cursorId)}` : ""),
+      ),
+    RECIPIENT_PAGE,
+    MAX_RECIPIENT_PAGES,
   );
-  if (recipients === null) return json({ ok: true, sent: 0, note: "recipients-read-failed" });
-  // Surface truncation rather than silently under-sending past the cap.
-  if (recipients.length >= MAX_RECIPIENTS) {
-    jlog({ at: "community-digest", ok: true, warn: "recipient-cap-hit", cap: MAX_RECIPIENTS });
+  if (paged.failed && paged.rows.length === 0) {
+    return json({ ok: true, sent: 0, note: "recipients-read-failed" });
   }
+  if (paged.failed) {
+    jlog({ at: "community-digest", ok: false, warn: "recipient-page-failed", got: paged.rows.length });
+  }
+  // Surface the misfire bound rather than silently under-sending past it.
+  if (paged.truncated) {
+    jlog({
+      at: "community-digest",
+      ok: true,
+      warn: "recipient-cap-hit",
+      cap: RECIPIENT_PAGE * MAX_RECIPIENT_PAGES,
+    });
+  }
+  const recipients = paged.rows;
 
   // Belt-and-suspenders consent (see eligibleRecipients): explicit digest opt-in
   // (DB filter) AND a real address AND not globally opted out.
@@ -170,12 +194,25 @@ async function handleCron(req: Request): Promise<Response> {
   const UUID_RE = /^[0-9a-fA-F-]{36}$/;
   const ids = eligible.map((r) => r.id).filter((id) => UUID_RE.test(id));
   // Only ENGAGEMENT kinds — a moderation 'flag' notice doesn't belong in an upbeat
-  // re-engagement digest (it's still visible in the in-app bell).
-  const unread = await fetchRows<NotifRow>(
-    `/rest/v1/community_notifications?read_at=is.null&created_at=gte.${enc(cutoffIso)}` +
-      `&kind=in.(reply,mention,reaction,like,pinned)&user_id=in.(${ids.join(",")})&select=user_id,kind&limit=10000`,
+  // re-engagement digest (it's still visible in the in-app bell). CHUNKED at
+  // UNREAD_CHUNK uuids per request: the old single in.(…2000 uuids…) query built
+  // a ~74KB URL that could be rejected outright — and a rejected read meant the
+  // ENTIRE run silently sent nothing. Fail-soft per chunk (a failed chunk's
+  // members are skipped this week, the rest still get their digest).
+  const { rows: unreadRows, failedChunks } = await fetchUnreadChunked(
+    ids,
+    (chunk) =>
+      fetchRows<NotifRow>(
+        `/rest/v1/community_notifications?read_at=is.null&created_at=gte.${enc(cutoffIso)}` +
+          `&kind=in.(reply,mention,reaction,like,pinned)&user_id=in.(${chunk.join(",")})` +
+          `&select=user_id,kind&limit=10000`,
+      ),
+    UNREAD_CHUNK,
   );
-  const grouped = groupUnread(unread);
+  if (failedChunks > 0) {
+    jlog({ at: "community-digest", ok: false, warn: "unread-chunks-failed", failedChunks });
+  }
+  const grouped = groupUnread(unreadRows);
   const weeklyNewPosts = await countNewPosts(cutoffIso);
   const communityUrl = `${appBase()}/community`;
 

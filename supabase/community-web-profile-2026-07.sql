@@ -28,8 +28,14 @@ grant update (
 
 -- Expose member-since + bio on the public profile (no PII — created_at is the
 -- account age, bio is self-written public text).
-create or replace view public.public_profiles as
-  select id, name, avatar_url, is_verified_customer, is_admin, verified_customer_at,
+-- HARDENED 2026-07 — is_admin removed (leaking it enables admin-account enumeration);
+-- keep it out of EVERY public_profiles definition. drop + recreate, not CREATE OR
+-- REPLACE — the latter cannot drop the legacy is_admin column on a re-apply over the
+-- current view. This column set matches the canonical final definition in
+-- security-views-hardening-2026-07.sql.
+drop view if exists public.public_profiles;
+create view public.public_profiles as
+  select id, name, avatar_url, is_verified_customer, verified_customer_at,
          created_at, bio
   from public.profiles;
 grant select on public.public_profiles to anon, authenticated;

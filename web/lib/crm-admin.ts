@@ -271,11 +271,14 @@ export function fetchCrmSla(): Promise<CrmFetch<{ sla: CrmSla }>> {
 export type LeadSort = "recent" | "oldest";
 
 /** The lead pipeline (≤200), optionally filtered to one status, a name/phone
- *  search, and a created-at sort direction. */
+ *  search, and a created-at sort direction. `hasMore` is the server's
+ *  authoritative "the table continues past this window" flag (computed on the
+ *  raw window, before the search filter) — use it, not `leads.length >= 200`,
+ *  to decide whether an export is partial. */
 export function fetchCrmLeads(
   opts?: { status?: LeadStatus; search?: string; sort?: LeadSort },
-): Promise<CrmFetch<{ leads: CrmLead[] }>> {
-  return crmRead<{ leads: CrmLead[] }>(
+): Promise<CrmFetch<{ leads: CrmLead[]; hasMore: boolean }>> {
+  return crmRead<{ leads: CrmLead[]; hasMore: boolean }>(
     "listLeads",
     {
       ...(opts?.status ? { status: opts.status } : {}),
@@ -474,12 +477,21 @@ export interface CrmMeetingEvent {
   createdAt: string | null;
 }
 
-/** Upcoming-first meeting list, optionally filtered to one status. */
-export function fetchCrmMeetings(opts?: { status?: MeetingStatus }): Promise<{ meetings: CrmMeeting[] } | null> {
-  return crmRead<{ meetings: CrmMeeting[] }>(
+/** Upcoming-first meeting list (server order: starts_at.desc.nullslast — the
+ *  furthest-future bookings first), optionally filtered to one status. The
+ *  server caps `limit` at 200 (LIST_LIMIT) and has no date filter / ascending
+ *  option, so `limit`+`offset` are the only levers for paging the window;
+ *  `hasMore` reports whether the table continues past this page (used to page
+ *  toward "today" in the dashboard strip, and to label a partial CSV export). */
+export function fetchCrmMeetings(
+  opts?: { status?: MeetingStatus; limit?: number; offset?: number },
+): Promise<{ meetings: CrmMeeting[]; hasMore: boolean } | null> {
+  return crmRead<{ meetings: CrmMeeting[]; hasMore: boolean }>(
     "listMeetings",
     {
       ...(opts?.status ? { status: opts.status } : {}),
+      ...(opts?.limit != null ? { limit: opts.limit } : {}),
+      ...(opts?.offset != null ? { offset: opts.offset } : {}),
     },
     (j) => hasArray(j, "meetings"),
   ).then((r) => r.data);
@@ -525,11 +537,14 @@ export interface CrmContact {
   lastMessageAt: string | null;
 }
 
-/** The WhatsApp-contact lifecycle list, optionally filtered by status + search. */
+/** The WhatsApp-contact lifecycle list, optionally filtered by status + search.
+ *  `hasMore` is the server's authoritative "the table continues past this
+ *  window" flag (pre-search) — use it, not `contacts.length >= 200`, to decide
+ *  whether an export is partial. */
 export function fetchCrmContacts(
   opts?: { status?: ContactStatus; search?: string },
-): Promise<{ contacts: CrmContact[] } | null> {
-  return crmRead<{ contacts: CrmContact[] }>(
+): Promise<{ contacts: CrmContact[]; hasMore: boolean } | null> {
+  return crmRead<{ contacts: CrmContact[]; hasMore: boolean }>(
     "listContacts",
     {
       ...(opts?.status ? { status: opts.status } : {}),

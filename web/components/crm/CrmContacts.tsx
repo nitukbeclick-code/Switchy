@@ -73,6 +73,9 @@ export default function CrmContacts() {
   const [searchInput, setSearchInput] = useState(() => params.get("contact_q") ?? "");
   const [search, setSearch] = useState(() => (params.get("contact_q") ?? "").trim());
   const [contacts, setContacts] = useState<CrmContact[] | null>(null);
+  // The server's authoritative "there are more rows past this window" flag —
+  // drives the honest "-partial" CSV suffix (NOT `contacts.length >= 200`).
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -108,8 +111,10 @@ export default function CrmContacts() {
       search: search || undefined,
     }).then((res) => {
       if (seq !== loadSeq.current) return; // stale — a newer load owns the view
-      if (res) setContacts(res.contacts);
-      else setError(true);
+      if (res) {
+        setContacts(res.contacts);
+        setHasMore(res.hasMore);
+      } else setError(true);
       setLoading(false);
     });
   }, [filter, search]);
@@ -139,7 +144,8 @@ export default function CrmContacts() {
 
   // Export the CURRENT view as CSV (same in-browser builder as the leads export
   // — no new endpoint, formula-injection-guarded). id column + honest
-  // "-partial" filename when the 200-row server window is full.
+  // "-partial" filename driven by the server's `hasMore` (real rows past the
+  // window), so an exactly-200-row window with nothing beyond it is NOT partial.
   const exportCsv = useCallback(() => {
     if (!contacts || contacts.length === 0) return;
     const headers = ["id", "שם", "טלפון", "סטטוס", "ליד מקושר", "הודעה אחרונה"];
@@ -151,9 +157,8 @@ export default function CrmContacts() {
       c.leadId ?? "",
       c.lastMessageAt ?? "",
     ]);
-    const partial = contacts.length >= 200;
-    downloadCsv(csvFileName(`contacts-${filter}`, partial), buildCsv(headers, rows));
-  }, [contacts, filter]);
+    downloadCsv(csvFileName(`contacts-${filter}`, hasMore), buildCsv(headers, rows));
+  }, [contacts, filter, hasMore]);
 
   const changeStatus = useCallback(
     async (contactId: string, status: ContactStatus) => {

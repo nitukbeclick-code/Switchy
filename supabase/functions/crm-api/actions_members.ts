@@ -56,7 +56,12 @@ export async function actSetMemberRole(b: Row, actorUid: string): Promise<Respon
   const uid = s(b.uid).trim();
   if (!uid) return err("uid חסר", 400, "bad_request");
   if (!isUuidish(uid)) return err("uid לא תקין", 400, "bad_request");
-  if (uid === actorUid) return err("אי אפשר לשנות את ההרשאה של עצמך", 400, "bad_request");
+  // Self-change guard — compared case-INSENSITIVELY: isUuidish accepts any case, so
+  // an admin submitting their own uid uppercased would otherwise slip past this and
+  // demote/elevate their own row. Normalize both sides before the equality check.
+  if (uid.toLowerCase() === s(actorUid).trim().toLowerCase()) {
+    return err("אי אפשר לשנות את ההרשאה של עצמך", 400, "bad_request");
+  }
 
   const rawRole = s(b.role).trim().toLowerCase();
 

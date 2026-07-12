@@ -1126,18 +1126,20 @@ abstract interface class Backend {
   /// Paging / visibility contract (mirrors the web's `fetchFeed` in
   /// web/lib/community.ts): a fetch must never return the unbounded feed.
   /// `SupabaseBackend` caps a page at `SupabaseBackend.feedPageSize` (50)
-  /// rows, hides flagged posts from everyone EXCEPT their author (the owner
-  /// still sees their own under-review post), and — as a Dart-legal override
-  /// widening — accepts an extra optional `before` cursor
-  /// (`fetchPosts(channel: …, before: oldestLoaded.timestamp)`) returning the
-  /// next page of strictly-older posts (`created_at < before`). The abstract
-  /// signature here stays narrow ON PURPOSE: adding `before` to the interface
-  /// would invalidate every existing implementer override ([LocalBackend],
-  /// test fakes), while an override MAY add optional named parameters — so
-  /// only `SupabaseBackend` carries the cursor, and a caller that pages holds
-  /// it as `SupabaseBackend` (existing callers keep calling through [Backend]
-  /// unchanged).
-  Future<List<CommunityPost>> fetchPosts({String? channel});
+  /// rows and hides flagged posts from everyone EXCEPT their author (the owner
+  /// still sees their own under-review post).
+  ///
+  /// [before] is the load-older cursor: pass the OLDEST loaded post's timestamp
+  /// to get the next page of strictly-older posts (`created_at < before`); a
+  /// null cursor (the default) returns the newest page, exactly as the first
+  /// load. The cursor is part of the interface — every implementer accepts it —
+  /// so a caller that only ever holds a [Backend] (e.g. `community_widget`) can
+  /// still page. Because the compare is strict "older than", a post that shares
+  /// the boundary timestamp can reappear on the next page, so callers MUST
+  /// de-dupe the merged pages by id. [LocalBackend] honours the cursor over its
+  /// in-memory store; a test fake may ignore it (returning a fixed page), which
+  /// simply reports "no more" once its ids are already loaded.
+  Future<List<CommunityPost>> fetchPosts({String? channel, DateTime? before});
   Future<CommunityPost> createPost(PostInput post);
   Future<void> deletePost(String id);
   Future<List<CommunityReply>> fetchReplies(String postId);

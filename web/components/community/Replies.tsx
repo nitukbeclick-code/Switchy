@@ -738,6 +738,14 @@ export default function Replies({
         next.set(reply.id, { summaries: [], mine: null });
         return next;
       });
+      // A child reply (DB depth-capped, so parent_reply_id is its top-level root)
+      // must be visible the moment it's posted. Auto-expand that root's children so
+      // a collapsed root (≥ CHILD_PREVIEW existing kids) doesn't hide the fresh reply
+      // behind the "show N more" fold — the author would otherwise never see it.
+      const rootId = reply.parent_reply_id;
+      if (rootId) {
+        setExpanded((prev) => (prev.has(rootId) ? prev : new Set(prev).add(rootId)));
+      }
       setReplyingTo(null); // close any open inline composer
       onReplyCountChange?.(1);
     },

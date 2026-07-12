@@ -21,7 +21,7 @@ class _FakeBackend extends LocalBackend {
   final List<CommunityPost> _remote;
 
   @override
-  Future<List<CommunityPost>> fetchPosts({String? channel}) async =>
+  Future<List<CommunityPost>> fetchPosts({String? channel, DateTime? before}) async =>
       List.unmodifiable(_remote);
 }
 
@@ -30,7 +30,7 @@ class _ErrorBackend extends LocalBackend {
   bool failNext = true;
 
   @override
-  Future<List<CommunityPost>> fetchPosts({String? channel}) async {
+  Future<List<CommunityPost>> fetchPosts({String? channel, DateTime? before}) async {
     if (failNext) throw Exception('offline');
     return const [];
   }
@@ -150,5 +150,74 @@ void main() {
     expect(find.text('הכל'), findsWidgets);
     expect(find.text('סלולר'), findsWidgets);
     await tester.pump(const Duration(milliseconds: 500));
+  });
+
+  // ── Load-older paging (the >50-post hiding regression) ──────────────────────
+  // The feed caps a page at 50 rows; scrolling to the end must pull the next
+  // OLDER page (via the `before` cursor) and splice it in without hiding the
+  // oldest posts or double-counting a boundary-timestamp twin. mergeOlderCommunityPage
+  // is the pure page-merge/de-dupe seam the widget uses — tested directly so the
+  // proof needs no network and no fragile scroll pumping.
+  group('mergeOlderCommunityPage', () {
+    CommunityPost at(String id, DateTime ts, {String channel = 'המלצות'}) =>
+        CommunityPost(
+          id: id,
+          author: 'דנה',
+          avatar: 'ד',
+          channel: channel,
+          text: id,
+          likes: 0,
+          replies: 0,
+          timestamp: ts,
+        );
+
+    test('appends a second (older) page before the seed tail, de-duped by id', () {
+      final base = DateTime(2026, 6, 22, 12);
+      // Page 1 (newest-first) + one bundled seed pinned to the tail.
+      final current = [
+        at('p3', base.subtract(const Duration(minutes: 1))),
+        at('p2', base.subtract(const Duration(minutes: 2))),
+        at('p1', base.subtract(const Duration(minutes: 3))), // oldest loaded
+        at('seed', DateTime(2020), channel: 'המלצות'),
+      ];
+      // The older page shares the boundary post p1 (same id — the shared-
+      // timestamp twin) and adds two genuinely-older posts.
+      final older = [
+        at('p1', base.subtract(const Duration(minutes: 3))), // boundary twin
+        at('o1', base.subtract(const Duration(minutes: 4))),
+        at('o2', base.subtract(const Duration(minutes: 5))),
+      ];
+
+      final merged =
+          mergeOlderCommunityPage(current, older, seedIds: {'seed'});
+
+      // p1 is NOT duplicated; o1/o2 land BEFORE the seed; order stays newest-first.
+      expect(merged.map((p) => p.id).toList(),
+          ['p3', 'p2', 'p1', 'o1', 'o2', 'seed']);
+      // Exactly one p1.
+      expect(merged.where((p) => p.id == 'p1').length, 1);
+    });
+
+    test('an all-duplicate older page changes nothing (end of feed)', () {
+      final base = DateTime(2026, 6, 22, 12);
+      final current = [
+        at('p2', base.subtract(const Duration(minutes: 1))),
+        at('p1', base.subtract(const Duration(minutes: 2))),
+      ];
+      final merged =
+          mergeOlderCommunityPage(current, current, seedIds: const {});
+      expect(identical(merged, current), isTrue); // no new ids → same list back
+    });
+
+    test('with no seed tail, older posts append at the end', () {
+      final base = DateTime(2026, 6, 22, 12);
+      final current = [at('p1', base)];
+      final merged = mergeOlderCommunityPage(
+        current,
+        [at('o1', base.subtract(const Duration(minutes: 1)))],
+        seedIds: const {},
+      );
+      expect(merged.map((p) => p.id).toList(), ['p1', 'o1']);
+    });
   });
 }

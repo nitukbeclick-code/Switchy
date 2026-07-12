@@ -5,6 +5,7 @@ import '../../data.dart' show compiledPlans;
 import '../../models.dart';
 import '../meeting_slots.dart';
 import 'backend.dart';
+import 'supabase_backend.dart' show SupabaseBackend;
 import '../referral_code.dart';
 
 /// On-device [Backend] — the default. Single-user (this device), in-memory plus
@@ -269,11 +270,18 @@ class LocalBackend implements Backend {
   Stream<void> communityChanges() => const Stream<void>.empty();
 
   @override
-  Future<List<CommunityPost>> fetchPosts({String? channel}) async {
-    final list = channel == null || channel == 'הכל'
-        ? _posts
-        : _posts.where((p) => p.channel == channel).toList();
-    return List.unmodifiable(list);
+  Future<List<CommunityPost>> fetchPosts({String? channel, DateTime? before}) async {
+    // `_posts` is kept newest-first (createPost inserts at 0). Mirror the
+    // server's bounded page: filter by channel, apply the strictly-older-than
+    // [before] cursor (the load-older path), then cap at [feedPageSize].
+    Iterable<CommunityPost> list = _posts;
+    if (channel != null && channel != 'הכל') {
+      list = list.where((p) => p.channel == channel);
+    }
+    if (before != null) {
+      list = list.where((p) => p.timestamp.isBefore(before));
+    }
+    return List.unmodifiable(list.take(SupabaseBackend.feedPageSize));
   }
 
   @override

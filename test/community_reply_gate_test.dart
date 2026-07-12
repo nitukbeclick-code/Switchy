@@ -33,7 +33,7 @@ class _RecordingBackend extends LocalBackend {
   final List<ReplyInput> addReplyCalls = [];
 
   @override
-  Future<List<CommunityPost>> fetchPosts({String? channel}) async =>
+  Future<List<CommunityPost>> fetchPosts({String? channel, DateTime? before}) async =>
       List.unmodifiable(_remote);
 
   @override

@@ -146,7 +146,9 @@ export const MAX_BODY = 4000;
 
 export interface FeedQuery {
   channel?: Channel | typeof ALL_CHANNEL;
-  /** created_at cursor for "load older" (exclusive). */
+  /** created_at cursor for "load older". INCLUSIVE (`.lte`): rows sharing the exact
+   *  boundary timestamp come back too — the caller de-dupes already-loaded ids — so
+   *  batch-inserted / same-microsecond posts are never silently skipped. */
   before?: string | null;
   limit?: number;
   /** exclude posts authored by these user ids (the viewer's block list). */
@@ -185,7 +187,10 @@ export async function fetchFeed(q: FeedQuery = {}): Promise<FeedPage> {
   if (q.channel && q.channel !== ALL_CHANNEL) query = query.eq("channel", q.channel);
   // "Unanswered" = no replies yet (reply_count is the aggregate on community_feed).
   if (q.unansweredOnly) query = query.eq("reply_count", 0);
-  if (q.before) query = query.lt("created_at", q.before);
+  // Inclusive cursor (`.lte`, not `.lt`): posts sharing the boundary created_at are
+  // re-fetched, not skipped. The caller (loadOlder) drops already-loaded ids, so the
+  // tie rows surface exactly once instead of vanishing at the page seam.
+  if (q.before) query = query.lte("created_at", q.before);
   // Flagged rows are hidden from everyone except their author, in the query.
   if (q.viewerId && UUIDISH.test(q.viewerId)) {
     query = query.or(`is_flagged.eq.false,user_id.eq.${q.viewerId}`);
@@ -239,8 +244,19 @@ export async function fetchPostsByUser(
     .order("created_at", { ascending: false })
     .limit(limit);
   if (opts?.before) query = query.lt("created_at", opts.before);
+  // Push the flagged filter INTO the query (mirrors fetchFeed) so a page of `limit`
+  // rows is `limit` VISIBLE rows. A client-side-only filter shortens the page for a
+  // non-owner viewer, and the caller's `length >= PROFILE_PAGE_SIZE` hasMore test
+  // then under-reports → the pager hides prematurely and older posts get stranded.
+  // The owner still sees their own flagged posts ("under review"); nobody else does.
+  if (viewerId && UUIDISH.test(viewerId)) {
+    query = query.or(`is_flagged.eq.false,user_id.eq.${viewerId}`);
+  } else {
+    query = query.eq("is_flagged", false);
+  }
   const { data, error } = await query;
   if (error || !data) return [];
+  // Defense-in-depth: re-apply the same visibility filter locally.
   return (data as unknown as CommunityPost[]).filter((p) => !p.is_flagged || p.user_id === viewerId);
 }
 
@@ -716,18 +732,25 @@ export const REPORT_REASONS = [
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
-const reportedKey = (targetType: "post" | "reply", targetId: string) =>
-  `swc:reported:${targetType}:${targetId}`;
+/** Scoped to the REPORTER: two accounts signing in/out of the same tab must not
+ *  inherit each other's "already reported" flags. A signed-out reporter uses the
+ *  stable "anon" segment. */
+const reportedKey = (
+  reporterId: string | null | undefined,
+  targetType: "post" | "reply",
+  targetId: string,
+) => `swc:reported:${reporterId || "anon"}:${targetType}:${targetId}`;
 
-/** true when THIS browser session already sent a report for this target — used
- *  to block an accidental double-report. Best-effort (sessionStorage may be
- *  unavailable in private mode); the server keeps every report regardless. */
+/** true when THIS reporter already sent a report for this target in this browser
+ *  session — used to block an accidental double-report. Best-effort (sessionStorage
+ *  may be unavailable in private mode); the server keeps every report regardless. */
 export function hasReportedThisSession(
   targetType: "post" | "reply",
   targetId: string,
+  reporterId?: string | null,
 ): boolean {
   try {
-    return sessionStorage.getItem(reportedKey(targetType, targetId)) === "1";
+    return sessionStorage.getItem(reportedKey(reporterId, targetType, targetId)) === "1";
   } catch {
     return false;
   }
@@ -746,9 +769,10 @@ export async function reportContent(
     body: body.slice(0, 1000),
   });
   if (!error) {
-    // Remember per-session so the UI can block a double-report of the same target.
+    // Remember per-session, keyed to THIS reporter, so the UI can block a
+    // double-report of the same target.
     try {
-      sessionStorage.setItem(reportedKey(targetType, targetId), "1");
+      sessionStorage.setItem(reportedKey(reporterId, targetType, targetId), "1");
     } catch {
       /* best-effort only */
     }

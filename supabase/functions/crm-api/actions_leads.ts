@@ -150,9 +150,11 @@ export async function actGetLeadDetail(b: Row, actorUid: string): Promise<Respon
 // to a buyer — the secret-gated lead-export cron stays the only path that can.
 export async function actListSellableLeads(b: Row, actorUid: string): Promise<Response> {
   const status = s(b.status).trim();
-  const statuses = status && (SELLABLE_STATUSES as readonly string[]).includes(status)
-    ? [status]
-    : [...SELLABLE_STATUSES];
+  // A status is only APPLIED when it is a real sellable status; anything else
+  // (e.g. "lost", or absent) falls back to the full sellable set — so the audit
+  // below can record the effective filter, never the raw (possibly-ignored) ask.
+  const narrowed = status !== "" && (SELLABLE_STATUSES as readonly string[]).includes(status);
+  const statuses = narrowed ? [status] : [...SELLABLE_STATUSES];
   const path =
     `/rest/v1/leads?consent_share_at=not.is.null&status=in.(${statuses.map((st) => q(st)).join(",")})` +
     `&order=created_at.desc&limit=500&select=id,name,phone,email,provider,source,status,consent_share_at,created_at`;
@@ -162,7 +164,14 @@ export async function actListSellableLeads(b: Row, actorUid: string): Promise<Re
   // already filtered — a consent-less row can never slip through, ever.
   const leads = rows.filter((r) => isSellable(r as unknown as Lead)).map(shapeSellableLead);
   // Reg.13: the single most audit-sensitive READ — who saw the saleable feed + size.
-  await logAudit(actorUid, "crm_lead_export", { count: leads.length, status: status || "all" });
+  // Record the filter ACTUALLY applied (the effective statuses; "all" on fallback),
+  // never the raw request — a "lost" ask that fell back to the full set must not be
+  // logged as if it narrowed the feed, or the trail misreports which PII was returned.
+  await logAudit(actorUid, "crm_lead_export", {
+    count: leads.length,
+    status: narrowed ? status : "all",
+    statuses,
+  });
   return json({ leads });
 }
 

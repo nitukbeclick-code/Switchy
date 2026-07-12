@@ -1428,9 +1428,15 @@ async function relayRepReplyToCustomer(
     delivered: Boolean(wamid),
     preview: body.slice(0, 120),
   });
+  if (!wrote) {
+    await sendTelegram(cfg, "⚠️ שמירת ההודעה נכשלה — בדקו אם נשלחה ללקוח.");
+    return { ok: false, skipped: "message store failed", delivered: Boolean(wamid) };
+  }
   // Activity-feed parity with crm-api actSendReply: the console's thread view
   // streams crm_events, and a rep reply relayed FROM Telegram must show there
-  // exactly like one sent from the console ('rep_reply', clipped preview).
+  // exactly like one sent from the console ('rep_reply', clipped preview). Logged
+  // only AFTER the store-failure guard — a reply we failed to persist must never
+  // leave a phantom crm_events row (mirrors actSendReply's err(502)-before-log).
   await logCrmActivity({
     conversationId: convo.id,
     contactId,
@@ -1438,10 +1444,6 @@ async function relayRepReplyToCustomer(
     event: "rep_reply",
     preview: body,
   });
-  if (!wrote) {
-    await sendTelegram(cfg, "⚠️ שמירת ההודעה נכשלה — בדקו אם נשלחה ללקוח.");
-    return { ok: false, skipped: "message store failed", delivered: Boolean(wamid) };
-  }
   // Delivery feedback the rep can act on. On success: a ✓ + a short echo so the
   // two-way thread is clear. On a send MISS the message is still stored (the human
   // stays in the loop), so we make the failure LOUD + actionable instead of leaving

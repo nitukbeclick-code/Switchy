@@ -176,6 +176,39 @@ describe("CommunityFeed failure honesty", () => {
   });
 });
 
+describe("CommunityFeed load-older keyset dedup (Bug 3)", () => {
+  it("surfaces a boundary-timestamp post once (inclusive cursor + id de-dupe), no duplicate", async () => {
+    const user = userEvent.setup();
+    const T = "2026-07-01T00:00:00Z";
+    // A FULL first page (20) keeps the pager alive; its oldest row sits at T.
+    const first = Array.from({ length: 20 }, (_, i) =>
+      i === 19
+        ? { ...post(`p${i}`), created_at: T }
+        : { ...post(`p${i}`), created_at: `2026-07-02T00:00:${String(i).padStart(2, "0")}Z` },
+    );
+    mocks.fetchFeed.mockResolvedValueOnce({ rows: first, error: false });
+    render(<CommunityFeed />);
+    await screen.findByText("body-p0");
+
+    // The older page (inclusive `.lte` cursor at T) returns the boundary post p19
+    // AGAIN plus the previously-stranded tie post `cc` at the same timestamp T.
+    mocks.fetchFeed.mockResolvedValueOnce({
+      rows: [
+        { ...post("p19"), created_at: T },
+        { ...post("cc"), created_at: T },
+      ],
+      error: false,
+    });
+    await user.click(screen.getByRole("button", { name: "טעינת פוסטים ישנים יותר" }));
+
+    // The tie post appears; the boundary post is de-duped (never doubled).
+    expect(await screen.findByText("body-cc")).toBeInTheDocument();
+    expect(screen.getAllByText("body-p19")).toHaveLength(1);
+    // The older fetch used the (inclusive) boundary cursor.
+    expect(mocks.fetchFeed.mock.calls.at(-1)?.[0]).toMatchObject({ before: T });
+  });
+});
+
 describe("CommunityFeed search block-list", () => {
   it("filters blocked authors out of search results (same list as the live feed)", async () => {
     const user = userEvent.setup();

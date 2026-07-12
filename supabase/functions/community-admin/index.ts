@@ -72,6 +72,12 @@ async function enrichFlagged(posts: FlaggedRow[], replies: FlaggedRow[]): Promis
   if (flagged.length === 0) return;
   const targetIds = uniqueIds(flagged, "id");
   const authorIds = uniqueIds(flagged, "user_id");
+  // uniqueIds caps the lookups at ENRICH_IDS_CAP, so only rows whose id was
+  // ACTUALLY queried can be truthfully annotated. Rows past the cap must be left
+  // unannotated (field absent = "unknown" to the web client) — never a faked
+  // reportCount:0 / authorBanned:false for an item we never looked up.
+  const queriedTargets = new Set(targetIds);
+  const queriedAuthors = new Set(authorIds);
   const [reportRows, profileRows] = await Promise.all([
     targetIds.length
       ? fetchRows<{ target_id?: unknown }>(
@@ -94,7 +100,9 @@ async function enrichFlagged(posts: FlaggedRow[], replies: FlaggedRow[]): Promis
       }
     }
     for (const row of flagged) {
-      if (typeof row.id === "string") row.reportCount = counts.get(row.id) ?? 0;
+      if (typeof row.id === "string" && queriedTargets.has(row.id)) {
+        row.reportCount = counts.get(row.id) ?? 0;
+      }
     }
   }
   if (profileRows !== null) {
@@ -103,7 +111,9 @@ async function enrichFlagged(posts: FlaggedRow[], replies: FlaggedRow[]): Promis
       if (typeof p.id === "string" && p.is_banned === true) banned.add(p.id);
     }
     for (const row of flagged) {
-      if (typeof row.user_id === "string") row.authorBanned = banned.has(row.user_id);
+      if (typeof row.user_id === "string" && queriedAuthors.has(row.user_id)) {
+        row.authorBanned = banned.has(row.user_id);
+      }
     }
   }
 }

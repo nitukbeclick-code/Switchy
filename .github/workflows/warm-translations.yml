@@ -65,12 +65,20 @@ jobs:
       - name: Install Playwright Chromium
         run: npm i -D playwright && npx playwright install --with-deps chromium
 
+      # Best-effort within a bounded budget: whatever gets warmed is durable in the
+      # cache, so even a partial warm is progress. continue-on-error + the script's
+      # own MAX_MINUTES guarantee the EXPORT step below always runs and commits the
+      # cumulative coverage — repeat runs converge to the full set.
       - name: Warm the cache (drive the real runtime on the deployed site)
+        continue-on-error: true
+        timeout-minutes: 310
         env:
           LANGS: ${{ github.event.inputs.langs }}
+          MAX_MINUTES: "290"
         run: node scripts/prewarm-translations.mjs
 
       - name: Export the cache into static /i18n bundles
+        if: always()
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           LANGS: ${{ github.event.inputs.langs }}
@@ -82,6 +90,7 @@ jobs:
           node tools/export-i18n.mjs
 
       - name: Commit refreshed bundles (redeploys the static site)
+        if: always()
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"

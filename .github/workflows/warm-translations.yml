@@ -1,19 +1,23 @@
 # Warm the translation cache and snapshot it into static /i18n bundles
 # ────────────────────────────────────────────────────────────────────────────
-# WHAT: translate-runtime.js now loads /i18n/<lang>.json ONCE per language and
-# applies from it with zero per-string model calls — a pre-warmed language
-# translates near-instantly. This job keeps those bundles fresh:
-#   1. prewarm-translations.mjs drives the REAL runtime on the deployed site so
-#      the edge function translates + caches every page string (free-tier models,
-#      brand/number sentinels + verify). Only NEW/changed strings hit a model;
-#      already-cached rows are skipped, so steady-state runs are tiny.
-#   2. export-i18n.mjs snapshots the site_translations cache into
-#      site/i18n/<lang>.json + web/public/i18n/<lang>.json (deterministic, sorted).
-#   3. If anything changed, it commits — and the host's git integration redeploys
-#      the static bundles.
+# WHAT: translate-runtime.js loads /i18n/<lang>.json ONCE per language and applies
+# from it with zero per-string model calls — a pre-warmed language switches
+# near-instantly. This job keeps those bundles fresh, browser-free and
+# secret-free, in ONE step:
+#   • tools/warm-i18n.mjs extracts the translatable string universe straight from
+#     the built site/*.html with linkedom, replicating translate-runtime.js
+#     collect() EXACTLY (validated byte-exact against a real browser's collect()),
+#     POSTs it to the PUBLIC translate edge function in size-bounded batches (the
+#     same anon key the site ships — NO service-role key), drops verify-failed
+#     echoes, and writes site/i18n/<lang>.json + web/public/i18n/<lang>.json
+#     (deterministic, sorted — byte-identical to tools/export-i18n.mjs's format).
+#   • If anything changed, it commits — and the host's git integration redeploys
+#     the static bundles.
 #
 # It NEVER changes prices/numbers: the edge function masks + double-verifies those
-# when the cache is warmed; this job only copies trusted rows out.
+# server-side; this job only extracts source strings and copies trusted rows out.
+# Because the extraction is byte-exact with what the runtime's browser collect()
+# sends, every written key is a real runtime cache hit.
 #
 # ── Triggers ─────────────────────────────────────────────────────────────────
 #  (a) schedule — nightly (03:17 UTC): pick up strings added by the day's builds.
@@ -22,10 +26,11 @@
 #      under the edge fn's 40k/day model budget.
 #
 # ── One-time setup by the owner ──────────────────────────────────────────────
-#  • Add repo secret SUPABASE_SERVICE_ROLE_KEY (the site_translations RLS blocks
-#    anon reads, so the EXPORT step needs the service role; the WARM step needs
-#    only the public anon key, already baked into the site).
-#  • Optional repo var SITE_BASE_URL to warm a surface other than the prod site.
+#  • Nothing required for THIS path — it uses only the PUBLIC anon key already
+#    baked into the site (no SUPABASE_SERVICE_ROLE_KEY, no Playwright).
+#  • The legacy browser+service-role path (scripts/prewarm-translations.mjs +
+#    tools/export-i18n.mjs) still works if an owner sets SUPABASE_SERVICE_ROLE_KEY
+#    and wants to warm via the deployed runtime instead.
 
 name: Warm translations
 
@@ -47,7 +52,9 @@ permissions:
   contents: write
 
 env:
-  BASE_URL: ${{ vars.SITE_BASE_URL || 'https://switchy-ai.com' }}
+  # Edge origin for the translate function (warm-i18n.mjs POSTs here with the baked
+  # public anon key). The extraction reads the built site/*.html directly — no
+  # deployed-site URL needed anymore.
   SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://orzitfqmlvopujsoyigr.supabase.co' }}
 
 jobs:
@@ -62,32 +69,30 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install Playwright Chromium
-        run: npm i -D playwright && npx playwright install --with-deps chromium
+      - name: Install linkedom
+        run: npm i --no-save linkedom
 
-      # Best-effort within a bounded budget: whatever gets warmed is durable in the
-      # cache, so even a partial warm is progress. continue-on-error + the script's
-      # own MAX_MINUTES guarantee the EXPORT step below always runs and commits the
-      # cumulative coverage — repeat runs converge to the full set.
-      - name: Warm the cache (drive the real runtime on the deployed site)
+      # Best-effort within a bounded budget: whatever gets translated is written
+      # (additively) to the static bundles, so even a partial warm is progress.
+      # continue-on-error + the script's own MAX_MINUTES guarantee the COMMIT step
+      # below always runs and commits the cumulative coverage — repeat runs
+      # converge to the full set. Browser-free and secret-free: extracts from the
+      # built site/*.html and POSTs to the PUBLIC edge fn with the baked anon key.
+      # `all` expands to every language the edge fn supports (mirrors
+      # SUPPORTED_LANGS in supabase/functions/translate/lib.ts); blank = 6 core.
+      - name: Warm the static /i18n bundles (browser-free, no service-role key)
         continue-on-error: true
         timeout-minutes: 310
         env:
-          LANGS: ${{ github.event.inputs.langs }}
+          LANGS_INPUT: ${{ github.event.inputs.langs }}
           MAX_MINUTES: "290"
-        run: node scripts/prewarm-translations.mjs
-
-      - name: Export the cache into static /i18n bundles
-        if: always()
-        env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          LANGS: ${{ github.event.inputs.langs }}
         run: |
-          if [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
-            echo "::warning::SUPABASE_SERVICE_ROLE_KEY not set — skipping export. Add the repo secret to enable static bundle generation."
-            exit 0
+          if [ "${LANGS_INPUT}" = "all" ]; then
+            export LANGS="ar,ru,en,fr,es,am,ti,uk,ro,th,tl,hi,ne,zh,fa,ur,tr,ka,de,it,pt,pl,nl,hu,el,ja,ko"
+          else
+            export LANGS="${LANGS_INPUT}"
           fi
-          node tools/export-i18n.mjs
+          node tools/warm-i18n.mjs
 
       - name: Commit refreshed bundles (redeploys the static site)
         if: always()
@@ -100,10 +105,11 @@ jobs:
             echo "No translation changes — nothing to redeploy."
             exit 0
           fi
-          git commit -m "chore(i18n): refresh static translation bundles from the warmed cache [skip ci]
+          git commit -m "chore(i18n): refresh static translation bundles [skip ci]
 
-          Snapshotted site_translations → site/i18n + web/public/i18n via
-          export-i18n.mjs. No prices/numbers changed (masked + verified upstream).
+          Extracted the site string universe from site/*.html and translated it via
+          the public translate edge fn → site/i18n + web/public/i18n (warm-i18n.mjs).
+          No prices/numbers changed (masked + verified upstream).
 
           Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
           git push origin "HEAD:${{ github.ref_name }}"

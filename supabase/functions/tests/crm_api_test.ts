@@ -8,16 +8,22 @@ import {
   aggregateReps,
   auditDetail,
   clampLimit,
+  clampListLimit,
+  clampOffset,
   contactName,
   CONTACT_STATUSES,
   CONVERSATION_STATUSES,
   EVENT_PREVIEW_LEN,
   eventPreview,
+  isUuidish,
   isValidContactStatus,
   isValidConversationStatus,
   isValidLeadStatus,
   isValidMeetingStatus,
+  lastMessagesLimit,
+  LEAD_SORTS,
   LEAD_STATUSES,
+  LIST_LIMIT,
   MAX_REPLY_LEN,
   MEETING_STATUSES,
   s,
@@ -31,11 +37,13 @@ import {
   shapeSellableLead,
   snippet,
   SNIPPET_LEN,
+  THREAD_MSG_CAP,
 } from "../crm-api/crm_logic.ts";
 // The 2026-07 module split: index.ts is the thin gate+router; the handlers live
 // in cohesive actions_*.ts modules over the shared helpers.ts plumbing. These
 // imports pin the module map — a dropped export breaks here, not in dispatch.
-import { cors, json } from "../crm-api/helpers.ts";
+import { cors, countRows, err, json, lastMessages } from "../crm-api/helpers.ts";
+import { jsonResponse, withFetchStub } from "./_capture_handler.ts";
 import * as actionsOverview from "../crm-api/actions_overview.ts";
 import * as actionsConversations from "../crm-api/actions_conversations.ts";
 import * as actionsLeads from "../crm-api/actions_leads.ts";
@@ -118,6 +126,61 @@ Deno.test("clampLimit holds the requested page size inside 1..100 (default 50)",
   assertEquals(clampLimit(25), 25);
   assertEquals(clampLimit(500), 100); // capped
   assertEquals(clampLimit(-10), 1); // floored
+  // A fractional limit is floored to an integer — a "25.7" can never reach the
+  // PostgREST query string.
+  assertEquals(clampLimit(25.7), 25);
+  assertEquals(clampLimit("25.7"), 25);
+});
+
+Deno.test("clampListLimit defaults to the historical 200-row window", () => {
+  assertEquals(LIST_LIMIT, 200);
+  assertEquals(clampListLimit(undefined), 200); // omitted → unchanged behavior
+  assertEquals(clampListLimit(0), 200);
+  assertEquals(clampListLimit("junk"), 200);
+  assertEquals(clampListLimit(-5), 200);
+  assertEquals(clampListLimit(50), 50);
+  assertEquals(clampListLimit(50.9), 50); // floored
+  assertEquals(clampListLimit(9999), 200); // capped at the window
+});
+
+Deno.test("clampOffset defaults to 0 and floors/caps the requested offset", () => {
+  assertEquals(clampOffset(undefined), 0);
+  assertEquals(clampOffset("junk"), 0);
+  assertEquals(clampOffset(-3), 0);
+  assertEquals(clampOffset(200), 200);
+  assertEquals(clampOffset(200.9), 200); // floored
+  assertEquals(clampOffset(9_999_999), 100_000); // capped
+});
+
+Deno.test("isUuidish accepts a canonical UUID and rejects everything else", () => {
+  assert(isUuidish("a3bb189e-8bf9-3888-9912-ace4e6543002"));
+  assert(isUuidish("A3BB189E-8BF9-3888-9912-ACE4E6543002")); // case-insensitive
+  assertFalse(isUuidish(""));
+  assertFalse(isUuidish("abc"));
+  assertFalse(isUuidish("a3bb189e8bf938889912ace4e6543002")); // no dashes
+  assertFalse(isUuidish("a3bb189e-8bf9-3888-9912-ace4e654300")); // one hex short
+  assertFalse(isUuidish("a3bb189e-8bf9-3888-9912-ace4e654300g")); // non-hex
+  assertFalse(isUuidish("'; drop table leads; --"));
+});
+
+Deno.test("LEAD_SORTS allows only the default/'recent'/'oldest' directions", () => {
+  assert(LEAD_SORTS.has(""));
+  assert(LEAD_SORTS.has("recent"));
+  assert(LEAD_SORTS.has("oldest"));
+  assertFalse(LEAD_SORTS.has("newest"));
+  assertFalse(LEAD_SORTS.has("created_at.asc")); // no raw order smuggling
+});
+
+Deno.test("lastMessagesLimit scales with the conversation count inside 200..1000", () => {
+  assertEquals(lastMessagesLimit(0), 200); // floor
+  assertEquals(lastMessagesLimit(12), 200); // overview's 12 convs stay at the floor
+  assertEquals(lastMessagesLimit(50), 500); // 10 rows per conversation
+  assertEquals(lastMessagesLimit(100), 1000);
+  assertEquals(lastMessagesLimit(5000), 1000); // hard cap
+});
+
+Deno.test("THREAD_MSG_CAP pins the getThread window at 300", () => {
+  assertEquals(THREAD_MSG_CAP, 300);
 });
 
 Deno.test("MAX_REPLY_LEN matches the stored-body slice cap", () => {
@@ -424,6 +487,86 @@ Deno.test("json() carries an explicit error status + the Hebrew error body uncha
   const err = json({ error: "אין הרשאה לפעולה זו" }, 403);
   assertEquals(err.status, 403);
   assertEquals(await err.json(), { error: "אין הרשאה לפעולה זו" });
+});
+
+Deno.test("err() answers the unified {error, code} shape — additive over {error}", async () => {
+  const r = err("הליד לא נמצא", 404, "not_found");
+  assertEquals(r.status, 404);
+  assertEquals(r.headers.get("content-type"), "application/json");
+  assertEquals(r.headers.get("access-control-allow-origin"), "*");
+  // `error` keeps the human Hebrew message; `code` is the additive machine field.
+  assertEquals(await r.json(), { error: "הליד לא נמצא", code: "not_found" });
+});
+
+// ── countRows / lastMessages (helpers over a stubbed PostgREST) ───────────────
+
+function withDbEnv<T>(fn: () => Promise<T>): Promise<T> {
+  Deno.env.set("SUPABASE_URL", "https://test.supabase.co");
+  Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "service-test-key");
+  return fn().finally(() => {
+    Deno.env.delete("SUPABASE_URL");
+    Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  });
+}
+
+Deno.test("countRows reads the exact total from Content-Range on a 206", async () => {
+  await withDbEnv(() =>
+    withFetchStub([{
+      match: (u) => u.includes("/rest/v1/leads"),
+      respond: () =>
+        new Response("[]", {
+          status: 206,
+          headers: { "Content-Range": "0-0/42", "Content-Type": "application/json" },
+        }),
+    }], async () => {
+      assertEquals(await countRows("/rest/v1/leads?status=eq.new&select=id"), 42);
+    })
+  );
+});
+
+Deno.test("countRows is HONEST about failure — null (never 0) on HTTP error / bad header", async () => {
+  await withDbEnv(() =>
+    withFetchStub([{
+      match: (u) => u.includes("/rest/v1/leads"),
+      respond: () => new Response("boom", { status: 500 }),
+    }], async () => {
+      assertEquals(await countRows("/rest/v1/leads?select=id"), null);
+    })
+  );
+  // A 2xx with a garbled Content-Range is equally not a count.
+  await withDbEnv(() =>
+    withFetchStub([{
+      match: (u) => u.includes("/rest/v1/leads"),
+      respond: () =>
+        new Response("[]", { status: 206, headers: { "Content-Range": "weird" } }),
+    }], async () => {
+      assertEquals(await countRows("/rest/v1/leads?select=id"), null);
+    })
+  );
+  // Missing creds (serviceFetch → null) is a failure too, not an empty table.
+  assertEquals(await countRows("/rest/v1/leads?select=id"), null);
+});
+
+Deno.test("lastMessages reads a BOUNDED newest-first window (computed limit)", async () => {
+  await withDbEnv(() =>
+    withFetchStub([{
+      match: (u) => u.includes("/rest/v1/whatsapp_messages"),
+      respond: () =>
+        jsonResponse([
+          { conversation_id: "c1", body: "אחרונה", created_at: "2026-07-10T10:00:00Z" },
+          { conversation_id: "c1", body: "ישנה", created_at: "2026-07-10T09:00:00Z" },
+          { conversation_id: "c2", body: "שלום", created_at: "2026-07-10T08:00:00Z" },
+        ]),
+    }], async (calls) => {
+      const map = await lastMessages(["c1", "c2"]);
+      // The query is bounded by the computed window — never an unbounded read.
+      assert(calls[0].includes(`limit=${lastMessagesLimit(2)}`), `bounded: ${calls[0]}`);
+      assert(calls[0].includes("order=created_at.desc"));
+      // Newest-first: only the first row seen per conversation is kept.
+      assertEquals(map.get("c1")?.body, "אחרונה");
+      assertEquals(map.get("c2")?.body, "שלום");
+    })
+  );
 });
 
 Deno.test("action → module map: every dispatched handler is exported from its module", () => {

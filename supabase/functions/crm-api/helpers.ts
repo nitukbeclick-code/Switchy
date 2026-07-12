@@ -5,7 +5,7 @@
 
 import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
-import { auditDetail, eventPreview, s } from "./crm_logic.ts";
+import { auditDetail, eventPreview, lastMessagesLimit, s } from "./crm_logic.ts";
 
 export type Row = Record<string, unknown>;
 
@@ -21,11 +21,24 @@ export function json(body: unknown, status = 200): Response {
   });
 }
 
+// The ONE error shape every crm-api failure answers with: {error, code}. `error`
+// stays the human Hebrew message the console already renders (unchanged values on
+// pre-existing paths); `code` is a small, stable machine vocabulary — additive,
+// so a client that only reads `error` sees exactly what it always did:
+//   unauthorized / forbidden / bad_request / invalid_status / not_found /
+//   db_error / server_error / method_not_allowed / unknown_action
+export function err(message: string, status: number, code: string): Response {
+  return json({ error: message, code }, status);
+}
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 export const q = encodeURIComponent;
 
 // Most-recent message body per conversation, for snippet columns. Returns a map
-// conversationId → { body, at }. One query over the candidate conversation ids.
+// conversationId → { body, at }. One query over the candidate conversation ids,
+// bounded by a computed window (lastMessagesLimit) instead of an unbounded read —
+// worst case a hyperactive conversation crowds another's snippet out of the
+// window, and that row just falls back to its conversation-level timestamp.
 export async function lastMessages(
   convIds: string[],
 ): Promise<Map<string, { body: string; at: string }>> {
@@ -34,7 +47,7 @@ export async function lastMessages(
   const list = convIds.map((id) => q(id)).join(",");
   // Newest first; we keep only the first row seen per conversation.
   const rows = await fetchRows<Row>(
-    `/rest/v1/whatsapp_messages?conversation_id=in.(${list})&order=created_at.desc&select=conversation_id,body,created_at`,
+    `/rest/v1/whatsapp_messages?conversation_id=in.(${list})&order=created_at.desc&limit=${lastMessagesLimit(convIds.length)}&select=conversation_id,body,created_at`,
   );
   if (!rows) return out;
   for (const r of rows) {
@@ -115,8 +128,11 @@ export async function logAudit(
 
 // Exact row count via a ranged read (Range: 0-0) reading the Content-Range
 // header. PostgREST answers a ranged read with 206 Partial Content, which is a
-// 2xx so `r.ok` is true; anything else (or no creds) counts as 0.
-export async function countRows(path: string): Promise<number> {
+// 2xx so `r.ok` is true. HONEST FAILURE: anything else (no creds, HTTP error, a
+// missing/garbled Content-Range, a network throw) is null — NEVER 0 — so a DB
+// outage reads as "count unavailable" (502/degraded upstream) instead of a
+// dashboard confidently showing an empty pipeline.
+export async function countRows(path: string): Promise<number | null> {
   try {
     const r = await serviceFetch(path, {
       method: "GET",
@@ -126,16 +142,35 @@ export async function countRows(path: string): Promise<number> {
       jlog({ at: "crm.countRows", path, ok: false, status: r?.status });
       // Drain any body so the connection can be reused, then bail.
       await r?.text().catch(() => "");
-      return 0;
+      return null;
     }
     const cr = r.headers.get("content-range") ?? ""; // e.g. "0-0/42" or "*/42"
     const total = cr.split("/")[1];
     const n = Number(total);
     // Drain the body so the connection can be reused.
     await r.text().catch(() => "");
-    return Number.isFinite(n) ? n : 0;
+    if (!Number.isFinite(n)) {
+      jlog({ at: "crm.countRows", path, ok: false, error: `bad content-range: ${cr}` });
+      return null;
+    }
+    return n;
   } catch (e) {
     jlog({ at: "crm.countRows", path, ok: false, error: String(e) });
-    return 0;
+    return null;
   }
+}
+
+// Resolve the acting CRM user's display name for the lead/meeting event trails
+// (actor_name), so the timeline says WHO acted instead of a generic 'CRM'. Reads
+// the caller's OWN profile through the same name/email allowlist select
+// listMembers uses; any failure falls back to 'CRM' — an event row is never
+// blocked or lost over a profile hiccup. Clamped like every stored rep name.
+export async function actorName(uid: string): Promise<string> {
+  if (!uid) return "CRM";
+  const rows = await fetchRows<Row>(
+    `/rest/v1/profiles?id=eq.${q(uid)}&limit=1&select=name,email`,
+  );
+  const p = rows && rows.length ? rows[0] : null;
+  const name = p ? (s(p.name).trim() || s(p.email).trim()) : "";
+  return name ? name.slice(0, 120) : "CRM";
 }

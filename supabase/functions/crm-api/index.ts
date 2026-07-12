@@ -17,7 +17,8 @@
 //   listConversations   → filtered conversation list
 //   getThread           → one conversation's contact + messages
 //   sendReply           → store an out/rep message, best-effort Graph send
-//                         (implicitly takes over: bot_enabled=false + crm_event)
+//                         (implicitly takes over: bot_enabled=false + crm_event;
+//                         the flip is VERIFIED and reported as takeoverApplied)
 //   takeOver            → human takes the conversation (bot_enabled=false, silent)
 //   handBack            → return control to the AI bot (bot_enabled=true)
 //   setContactStatus    → patch whatsapp_contacts.status
@@ -36,8 +37,10 @@
 // whatsapp-webhook checks before any AI auto-reply — and append a crm_events row
 // (the admin CRM streams that feed via Realtime). See supabase/crm-takeover-2026-06.sql.
 //
-// Errors are always JSON {error}: 401 (no/invalid token), 403 (not admin),
-// 400 (bad shape), 500 (unexpected). 502 when a DB write fails.
+// Errors are always JSON {error, code} — `error` is the human Hebrew message,
+// `code` a small stable machine vocabulary (helpers.err): 401 (no token),
+// 403 (token present but no CRM access / action not allowed), 400 (bad shape),
+// 404 (no such row), 405 (non-POST), 500 (unexpected), 502 (DB read/write failed).
 //
 // Deploy: supabase functions deploy crm-api   (JWT is verified by us, not the
 // gateway — requireAdmin does the real check, so --no-verify-jwt is fine too).
@@ -48,7 +51,7 @@ import { requireCrmAccess } from "../_shared/admin.ts";
 import { canDo } from "../_shared/crm_roles.ts";
 import { jlog } from "../_shared/log.ts";
 import { s } from "./crm_logic.ts";
-import { cors, json, type Row } from "./helpers.ts";
+import { cors, err, type Row } from "./helpers.ts";
 import {
   actGetThread,
   actHandBack,
@@ -84,7 +87,7 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }) });
   }
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  if (req.method !== "POST") return err("שיטת הבקשה אינה נתמכת", 405, "method_not_allowed");
 
   // CRM-access gate: requireCrmAccess distinguishes "no/invalid token" from
   // "no CRM access" only by returning null — so we re-derive the 401-vs-403
@@ -96,18 +99,18 @@ Deno.serve(async (req: Request) => {
     const auth = req.headers.get("authorization") ?? req.headers.get("Authorization") ?? "";
     const hasBearer = auth.toLowerCase().startsWith("bearer ") && auth.slice(7).trim().length > 0;
     return hasBearer
-      ? json({ error: "אין הרשאת גישה למערכת" }, 403)
-      : json({ error: "נדרשת התחברות" }, 401);
+      ? err("אין הרשאת גישה למערכת", 403, "forbidden")
+      : err("נדרשת התחברות", 401, "unauthorized");
   }
 
   let body: Row;
   try {
     body = await req.json();
   } catch (_) {
-    return json({ error: "בקשה לא תקינה" }, 400);
+    return err("בקשה לא תקינה", 400, "bad_request");
   }
   const action = s(body.action).trim();
-  if (!action) return json({ error: "action חסר" }, 400);
+  if (!action) return err("action חסר", 400, "bad_request");
 
   // C.2 per-action authorization: is_admin is the superset; a graded role
   // (viewer/rep) may reach ONLY the actions its capability set allows, and an
@@ -116,7 +119,7 @@ Deno.serve(async (req: Request) => {
   // still 403s here.
   if (!canDo(access.role, action)) {
     jlog({ at: "crm.forbidden", uid: access.uid, role: access.role, action });
-    return json({ error: "אין הרשאה לפעולה זו" }, 403);
+    return err("אין הרשאה לפעולה זו", 403, "forbidden");
   }
 
   try {
@@ -128,7 +131,7 @@ Deno.serve(async (req: Request) => {
       case "listConversations":
         return await actListConversations(body);
       case "getThread":
-        return await actGetThread(body);
+        return await actGetThread(body, access.uid);
       case "sendReply":
         return await actSendReply(body, access.uid);
       case "takeOver":
@@ -144,7 +147,7 @@ Deno.serve(async (req: Request) => {
       case "listLeads":
         return await actListLeads(body);
       case "getLeadDetail":
-        return await actGetLeadDetail(body);
+        return await actGetLeadDetail(body, access.uid);
       case "listSellableLeads":
         return await actListSellableLeads(body, access.uid);
       case "addNote":
@@ -160,18 +163,18 @@ Deno.serve(async (req: Request) => {
       case "listMeetings":
         return await actListMeetings(body);
       case "getMeeting":
-        return await actGetMeeting(body);
+        return await actGetMeeting(body, access.uid);
       case "setMeetingStatus":
         return await actSetMeetingStatus(body, access.uid);
       case "listMembers":
-        return await actListMembers();
+        return await actListMembers(body);
       case "setMemberRole":
         return await actSetMemberRole(body, access.uid);
       default:
-        return json({ error: `פעולה לא מוכרת: ${action}` }, 400);
+        return err(`פעולה לא מוכרת: ${action}`, 400, "unknown_action");
     }
   } catch (e) {
     jlog({ at: "crm.dispatch", ok: false, action, error: String(e) });
-    return json({ error: "אירעה שגיאה בשרת" }, 500);
+    return err("אירעה שגיאה בשרת", 500, "server_error");
   }
 });

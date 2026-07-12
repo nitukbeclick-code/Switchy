@@ -3,33 +3,47 @@
 import { fetchRows, serviceFetch } from "../_shared/db.ts";
 import { asStoredRole } from "../_shared/crm_roles.ts";
 import { jlog } from "../_shared/log.ts";
-import { s, shapeMember } from "./crm_logic.ts";
-import { json, logAudit, q, type Row } from "./helpers.ts";
+import { clampListLimit, clampOffset, isUuidish, s, shapeMember } from "./crm_logic.ts";
+import { err, json, logAudit, q, type Row } from "./helpers.ts";
 
 // ── CRM members (per-rep roles — C.2, admin-only) ───────────────────────────
 
-// listMembers {} → the graded-roles roster: every crm_members row + each member's
-// display name/email (joined from their OWN profile). Admin-only (capability
-// gate). is_admin superset accounts are not listed here — this is the roles layer
-// BELOW admin. Allowlist DTO (shapeMember): no profile column beyond name/email
-// can leak.
-export async function actListMembers(): Promise<Response> {
+// listMembers {limit?, offset?} → the graded-roles roster: every crm_members row
+// + each member's display name/email (joined from their OWN profile). Admin-only
+// (capability gate). is_admin superset accounts are not listed here — this is
+// the roles layer BELOW admin. Allowlist DTO (shapeMember): no profile column
+// beyond name/email can leak. limit/offset+hasMore page the window like the
+// other lists (default: the historical 200 rows). A failed profile join is
+// REPORTED (additive profilesDegraded flag + null names), never silently blank.
+export async function actListMembers(b: Row): Promise<Response> {
+  const limit = clampListLimit(b.limit);
+  const offset = clampOffset(b.offset);
   const rows = await fetchRows<Row>(
-    `/rest/v1/crm_members?order=granted_at.desc&limit=200&select=uid,role,granted_at`,
+    `/rest/v1/crm_members?order=granted_at.desc&limit=${limit + 1}&offset=${offset}&select=uid,role,granted_at`,
   );
-  if (rows === null) return json({ error: "שגיאה בטעינת חברי הצוות" }, 502);
+  if (rows === null) return err("שגיאה בטעינת חברי הצוות", 502, "db_error");
+  const hasMore = rows.length > limit;
+  const window = hasMore ? rows.slice(0, limit) : rows;
   // Enrich with the member's own profile name/email (batch, allowlist select).
-  const uids = rows.map((r) => s(r.uid)).filter(Boolean);
+  const uids = window.map((r) => s(r.uid)).filter(Boolean);
   const profiles = new Map<string, Row>();
+  let profilesDegraded = false;
   if (uids.length) {
     const list = uids.map((id) => q(id)).join(",");
     const profRows = await fetchRows<Row>(
       `/rest/v1/profiles?id=in.(${list})&select=id,name,email`,
     );
-    for (const p of profRows ?? []) profiles.set(s(p.id), p);
+    if (profRows === null) {
+      // The roster itself is intact — degrade the join honestly instead of
+      // failing the whole roles tab over a cosmetic name/email lookup.
+      profilesDegraded = true;
+      jlog({ at: "crm.listMembers", ok: false, error: "profiles read failed" });
+    } else {
+      for (const p of profRows) profiles.set(s(p.id), p);
+    }
   }
-  const members = rows.map((r) => shapeMember(r, profiles.get(s(r.uid))));
-  return json({ members });
+  const members = window.map((r) => shapeMember(r, profiles.get(s(r.uid))));
+  return json({ members, hasMore, profilesDegraded });
 }
 
 // setMemberRole {uid, role} → grant / change / revoke a member's CRM role.
@@ -40,8 +54,9 @@ export async function actListMembers(): Promise<Response> {
 // audited to security_audit_log (Reg.13) with actor + target uid + the new role.
 export async function actSetMemberRole(b: Row, actorUid: string): Promise<Response> {
   const uid = s(b.uid).trim();
-  if (!uid) return json({ error: "uid חסר" }, 400);
-  if (uid === actorUid) return json({ error: "אי אפשר לשנות את ההרשאה של עצמך" }, 400);
+  if (!uid) return err("uid חסר", 400, "bad_request");
+  if (!isUuidish(uid)) return err("uid לא תקין", 400, "bad_request");
+  if (uid === actorUid) return err("אי אפשר לשנות את ההרשאה של עצמך", 400, "bad_request");
 
   const rawRole = s(b.role).trim().toLowerCase();
 
@@ -51,7 +66,7 @@ export async function actSetMemberRole(b: Row, actorUid: string): Promise<Respon
     const r = await serviceFetch(`/rest/v1/crm_members?uid=eq.${q(uid)}`, { method: "DELETE" });
     if (!r || !r.ok) {
       jlog({ at: "crm.setMemberRole", ok: false, op: "revoke", status: r?.status });
-      return json({ error: "ביטול ההרשאה נכשל" }, 502);
+      return err("ביטול ההרשאה נכשל", 502, "db_error");
     }
     await logAudit(actorUid, "crm_revoke_role", { target_uid: uid });
     return json({ ok: true, role: null });
@@ -59,13 +74,13 @@ export async function actSetMemberRole(b: Row, actorUid: string): Promise<Respon
 
   // Grant / change path: only a valid stored role (viewer/rep) is ever written.
   const role = asStoredRole(rawRole);
-  if (!role) return json({ error: "תפקיד לא תקין" }, 400);
+  if (!role) return err("תפקיד לא תקין", 400, "bad_request");
 
   // Confirm the target is a real user (every user has a profiles row) — a clean
   // 404 instead of a confusing FK-violation 502.
   const who = await fetchRows<Row>(`/rest/v1/profiles?id=eq.${q(uid)}&select=id&limit=1`);
-  if (who === null) return json({ error: "שגיאה באימות המשתמש" }, 502);
-  if (!who.length) return json({ error: "המשתמש לא נמצא" }, 404);
+  if (who === null) return err("שגיאה באימות המשתמש", 502, "db_error");
+  if (!who.length) return err("המשתמש לא נמצא", 404, "not_found");
 
   // Upsert on the uid PK (merge-duplicates): first grant INSERTs (granted_at
   // defaults to now()); a later change UPDATEs role/granted_by/updated_at and
@@ -82,7 +97,7 @@ export async function actSetMemberRole(b: Row, actorUid: string): Promise<Respon
   });
   if (!r || !r.ok) {
     jlog({ at: "crm.setMemberRole", ok: false, op: "grant", status: r?.status });
-    return json({ error: "עדכון ההרשאה נכשל" }, 502);
+    return err("עדכון ההרשאה נכשל", 502, "db_error");
   }
   await logAudit(actorUid, "crm_set_role", { target_uid: uid, role });
   return json({ ok: true, role });

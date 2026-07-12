@@ -2,11 +2,15 @@
 // claims, the won-flow saving record, the consented sellable-leads feed, and
 // the per-rep leaderboard.
 
-import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import { fetchRows, insertRow, patchCount, patchCountResult } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import {
   aggregateReps,
+  clampListLimit,
+  clampOffset,
   eventPreview,
+  isUuidish,
+  LEAD_SORTS,
   LEAD_STATUSES,
   MAX_NOTE_LEN,
   s,
@@ -19,49 +23,79 @@ import {
 // SELLABLE_STATUSES (new/contacted/won — a 'lost' lead is never a candidate).
 import { isSellable, SELLABLE_STATUSES } from "../lead-export/lib.ts";
 import type { Lead } from "../_shared/types.ts";
-import { json, logAudit, q, type Row } from "./helpers.ts";
+import { actorName, err, json, logAudit, q, type Row } from "./helpers.ts";
 
 // setLeadStatus {leadId, status} → patch leads.status + lead_events audit row.
+// The row is read first (old_status for the trail + a clean 404) and the PATCH
+// goes through patchCountResult, so a missing id is an honest 404 — never
+// ok:true with a phantom audit trail. Entering `contacted` stamps contacted_at
+// ONLY while it is still null (the guarded PATCH can never overwrite the true
+// first-touch time), so console-driven touches feed the speed-to-lead KPIs.
 export async function actSetLeadStatus(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
   const status = s(b.status).trim();
-  if (!leadId || !status) return json({ error: "leadId/status חסרים" }, 400);
-  if (!LEAD_STATUSES.has(status)) return json({ error: "סטטוס ליד לא תקין" }, 400);
-  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status }),
-  });
-  if (!r || !r.ok) {
-    jlog({ at: "crm.setLeadStatus", ok: false, status: r?.status });
-    return json({ error: "עדכון הליד נכשל" }, 502);
+  if (!leadId || !status) return err("leadId/status חסרים", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+  if (!LEAD_STATUSES.has(status)) return err("סטטוס ליד לא תקין", 400, "invalid_status");
+  const [cur, actor] = await Promise.all([
+    fetchRows<Row>(`/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=id,status,contacted_at`),
+    actorName(actorUid),
+  ]);
+  if (cur === null) return err("עדכון הליד נכשל", 502, "db_error");
+  if (!cur.length) return err("הליד לא נמצא", 404, "not_found");
+  const oldStatus = s(cur[0].status) || null;
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, { status });
+  if (n === null) {
+    jlog({ at: "crm.setLeadStatus", ok: false, leadId });
+    return err("עדכון הליד נכשל", 502, "db_error");
   }
-  // Audit trail; never blocks the response.
+  if (n === 0) return err("הליד לא נמצא", 404, "not_found");
+  // First touch: stamp contacted_at only-if-null (best-effort; the is.null guard
+  // means a lead the Telegram flow already stamped is never re-stamped).
+  if (status === "contacted" && !s(cur[0].contacted_at)) {
+    await patchCount(`/rest/v1/leads?id=eq.${q(leadId)}&contacted_at=is.null`, {
+      contacted_at: new Date().toISOString(),
+    });
+  }
+  // Audit trail — written only after a row REALLY changed; never blocks the response.
   await insertRow("lead_events", {
     lead_id: leadId,
     event: "status_change",
+    old_status: oldStatus,
     new_status: status,
-    actor_name: "CRM",
+    actor_name: actor,
   });
   // Reg.13 security-audit: which admin moved which lead to which pipeline status.
-  await logAudit(actorUid, "crm_lead_status", { lead_id: leadId, status });
+  await logAudit(actorUid, "crm_lead_status", { lead_id: leadId, status, old_status: oldStatus });
   return json({ ok: true });
 }
 
-// listLeads {status?, search?, sort?} → the lead pipeline. `sort` = "oldest"
-// flips to created_at ASC (default newest-first). `search` is an in-memory
+// listLeads {status?, search?, sort?, limit?, offset?} → the lead pipeline.
+// `sort` = "oldest" flips to created_at ASC (default/"recent" = newest-first;
+// anything else → 400, never a silent fallback). `search` is an in-memory
 // name/phone filter over the fetched window (same safe post-fetch pattern as
 // listConversations — never interpolated into the PostgREST query string).
+// limit/offset page the DB window (default: the historical 200 rows, so an
+// omitted limit changes nothing) and the additive `hasMore` reports whether the
+// table continues past the window — computed on the RAW window, before the
+// search filter (it describes the page, not the matches).
 export async function actListLeads(b: Row): Promise<Response> {
   const status = s(b.status).trim();
-  if (status && !LEAD_STATUSES.has(status)) return json({ error: "סטטוס ליד לא תקין" }, 400);
+  if (status && !LEAD_STATUSES.has(status)) return err("סטטוס ליד לא תקין", 400, "invalid_status");
+  const sort = s(b.sort).trim();
+  if (!LEAD_SORTS.has(sort)) return err("מיון לא תקין", 400, "bad_request");
   const search = s(b.search).trim().toLowerCase();
-  const asc = s(b.sort).trim() === "oldest";
+  const asc = sort === "oldest";
+  const limit = clampListLimit(b.limit);
+  const offset = clampOffset(b.offset);
+  // Fetch one row past the window — the cheap "is there a next page?" probe.
   let path =
-    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=200&select=id,name,phone,provider,source,status,created_at,claimed_by`;
+    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=${limit + 1}&offset=${offset}&select=id,name,phone,provider,source,status,created_at,claimed_by`;
   if (status) path += `&status=eq.${q(status)}`;
   const rows = await fetchRows<Row>(path);
-  if (rows === null) return json({ error: "שגיאה בטעינת הלידים" }, 502);
-  let leads = rows.map((r) => ({
+  if (rows === null) return err("שגיאה בטעינת הלידים", 502, "db_error");
+  const hasMore = rows.length > limit;
+  let leads = (hasMore ? rows.slice(0, limit) : rows).map((r) => ({
     id: s(r.id),
     name: s(r.name),
     phone: s(r.phone),
@@ -76,28 +110,34 @@ export async function actListLeads(b: Row): Promise<Response> {
       l.name.toLowerCase().includes(search) || l.phone.toLowerCase().includes(search)
     );
   }
-  return json({ leads });
+  return json({ leads, hasMore });
 }
 
 // getLeadDetail {leadId} → one lead's CRM-relevant fields + its lead_events
 // activity timeline. This is the ONE place richer lead fields (email, notes,
 // claim/contact stamps, actual_saving, consent) are exposed — behind the admin
 // gate, via service_role. `source_ip` is deliberately NOT selected (it's a
-// rate-limit signal, never CRM data). Nothing is fabricated: absent → null.
-export async function actGetLeadDetail(b: Row): Promise<Response> {
+// rate-limit signal, never CRM data). Nothing is fabricated: absent → null, and
+// a failed events read is a 502 — never rendered as an empty timeline.
+export async function actGetLeadDetail(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
-  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
   const rows = await fetchRows<Row>(
     `/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=id,name,phone,email,provider,plan_id,source,callback_time,city,status,created_at,claimed_by,claimed_at,contacted_at,actual_saving,notes,referrer_code,consent_marketing_sms,consent_marketing_email,consent_marketing_whatsapp`,
   );
-  if (rows === null) return json({ error: "שגיאה בטעינת הליד" }, 502);
-  if (rows.length === 0) return json({ error: "הליד לא נמצא" }, 404);
+  if (rows === null) return err("שגיאה בטעינת הליד", 502, "db_error");
+  if (rows.length === 0) return err("הליד לא נמצא", 404, "not_found");
   const lead = shapeLeadDetail(rows[0]);
   // Append-only audit timeline (status changes / claims / notes / savings).
   const evs = await fetchRows<Row>(
     `/rest/v1/lead_events?lead_id=eq.${q(leadId)}&order=created_at.desc&limit=50&select=id,event,old_status,new_status,actor_name,note,created_at`,
   );
-  const events = (evs ?? []).map(shapeLeadEvent);
+  if (evs === null) return err("שגיאה בטעינת יומן הליד", 502, "db_error");
+  const events = evs.map(shapeLeadEvent);
+  // Reg.13: the detail view is a PII-heavy READ (name/phone/email/notes), so it
+  // is audited like the sellable feed — WHO viewed WHICH lead, ids only.
+  await logAudit(actorUid, "crm_lead_view", { lead_id: leadId });
   return json({ lead, events });
 }
 
@@ -117,7 +157,7 @@ export async function actListSellableLeads(b: Row, actorUid: string): Promise<Re
     `/rest/v1/leads?consent_share_at=not.is.null&status=in.(${statuses.map((st) => q(st)).join(",")})` +
     `&order=created_at.desc&limit=500&select=id,name,phone,email,provider,source,status,consent_share_at,created_at`;
   const rows = await fetchRows<Row>(path);
-  if (rows === null) return json({ error: "שגיאה בטעינת הלידים לשיתוף" }, 502);
+  if (rows === null) return err("שגיאה בטעינת הלידים לשיתוף", 502, "db_error");
   // Defence in depth: re-apply the exporter's isSellable gate even though the query
   // already filtered — a consent-less row can never slip through, ever.
   const leads = rows.filter((r) => isSellable(r as unknown as Lead)).map(shapeSellableLead);
@@ -128,19 +168,20 @@ export async function actListSellableLeads(b: Row, actorUid: string): Promise<Re
 
 // addNote {leadId, note} → append a note to the lead's activity timeline
 // (lead_events). Does NOT overwrite the single leads.notes field — the timeline
-// preserves history. Clamped; PII-light audit preview.
+// preserves history. Clamped to the unified MAX_NOTE_LEN; PII-light audit preview.
 export async function actAddNote(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
-  const note = s(b.note).trim().slice(0, 2000);
-  if (!leadId) return json({ error: "leadId חסר" }, 400);
-  if (!note) return json({ error: "אי אפשר להוסיף הערה ריקה" }, 400);
+  const note = s(b.note).trim().slice(0, MAX_NOTE_LEN);
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+  if (!note) return err("אי אפשר להוסיף הערה ריקה", 400, "bad_request");
   const wrote = await insertRow("lead_events", {
     lead_id: leadId,
     event: "note",
     note,
-    actor_name: "CRM",
+    actor_name: await actorName(actorUid),
   });
-  if (!wrote) return json({ error: "שמירת ההערה נכשלה" }, 502);
+  if (!wrote) return err("שמירת ההערה נכשלה", 502, "db_error");
   await logAudit(actorUid, "crm_lead_note", { lead_id: leadId, preview: eventPreview(note) });
   return json({ ok: true });
 }
@@ -153,20 +194,21 @@ export async function actAddNote(b: Row, actorUid: string): Promise<Response> {
 export async function actSetLeadNote(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
   const note = s(b.note).slice(0, MAX_NOTE_LEN);
-  if (!leadId) return json({ error: "leadId חסר" }, 400);
-  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ notes: note || null }),
-  });
-  if (!r || !r.ok) {
-    jlog({ at: "crm.setLeadNote", ok: false, status: r?.status });
-    return json({ error: "עדכון ההערה נכשל" }, 502);
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, { notes: note || null });
+  if (n === null) {
+    jlog({ at: "crm.setLeadNote", ok: false, leadId });
+    return err("עדכון ההערה נכשל", 502, "db_error");
   }
+  // Honest 404 on a missing id — no phantom note_edit trail for a row that
+  // never changed.
+  if (n === 0) return err("הליד לא נמצא", 404, "not_found");
   await insertRow("lead_events", {
     lead_id: leadId,
     event: "note_edit",
     note: note || "(ההערה נמחקה)",
-    actor_name: "CRM",
+    actor_name: await actorName(actorUid),
   });
   await logAudit(actorUid, "crm_lead_note_edit", { lead_id: leadId, len: note.length, preview: eventPreview(note) });
   return json({ ok: true });
@@ -178,24 +220,27 @@ export async function actSetLeadNote(b: Row, actorUid: string): Promise<Response
 // from planting a giant fake number.
 export async function actRecordSaving(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
-  if (!leadId) return json({ error: "leadId חסר" }, 400);
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
   const raw = Number(b.annualSaving);
   const saving = Number.isFinite(raw) ? Math.round(Math.min(100000, Math.max(0, raw))) : NaN;
-  if (!Number.isFinite(saving) || saving <= 0) return json({ error: "סכום חיסכון לא תקין" }, 400);
-  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ actual_saving: saving, status: "won" }),
+  if (!Number.isFinite(saving) || saving <= 0) return err("סכום חיסכון לא תקין", 400, "bad_request");
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    actual_saving: saving,
+    status: "won",
   });
-  if (!r || !r.ok) {
-    jlog({ at: "crm.recordSaving", ok: false, status: r?.status });
-    return json({ error: "רישום החיסכון נכשל" }, 502);
+  if (n === null) {
+    jlog({ at: "crm.recordSaving", ok: false, leadId });
+    return err("רישום החיסכון נכשל", 502, "db_error");
   }
+  // Honest 404 — a saving is only ever recorded onto a REAL lead.
+  if (n === 0) return err("הליד לא נמצא", 404, "not_found");
   await insertRow("lead_events", {
     lead_id: leadId,
     event: "saving",
     new_status: "won",
     note: `חיסכון שנתי שנרשם: ₪${saving}`,
-    actor_name: "CRM",
+    actor_name: await actorName(actorUid),
   });
   await logAudit(actorUid, "crm_lead_saving", { lead_id: leadId, saving });
   return json({ ok: true });
@@ -207,16 +252,19 @@ export async function actRecordSaving(b: Row, actorUid: string): Promise<Respons
 export async function actClaimLead(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
   const rep = s(b.rep).trim().slice(0, 120);
-  if (!leadId) return json({ error: "leadId חסר" }, 400);
-  if (!rep) return json({ error: "שם נציג חסר" }, 400);
-  const r = await serviceFetch(`/rest/v1/leads?id=eq.${q(leadId)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ claimed_by: rep, claimed_at: new Date().toISOString() }),
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+  if (!rep) return err("שם נציג חסר", 400, "bad_request");
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    claimed_by: rep,
+    claimed_at: new Date().toISOString(),
   });
-  if (!r || !r.ok) {
-    jlog({ at: "crm.claimLead", ok: false, status: r?.status });
-    return json({ error: "שיוך הליד נכשל" }, 502);
+  if (n === null) {
+    jlog({ at: "crm.claimLead", ok: false, leadId });
+    return err("שיוך הליד נכשל", 502, "db_error");
   }
+  // Honest 404 — no claim event/audit for a lead that doesn't exist.
+  if (n === 0) return err("הליד לא נמצא", 404, "not_found");
   await insertRow("lead_events", {
     lead_id: leadId,
     event: "claim",
@@ -238,6 +286,6 @@ export async function actRepLeaderboard(): Promise<Response> {
   const rows = await fetchRows<Row>(
     `/rest/v1/leads?claimed_by=not.is.null&order=created_at.desc&limit=${LIMIT}&select=claimed_by,status,actual_saving`,
   );
-  if (rows === null) return json({ error: "שגיאה בטעינת נתוני הנציגים" }, 502);
+  if (rows === null) return err("שגיאה בטעינת נתוני הנציגים", 502, "db_error");
   return json({ reps: aggregateReps(rows), sampled: rows.length, capped: rows.length >= LIMIT });
 }

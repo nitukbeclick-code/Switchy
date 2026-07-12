@@ -63,12 +63,37 @@ export default function CrmLeads() {
   // Monotonic sequence for loads: rapid filter/sort switches fire overlapping
   // fetches, and HTTP ordering isn't guaranteed — only the newest may land.
   const loadSeq = useRef(0);
+  // The rolling-window clock for the quick-view date filter. Sampled when the
+  // inputs of `shown` actually change (a load landing, a range/rep click) —
+  // exactly when the memo used to call Date.now() — instead of impurely during
+  // render (react-hooks/purity). 0 is safe: it's never read before a sample
+  // (no rows before the first load; `all` ignores it).
+  const [nowMs, setNowMs] = useState(0);
 
-  // Debounce the search box so we don't fire a request per keystroke.
+  // Event-side reset before a (re)load: skeleton up, stale view state cleared.
+  // The useState initializers cover the mount load; every later load starts
+  // from an event (filter/sort click, search debounce, retry, bulk, drawer
+  // onChanged) that calls this first — so the load effect below never sets
+  // state synchronously (react-hooks/set-state-in-effect).
+  const beginLoad = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    setSelected(new Set()); // a fresh view invalidates any prior selection
+    setConfirmStatus(null);
+  }, []);
+
+  // Debounce the search box so we don't fire a request per keystroke; when the
+  // (trimmed) query actually changes, reset the view here in the timeout
+  // callback — the load effect then refetches.
   useEffect(() => {
-    const t = setTimeout(() => setSearch(searchInput.trim()), 300);
+    const t = setTimeout(() => {
+      const next = searchInput.trim();
+      if (next === search) return; // unchanged query — no reload, same as before
+      beginLoad();
+      setSearch(next);
+    }, 300);
     return () => clearTimeout(t);
-  }, [searchInput]);
+  }, [searchInput, search, beginLoad]);
 
   // The set of reps present in the loaded window, for the rep filter dropdown.
   const repOptions = useMemo(
@@ -82,9 +107,9 @@ export default function CrmLeads() {
   const shown = useMemo(
     () =>
       (leads ?? []).filter(
-        (l) => withinRange(l.createdAt, range, Date.now()) && (rep === "all" || l.claimedBy === rep),
+        (l) => withinRange(l.createdAt, range, nowMs) && (rep === "all" || l.claimedBy === rep),
       ),
-    [leads, range, rep],
+    [leads, range, rep, nowMs],
   );
 
   const clearOnFilterChange = useCallback(() => {
@@ -94,36 +119,68 @@ export default function CrmLeads() {
   }, []);
 
   const changeRange = useCallback((r: DateRange) => {
-    setRange(r);
+    if (r !== range) {
+      setNowMs(Date.now()); // re-sample the window clock, as the memo used to
+      setRange(r);
+    }
     clearOnFilterChange();
-  }, [clearOnFilterChange]);
+  }, [range, clearOnFilterChange]);
 
   const changeRep = useCallback((r: string) => {
-    setRep(r);
+    if (r !== rep) {
+      setNowMs(Date.now()); // re-sample the window clock, as the memo used to
+      setRep(r);
+    }
     clearOnFilterChange();
-  }, [clearOnFilterChange]);
+  }, [rep, clearOnFilterChange]);
 
-  // If a reload drops the currently-filtered rep from the window, fall back to all.
-  useEffect(() => {
-    if (rep !== "all" && !repOptions.includes(rep)) setRep("all");
-  }, [repOptions, rep]);
-
-  const load = useCallback(async () => {
+  // Fetch the current view. Loading/error/selection resets are event-driven
+  // (`beginLoad` above; the useState initializers cover the mount load) — so
+  // the load effect never sets state synchronously
+  // (react-hooks/set-state-in-effect): state only lands in the .then continuation.
+  const load = useCallback(() => {
     const seq = ++loadSeq.current;
-    setLoading(true);
-    setError(false);
-    setSelected(new Set()); // a fresh view invalidates any prior selection
-    setConfirmStatus(null);
-    const res = await fetchCrmLeads({
+    return fetchCrmLeads({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
       sort,
+    }).then((res) => {
+      if (seq !== loadSeq.current) return; // a newer load superseded this one
+      if (res) {
+        setLeads(res.leads);
+        setNowMs(Date.now()); // fresh window clock for the fresh rows
+        // If this load dropped the currently-filtered rep from the window, fall
+        // back to all (previously a separate effect over repOptions).
+        setRep((prev) => (prev !== "all" && !res.leads.some((l) => l.claimedBy === prev) ? "all" : prev));
+      } else setError(true);
+      setLoading(false);
     });
-    if (seq !== loadSeq.current) return; // a newer load superseded this one
-    if (res) setLeads(res.leads);
-    else setError(true);
-    setLoading(false);
   }, [filter, search, sort]);
+
+  // Re-fetch the current view from an event (retry, bulk apply, drawer onChanged).
+  const reload = useCallback(async () => {
+    beginLoad();
+    await load();
+  }, [beginLoad, load]);
+
+  // Switch stage/sort: reset the view in the click, then the effect refetches.
+  const changeFilter = useCallback(
+    (next: Filter) => {
+      if (next === filter) return; // same chip — no reload, same as before
+      beginLoad();
+      setFilter(next);
+    },
+    [filter, beginLoad],
+  );
+
+  const changeSort = useCallback(
+    (next: LeadSort) => {
+      if (next === sort) return; // same button — no reload, same as before
+      beginLoad();
+      setSort(next);
+    },
+    [sort, beginLoad],
+  );
 
   const toggleOne = useCallback((id: string) => {
     setBulkMsg(null);
@@ -162,9 +219,9 @@ export default function CrmLeads() {
           ? { text: `עודכנו ${ok} לידים.`, ok: true }
           : { text: `עודכנו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`, ok: false },
       );
-      await load(); // refresh statuses + clear the (now-stale) selection
+      await reload(); // refresh statuses + clear the (now-stale) selection
     },
-    [selected, bulkBusy, load],
+    [selected, bulkBusy, reload],
   );
 
   useEffect(() => {
@@ -215,7 +272,7 @@ export default function CrmLeads() {
               key={f.key}
               type="button"
               aria-pressed={active}
-              onClick={() => setFilter(f.key)}
+              onClick={() => changeFilter(f.key)}
               className={`interactive rounded-full border px-3 py-1.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
                   ? "border-accent bg-accent/10 text-accent-text"
@@ -241,7 +298,7 @@ export default function CrmLeads() {
           <span>מיון:</span>
           <button
             type="button"
-            onClick={() => setSort("recent")}
+            onClick={() => changeSort("recent")}
             aria-pressed={sort === "recent"}
             className={`rounded-full border px-2.5 py-1 font-medium ${sort === "recent" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
           >
@@ -249,7 +306,7 @@ export default function CrmLeads() {
           </button>
           <button
             type="button"
-            onClick={() => setSort("oldest")}
+            onClick={() => changeSort("oldest")}
             aria-pressed={sort === "oldest"}
             className={`rounded-full border px-2.5 py-1 font-medium ${sort === "oldest" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
           >
@@ -305,7 +362,7 @@ export default function CrmLeads() {
       ) : error || !leads ? (
         <NoticeCard
           action={
-            <button type="button" onClick={() => void load()} className={BTN_GHOST}>
+            <button type="button" onClick={() => void reload()} className={BTN_GHOST}>
               נסו שוב
             </button>
           }
@@ -510,7 +567,7 @@ export default function CrmLeads() {
         <CrmLeadDrawer
           leadId={selectedId}
           onClose={() => setSelectedId(null)}
-          onChanged={() => void load()}
+          onChanged={() => void reload()}
         />
       )}
     </div>

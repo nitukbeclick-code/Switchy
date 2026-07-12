@@ -1,8 +1,10 @@
 name: Bot health
 
-# Watches the watcher: a daily probe of both deployed edge functions. A failed
-# run emails the repo owner (default GitHub notification), catching "the bot
-# is silently down" — misconfigured secrets, broken deploys, paused project.
+# Watches the watcher: a daily probe of every deployed edge function that
+# exposes a secret-less health/GET surface, plus the deployed site's catalogue
+# provenance. A failed run emails the repo owner (default GitHub notification),
+# catching "the bot is silently down" — misconfigured secrets, broken deploys,
+# paused project, or a site stuck on its bundled fallback snapshot.
 
 on:
   schedule:
@@ -35,3 +37,65 @@ jobs:
           curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders?action=cron-health' -o h3.json
           cat h3.json
           test "$(jq -r .ok h3.json)" = "true"
+
+      # The public customer bot: its GET explicitly reports "live" vs
+      # "dark (TELEGRAM_USER_BOT_TOKEN unset)" — a dark bot must alarm.
+      - name: telegram-user-webhook health (public user bot)
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/telegram-user-webhook' -o h4.txt
+          cat h4.txt
+          grep -q 'is live' h4.txt
+
+      # The account-link bot answers any non-POST with a plain 200 "OK".
+      - name: telegram-webhook health (link bot)
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/telegram-webhook' -o h5.txt
+          cat h5.txt
+          test "$(cat h5.txt)" = "OK"
+
+      # webhook_secret is the same shared lead_webhook_secret asserted above.
+      # vapid/whatsapp are deliberately NOT asserted — those channels ship dark
+      # until the owner sets the keys, and dark-by-design must not page.
+      - name: savings-watch health
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/savings-watch?action=health' -o h6.json
+          cat h6.json
+          test "$(jq -r .ok h6.json)" = "true"
+          test "$(jq -r .configured.webhook_secret h6.json)" = "true"
+
+      - name: site-push-notify health
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/site-push-notify?action=health' -o h7.json
+          cat h7.json
+          test "$(jq -r .ok h7.json)" = "true"
+          test "$(jq -r .configured.webhook_secret h7.json)" = "true"
+
+      # These three answer GET with a fixed "<name>: ok" health string.
+      - name: meeting-book / account-delete / referral-issue health
+        run: |
+          for fn in meeting-book account-delete referral-issue; do
+            body="$(curl -fsS "https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/${fn}")"
+            echo "${fn}: ${body}"
+            test "$body" = "${fn}: ok"
+          done
+
+      # street-price has no bare health route (GET needs plan_id|provider), so
+      # probe the read path with a never-real provider: ok:true + zero reports
+      # proves the function AND its get_street_price RPC grant are alive
+      # (a DB/grant regression returns an honest 503 and fails this step).
+      - name: street-price health (read path)
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/street-price?provider=bot-health-probe' -o h8.json
+          cat h8.json
+          test "$(jq -r .ok h8.json)" = "true"
+
+      # build.js stamps <meta name="build:catalogue-source" content="live|bundled">
+      # into index.html. "bundled" means the last rebuild could not read the live
+      # catalogue (RLS regression, paused project) and the site is serving the
+      # committed snapshot — fine as a blip, an alarm when it persists to the
+      # daily probe. Missing meta = the provenance stamp itself regressed.
+      - name: site catalogue provenance (switchy-ai.com)
+        run: |
+          curl -fsS 'https://switchy-ai.com/' -o site.html
+          grep -o '<meta name="build:catalogue-source"[^>]*>' site.html
+          grep -q '<meta name="build:catalogue-source" content="live"' site.html

@@ -57,17 +57,29 @@ export default function CrmTeam() {
   const [newUid, setNewUid] = useState("");
   const [newRole, setNewRole] = useState<CrmRole>("viewer");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const res = await fetchMembers();
-    if (res) setMembers(res.members);
-    else setError(true);
-    setLoading(false);
-  }, []);
+  // Fetch the roster. Loading/error resets are event-driven: the useState
+  // initializers cover the mount load, and every later load starts from an
+  // event (retry / grant / changeRole) via `reload` — so the mount effect never
+  // sets state synchronously (react-hooks/set-state-in-effect): state only
+  // lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchMembers().then((res) => {
+        if (res) setMembers(res.members);
+        else setError(true);
+        setLoading(false);
+      }),
+    [],
+  );
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await load();
   }, [load]);
 
   const grant = useCallback(async () => {
@@ -80,11 +92,11 @@ export default function CrmTeam() {
     if (ok) {
       setNewUid("");
       setNotice("התפקיד הוענק.");
-      await load();
+      await reload();
     } else {
       setNotice("הענקת התפקיד נכשלה — ודאו שה-uid תקין ושאינו שלכם.");
     }
-  }, [newUid, newRole, load]);
+  }, [newUid, newRole, reload]);
 
   const changeRole = useCallback(
     async (uid: string, role: CrmRole | "none") => {
@@ -93,10 +105,10 @@ export default function CrmTeam() {
       setNotice(null);
       const ok = await setCrmMemberRole(uid, role);
       setBusy(null);
-      if (ok) await load();
+      if (ok) await reload();
       else setNotice("עדכון ההרשאה נכשל.");
     },
-    [load],
+    [reload],
   );
 
   // A pending revoke confirmation quietly expires if the admin does nothing.
@@ -169,7 +181,7 @@ export default function CrmTeam() {
       ) : error || !members ? (
         <NoticeCard
           action={
-            <button type="button" onClick={() => void load()} className={BTN_GHOST}>
+            <button type="button" onClick={() => void reload()} className={BTN_GHOST}>
               נסו שוב
             </button>
           }

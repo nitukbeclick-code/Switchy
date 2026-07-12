@@ -92,6 +92,14 @@ revoke all on function public.record_registration_consent(boolean, boolean, bool
 grant execute on function public.record_registration_consent(boolean, boolean, boolean, text) to authenticated;
 
 -- ── 3. Leads consent stamp — server-authoritative, non-rejecting (compat) ─────
+-- ⚠️ SUPERSEDED: leads_consent_stamp() below was REPLACED by
+-- lead-consent-share-2026-06.sql (adds the consent_share_at "sellable" stamp)
+-- and then hardened by cron-and-hardening-2026-07.sql §2 (search_path = '').
+-- Re-running this section drops the consent_share_at re-stamp — leaving the
+-- third-party-sharing consent timestamp CLIENT-controlled (backdatable) — and
+-- un-pins the search_path. Do not re-apply §3; if you must re-run this file,
+-- re-apply lead-consent-share-2026-06.sql + the cron-and-hardening §2 ALTER
+-- afterwards. (Banner added 2026-07 hygiene pass; the SQL was not altered.)
 -- The site/app lead form sends a non-null value to INDICATE consent; we overwrite
 -- it with the server time so it can't be backdated. Marketing stays null unless
 -- the user opted in. Mandatory enforcement is client-side on the form (every

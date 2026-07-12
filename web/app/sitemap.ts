@@ -7,6 +7,7 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@supabase/supabase-js";
 import {
   getCategories,
+  getPlans,
   getProviders,
   getGlossary,
   getCities,
@@ -348,6 +349,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // /plans/[id] — the rich per-plan detail pages (Product/Offer JSON-LD, spec
+  // grid, fees, small print). One entry per catalogue plan, from the SAME bundled
+  // catalogue that generateStaticParams() in /plans/[id]/page.tsx pre-renders
+  // from, so the sitemap and the built pages can never disagree. lastModified is
+  // the plan's real `updatedAt` verification stamp when it parses (truthful
+  // freshness, like the guides' publish dates); otherwise the render date.
+  const planPages: MetadataRoute.Sitemap = getPlans().map((p) => {
+    const t = typeof p.updatedAt === "string" ? Date.parse(p.updatedAt) : NaN;
+    return {
+      url: `${SITE_URL}/plans/${p.id}`,
+      lastModified: Number.isNaN(t) ? now : new Date(t),
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    };
+  });
+
   // /guides (hub) + /guides/[slug] — the editorial authority layer (150 ported,
   // real articles). lastModified uses each article's genuine publish date so the
   // <lastmod> is truthful rather than a build-time stamp.
@@ -390,6 +407,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...content,
     ...categoryLandings,
     ...subCategoryLandings,
+    ...planPages,
     ...guidesHub,
     ...guides,
     ...authority,

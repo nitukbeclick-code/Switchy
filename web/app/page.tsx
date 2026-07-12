@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
-import AiSummary from "@/components/AiSummary";
+import SgeSummary from "@/components/SgeSummary";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
@@ -559,7 +559,7 @@ export default function Home() {
 
       {/* ── AI summary (GEO answer box) ───────────────────────────────────── */}
       <div className="mt-16">
-        <AiSummary>{summaryText}</AiSummary>
+        <SgeSummary>{summaryText}</SgeSummary>
       </div>
 
       {/* ── Provider rankings (transparent "best value") ──────────────────── */}

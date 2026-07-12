@@ -8,7 +8,10 @@
 <!-- Internal render template, not a public page — keep crawlers out. -->
 <meta name="robots" content="noindex, nofollow" />
 <title>SWITCHY og-card template</title>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=Assistant:wght@500;600;700&display=swap" rel="stylesheet" />
+<!-- Self-hosted fonts (same files every page ships) — the render is deterministic
+     even offline / with Google Fonts blocked. Covers Rubik 800/900 + Assistant 600/700
+     used below, matching the weights the old CDN link resolved to. -->
+<link rel="stylesheet" href="assets/fonts/fonts.css" />
 <style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1200px; height: 630px; }

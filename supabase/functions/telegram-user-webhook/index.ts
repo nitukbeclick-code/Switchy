@@ -64,6 +64,11 @@ import { formatKnowledgeForPrompt, type KnowledgeEntry, loadBotKnowledge, logCus
 import { lookupOpenLead } from "../_shared/leadlookup.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import {
+  sendUserBotMessage,
+  sendUserBotTyping,
+  userBotToken,
+} from "../_shared/telegram_user.ts";
+import {
   appendTurn,
   asChatTurns,
   type ChatSession,
@@ -92,9 +97,10 @@ import {
 } from "./lib.ts";
 
 // The user bot's OWN token — distinct from the rep bot's TELEGRAM_BOT_TOKEN.
-// Absent ⇒ the function ships dark (503 no-op). Read at module load; the value is
-// stable for the isolate's lifetime.
-const USER_BOT_TOKEN = firstEnv(["TELEGRAM_USER_BOT_TOKEN"]);
+// Absent ⇒ the function ships dark (503 no-op). Read at module load for the
+// dark-gate/GET probes (env is stable for the isolate's lifetime); the shared
+// sender (_shared/telegram_user.ts) re-reads it per call.
+const USER_BOT_TOKEN = userBotToken();
 
 // Per-chat AI fan-out cap: at most this many inbound turns per chat per window
 // reach the (paid) agent; beyond it we send a soft "one moment" line. The secret
@@ -102,26 +108,47 @@ const USER_BOT_TOKEN = firstEnv(["TELEGRAM_USER_BOT_TOKEN"]);
 const PER_CHAT_LIMIT = 20;
 const PER_CHAT_WINDOW_MS = 60_000;
 
-// ── catalogue grounding (live public.plans, cached per isolate) ───────────────
+// ── catalogue grounding (live public.plans, cached per isolate WITH a TTL) ────
+// A hot isolate used to serve its module-load catalogue for its WHOLE lifetime,
+// so a plans update never reached it until a cold start (while the cfg cache in
+// the same request path deliberately expires at 60s). The TTL keeps grounded
+// answers fresh without a fetch per turn. Refresh is FAIL-SOFT: a failed
+// re-fetch keeps serving the last good copy for another window (never
+// downgrades a grounded bot to an empty catalogue) and retries after the TTL;
+// a failed FIRST fetch is NOT cached, so the next turn retries immediately.
+const CATALOGUE_TTL_MS = 5 * 60_000;
 let _plans: Plan[] | null = null;
+let _plansAt = 0;
 async function getPlans(): Promise<Plan[]> {
-  if (_plans) return _plans;
+  if (_plans && Date.now() - _plansAt < CATALOGUE_TTL_MS) return _plans;
   const rows = await fetchRows<Record<string, unknown>>(
     "/rest/v1/plans?select=id,provider,category,price,price_unit,specs,subtitle,kind,title&limit=1000",
   );
-  _plans = rows ? plansFromRows(rows) : [];
-  return _plans;
+  if (rows) {
+    _plans = plansFromRows(rows);
+    _plansAt = Date.now();
+  } else if (_plans) {
+    // Refresh failed → serve the stale copy, re-arm the TTL so a flapping DB
+    // isn't hammered every turn, and say so in the logs.
+    _plansAt = Date.now();
+    jlog({ at: "tgu.plans", ok: false, stale: true });
+  }
+  return _plans ?? [];
 }
 
-// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function instance
-// via the service-role read — mirrors whatsapp-webhook / site-ai-chat so the Telegram
-// user bot gains the SAME knowledge base. Fail-soft → [] (loadBotKnowledge never
-// throws); a missing/empty table simply means the agent runs without the block
-// (prompt byte-identical to today).
+// Curated verified-FAQ knowledge (bot_knowledge), cached per isolate with the
+// SAME TTL as the catalogue — mirrors whatsapp-webhook / site-ai-chat so the
+// Telegram user bot gains the SAME knowledge base, and a knowledge edit reaches
+// hot isolates within one window instead of never. Fail-soft → [] (the shared
+// loadBotKnowledge never throws; it can't distinguish an empty table from a
+// read error, so an empty refresh simply omits the OPTIONAL prompt block for
+// one window — the prompt is then byte-identical to a cold start without it).
 let _knowledge: KnowledgeEntry[] | null = null;
+let _knowledgeAt = 0;
 async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
-  if (_knowledge) return _knowledge;
+  if (_knowledge && Date.now() - _knowledgeAt < CATALOGUE_TTL_MS) return _knowledge;
   _knowledge = await loadBotKnowledge();
+  _knowledgeAt = Date.now();
   return _knowledge;
 }
 
@@ -137,53 +164,20 @@ async function aiKeys(): Promise<AiKeys> {
   };
 }
 
-// ── Telegram send (user bot token; single retry on 429 / transient error) ─────
+// ── Telegram send — the SHARED hardened user-bot sender ───────────────────────
+// One delivery contract for every customer-facing message: 429 retry honoring
+// retry_after, transient-network retry, permanent HTML-rejection → clipped
+// plain-text fallback. Lives in _shared/telegram_user.ts so the team→customer
+// relay half (notify-lead/callbacks.ts) sends over the IDENTICAL path — a rep's
+// relayed reply must survive exactly what the bot's own replies survive.
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function sendMessage(
+function sendMessage(
   chatId: number,
   text: string,
   replyMarkup?: Record<string, unknown>,
-  attempt = 0,
 ): Promise<boolean> {
-  if (!USER_BOT_TOKEN) return false;
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${USER_BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-      }),
-    });
-    if (r.status === 429 && attempt === 0) {
-      const j = await r.json().catch(() => ({} as Record<string, unknown>));
-      const retryAfter = Number((j.parameters as { retry_after?: number } | undefined)?.retry_after ?? 1);
-      await sleep(Math.min(Math.max(retryAfter, 1), 5) * 1000);
-      return await sendMessage(chatId, text, replyMarkup, 1);
-    }
-    if (!r.ok) {
-      // A permanently-rejected HTML payload (broken entities / too long) would
-      // otherwise drop the reply — degrade to clipped plain text once.
-      const body = await r.text().catch(() => "");
-      if (attempt === 0 && /too long|can't parse|parse entities/i.test(body)) {
-        return await sendPlain(chatId, text.replace(/<[^>]+>/g, "").slice(0, 3900));
-      }
-      jlog({ at: "tgu.send", ok: false, status: r.status });
-      return false;
-    }
-    return true;
-  } catch (e) {
-    if (attempt === 0) {
-      await sleep(800);
-      return await sendMessage(chatId, text, replyMarkup, 1);
-    }
-    jlog({ at: "tgu.send", ok: false, error: String(e) });
-    return false;
-  }
+  return sendUserBotMessage(chatId, text, replyMarkup);
 }
 
 // Send a (possibly long) reply as one or more ordered messages, respecting
@@ -212,19 +206,9 @@ async function sendChunked(
 }
 
 // Show the "Switchy is typing…" chat action so the user knows we're working on a
-// reply during the (paid, sometimes slow) agent round-trip. Telegram clears it
-// automatically after ~5s or when the next message lands, so there's nothing to
-// turn off. Best-effort + fail-soft: never blocks (the caller does not await its
-// result before running the agent) and swallows every error — a missing token /
-// network blip must never affect the reply path.
-function sendTyping(chatId: number): void {
-  if (!USER_BOT_TOKEN) return;
-  fetch(`https://api.telegram.org/bot${USER_BOT_TOKEN}/sendChatAction`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, action: "typing" }),
-  }).catch((e) => jlog({ at: "tgu.typing", ok: false, error: String(e) }));
-}
+// reply during the (paid, sometimes slow) agent round-trip. Best-effort +
+// fail-soft (the caller does not await it) — shared sender, see telegram_user.ts.
+const sendTyping = sendUserBotTyping;
 
 // ── update_id idempotency ledger (reliability) ────────────────────────────────
 // Telegram RE-DELIVERS an update if our webhook doesn't 200 quickly enough (a slow
@@ -263,20 +247,6 @@ async function alreadyProcessed(updateId: number | undefined | null): Promise<bo
     return false;
   } catch (e) {
     jlog({ at: "tgu.dedup", ok: false, error: String(e) });
-    return false;
-  }
-}
-
-async function sendPlain(chatId: number, text: string): Promise<boolean> {
-  if (!USER_BOT_TOKEN) return false;
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${USER_BOT_TOKEN}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-    });
-    return r.ok;
-  } catch {
     return false;
   }
 }

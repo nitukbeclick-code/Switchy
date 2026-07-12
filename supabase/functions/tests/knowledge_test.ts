@@ -13,9 +13,13 @@
 
 import { assert, assertEquals } from "@std/assert";
 import {
+  __resetKnowledgeCacheForTests,
+  fetchBotKnowledge,
   formatKnowledgeForPrompt,
+  KNOWLEDGE_TTL_MS,
   type KnowledgeEntry,
   loadBotKnowledge,
+  loadBotKnowledgeCached,
   logCustomerQuestion,
   matchTopic,
 } from "../_shared/knowledge.ts";
@@ -141,6 +145,124 @@ Deno.test("loadBotKnowledge maps OK rows into KnowledgeEntry[]", async () => {
     assertEquals(rows[0].priority, 20);
   } finally {
     globalThis.fetch = realFetch;
+  }
+});
+
+// ── fetchBotKnowledge — the null-vs-empty contract the TTL cache builds on ────
+
+Deno.test("fetchBotKnowledge returns NULL on a failed read (not [])", async () => {
+  withStubbedEnv();
+  globalThis.fetch = (() =>
+    Promise.resolve(new Response("boom", { status: 500 }))) as typeof globalThis.fetch;
+  try {
+    assertEquals(await fetchBotKnowledge(), null);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+Deno.test("fetchBotKnowledge returns [] for a genuinely empty table (distinct from failure)", async () => {
+  withStubbedEnv();
+  globalThis.fetch = (() =>
+    Promise.resolve(
+      new Response("[]", { status: 200, headers: { "content-type": "application/json" } }),
+    )) as typeof globalThis.fetch;
+  try {
+    assertEquals(await fetchBotKnowledge(), []);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+// ── loadBotKnowledgeCached — the per-isolate TTL cache ────────────────────────
+// One sequential test with steps so the module-level cache is driven through a
+// deterministic timeline via the injectable `now` (no timers).
+
+function rowsResponse(rows: unknown[]): Response {
+  return new Response(JSON.stringify(rows), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+const ROW_A = { topic: "זה בחינם", question_examples: ["איך אתם מרוויחים"], answer: "עמלה מהספק.", priority: 20 };
+const ROW_B = { topic: "אילו חברות", question_examples: ["את מי אתם משווים"], answer: "את כולן.", priority: 40 };
+
+Deno.test("loadBotKnowledgeCached: TTL refresh + fail-soft-to-stale contract", async (t) => {
+  withStubbedEnv();
+  __resetKnowledgeCacheForTests();
+  const T0 = 1_000_000;
+  let fetches = 0;
+  let respond: () => Response | Promise<never> = () => rowsResponse([ROW_A]);
+  globalThis.fetch = (() => {
+    fetches++;
+    return Promise.resolve(respond());
+  }) as typeof globalThis.fetch;
+  try {
+    await t.step("cold start loads once", async () => {
+      const k = await loadBotKnowledgeCached(T0);
+      assertEquals(k.length, 1);
+      assertEquals(k[0].topic, "זה בחינם");
+      assertEquals(fetches, 1);
+    });
+
+    await t.step("within the TTL the cached copy serves with ZERO reads", async () => {
+      const k = await loadBotKnowledgeCached(T0 + KNOWLEDGE_TTL_MS - 1);
+      assertEquals(k.length, 1);
+      assertEquals(fetches, 1, "no re-fetch inside the window");
+    });
+
+    await t.step("after the TTL a curated edit is picked up (no redeploy)", async () => {
+      respond = () => rowsResponse([ROW_A, ROW_B]);
+      const k = await loadBotKnowledgeCached(T0 + KNOWLEDGE_TTL_MS + 1);
+      assertEquals(k.length, 2, "the new row reached the warm isolate");
+      assertEquals(fetches, 2);
+    });
+
+    await t.step("a FAILED refresh keeps serving the last good copy (fail-soft)", async () => {
+      respond = () => new Response("db down", { status: 500 });
+      const k = await loadBotKnowledgeCached(T0 + 2 * KNOWLEDGE_TTL_MS + 2);
+      assertEquals(k.length, 2, "stale copy survives the refresh failure");
+      assertEquals(fetches, 3, "the refresh WAS attempted");
+    });
+
+    await t.step("a failed refresh stamps the window — retried per TTL, not per message", async () => {
+      const k = await loadBotKnowledgeCached(T0 + 2 * KNOWLEDGE_TTL_MS + 3);
+      assertEquals(k.length, 2);
+      assertEquals(fetches, 3, "no extra read right after the failed refresh");
+    });
+
+    await t.step("a successful EMPTY fetch propagates (disabling all rows must win)", async () => {
+      respond = () => rowsResponse([]);
+      const k = await loadBotKnowledgeCached(T0 + 3 * KNOWLEDGE_TTL_MS + 4);
+      assertEquals(k, [], "a genuine empty set replaces the cache");
+    });
+  } finally {
+    globalThis.fetch = realFetch;
+    __resetKnowledgeCacheForTests();
+  }
+});
+
+Deno.test("loadBotKnowledgeCached: a cold-start FAILURE degrades to [] and retries after the TTL", async () => {
+  withStubbedEnv();
+  __resetKnowledgeCacheForTests();
+  const T0 = 5_000_000;
+  let fetches = 0;
+  let fail = true;
+  globalThis.fetch = (() => {
+    fetches++;
+    return Promise.resolve(fail ? new Response("down", { status: 500 }) : rowsResponse([ROW_A]));
+  }) as typeof globalThis.fetch;
+  try {
+    assertEquals(await loadBotKnowledgeCached(T0), [], "agent runs without the block");
+    assertEquals(await loadBotKnowledgeCached(T0 + 1), [], "no hammering inside the window");
+    assertEquals(fetches, 1);
+    fail = false;
+    const k = await loadBotKnowledgeCached(T0 + KNOWLEDGE_TTL_MS + 1);
+    assertEquals(k.length, 1, "recovers on the next window (not stuck at [] forever)");
+  } finally {
+    globalThis.fetch = realFetch;
+    __resetKnowledgeCacheForTests();
   }
 });
 

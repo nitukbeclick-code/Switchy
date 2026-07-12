@@ -4232,3 +4232,45 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
   .jump-bar i { forced-color-adjust: none; }
   .hero-decor { display: none; }
 }
+
+/* ── Rendering perf: skip offscreen layout on the mega list pages ──────────
+   plans.html (120 plan cards), the category pages' #catPlanGrid (up to 59)
+   and the guides.html rails (150 guide cards) lay out hundreds of below-fold
+   cards on first render. content-visibility:auto lets the browser skip
+   layout + paint for offscreen cards; contain-intrinsic-size mirrors the
+   real rendered heights (measured in Chromium at 1440px / 390px) so the
+   scrollbar doesn't jump, and the `auto` keyword swaps in the true
+   last-rendered size once a card has been on screen. Find-in-page and
+   anchor/fragment navigation force-render skipped content natively — no
+   `hidden=until-found` needed. Unsupported browsers simply ignore both
+   properties. Scoped to the big list containers only. */
+#planGrid > .plan,
+#catPlanGrid > .plan {
+  content-visibility: auto;
+  /* contain-intrinsic-size is the CONTENT box — the .plan 16px padding + 1px
+     border (34px total per axis) are added on top. Measured border boxes:
+     265×440 desktop → content 231×406. */
+  contain-intrinsic-size: auto 231px auto 406px;
+}
+@media (max-width: 700px) {
+  #planGrid > .plan,
+  #catPlanGrid > .plan {
+    /* Single/two-column phones: measured median border box 358×373 → content
+       324×339 (same 34px padding+border per axis). */
+    contain-intrinsic-size: auto 324px auto 339px;
+  }
+}
+.guide-cards > .guide-card {
+  content-visibility: auto;
+  /* .guide-card has 24px padding + 1px border (50px per axis). Measured
+     border boxes: 355×302 desktop, 320×302–327 mobile → content 305×252.
+     Height is deliberately the MINIMUM of the measured range, so a skipped
+     card's estimate can never stretch a live carousel row taller than its
+     rendered cards (flex rows size to the tallest hypothetical item). */
+  contain-intrinsic-size: auto 305px auto 252px;
+}
+/* Print renders everything: don't let any engine skip offscreen cards. */
+@media print {
+  #planGrid > .plan, #catPlanGrid > .plan,
+  .guide-cards > .guide-card { content-visibility: visible; }
+}

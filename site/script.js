@@ -3332,18 +3332,46 @@
   })();
 
   // ── (11) DEAL TICKER — rotate the build-stamped deal-of-day items ───────────
+  // A11y: non-active items are opacity:0 but would otherwise stay in the
+  // accessibility tree AND the tab order (they're links — pointer-events:none
+  // blocks the mouse, not keyboard focus), so only the visible item is exposed:
+  // the rest get aria-hidden + tabindex="-1". Rotation pauses while the ticker
+  // is hovered or holds keyboard focus (WCAG 2.2.2 pause/stop/hide) and never
+  // starts under prefers-reduced-motion.
   (function () {
-    var wrap = document.querySelector('#dealTicker .ticker__inner');
+    var ticker = document.getElementById('dealTicker');
+    var wrap = ticker && ticker.querySelector('.ticker__inner');
     if (!wrap) return;
     var items = Array.from(wrap.querySelectorAll('.ticker__item'));
-    if (items.length < 2) { if (items[0]) items[0].classList.add('is-on'); return; }
+    if (!items.length) return;
     var i = 0;
-    items[0].classList.add('is-on');
+    var show = function (idx) {
+      items.forEach(function (el, j) {
+        var on = j === idx;
+        el.classList.toggle('is-on', on);
+        if (on) {
+          el.removeAttribute('aria-hidden');
+          el.removeAttribute('tabindex');
+        } else {
+          el.setAttribute('aria-hidden', 'true');
+          el.setAttribute('tabindex', '-1');
+        }
+      });
+    };
+    show(0);
+    if (items.length < 2) return;
     if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var paused = false;
+    ticker.addEventListener('mouseenter', function () { paused = true; });
+    ticker.addEventListener('mouseleave', function () { paused = false; });
+    ticker.addEventListener('focusin', function () { paused = true; });
+    ticker.addEventListener('focusout', function (e) {
+      if (!ticker.contains(e.relatedTarget)) paused = false;
+    });
     setInterval(function () {
-      items[i].classList.remove('is-on');
+      if (paused) return;
       i = (i + 1) % items.length;
-      items[i].classList.add('is-on');
+      show(i);
     }, 6000);
   })();
 

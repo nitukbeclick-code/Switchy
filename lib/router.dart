@@ -183,7 +183,7 @@ GoRouter createRouter() {
             GoRoute(path: '/renewal-report/:trackedId', name: 'RenewalReport', builder: (_, s) => RenewalReportWidget(trackedId: s.pathParameters['trackedId']!)),
             GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
             GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
-            GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
+            GoRoute(path: '/support-ticket/:ticketId', name: 'SupportTicket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
             GoRoute(path: '/recap', name: 'AnnualRecap', builder: (_, __) => const AnnualRecapWidget()),
             GoRoute(path: '/wallet', name: 'Wallet', builder: (_, __) => const WalletWidget()),
             GoRoute(path: '/referral', name: 'Referral', builder: (_, __) => const ReferralWidget()),

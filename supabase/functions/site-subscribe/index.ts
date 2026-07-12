@@ -1,6 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { EMAIL_RE, type InsertResult, sanitizeTopic, shouldWelcome } from "./lib.ts";
 import { listUnsubscribeHeader, unsubscribeUrlFor, welcomeEmail } from "../_shared/email.ts";
+// Structured one-JSON-line-per-event logging — the shared helper, so the log
+// shape can never drift from the rest of the functions.
+import { jlog } from "../_shared/log.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // site-subscribe — newsletter signup for the Switchy AI marketing site.
@@ -20,18 +23,12 @@ const MAX_EMAIL_LEN = 254; // RFC 5321 max address length
 const DEFAULT_FROM = "Switchy AI <noreply@switchy-ai.com>";
 const WELCOME_SUBJECT = "ברוכים הבאים ל-Switchy AI";
 
-// ── logging ──────────────────────────────────────────────────────────────────
-// One JSON line per event so the Supabase log explorer can filter on fields
-// (mirrors _shared/log.ts jlog).
-function jlog(fields: Record<string, unknown>): void {
-  try {
-    console.log(JSON.stringify({ ts: new Date().toISOString(), ...fields }));
-  } catch (_) {
-    console.log(String(fields.at ?? "log"), String(fields.error ?? ""));
-  }
-}
-
 // ── CORS ─────────────────────────────────────────────────────────────────────
+// Deliberately LOCAL and open (`*`), unlike _shared/cors.ts: that helper
+// reflects an Origin allowlist to protect the paid-LLM site-* endpoints,
+// whereas this signup form is a cheap public endpoint (own rate limit, no data
+// echo) meant to accept posts from anywhere the form is embedded. Do not swap
+// it for corsHeaders() without deciding to change that policy.
 function cors(extra: Record<string, string> = {}): Record<string, string> {
   return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
 }

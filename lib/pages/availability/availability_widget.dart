@@ -5,16 +5,25 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
-import '../../widgets/app_snackbar.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/price_text.dart';
 import '../../widgets/saving_pill.dart';
-import '../../widgets/skeleton.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 
+/// The infrastructure-provider DIRECTORY.
+///
+/// HONEST-COPY REFRAME: this page used to pose as an address-specific
+/// availability check — a city/street form, a "בדוק זמינות" CTA, a fake 900ms
+/// "checking" delay and a staggered reveal — while always showing the same
+/// compiled ISP list no matter what address was typed. The app never performs
+/// a per-address lookup, so the page now says what it truly is: a general
+/// directory of Israel's main internet providers, filterable by technology
+/// (fiber / cables / satellite), with an explicit note that exact availability
+/// at an address is confirmed with the provider. The list and every listed
+/// figure (speeds, prices, statuses) are unchanged.
 class AvailabilityWidget extends StatefulWidget {
   const AvailabilityWidget({super.key});
 
@@ -23,21 +32,7 @@ class AvailabilityWidget extends StatefulWidget {
 }
 
 class _AvailabilityWidgetState extends State<AvailabilityWidget> {
-  final _cityCtrl = TextEditingController();
-  final _streetCtrl = TextEditingController();
-  int _revealedCount = 0;
-  bool _loading = false;
-  bool _checked = false;
   String _techFilter = 'הכל'; // 'הכל' | 'סיב אופטי' | 'כבלים' | 'לוויין'
-
-  static const _commonCities = ['תל אביב', 'ירושלים', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'באר שבע', 'נתניה', 'חולון'];
-
-  @override
-  void dispose() {
-    _cityCtrl.dispose();
-    _streetCtrl.dispose();
-    super.dispose();
-  }
 
   final _allProviders = [
     const _ISP(name: 'בזק', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89),
@@ -55,34 +50,6 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return _allProviders.where((p) => p.tech == _techFilter).toList();
   }
 
-  Future<void> _restaggerReveal() async {
-    final providers = _filteredProviders;
-    for (var i = 1; i <= providers.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 280));
-      if (!mounted) return;
-      setState(() => _revealedCount = i);
-    }
-  }
-
-  Future<void> _check() async {
-    if (_cityCtrl.text.trim().isEmpty) {
-      // Tapping "בדוק זמינות" with no city used to do nothing silently — tell
-      // the user what's missing instead of leaving the button feeling broken.
-      AppSnackBar.info(context, 'הזינו עיר כדי לבדוק זמינות');
-      return;
-    }
-    setState(() { _loading = true; _checked = false; _revealedCount = 0; });
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() { _loading = false; _checked = true; });
-    final providers = _filteredProviders;
-    for (var i = 1; i <= providers.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 280));
-      if (!mounted) return;
-      setState(() => _revealedCount = i);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
@@ -90,7 +57,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        title: Text('בדיקת זמינות', style: ffTheme.titleMedium),
+        title: Text('ספקי אינטרנט בישראל', style: ffTheme.titleMedium),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: ffTheme.primaryText,
@@ -104,44 +71,18 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             _buildHeroCard(ffTheme),
             const SizedBox(height: 20),
 
-            // City input with suggestions
-            _buildAddressInputs(ffTheme),
-            const SizedBox(height: 16),
-
-            // Tech filter chips
+            // Tech filter chips — the directory's one honest control.
             _buildTechFilters(ffTheme),
             const SizedBox(height: 20),
 
-            // Check button — AppButton awaits [_check] and shows its own spinner
-            // while the richer page-level loading state renders below, so the
-            // label stays the honest CTA (no faked "בודק כיסוי...").
-            AppButton(
-              text: 'בדוק זמינות',
-              onPressed: () async => _check(),
-              // No pinned white — the button's contrast-aware foreground
-              // colours both the label and the icon in both themes.
-              icon: const Icon(Icons.search_rounded, size: 20),
-              width: double.infinity,
-              height: 52,
-              color: AppColors.primary,
-              textStyle: ffTheme.titleSmall,
-              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-            ),
+            // The directory itself — no gate, no fake "checking" theater: the
+            // list is compiled data and renders immediately.
+            _buildResultsHeader(ffTheme),
+            const SizedBox(height: 12),
+            _buildProviderList(ffTheme),
 
-            // Loading state
-            if (_loading) _buildLoadingState(ffTheme),
-
-            // Results
-            if (_checked) ...[
-              const SizedBox(height: 28),
-              _buildResultsHeader(ffTheme),
-              const SizedBox(height: 12),
-              _buildProviderList(ffTheme),
-            ],
-
-            // Recommendation card — shown only after all results revealed
-            if (_checked && _revealedCount >= _filteredProviders.length)
-              _buildRecommendationCard(ffTheme, context),
+            // Recommendation card — real engine output over the catalogue.
+            _buildRecommendationCard(ffTheme, context),
 
             const SizedBox(height: 32),
           ],
@@ -170,22 +111,22 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 // Scale tokens (white recolour is safe on the pinned-ink hero).
                 Semantics(
                   header: true,
-                  child: Text('בדוק זמינות בכתובת שלך',
+                  child: Text('ספקי אינטרנט לפי טכנולוגיה',
                       style: ffTheme.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(height: 4),
-                Text('גלה אילו ספקי אינטרנט פעילים באזורך',
+                Text('הספקים המרכזיים הפעילים בישראל — סיב אופטי, כבלים ולוויין',
                     style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.7))),
                 const SizedBox(height: 14),
-                // Honest helper line — no pre-asserted price/speed "facts" about
-                // the area before an address is even entered.
+                // The honest caveat, stated up-front: this directory is general;
+                // per-address availability is confirmed with the provider.
                 Row(
                   children: [
-                    ExcludeSemantics(child: Icon(Icons.location_on_outlined, size: 14, color: Colors.white.withValues(alpha: 0.7))),
+                    ExcludeSemantics(child: Icon(Icons.info_outline_rounded, size: 14, color: Colors.white.withValues(alpha: 0.7))),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'הזינו עיר וכתובת לבדיקה',
+                        'זמינות מדויקת בכתובת שלכם נבדקת ישירות מול הספק',
                         style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.7)),
                       ),
                     ),
@@ -203,91 +144,6 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         ],
       ),
     ).animate().fadeIn(duration: 350.ms);
-  }
-
-  Widget _buildAddressInputs(AppTheme ffTheme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('עיר', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        Autocomplete<String>(
-          optionsBuilder: (textEditingValue) {
-            if (textEditingValue.text.isEmpty) return const [];
-            return _commonCities.where((c) => c.contains(textEditingValue.text));
-          },
-          onSelected: (v) {
-            _cityCtrl.text = v;
-            setState(() {});
-          },
-          fieldViewBuilder: (ctx, ctrl, focusNode, onSubmit) {
-            // Sync our controller
-            ctrl.text = _cityCtrl.text;
-            return TextField(
-              controller: ctrl,
-              focusNode: focusNode,
-              textDirection: TextDirection.rtl,
-              onChanged: (v) { _cityCtrl.text = v; setState(() {}); },
-              decoration: InputDecoration(
-                hintText: 'תל אביב, חיפה, ירושלים...',
-                filled: true,
-                fillColor: ffTheme.cardSurface,
-                prefixIcon: Icon(Icons.location_city_rounded, color: ffTheme.secondaryText, size: 20),
-                // Token corner + a visible 1px input border in every state —
-                // the same input language as the lead/callback forms.
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-              ),
-            );
-          },
-          optionsViewBuilder: (ctx, onSelected, options) => Align(
-            // RTL-aware: logical start, never a physical left.
-            alignment: AlignmentDirectional.topStart,
-            child: Material(
-              // A floating overlay is one of the few LIFTED surfaces.
-              elevation: 4,
-              borderRadius: BorderRadius.circular(AppTheme.of(ctx).radiusCard),
-              child: SizedBox(
-                width: MediaQuery.of(ctx).size.width - 40,
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  itemCount: options.length,
-                  itemBuilder: (_, i) {
-                    final opt = options.elementAt(i);
-                    return ListTile(
-                      dense: true,
-                      leading: const Icon(Icons.location_on_outlined, size: 18),
-                      title: Text(opt, style: ffTheme.bodyMedium, textDirection: TextDirection.rtl),
-                      onTap: () => onSelected(opt),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        Text('רחוב ומספר (אופציונלי)', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _streetCtrl,
-          textDirection: TextDirection.rtl,
-          decoration: InputDecoration(
-            hintText: 'רחוב דיזנגוף 99',
-            filled: true,
-            fillColor: ffTheme.cardSurface,
-            prefixIcon: Icon(Icons.home_rounded, color: ffTheme.secondaryText, size: 20),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.alternate)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusCard), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-          ),
-        ),
-      ],
-    );
   }
 
   Widget _buildTechFilters(AppTheme ffTheme) {
@@ -312,8 +168,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               child: Pressable(
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  setState(() { _techFilter = f; _revealedCount = 0; });
-                  if (_checked) _restaggerReveal();
+                  setState(() => _techFilter = f);
                 },
                 haptic: false,
                 // ONE chip language — neutral: surface + hairline + ink;
@@ -343,30 +198,6 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     );
   }
 
-  Widget _buildLoadingState(AppTheme ffTheme) {
-    // SKELETON, not a spinner: three ghost provider rows preview the exact
-    // shape of the list that is about to land (shared Skeleton* primitives,
-    // shimmer is reduced-motion-aware), with an honest one-line caption.
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
-              .animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut),
-          const SizedBox(height: 8),
-          for (var i = 0; i < 3; i++)
-            Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-              decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
-              child: const SkeletonListTile(hasTrailing: true),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildResultsHeader(AppTheme ffTheme) {
     final available = _filteredProviders.where((p) => p.status == 'זמין').toList();
     final cheapest = available.where((p) => p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
@@ -376,7 +207,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           child: Semantics(
             header: true,
             child: Text(
-              'זמינות ב${_cityCtrl.text}',
+              'ספקים פעילים',
               style: ffTheme.titleMedium,
               textDirection: TextDirection.rtl,
             ),
@@ -406,14 +237,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Column(
       children: [
         ...List.generate(providers.length, (i) {
-          if (i >= _revealedCount) return const SizedBox.shrink();
           final isp = providers[i];
           final isAvailable = isp.status == 'זמין';
           final isBest = isAvailable && isp.price > 0 && isp.price == minPrice;
           return _buildProviderCard(isp, isBest, ffTheme, context);
         }),
 
-        if (_revealedCount >= providers.length && providers.isNotEmpty) ...[
+        if (providers.isNotEmpty) ...[
           const SizedBox(height: 8),
           _buildSummaryCard(ffTheme, context),
         ],
@@ -452,7 +282,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   children: [
                     ExcludeSemantics(child: Icon(Icons.star_rounded, size: 14, color: ffTheme.savingText)),
                     const SizedBox(width: 4),
-                    Text('מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
+                    // Honest scope: lowest in THIS list — not an address claim.
+                    Text('המחיר הכי נמוך ברשימה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),
@@ -577,7 +408,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${available.length} ספקים זמינים ב${_cityCtrl.text}',
+                    Text('${available.length} ספקים פעילים בישראל',
                         style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 6),
                     Row(

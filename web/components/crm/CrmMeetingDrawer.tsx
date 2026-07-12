@@ -11,6 +11,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
   type CrmMeetingDetail,
   type CrmMeetingEvent,
@@ -64,56 +65,35 @@ export default function CrmMeetingDrawer({
   const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const d = await fetchCrmMeetingDetail(meetingId);
-    if (d) setData(d);
-    else setError(true);
-    setLoading(false);
-  }, [meetingId]);
+  // Fetch the meeting detail. Loading/error resets are event-driven: the
+  // useState initializers cover the mount load (meetingId is fixed for this
+  // instance — the list mounts a fresh drawer per meeting) and every later load
+  // starts from an event (retry / changeStatus) via `reload` — so the mount
+  // effect never sets state synchronously (react-hooks/set-state-in-effect):
+  // state only lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchCrmMeetingDetail(meetingId).then((d) => {
+        if (d) setData(d);
+        else setError(true);
+        setLoading(false);
+      }),
+    [meetingId],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // aria-modal focus management (same pattern as CrmLeadDrawer/AuthModal): on
-  // open move focus into the dialog, and on close restore it to the opener.
-  useEffect(() => {
-    const restore = document.activeElement as HTMLElement | null;
-    closeBtnRef.current?.focus();
-    return () => {
-      if (restore && document.contains(restore)) restore.focus();
-    };
-  }, []);
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await load();
+  }, [load]);
 
-  // Escape closes; Tab is clamped to the dialog so the covered page stays unreachable.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab" || !rootRef.current) return;
-      const focusables = rootRef.current.querySelectorAll<HTMLElement>(
-        'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement;
-      const inside = rootRef.current.contains(active);
-      if (e.shiftKey && (!inside || active === first)) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && (!inside || active === last)) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  // aria-modal focus contract (shared useFocusTrap hook, same as CrmLeadDrawer):
+  // focus the close button on open, clamp Tab, Escape closes, restore to opener.
+  useFocusTrap(rootRef, { onEscape: onClose, initialFocusRef: closeBtnRef });
 
   const changeStatus = useCallback(
     async (status: MeetingStatus) => {
@@ -124,13 +104,13 @@ export default function CrmMeetingDrawer({
       setSavingStatus(null);
       if (ok) {
         setNotice("הסטטוס עודכן.");
-        await load();
+        await reload();
         onChanged?.();
       } else {
         setNotice("עדכון הסטטוס נכשל. נסו שוב.");
       }
     },
-    [data, savingStatus, meetingId, load, onChanged],
+    [data, savingStatus, meetingId, reload, onChanged],
   );
 
   const meeting = data?.meeting;
@@ -160,7 +140,7 @@ export default function CrmMeetingDrawer({
           ) : error || !meeting ? (
             <div className="rounded-2xl border border-border bg-surface p-4 text-center shadow-soft">
               <p className="text-sm text-muted">לא הצלחנו לטעון את הפגישה.</p>
-              <button type="button" onClick={() => void load()} className={`${BTN_GHOST} mt-3`}>
+              <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
                 נסו שוב
               </button>
             </div>

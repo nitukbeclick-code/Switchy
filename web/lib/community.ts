@@ -481,6 +481,17 @@ export function orderByAccepted<T extends { id: string }>(
 
 // ── Likes / bookmarks ────────────────────────────────────────────────────────
 
+/** Per-post viewer state a LIST hydrates in one batch (fetchMyLikes +
+ *  fetchMyBookmarks + fetchPostMedia over the whole page of ids) and passes down
+ *  to each <PostCard> — 3 requests per page instead of 3 per card. A card
+ *  rendered without it (standalone contexts) self-hydrates the same three. */
+export interface PostHydration {
+  liked: boolean;
+  bookmarked: boolean;
+  /** Extra gallery images beyond the primary media_url attachment. */
+  gallery: Media[];
+}
+
 /** The subset of these post ids the current user has liked / bookmarked. */
 export async function fetchMyLikes(postIds: string[]): Promise<Set<string>> {
   if (postIds.length === 0) return new Set();

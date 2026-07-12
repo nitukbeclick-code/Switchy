@@ -44,7 +44,19 @@ import { captureServeHandler } from "./_capture_handler.ts";
 // top-level Deno.serve against the REAL Deno.serve (binding a port + defeating the
 // capture), so both the handler and the helpers come through this one import.
 const waHandler = await captureServeHandler("../whatsapp-webhook/index.ts");
-const { capInbound, senderBurstOk, buildHandoffReply, handleOptOut } = await import(
+const {
+  capInbound,
+  senderBurstOk,
+  buildHandoffReply,
+  handleOptOut,
+  botEnabled,
+  humanTakeoverActive,
+  HUMAN_TAKEOVER_FRESH_MS,
+  deriveHistoryAndFirstContact,
+  parseContentRangeCount,
+  shouldSendRateNotice,
+  __resetRateNoticeForTests,
+} = await import(
   "../whatsapp-webhook/index.ts"
 );
 // §7b disclosure constant — the single source of truth the handoff replies reuse.
@@ -489,4 +501,193 @@ Deno.test("Amendment-13: isDataAccessRequest detects access asks; erasure wins",
   // An ordinary catalogue question is neither.
   assertFalse(isDataAccessRequest("מה המסלול הזול ביותר"));
   assertFalse(isDataAccessRequest(""));
+});
+
+// ── TAKEOVER RECONCILE: the bot gate vs. the two takeover flavours ────────────
+// Telegram takeover = bot_enabled=false + relay_tg_chat_id (relayActive).
+// CRM-app takeover  = bot_enabled=false + status='human' + human_active_at
+// (crm-api takeOver/sendMessage — NO relay target). The self-heal that ended the
+// "silent forever" outage used to treat the relay-less CRM state as "stuck" and
+// re-enabled the bot on the customer's next message — answering OVER the rep.
+// botEnabled() now respects a RECENT CRM takeover, while a stale/unstamped
+// bot_enabled=false row still self-heals. These pin the full truth table.
+
+type Convo = Record<string, unknown>;
+const freshAt = () => new Date(Date.now() - 60_000).toISOString();
+const staleAt = () => new Date(Date.now() - HUMAN_TAKEOVER_FRESH_MS - 60_000).toISOString();
+
+Deno.test("TAKEOVER: a fresh CRM-app takeover silences the bot (no relay target needed)", () => {
+  const convo: Convo = {
+    bot_enabled: false,
+    status: "human",
+    human_active_at: freshAt(),
+    relay_tg_chat_id: null,
+  };
+  assert(humanTakeoverActive(convo), "the CRM takeover fingerprint is recognised");
+  assertFalse(botEnabled(convo), "the bot must NOT answer over a rep who just took over");
+});
+
+Deno.test("TAKEOVER: humanTakeoverActive expires exactly at the freshness window (injectable clock)", () => {
+  const t0 = Date.parse("2026-07-01T10:00:00Z");
+  const convo: Convo = {
+    bot_enabled: false,
+    status: "human",
+    human_active_at: new Date(t0).toISOString(),
+  };
+  // Active for the whole window (crm-api re-stamps on every rep reply)…
+  assert(humanTakeoverActive(convo, t0 + 1));
+  assert(humanTakeoverActive(convo, t0 + HUMAN_TAKEOVER_FRESH_MS - 1));
+  // …and degrades to the stuck state once the rep has gone dark for the window.
+  assertFalse(humanTakeoverActive(convo, t0 + HUMAN_TAKEOVER_FRESH_MS));
+});
+
+Deno.test("TAKEOVER: a STALE CRM takeover self-heals — the outage fix stays intact", () => {
+  const convo: Convo = { bot_enabled: false, status: "human", human_active_at: staleAt() };
+  assertFalse(humanTakeoverActive(convo));
+  assert(botEnabled(convo), "a rep dark past the window cannot keep the customer silent");
+});
+
+Deno.test("TAKEOVER: the original stuck state (no relay, no stamp) still self-heals", () => {
+  // The exact production-outage shape: bot_enabled=false and nothing else.
+  assert(botEnabled({ bot_enabled: false }));
+  assert(botEnabled({ bot_enabled: false, status: "human" })); // never stamped
+  assert(botEnabled({ bot_enabled: false, relay_tg_chat_id: null, human_active_at: null }));
+  // A garbage timestamp can't accidentally hold the bot silent.
+  assert(botEnabled({ bot_enabled: false, status: "human", human_active_at: "not-a-date" }));
+});
+
+Deno.test("TAKEOVER: the CRM fingerprint requires all three fields", () => {
+  // bot_enabled must be false…
+  assertFalse(humanTakeoverActive({ bot_enabled: true, status: "human", human_active_at: freshAt() }));
+  // …status must be 'human' (a fresh stamp alone is not a takeover)…
+  assertFalse(humanTakeoverActive({ bot_enabled: false, status: "open", human_active_at: freshAt() }));
+  // …and human_active_at must exist (crm-api always stamps it).
+  assertFalse(humanTakeoverActive({ bot_enabled: false, status: "human" }));
+});
+
+Deno.test("TAKEOVER: the Telegram relay contract still silences on its own", () => {
+  // No human_active_at at all — notify-lead sets only bot_enabled + relay target.
+  assertFalse(botEnabled({ bot_enabled: false, relay_tg_chat_id: "12345" }));
+});
+
+Deno.test("TAKEOVER: the webhook's own rep-REQUEST marking keeps the bot answering", () => {
+  // A customer asking for a rep sets conversation status='human' WITHOUT flipping
+  // bot_enabled — the assistant must stay available until an actual takeover.
+  assert(botEnabled({ bot_enabled: true, status: "human" }));
+  assertFalse(humanTakeoverActive({ bot_enabled: true, status: "human", human_active_at: freshAt() }));
+});
+
+Deno.test("TAKEOVER: pre-migration rows (no bot_enabled column) fail OPEN", () => {
+  assert(botEnabled(null));
+  assert(botEnabled({}));
+  assert(botEnabled({ bot_enabled: null }));
+});
+
+// ── BATCH: deriveHistoryAndFirstContact reproduces the old two-query answers ───
+// The per-turn history + first-contact reads were collapsed into ONE contact-
+// scoped query; this pure derivation must answer BOTH questions exactly like the
+// old per-conversation recentHistory + per-contact isFirstContact queries did.
+
+Deno.test("BATCH: a failed read (null rows) matches the old fail-soft — empty history, first contact", () => {
+  const { history, firstContact } = deriveHistoryAndFirstContact(null, "conv-1", "msg-9");
+  assertEquals(history, []);
+  assertEquals(firstContact, true); // old isFirstContact: (null?.length ?? 0) === 0
+});
+
+Deno.test("BATCH: only the just-stored inbound present ⇒ first contact, no history", () => {
+  const rows = [{ id: "msg-9", conversation_id: "conv-1", direction: "in", body: "היי" }];
+  const { history, firstContact } = deriveHistoryAndFirstContact(rows, "conv-1", "msg-9");
+  assertEquals(history, []);
+  assertEquals(firstContact, true);
+});
+
+Deno.test("BATCH: prior turns exclude the inserted row, map roles, and read oldest→newest", () => {
+  // Rows arrive NEWEST FIRST (order=created_at.desc), like the query returns.
+  const rows = [
+    { id: "msg-9", conversation_id: "conv-1", direction: "in", body: "וכמה זה עולה?" }, // just stored
+    { id: "msg-8", conversation_id: "conv-1", direction: "out", body: "יש מסלול ב-49 ₪" },
+    { id: "msg-7", conversation_id: "conv-1", direction: "in", body: "כמה עולה סלולר?" },
+  ];
+  const { history, firstContact } = deriveHistoryAndFirstContact(rows, "conv-1", "msg-9");
+  assertEquals(firstContact, false);
+  assertEquals(history, [
+    { role: "user", text: "כמה עולה סלולר?" },
+    { role: "bot", text: "יש מסלול ב-49 ₪" },
+  ]);
+});
+
+Deno.test("BATCH: rows from ANOTHER conversation count against first-contact but stay out of history", () => {
+  // A returning contact whose previous conversation was closed: the welcome must
+  // NOT re-fire (old isFirstContact was contact-scoped), yet the new
+  // conversation's history starts clean (old recentHistory was conversation-scoped).
+  const rows = [
+    { id: "msg-2", conversation_id: "conv-NEW", direction: "in", body: "חזרתי" }, // just stored
+    { id: "msg-1", conversation_id: "conv-OLD", direction: "in", body: "שיחה ישנה" },
+  ];
+  const { history, firstContact } = deriveHistoryAndFirstContact(rows, "conv-NEW", "msg-2");
+  assertEquals(firstContact, false);
+  assertEquals(history, []);
+});
+
+Deno.test("BATCH: history is capped at 8 turns and drops empty bodies — like the old query", () => {
+  const rows = [{ id: "msg-x", conversation_id: "c", direction: "in", body: "עכשיו" }];
+  for (let i = 20; i > 0; i--) {
+    rows.push({ id: `m${i}`, conversation_id: "c", direction: i % 2 ? "in" : "out", body: i === 20 ? "" : `הודעה ${i}` });
+  }
+  const { history } = deriveHistoryAndFirstContact(rows, "c", "msg-x");
+  assert(history.length <= 8, "history is capped at 8 turns");
+  assert(history.every((h) => h.text), "empty bodies are filtered out");
+});
+
+Deno.test("BATCH: no exclusion id (insert failed) still returns the newest 8 — old behaviour", () => {
+  const rows = [];
+  for (let i = 12; i > 0; i--) rows.push({ id: `m${i}`, conversation_id: "c", direction: "in", body: `ה${i}` });
+  const { history, firstContact } = deriveHistoryAndFirstContact(rows, "c", null);
+  assertEquals(firstContact, false);
+  assertEquals(history.length, 8);
+  assertEquals(history[history.length - 1].text, "ה12"); // newest last (oldest→newest)
+});
+
+// ── RATE LIMIT: HEAD+count parsing and the once-per-window notice ─────────────
+
+Deno.test("RATE: parseContentRangeCount reads the PostgREST exact count", () => {
+  assertEquals(parseContentRangeCount("0-8/57"), 57);
+  assertEquals(parseContentRangeCount("*/0"), 0);
+  assertEquals(parseContentRangeCount("0-30/31"), 31);
+});
+
+Deno.test("RATE: parseContentRangeCount fails soft on unknown/missing counts", () => {
+  assertEquals(parseContentRangeCount("0-0/*"), null); // count not computed
+  assertEquals(parseContentRangeCount(null), null);
+  assertEquals(parseContentRangeCount(""), null);
+  assertEquals(parseContentRangeCount("garbage"), null);
+});
+
+Deno.test("RATE: the 'one moment' notice goes out once per window, per contact", () => {
+  __resetRateNoticeForTests();
+  const t0 = 10_000_000;
+  // First over-limit inbound → notice; the flood that follows is silent.
+  assert(shouldSendRateNotice("contact-A", t0));
+  assertFalse(shouldSendRateNotice("contact-A", t0 + 1_000));
+  assertFalse(shouldSendRateNotice("contact-A", t0 + 3_599_999));
+  // The window rolls → one fresh notice.
+  assert(shouldSendRateNotice("contact-A", t0 + 3_600_000));
+  // A different contact has its own window.
+  assert(shouldSendRateNotice("contact-B", t0 + 2_000));
+  __resetRateNoticeForTests();
+});
+
+// ── VOICE: the transcript is capped like every other agent input ──────────────
+// The voice branch routes `routeText = capInbound(transcript)` — the SAME
+// runaway-token guard the typed-text path gets (MAX_INBOUND_TEXT = 2000). This
+// pins the composed contract: an over-long Whisper transcript reaches the agent
+// truncated to the cap, never full-length.
+
+Deno.test("VOICE: an over-long transcript is fed onward capped at 2000 chars", () => {
+  const transcript = "דיבור ארוך מאוד ".repeat(400); // ≫ 2000 chars of "speech"
+  const routed = capInbound(transcript);
+  assertEquals(routed.length, 2000);
+  assert(transcript.startsWith(routed), "the cap keeps the START of the spoken message");
+  // A normal-length transcript passes through verbatim (the common case).
+  assertEquals(capInbound("כמה עולה מסלול סלולר?"), "כמה עולה מסלול סלולר?");
 });

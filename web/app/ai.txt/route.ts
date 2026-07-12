@@ -4,35 +4,19 @@
 // and cite the public catalogue, and points them to the richer machine resources
 // — /llms.txt and /sitemap.xml.
 //
-// 🔴 TRUTH-ONLY: no fabricated terms. The bot list is kept in sync with
-// app/robots.ts (the single source of truth for which AI bots are allowed). The
-// freshness date comes from lastDataDate() over the real catalogue.
+// 🔴 TRUTH-ONLY: no fabricated terms. The bot list is the shared lib/ai-bots.ts
+// constant (the single source of truth, also used by app/robots.ts — the two
+// surfaces can no longer drift). The freshness date comes from lastDataDate()
+// over the real catalogue.
 // ────────────────────────────────────────────────────────────────────────────
 
+import { AI_BOTS } from "@/lib/ai-bots";
 import { getPlans } from "@/lib/data";
 import { lastDataDate } from "@/lib/aeo";
 import { SITE_URL, SITE_NAME } from "@/lib/schema";
 import { CONTACT_EMAIL } from "@/lib/legal";
 
 export const dynamic = "force-static";
-
-// Keep in sync with the `aiBots` allow-list in app/robots.ts.
-const AI_BOTS = [
-  "GPTBot",
-  "OAI-SearchBot",
-  "ChatGPT-User",
-  "PerplexityBot",
-  "Perplexity-User",
-  "Google-Extended",
-  "ClaudeBot",
-  "Claude-Web",
-  "anthropic-ai",
-  "Applebot-Extended",
-  "CCBot",
-  "Amazonbot",
-  "Bytespider",
-  "Meta-ExternalAgent",
-] as const;
 
 export function GET() {
   const asOf = lastDataDate(getPlans()); // real "data as of" from the catalogue

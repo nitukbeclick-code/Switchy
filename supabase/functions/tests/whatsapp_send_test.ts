@@ -1,9 +1,10 @@
 // Unit tests for the fail-soft Graph API helpers in _shared/whatsapp.ts:
-// sendText (now with retry-once-on-5xx), markRead, markTyping, sendList,
-// sendImage, sendDocument. We stub globalThis.fetch and capture each request's
-// init.body, asserting BOTH the outgoing payload shape (so a Graph-rejecting
-// change is caught here, not in production) and the fail-soft contract (every
-// helper returns null/true|null on error and NEVER throws).
+// sendText, sendButtons and sendList (all with the shared retry-once-on-5xx),
+// markRead, markTyping, sendImage, sendDocument. We stub globalThis.fetch and
+// capture each request's init.body, asserting BOTH the outgoing payload shape
+// (so a Graph-rejecting change is caught here, not in production) and the
+// fail-soft contract (every helper returns null/true|null on error and NEVER
+// throws).
 //
 // IMPORTANT: _shared/whatsapp.ts reads WHATSAPP_TOKEN into a module-level const
 // at import time, so the env MUST be set BEFORE the module is imported. We set
@@ -222,6 +223,115 @@ Deno.test("markTyping fail-softs on a network throw without throwing", async () 
   }
 });
 
+// ── sendButtons (unified from the webhook's old inline copy) ────────────────
+
+Deno.test("sendButtons builds the interactive-button payload EXACTLY as the old inline sender did", async () => {
+  const s = stubFetch([() => okWamid("wamid.B1")]);
+  try {
+    const id = await wa.sendButtons("972500000040", "מה תרצו לעשות?", [
+      { id: "cmp", title: "השוואת מסלול" },
+      { id: "human", title: "דבר עם נציג" },
+      { id: "bill", title: "ניתוח חשבון" },
+    ]);
+    assertEquals(id, "wamid.B1");
+    assertEquals(s.calls.length, 1);
+    assertStringIncludes(s.calls[0].url, "/v21.0/PHONE123/messages");
+    assertEquals(s.calls[0].body.messaging_product, "whatsapp");
+    assertEquals(s.calls[0].body.to, "972500000040");
+    assertEquals(s.calls[0].body.type, "interactive");
+    const inter = s.calls[0].body.interactive as {
+      type: string;
+      body: { text: string };
+      action: { buttons: Array<{ type: string; reply: { id: string; title: string } }> };
+    };
+    assertEquals(inter.type, "button");
+    assertEquals(inter.body.text, "מה תרצו לעשות?");
+    assertEquals(inter.action.buttons.length, 3);
+    assertEquals(inter.action.buttons[0], { type: "reply", reply: { id: "cmp", title: "השוואת מסלול" } });
+    assertEquals(inter.action.buttons[1].reply.id, "human");
+    assertEquals(inter.action.buttons[2].reply.id, "bill");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendButtons enforces Meta's caps: ≤3 buttons, title ≤20, body ≤1024", async () => {
+  const s = stubFetch([() => okWamid()]);
+  try {
+    await wa.sendButtons("972500000041", "x".repeat(2000), [
+      { id: "a", title: "t".repeat(40) },
+      { id: "b", title: "b2" },
+      { id: "c", title: "b3" },
+      { id: "d", title: "dropped — over the 3-button cap" },
+    ]);
+    const inter = s.calls[0].body.interactive as {
+      body: { text: string };
+      action: { buttons: Array<{ reply: { id: string; title: string } }> };
+    };
+    assertEquals(inter.body.text.length, 1024);
+    assertEquals(inter.action.buttons.length, 3);
+    assertEquals(inter.action.buttons[0].reply.title.length, 20);
+    assertEquals(inter.action.buttons[2].reply.id, "c");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendButtons retries exactly once on a 5xx and succeeds on the retry (same contract as sendText)", async () => {
+  const s = stubFetch([
+    () => new Response("upstream", { status: 503 }),
+    () => okWamid("wamid.BRETRY"),
+  ]);
+  try {
+    const id = await wa.sendButtons("972500000042", "menu", [{ id: "a", title: "A" }]);
+    assertEquals(id, "wamid.BRETRY");
+    assertEquals(s.calls.length, 2, "one initial + one retry");
+    // The retried payload is byte-identical to the first.
+    assertEquals(s.calls[0].body, s.calls[1].body);
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendButtons retries only ONCE — a second 5xx fails soft to null", async () => {
+  const s = stubFetch([() => new Response("down", { status: 500 })]);
+  try {
+    const id = await wa.sendButtons("972500000043", "menu", [{ id: "a", title: "A" }]);
+    assertEquals(id, null);
+    assertEquals(s.calls.length, 2, "initial + a single retry, then give up");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendButtons does NOT retry a 4xx and fail-softs to null", async () => {
+  const s = stubFetch([() => new Response("bad", { status: 400 })]);
+  try {
+    assertEquals(await wa.sendButtons("972500000044", "menu", [{ id: "a", title: "A" }]), null);
+    assertEquals(s.calls.length, 1, "4xx is not transient — no retry");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendButtons guards empty to/body/buttons without a network call and never throws", async () => {
+  const s = stubFetch([() => {
+    throw new TypeError("net down");
+  }]);
+  try {
+    assertEquals(await wa.sendButtons("   ", "b", [{ id: "a", title: "A" }]), null);
+    assertEquals(await wa.sendButtons("972", "", [{ id: "a", title: "A" }]), null);
+    assertEquals(await wa.sendButtons("972", "b", []), null);
+    // Malformed entries (missing id/title) are dropped; nothing tappable → null.
+    assertEquals(await wa.sendButtons("972", "b", [{ id: "", title: "x" }, { id: "y", title: "" }]), null);
+    assertEquals(s.calls.length, 0, "all guarded sends stay off the network");
+    // And a real network throw stays fail-soft (null, no exception).
+    assertEquals(await wa.sendButtons("972500000045", "b", [{ id: "a", title: "A" }]), null);
+  } finally {
+    s.restore();
+  }
+});
+
 // ── sendList ────────────────────────────────────────────────────────────────
 
 Deno.test("sendList builds an interactive list payload and returns the wamid", async () => {
@@ -312,8 +422,38 @@ Deno.test("sendList truncates over-long titles/descriptions to Meta's caps", asy
   }
 });
 
-Deno.test("sendList fail-softs a Graph 500 to null (no retry on this helper)", async () => {
+Deno.test("sendList retries once on a 5xx and succeeds on the retry (same contract as sendText)", async () => {
+  const s = stubFetch([
+    () => new Response("upstream", { status: 502 }),
+    () => okWamid("wamid.LRETRY"),
+  ]);
+  try {
+    const id = await wa.sendList("972500000013", "b", [{
+      rows: [{ id: "k", title: "t" }],
+    }]);
+    assertEquals(id, "wamid.LRETRY");
+    assertEquals(s.calls.length, 2, "one initial + one retry");
+    assertEquals(s.calls[0].body, s.calls[1].body, "retried payload is identical");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendList retries only ONCE on a persistent 5xx, then fail-softs to null", async () => {
   const s = stubFetch([() => new Response("err", { status: 500 })]);
+  try {
+    const id = await wa.sendList("972500000013", "b", [{
+      rows: [{ id: "k", title: "t" }],
+    }]);
+    assertEquals(id, null);
+    assertEquals(s.calls.length, 2, "initial + a single retry, then give up");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendList does NOT retry a 4xx (real client error) — one call, null", async () => {
+  const s = stubFetch([() => new Response("bad", { status: 400 })]);
   try {
     const id = await wa.sendList("972500000013", "b", [{
       rows: [{ id: "k", title: "t" }],

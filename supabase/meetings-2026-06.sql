@@ -1,4 +1,25 @@
 -- ═══════════════════════════════════════════════════════════════════════════
+-- ⚠️ PARTIALLY SUPERSEDED — DO NOT RE-APPLY AS A WHOLE (2026-07 hygiene pass;
+--    no SQL in this file was altered, only these banners were added).
+--    Three sections below were REPLACED by newer delta files; re-running them
+--    would silently roll back applied fixes:
+--      §2  "meetings_insert_anyone" policy → DROPPED in prod by
+--          meetings-anon-insert-close-2026-06.sql. Re-creating it reopens the
+--          anonymous direct-INSERT hole the email-OTP meeting-book flow closed.
+--      §3  meetings_guard() → REPLACED by
+--          meetings-guard-allow-multiple-2026-07.sql (owner directive: multiple
+--          open meetings per phone; exact-duplicate check; provider eligibility
+--          gate; 4-hour lead time; raised rate ceilings; gcal_event_id reset).
+--          Re-running §3 restores the old one-open-meeting rule AND errors on
+--          fresh flows that rely on the provider gate.
+--      §6  get_lead_notify_config() → REPLACED by the canonical whitelist in
+--          observability-sentry-2026-06.sql. Re-running §6 drops
+--          gemini_api_key, google_service_account, leads_spreadsheet_id,
+--          switchy_calendar_id and sentry_dsn from the Vault allow-list —
+--          darkening Google logging + Sentry with no error anywhere.
+--    Sections 1, 4, 5, 7 are still current. If you must re-apply this file,
+--    re-apply the three newer files above AFTERWARDS, in that order.
+-- ═══════════════════════════════════════════════════════════════════════════
 -- Video meetings (Zoom) — one-time delta, 2026-06.
 -- Run AFTER schema.sql / upgrade-2026-06-10.sql / legal-consent-2026-06.sql.
 -- Everything here is also mirrored into schema.sql for fresh installs.
@@ -50,6 +71,9 @@ create trigger meetings_set_updated_at before update on public.meetings
   for each row execute function public.set_updated_at();
 
 -- ── 2. RLS — leads' insert-anyone / select-own / column-limited pattern ──────
+-- ⚠️ SUPERSEDED (partially): the "meetings_insert_anyone" policy below was
+-- DROPPED in prod by meetings-anon-insert-close-2026-06.sql (bookings now go
+-- through the OTP-gated meeting-book edge fn, service_role). Do not re-create it.
 alter table public.meetings enable row level security;
 
 drop policy if exists "meetings_insert_anyone" on public.meetings;
@@ -87,6 +111,10 @@ create index if not exists meetings_phone_norm_idx
   on public.meetings (regexp_replace(phone, '\D', '', 'g'), created_at desc);
 
 -- ── 3. meetings_guard — validation + rate-limit + DST-safe starts_at ─────────
+-- ⚠️ SUPERSEDED: this definition was REPLACED by
+-- meetings-guard-allow-multiple-2026-07.sql (the canonical guard). Re-running
+-- this section restores the removed one-open-meeting-per-phone rule and loses
+-- the provider gate / 4-hour lead time / raised limits. Do not re-apply.
 -- One BEFORE INSERT gate combining the roles of leads_rate_limit +
 -- leads_consent_stamp, plus the meeting-specific schedule rules. The Flutter
 -- wizard renders exactly these rules (lib/services/meeting_slots.dart); this
@@ -275,6 +303,11 @@ create trigger meetings_notify_after_insert
   for each row execute function public.notify_meeting_on_insert();
 
 -- ── 6. Config RPC: add the Zoom keys ─────────────────────────────────────────
+-- ⚠️ SUPERSEDED BY observability-sentry-2026-06.sql — DO NOT APPLY. That file
+-- holds the canonical get_lead_notify_config() whitelist (superset of this one:
+-- + gemini_api_key, the live Google names google_service_account /
+-- leads_spreadsheet_id / switchy_calendar_id, and sentry_dsn). Applying THIS
+-- copy silently drops those secrets and darkens Google logging + Sentry.
 -- FULL REPLACEMENT of get_lead_notify_config (the deployed original came from
 -- a dashboard migration). ⚠️ OWNER: before running, confirm the deployed
 -- function's whitelist matches the names below (run

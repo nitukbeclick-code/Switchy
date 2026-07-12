@@ -60,11 +60,15 @@ When adding logic, put it here with tests in `test/<service>_test.dart`, then re
   `#111827` for text/structure/borders, glass-white `#F5F7F8` background, text
   `#0B0F14`, borders `#222A35`, secondary `#E5E7EB`. **Accents (use with intent,
   sparingly):** `brandAccent` **green `#16A34A`** (Switchy logo) = ACTION (primary CTAs via
-  `AppTheme.accentGradient`+`shadowAccent`, active nav, links, focus); `saving`
-  **amber `#F59E0B`** = VALUE (savings figures, "best value"/win states). Site
-  mirrors these as `--accent`/`--value` in `:root` (the **site is recolored to
-  this green** as of 2026-06-21; the Flutter `AppColors`/`app_theme.dart`
-  `brandAccent` is still indigo and should be aligned indigo→green to match).
+  `AppTheme.accentGradient`+`shadowAccent`, active nav, links, focus); VALUE
+  (savings figures, "best value"/win states) — **in Flutter** the `saving*`
+  tokens are the SAME green `#16A34A` and VALUE is distinguished by TREATMENT
+  (SavingPill: pale-green tint + savings glyph + tabular figures), while **the
+  site** keeps a distinct amber `--value` (`#D97706` light / `#FBBF24` dark).
+  Site mirrors the action accent as `--accent` in `:root` (the **site is
+  recolored to this green** as of 2026-06-21; the Flutter
+  `AppColors`/`app_theme.dart` `brandAccent` is **already this green
+  `#16A34A`** — the indigo→green migration is done, do not re-migrate).
   The big dark hero cards stay
   ink (premium), not coloured. Frosted glass: `AppTheme.glassDecoration()` /
   `AppTheme.shadowGlass` for soft cards, the `GlassPanel` widget

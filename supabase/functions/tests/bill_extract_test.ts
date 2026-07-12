@@ -1,6 +1,6 @@
 // Unit tests for the SHARED bill extractor (_shared/bill.ts) — the ONE
 // Vision→billHint path used by the in-chat photo feature (site-ai-chat) and
-// re-exported to site-bill-analyzer. Drives the REAL callGeminiVision through a
+// site-bill-analyzer. Drives the REAL callGeminiVision through a
 // globalThis.fetch stub (no network) to pin: provider/category normalization,
 // the 0..5000 monthly clamp (never a fake giant saving), the hint:null
 // unreadable contract, and that a hard vision failure THROWS (so the caller can
@@ -90,8 +90,8 @@ Deno.test("extractBillHint throws on a hard vision failure (caller then fails so
   }
 });
 
-// The moved parsers keep their new home (site-bill-analyzer/lib.ts re-exports
-// them; here we pin the source of truth directly).
+// The moved parsers keep their new home (_shared/bill.ts is the single home;
+// site-bill-analyzer imports them from there directly).
 Deno.test("_shared/bill.ts re-homes parseImage + parseExtraction", () => {
   assertEquals(parseImage("data:image/png;base64,AAAA")?.mimeType, "image/png");
   assertEquals(

@@ -30,16 +30,27 @@ export default function CrmSellableLeads() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    const res = await fetchSellableLeads();
-    if (res) setLeads(res.leads);
-    else setError(true);
-    setLoading(false);
-  }, []);
+  // Fetch the feed. Loading/error resets are event-driven: the useState
+  // initializers cover the mount load and the retry button resets via `reload`
+  // — so the mount effect never sets state synchronously
+  // (react-hooks/set-state-in-effect): state only lands in the .then continuation.
+  const load = useCallback(
+    () =>
+      fetchSellableLeads().then((res) => {
+        if (res) setLeads(res.leads);
+        else setError(true);
+        setLoading(false);
+      }),
+    [],
+  );
 
   useEffect(() => {
+    void load();
+  }, [load]);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
     void load();
   }, [load]);
 
@@ -79,7 +90,7 @@ export default function CrmSellableLeads() {
       ) : error || !leads ? (
         <NoticeCard
           action={
-            <button type="button" onClick={() => void load()} className={BTN_GHOST}>
+            <button type="button" onClick={reload} className={BTN_GHOST}>
               נסו שוב
             </button>
           }

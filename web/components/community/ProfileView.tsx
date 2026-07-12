@@ -32,17 +32,12 @@ import {
   type PublicProfile,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
+import { initial } from "@/lib/community-render";
 import AuthModal from "@/components/auth/AuthModal";
 import PostCard from "./PostCard";
 import ProfileEditor from "./ProfileEditor";
 
 // ── Header avatar ──────────────────────────────────────────────────────────────
-
-/** First rendered char of a name, for the avatar fallback monogram. */
-function initial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? Array.from(trimmed)[0].toUpperCase() : "מ";
-}
 
 /**
  * "חבר/ה מאז <חודש> <שנה>" from a profile's created_at timestamp. Returns null

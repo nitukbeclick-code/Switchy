@@ -16,9 +16,10 @@ import { notFound } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import JsonLd from "@/components/JsonLd";
 import { pageMetadata } from "@/lib/seo";
-import { MENTION_RE, orderByAccepted } from "@/lib/community";
+import { orderByAccepted } from "@/lib/community";
+import { renderBody } from "@/lib/community-render";
 import ShareBar from "@/components/community/ShareBar";
-import { matchProviders, providerBySlug } from "@/lib/providers.generated";
+import { providerBySlug } from "@/lib/providers.generated";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
 export const revalidate = 300;
@@ -81,44 +82,15 @@ function heDate(iso: string): string {
   return d.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Server-side body render: text + @mentions (bold) + provider names (catalogue
- *  links). Segments are escaped strings via JSX {} / a next/link with text children. */
-function renderBody(body: string): React.ReactNode {
-  type Span = { start: number; end: number; kind: "mention" | "provider"; slug?: string };
-  const spans: Span[] = [];
-  for (const m of body.matchAll(MENTION_RE)) {
-    const start = m.index ?? 0;
-    spans.push({ start, end: start + m[0].length, kind: "mention" });
-  }
-  for (const p of matchProviders(body, spans)) {
-    spans.push({ start: p.start, end: p.end, kind: "provider", slug: p.slug });
-  }
-  spans.sort((a, b) => a.start - b.start);
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  for (const s of spans) {
-    if (s.start < last) continue;
-    if (s.start > last) nodes.push(body.slice(last, s.start));
-    const text = body.slice(s.start, s.end);
-    if (s.kind === "mention") {
-      nodes.push(
-        <span key={`s${key++}`} className="font-semibold text-accent-text">
-          {text}
-        </span>,
-      );
-    } else {
-      nodes.push(
-        <Link key={`s${key++}`} href={`/providers/${s.slug}`} className="font-medium text-accent-text underline-offset-2 hover:underline">
-          {text}
-        </Link>,
-      );
-    }
-    last = s.end;
-  }
-  if (last < body.length) nodes.push(body.slice(last));
-  return nodes;
-}
+// Server-side body render: the shared lib/community-render renderBody (text +
+// @mentions bold + provider names as catalogue links; all segments are escaped
+// strings via JSX {} / a next/link with text children). This page keeps its own
+// provider-link classes (pre-dating the shared helper's feed default), passed via
+// linkClassName so the served DOM stays byte-identical to the old local copy.
+const BODY_RENDER_OPTS = {
+  linkProviders: true,
+  linkClassName: "font-medium text-accent-text underline-offset-2 hover:underline",
+} as const;
 
 function Media({ type, url }: { type: PostRow["media_type"]; url: string | null }) {
   if (!url) return null;
@@ -234,7 +206,7 @@ export default async function CommunityPostPage({ params }: Params) {
 
         {post.body && (
           <p className="mt-3 whitespace-pre-wrap break-words text-base leading-relaxed text-foreground">
-            {renderBody(post.body)}
+            {renderBody(post.body, BODY_RENDER_OPTS)}
           </p>
         )}
         <Media type={post.media_type} url={post.media_url} />
@@ -287,7 +259,7 @@ export default async function CommunityPostPage({ params }: Params) {
               </div>
               {r.body && (
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-                  {renderBody(r.body)}
+                  {renderBody(r.body, BODY_RENDER_OPTS)}
                 </p>
               )}
               <Media type={r.media_type} url={r.media_url} />

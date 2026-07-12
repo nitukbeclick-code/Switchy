@@ -74,6 +74,12 @@ export default function LanguageSwitcher() {
       type="button"
       data-no-translate
       aria-haspopup="true"
+      // Initial (SSR / pre-runtime) state only: collapsed. Once mountMenu() runs,
+      // the runtime OWNS this attribute — it flips aria-expanded true/false and
+      // adds/removes aria-controls="swi18n-menu" directly on this DOM node as the
+      // menu opens/closes. This component is stateless and never re-renders, so
+      // React never re-asserts the hardcoded value; keep it that way (don't turn
+      // this into React state — it would fight the runtime's direct DOM writes).
       aria-expanded={false}
       aria-label="בחירת שפה / Language"
       className="interactive press flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.1] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"

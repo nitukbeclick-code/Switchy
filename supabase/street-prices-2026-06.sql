@@ -108,6 +108,12 @@ grant select, insert, update on public.street_prices to service_role;
 -- ════════════════════════════════════════════════════════════════════════════
 -- (3) get_street_price(p_plan_id, p_provider) — threshold-gated honest aggregate
 -- ════════════════════════════════════════════════════════════════════════════
+-- ⚠️ SUPERSEDED BY street-price-kanonymity-2026-07.sql — DO NOT APPLY §3.
+--    That file is the canonical get_street_price(): identical shape/behaviour
+--    but with the k-anonymity disclosure floor RAISED from 5 to 10 distinct
+--    reporters. Re-running the copy below silently lowers the privacy floor
+--    back to 5. Sections (1), (2) and (4) of this file are still current.
+--    (Banner added 2026-07 hygiene pass; the SQL below was not altered.)
 -- Mirrors get_savings_stats() (wallet-stats-2026-06.sql): SECURITY DEFINER + pinned
 -- search_path so the service-role Edge caller can read the aggregate without a broad
 -- table grant; EXECUTE granted to service_role ONLY, revoked from clients. It returns

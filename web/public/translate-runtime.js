@@ -415,7 +415,7 @@
   function closeMenu(refocus) {
     var t = openTrigger;
     if (openMenuEl) { openMenuEl.remove(); openMenuEl = null; }
-    if (openTrigger) { openTrigger.setAttribute("aria-expanded", "false"); openTrigger = null; }
+    if (openTrigger) { openTrigger.setAttribute("aria-expanded", "false"); openTrigger.removeAttribute("aria-controls"); openTrigger = null; }
     document.removeEventListener("keydown", onMenuKey, true);
     document.removeEventListener("click", onOutside, true);
     // Return focus to the globe on keyboard / selection close so focus is never
@@ -441,6 +441,9 @@
     ensureStyle();
     var menu = document.createElement("div");
     menu.className = "swi18n-menu"; menu.setAttribute("role", "menu"); menu.setAttribute("data-no-translate", "");
+    // Stable id so the trigger can reference the open menu via aria-controls
+    // (only one menu exists at a time — closeMenu() always runs before openMenu).
+    menu.id = "swi18n-menu";
     menu.setAttribute("aria-label", "בחירת שפה / Language");
     var rows = [{ code: SOURCE, label: "עברית", dir: "rtl" }].concat(LANGS);
     rows.forEach(function (l) {
@@ -463,6 +466,7 @@
     menu.style.left = Math.round(left) + "px";
     openMenuEl = menu; openTrigger = trigger;
     trigger.setAttribute("aria-expanded", "true");
+    trigger.setAttribute("aria-controls", menu.id);
     document.addEventListener("keydown", onMenuKey, true);
     document.addEventListener("click", onOutside, true);
     var first = menu.querySelector(".swi18n-item[aria-checked='true']") || menu.querySelector(".swi18n-item");

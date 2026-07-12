@@ -4,9 +4,9 @@
 // AI engines (Google SGE, AI Overviews, LLMs) and screen-readers can lift
 // verbatim. Server component (no state).
 //
-// Renamed from <AiSummary> (an `AiSummary.tsx` alias still re-exports this so
-// existing imports keep working). Keeps id="ai-summary" by default so the single
-// primary summary per page stays anchor-/deep-link-able and back-compatible.
+// Renamed from <AiSummary> (the back-compat `AiSummary.tsx` alias has been
+// retired). Keeps id="ai-summary" by default so the single primary summary per
+// page stays anchor-/deep-link-able and back-compatible.
 //
 // HONESTY: the caller is responsible for passing only truthful, verifiable copy.
 // This component adds no claims of its own beyond a neutral "תקציר" heading. To

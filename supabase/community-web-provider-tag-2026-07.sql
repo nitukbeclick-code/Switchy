@@ -21,6 +21,12 @@ do $$ begin
 end $$;
 
 -- Surface it in the feed view (explicit column list — a bare ADD COLUMN won't appear).
+-- ⚠️ SUPERSEDED: this community_feed definition was later replaced by
+-- community-accepted-answer-2026-07.sql (the CANONICAL copy — appends
+-- accepted_reply_id; + the security_invoker ALTER in security-views-hardening-
+-- 2026-07.sql). Re-running the view below against prod ERRORS (CREATE OR
+-- REPLACE VIEW cannot drop accepted_reply_id) — skip it; the rest of this file
+-- (provider_slug column + constraint) is still current.
 create or replace view public.community_feed as
   select
     p.id, p.user_id, p.author, p.avatar, p.channel, p.body,

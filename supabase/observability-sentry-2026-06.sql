@@ -1,6 +1,14 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- observability-sentry-2026-06.sql
 --
+-- ✅ CANONICAL get_lead_notify_config() — this file holds the NEWEST full
+--    replacement of the Vault allow-list. The four older copies (schema.sql §6
+--    is dead-in-file, schema.sql §8 mirrors this one since the 2026-07 hygiene
+--    pass, meetings-2026-06.sql §6 and google-logging-2026-06.sql §1 carry
+--    SUPERSEDED banners) must NOT be applied on their own. Any future whitelist
+--    change should be a new dated full-replacement file that supersedes THIS
+--    one — update these pointers when that happens.
+--
 -- ⚠️ NOT auto-applied. This is a DRAFT. Review, then run manually against the
 --    project (orzitfqmlvopujsoyigr) — e.g. via the Supabase SQL editor or
 --    `npx supabase db execute`. Idempotent: safe to re-run.

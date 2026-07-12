@@ -1,15 +1,37 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+// ─────────────────────────────────────────────────────────────────────────────
+// telegram-webhook — Switchy AI
+// The INTERNAL rep/link Telegram bot. Two jobs:
+//   1. /start user_<uuid> — link an app profile's notifications to a Telegram
+//      chat (hijack-guarded: canonical-UUID gate, per-chat link cap, never
+//      overwrites an existing link).
+//   2. Rep → WhatsApp relay — a plain text reply from an AUTHORIZED rep in the
+//      team chat is forwarded to the customer's WhatsApp conversation
+//      (threaded via telegram_thread_id, else the rep's most recent contact).
+//
+// This is NOT the public customer bot (telegram-user-webhook/) — that one
+// trusts no one; this one trusts the telegram_allowed_user_ids allowlist.
+//
+// POST (webhook) — Telegram update, authenticated via secret_token
+//   (x-telegram-bot-api-secret-token = SHA-256 digest of lead_webhook_secret,
+//   the same scheme notify-lead / telegram-user-webhook use). Fail-closed.
+// Any other method — plain 200 "OK" (the bot-health workflow probes GET).
+//
+// Deploy: supabase functions deploy telegram-webhook --no-verify-jwt
+// Env: TELEGRAM_BOT_TOKEN (the rep bot's token), lead_webhook_secret via
+//   vault/env, SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY for persistence,
+//   WHATSAPP_TOKEN (via _shared/whatsapp.ts) for the relay.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import { jlog } from "../_shared/log.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+// The rep bot's OWN token — distinct from the user bot's TELEGRAM_USER_BOT_TOKEN.
+// Read at module load; the value is stable for the isolate's lifetime.
 const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // A canonical UUID — the /start payload is an UNTRUSTED, attacker-controllable
 // string, so we never feed it to a DB query before it matches this exactly.
@@ -59,7 +81,7 @@ function esc(s: string): string {
 
 async function sendTelegramMessage(
   chatId: number,
-  text: string
+  text: string,
 ): Promise<boolean> {
   try {
     const response = await fetch(
@@ -72,11 +94,11 @@ async function sendTelegramMessage(
           text: text,
           parse_mode: "HTML",
         }),
-      }
+      },
     );
     return response.ok;
   } catch (error) {
-    console.error("Error sending Telegram message:", error);
+    jlog({ at: "telegram-webhook.send", ok: false, error: String(error) });
     return false;
   }
 }
@@ -84,7 +106,7 @@ async function sendTelegramMessage(
 async function handleStartCommand(
   payload: string,
   chatId: number,
-  firstName: string
+  firstName: string,
 ) {
   try {
     // Deep link format: /start user_[USER_ID]
@@ -93,13 +115,14 @@ async function handleStartCommand(
 
     // SECURITY: validate the id is a real UUID *before* any DB access. Without
     // this an attacker could pass an arbitrary id and bind their own chat to a
-    // victim's profile, hijacking that victim's notifications.
+    // victim's profile, hijacking that victim's notifications. Only after this
+    // gate is appUserId safe to interpolate into a PostgREST path below.
     if (!match || !UUID_RE.test(appUserId)) {
       await sendTelegramMessage(
         chatId,
         "קישור לא תקין. אנא השתמשו בקישור מתוך האפליקציה."
       );
-      console.warn("Rejected /start with invalid uuid payload");
+      jlog({ at: "telegram-webhook.start", ok: false, reason: "invalid uuid payload" });
       return;
     }
 
@@ -107,15 +130,14 @@ async function handleStartCommand(
 
     // RATE LIMIT: a single chat must not collect many profiles. Count how many
     // profiles are already bound to this chat (excluding the target) and refuse
-    // once the cap is hit.
-    const { data: boundRows, error: boundErr } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("telegram_chat_id", chatIdStr)
-      .neq("id", appUserId);
+    // once the cap is hit. fetchRows is null ONLY on a failed query ([] when
+    // genuinely empty), so a DB outage takes the "try again" path, never the cap.
+    const boundRows = await fetchRows<{ id: string }>(
+      `/rest/v1/profiles?select=id&telegram_chat_id=eq.${chatIdStr}&id=neq.${appUserId}`,
+    );
 
-    if (boundErr) {
-      console.error("Error checking existing chat links:", boundErr.message);
+    if (boundRows === null) {
+      jlog({ at: "telegram-webhook.start", ok: false, step: "check existing chat links" });
       await sendTelegramMessage(
         chatId,
         "אירעה שגיאה. נסו שוב מאוחר יותר."
@@ -123,26 +145,24 @@ async function handleStartCommand(
       return;
     }
 
-    if ((boundRows?.length ?? 0) >= MAX_PROFILES_PER_CHAT) {
+    if (boundRows.length >= MAX_PROFILES_PER_CHAT) {
       await sendTelegramMessage(
         chatId,
         "חרגתם ממספר החשבונות שניתן לקשר מצ׳אט זה — פנו לתמיכה."
       );
-      console.warn("Rate-limited: chat exceeded max linked profiles");
+      jlog({ at: "telegram-webhook.start", ok: false, reason: "chat exceeded max linked profiles" });
       return;
     }
 
     // Look up the target profile and only link if it is currently unlinked.
     // We never silently overwrite an existing telegram_chat_id — that is the
     // exact hijack we are guarding against.
-    const { data: profile, error: lookupErr } = await supabase
-      .from("profiles")
-      .select("id, telegram_chat_id")
-      .eq("id", appUserId)
-      .maybeSingle();
+    const profiles = await fetchRows<{ id: string; telegram_chat_id: string | null }>(
+      `/rest/v1/profiles?select=id,telegram_chat_id&id=eq.${appUserId}&limit=1`,
+    );
 
-    if (lookupErr) {
-      console.error("Error looking up profile:", lookupErr.message);
+    if (profiles === null) {
+      jlog({ at: "telegram-webhook.start", ok: false, step: "look up profile" });
       await sendTelegramMessage(
         chatId,
         "אירעה שגיאה. נסו שוב מאוחר יותר."
@@ -150,6 +170,7 @@ async function handleStartCommand(
       return;
     }
 
+    const profile = profiles.length ? profiles[0] : null;
     if (!profile) {
       await sendTelegramMessage(
         chatId,
@@ -158,7 +179,7 @@ async function handleStartCommand(
       return;
     }
 
-    const existing = profile.telegram_chat_id as string | null;
+    const existing = profile.telegram_chat_id;
     if (existing) {
       // Already linked. If it's already THIS chat, reassure; otherwise refuse
       // and route to support rather than overwriting.
@@ -172,26 +193,35 @@ async function handleStartCommand(
           chatId,
           "כבר מקושר — פנו לתמיכה."
         );
-        console.warn("Refused re-link: profile already bound to another chat");
+        jlog({ at: "telegram-webhook.start", ok: false, reason: "profile already bound to another chat" });
       }
       return;
     }
 
     // Conditional update: only succeeds while telegram_chat_id is still null,
-    // closing the race where two requests try to claim the same profile.
-    const { data: updated, error: updateErr } = await supabase
-      .from("profiles")
-      .update({
-        telegram_chat_id: chatIdStr,
-        telegram_enabled: true,
-        telegram_connected_at: new Date().toISOString(),
-      })
-      .eq("id", appUserId)
-      .is("telegram_chat_id", null)
-      .select("id");
+    // closing the race where two requests try to claim the same profile. The
+    // returned representation tells failure (null) apart from a lost race ([]).
+    const r = await serviceFetch(
+      `/rest/v1/profiles?id=eq.${appUserId}&telegram_chat_id=is.null&select=id`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          telegram_chat_id: chatIdStr,
+          telegram_enabled: true,
+          telegram_connected_at: new Date().toISOString(),
+        }),
+      },
+    );
 
-    if (updateErr) {
-      console.error("Error updating profile:", updateErr.message);
+    let updated: Array<{ id: string }> | null = null;
+    if (r && r.ok) {
+      const rows = await r.json().catch(() => null);
+      if (Array.isArray(rows)) updated = rows as Array<{ id: string }>;
+    }
+
+    if (updated === null) {
+      jlog({ at: "telegram-webhook.start", ok: false, step: "update profile", status: r?.status });
       await sendTelegramMessage(
         chatId,
         "מצטערים, לא הצלחנו לחבר את החשבון. נסו שוב."
@@ -199,7 +229,7 @@ async function handleStartCommand(
       return;
     }
 
-    if (!updated || updated.length === 0) {
+    if (updated.length === 0) {
       // Lost the race — someone linked between our lookup and update.
       await sendTelegramMessage(
         chatId,
@@ -210,12 +240,12 @@ async function handleStartCommand(
 
     await sendTelegramMessage(
       chatId,
-      `<b>✅ מחוברים!</b>\n\nשלום ${esc(firstName)}! מעכשיו תקבלו התראות על:\n• אישורי פגישות\n• תזכורות חידוש\n• התראות על דילים משתלמים יותר\n• הצעות מיוחדות\n\nניתן לנהל את ההעדפות בהגדרות האפליקציה.`
+      `<b>✅ מחוברים!</b>\n\nשלום ${esc(firstName)}! החשבון קושר לצ׳אט הזה.\nכשנפעיל התראות בטלגרם — אישורי פגישות, תזכורות חידוש ודילים — הן יגיעו לכאן אוטומטית.\nבינתיים העדכונים נשלחים באפליקציה ובמייל; אפשר לנתק בכל רגע בהגדרות האפליקציה.`
     );
 
-    console.log("Successfully linked Telegram chat to profile");
+    jlog({ at: "telegram-webhook.start", ok: true, linked: true });
   } catch (error) {
-    console.error("Error handling /start command:", error);
+    jlog({ at: "telegram-webhook.start", ok: false, error: String(error) });
     await sendTelegramMessage(
       chatId,
       "אירעה שגיאה. נסו שוב מאוחר יותר."
@@ -246,7 +276,7 @@ async function tgReact(chatId: number, messageId: number): Promise<void> {
       }),
     });
   } catch (error) {
-    console.error("Error reacting to Telegram message:", error);
+    jlog({ at: "telegram-webhook.react", ok: false, error: String(error) });
   }
 }
 
@@ -369,8 +399,8 @@ async function handleRepReply(message: TelegramMessage): Promise<boolean> {
   return true;
 }
 
-serve(async (req: Request) => {
-  // Only accept POST requests
+Deno.serve(async (req: Request) => {
+  // Only accept POST requests (bot-health probes GET and expects a plain "OK").
   if (req.method !== "POST") {
     return new Response("OK", { status: 200 });
   }
@@ -414,7 +444,7 @@ serve(async (req: Request) => {
       } else if (text === "/help") {
         await sendTelegramMessage(
           chatId,
-          `<b>עזרה — בוט Switchy AI</b>\n\n<b>פקודות:</b>\n/start - חיבור החשבון\n/help - הצגת הודעה זו\n\nקבלו התראות על:\n✅ אישורי פגישות\n⏰ תזכורות חידוש\n🎉 דילים משתלמים יותר\n💰 הזדמנויות חיסכון`
+          `<b>עזרה — בוט Switchy AI</b>\n\n<b>פקודות:</b>\n/start - חיבור החשבון\n/help - הצגת הודעה זו\n\nהצ׳אט מקושר לחשבון Switchy שלכם.\nכשנפעיל כאן התראות (אישורי פגישות, תזכורות חידוש, דילים) — הן יגיעו אוטומטית; בינתיים העדכונים באפליקציה ובמייל.`
         );
       } else {
         // Non-command text. First try relaying it to a customer's WhatsApp when
@@ -437,7 +467,7 @@ serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Error processing Telegram webhook:", error);
+    jlog({ at: "telegram-webhook", ok: false, error: String(error) });
     return new Response(JSON.stringify({ ok: false, error: String(error) }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

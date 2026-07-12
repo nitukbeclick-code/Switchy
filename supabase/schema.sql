@@ -103,11 +103,31 @@ alter table public.leads add column if not exists callback_pinged_at timestamptz
 alter table public.leads add column if not exists actual_saving integer;
 alter table public.leads add column if not exists source_ip text;
 
+-- Live columns added by later deltas, mirrored here because the INSERT column
+-- allowlist below grants on them (a fresh install would otherwise error):
+--   city (leads-city-2026-06) · referrer_code (referral-attribution-2026-06) ·
+--   consent_marketing_* (marketing-consent-2026-06, Spam-Law §30A per-channel
+--   opt-ins, false = no consent) · *_accepted_at (legal-consent-2026-06 /
+--   leads-consent-columns-fix-2026-06, server-re-stamped consent proofs).
+alter table public.leads add column if not exists city text;
+alter table public.leads add column if not exists referrer_code text;
+alter table public.leads add column if not exists consent_marketing_sms      boolean not null default false;
+alter table public.leads add column if not exists consent_marketing_email    boolean not null default false;
+alter table public.leads add column if not exists consent_marketing_whatsapp boolean not null default false;
+alter table public.leads add column if not exists terms_accepted_at     timestamptz;
+alter table public.leads add column if not exists privacy_accepted_at   timestamptz;
+alter table public.leads add column if not exists marketing_accepted_at timestamptz;
+
 alter table public.leads enable row level security;
 
+-- DRIFT-HEALED 2026-07: mirrors leads-client-write-read-lockdown-2026-07.sql §3
+-- (the canonical policy). The original `with check (true)` let any client
+-- attribute a lead to someone else's user_id; the live policy pins user_id to
+-- the caller (or null for anonymous site inserts).
 drop policy if exists "leads_insert_anyone" on public.leads;
 create policy "leads_insert_anyone" on public.leads
-  for insert with check (true);
+  for insert to anon, authenticated
+  with check (user_id is null or user_id = auth.uid());
 drop policy if exists "leads_select_own" on public.leads;
 create policy "leads_select_own" on public.leads
   for select using (auth.uid() = user_id);
@@ -122,11 +142,11 @@ create policy "leads_select_own" on public.leads
 -- by created_at). So drop the broad table grant and re-grant SELECT on only the
 -- safe columns. The pure `anon`/site role only INSERTs leads, so it gets no
 -- SELECT at all; the app's anonymous users hold the `authenticated` role.
--- INSERT stays untouched (the anon lead-capture path and the rate-limit trigger
--- are unaffected). The sales team still reads everything via the service_role
--- key, which bypasses RLS and column grants entirely.
+-- INSERT is column-allowlisted further below (see the leads grant block — mirrors
+-- leads-client-write-read-lockdown-2026-07.sql §1). The sales team still reads
+-- everything via the service_role key, which bypasses RLS and column grants.
 revoke select on public.leads from anon, authenticated;
-grant select (id, status, created_at, user_id) on public.leads to authenticated;
+grant select (id, user_id, status, created_at) on public.leads to authenticated;
 
 create index if not exists leads_user_idx on public.leads (user_id);
 create index if not exists leads_created_idx on public.leads (created_at desc);
@@ -478,16 +498,56 @@ create trigger reviews_set_updated_at before update on public.provider_reviews
 
 -- ── Convenience views ────────────────────────────────────────────────────────
 -- Posts with like/reply counts, so the feed is a single query.
+--
+-- DRIFT-HEALED 2026-07: this is the CANONICAL community_feed from
+-- community-accepted-answer-2026-07.sql (the last of six successive versions:
+-- schema original → community-web-fixes → -pinned → -edit → -provider-tag →
+-- -accepted-answer), plus the security_invoker option from
+-- security-views-hardening-2026-07.sql. The old `select p.*` version would
+-- ERROR on a live re-run (view column order changed) and regress the feed.
+-- The explicit column list requires the later-delta columns to exist first —
+-- mirror them here so a fresh install works:
+alter table public.community_posts add column if not exists is_flagged      boolean not null default false; -- community moderation (B1 below)
+alter table public.community_posts add column if not exists moderation_note text;                            -- community moderation (B1 below)
+alter table public.community_posts add column if not exists is_pinned       boolean not null default false;  -- community-web-pinned-2026-07
+alter table public.community_posts add column if not exists edited_at       timestamptz;                     -- community-web-edit-2026-07
+alter table public.community_posts add column if not exists provider_slug   text;                            -- community-web-provider-tag-2026-07
+alter table public.community_posts add column if not exists accepted_reply_id uuid
+  references public.community_replies(id) on delete set null;                                                -- community-accepted-answer-2026-07
+
 create or replace view public.community_feed as
-select
-  p.*,
-  coalesce(l.cnt, 0) as like_count,
-  coalesce(r.cnt, 0) as reply_count
-from public.community_posts p
-left join (select post_id, count(*) cnt from public.post_likes group by post_id) l
-  on l.post_id = p.id
-left join (select post_id, count(*) cnt from public.community_replies group by post_id) r
-  on r.post_id = p.id;
+  select p.id,
+         p.user_id,
+         p.author,
+         p.avatar,
+         p.channel,
+         p.body,
+         p.media_type,
+         p.media_url,
+         p.media_duration_ms,
+         p.created_at,
+         coalesce(l.cnt, 0::bigint) as like_count,
+         coalesce(r.cnt, 0::bigint) as reply_count,
+         p.is_flagged,
+         p.moderation_note,
+         p.is_pinned,
+         p.edited_at,
+         p.provider_slug,
+         p.accepted_reply_id
+    from community_posts p
+         left join ( select post_likes.post_id, count(*) as cnt
+                       from post_likes group by post_likes.post_id) l on l.post_id = p.id
+         left join ( select community_replies.post_id, count(*) as cnt
+                       from community_replies group by community_replies.post_id) r on r.post_id = p.id;
+
+-- security-views-hardening-2026-07.sql: respect the caller's RLS (the
+-- underlying tables are public-read). CREATE OR REPLACE VIEW resets this
+-- option, so it must be re-applied whenever the view is redefined.
+alter view public.community_feed set (security_invoker = on);
+
+-- community-web-fixes-2026-07.sql FIX 1: without this grant every web read of
+-- the feed 42501s (the view predates the public-facing grants block below).
+grant select on public.community_feed to anon, authenticated;
 
 -- Average rating + review count per provider (public).
 create or replace view public.provider_rating_summary as
@@ -699,21 +759,30 @@ create table if not exists public.meetings (
   claimed_at       timestamptz,
   confirmed_at     timestamptz,
   reminded_rep_at  timestamptz,
+  gcal_event_id    text,                     -- Google Calendar event id (server-managed; google-logging-2026-06 §2)
   source_ip        text,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
 
+-- Reruns on a pre-existing database (meetings_guard below nulls this column,
+-- so it must exist): mirrors google-logging-2026-06.sql §2.
+alter table public.meetings add column if not exists gcal_event_id text;
+
 drop trigger if exists meetings_set_updated_at on public.meetings;
 create trigger meetings_set_updated_at before update on public.meetings
   for each row execute function public.set_updated_at();
 
--- ── 2. RLS — leads' insert-anyone / select-own / column-limited pattern ──────
+-- ── 2. RLS — select-own / column-limited; client INSERT closed ───────────────
 alter table public.meetings enable row level security;
 
+-- DRIFT-HEALED 2026-07: mirrors meetings-anon-insert-close-2026-06.sql (the
+-- canonical state). The original "meetings_insert_anyone" `with check (true)`
+-- policy let any holder of the public anon key POST straight to
+-- /rest/v1/meetings, skipping the email-OTP gate. Every legitimate booking now
+-- goes through the OTP-gated meeting-book edge function (service_role, which
+-- bypasses RLS) or a rep via notify-lead — so clients get NO insert policy.
 drop policy if exists "meetings_insert_anyone" on public.meetings;
-create policy "meetings_insert_anyone" on public.meetings
-  for insert with check (true);
 drop policy if exists "meetings_select_own" on public.meetings;
 create policy "meetings_select_own" on public.meetings
   for select using (auth.uid() = user_id);
@@ -747,7 +816,7 @@ create index if not exists meetings_unnotified_idx on public.meetings (created_a
 -- open meetings by start time (follow-up planner + /meetings command)
 create index if not exists meetings_open_idx on public.meetings (starts_at)
   where status in ('pending', 'confirmed');
--- normalized per-phone lookups for the rate limit + one-open-meeting gate
+-- normalized per-phone lookups for the rate limit + exact-duplicate gate
 create index if not exists meetings_phone_norm_idx
   on public.meetings (regexp_replace(phone, '\D', '', 'g'), created_at desc);
 
@@ -756,12 +825,18 @@ create index if not exists meetings_phone_norm_idx
 -- leads_consent_stamp, plus the meeting-specific schedule rules. The Flutter
 -- wizard renders exactly these rules (lib/services/meeting_slots.dart); this
 -- trigger is the authoritative enforcement.
-create or replace function public.meetings_guard()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
+-- DRIFT-HEALED 2026-07: mirrors meetings-guard-allow-multiple-2026-07.sql (the
+-- canonical guard — owner directive 2026-07-05). The old one-open-meeting-per-
+-- phone rule is REMOVED (a verified visitor may book one consultation per
+-- carrier); only an EXACT duplicate (phone+provider+date+slot) is rejected.
+-- Adds the provider-eligibility gate + 4-hour lead time; per-phone 12/24h,
+-- per-IP 12/h, global 30/h.
+CREATE OR REPLACE FUNCTION public.meetings_guard()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
 declare
   req_headers json;
   req_ip text;
@@ -769,24 +844,20 @@ declare
   il_today date;
   dow int;
 begin
-  -- serialize same-phone inserts so the one-open-meeting check and the
-  -- per-phone rate limit can't be raced by concurrent requests
+  -- serialize same-phone inserts so the dup check + rate limits can't be raced
   perform pg_advisory_xact_lock(hashtext(regexp_replace(new.phone, '\D', '', 'g')));
 
-  -- user_id must be the caller's identity — a forged value would plant the
-  -- meeting (and its Realtime updates) in another user's app
   if new.user_id is distinct from auth.uid() then
     new.user_id := auth.uid();
   end if;
 
-  -- server-managed columns — never accepted from the inserter
   new.status := 'pending';
   new.join_url := null;        new.zoom_meeting_id := null;
   new.notified_at := null;     new.claimed_by := null;
   new.claimed_by_tg_id := null; new.claimed_at := null;
   new.confirmed_at := null;    new.reminded_rep_at := null;
+  new.gcal_event_id := null;
 
-  -- shape validation (same regexes/bounds as leads_rate_limit)
   if length(trim(new.name)) < 2 or length(new.name) > 80 then
     raise exception 'invalid name';
   end if;
@@ -801,11 +872,13 @@ begin
     raise exception 'field too long';
   end if;
 
+  -- provider gate: a meeting may only be booked for an eligible carrier.
+  if coalesce(new.provider, '') not in ('HOT','yes','פרטנר','סלקום','STING TV','בזק','הוט מובייל') then
+    raise exception 'provider not eligible for a meeting';
+  end if;
+
   -- schedule rules: Israel wall clock is the only clock that matters here.
   il_today := (now() at time zone 'Asia/Jerusalem')::date;
-  if new.meeting_date < il_today + 1 then
-    raise exception 'meeting must be booked at least one day ahead';
-  end if;
   if new.meeting_date > il_today + 30 then
     raise exception 'meeting too far ahead';
   end if;
@@ -814,35 +887,41 @@ begin
     raise exception 'no meetings on Saturday';
   end if;
   if dow = 5 then
-    -- Friday: mornings only, 09:00–12:30
     if new.slot !~ '^(09|1[0-2]):(00|30)$' or new.slot > '12:30' then
       raise exception 'invalid slot for Friday';
     end if;
   else
-    -- Sunday–Thursday: 09:00–20:30
     if new.slot !~ '^(09|1[0-9]|20):(00|30)$' then
       raise exception 'invalid slot';
     end if;
   end if;
 
-  -- the authoritative UTC instant: resolved through the Postgres tz database,
-  -- so Israel DST transitions can never drift the meeting time.
   new.starts_at := ((new.meeting_date::text || ' ' || new.slot)::timestamp)
                      at time zone 'Asia/Jerusalem';
 
-  -- one open meeting per phone (pending/confirmed in the future)
-  if (select count(*) from public.meetings
-      where regexp_replace(phone, '\D', '', 'g') = regexp_replace(new.phone, '\D', '', 'g')
-        and status in ('pending', 'confirmed')
-        and starts_at > now()) >= 1 then
-    raise exception 'meeting already pending';
+  if new.starts_at < now() + interval '4 hours' then
+    raise exception 'meeting must be booked at least 4 hours ahead';
   end if;
 
-  -- rate limits (tighter than leads — meetings are a heavier commitment):
-  --   per-phone 3/24h · per-IP 5/h · global 30/h circuit breaker
+  -- CHANGED 2026-07 (owner): a verified visitor may book MULTIPLE consultations
+  -- (e.g. one per carrier they're weighing) — the old one-open-meeting-per-phone
+  -- block was REMOVED. We only reject an ACCIDENTAL EXACT duplicate (same phone +
+  -- provider + date + slot) to swallow a double-submit; email verification + the
+  -- rate limits below remain the anti-spam gate.
   if (select count(*) from public.meetings
       where regexp_replace(phone, '\D', '', 'g') = regexp_replace(new.phone, '\D', '', 'g')
-        and created_at > now() - interval '1 day') >= 3 then
+        and provider = new.provider
+        and meeting_date = new.meeting_date
+        and slot = new.slot
+        and status in ('pending', 'confirmed')) >= 1 then
+    raise exception 'duplicate meeting';
+  end if;
+
+  -- rate limits (raised to accommodate booking for every eligible carrier):
+  --   per-phone 12/24h · per-IP 12/h · global 30/h circuit breaker
+  if (select count(*) from public.meetings
+      where regexp_replace(phone, '\D', '', 'g') = regexp_replace(new.phone, '\D', '', 'g')
+        and created_at > now() - interval '1 day') >= 12 then
     raise exception 'rate limit exceeded';
   end if;
   begin
@@ -861,7 +940,7 @@ begin
   if new.source_ip is not null then
     if (select count(*) from public.meetings
         where source_ip = new.source_ip
-          and created_at > now() - interval '1 hour') >= 5 then
+          and created_at > now() - interval '1 hour') >= 12 then
       raise exception 'rate limit exceeded';
     end if;
   end if;
@@ -870,14 +949,14 @@ begin
     raise exception 'rate limit exceeded';
   end if;
 
-  -- consent re-stamp (server-authoritative, like leads_consent_stamp)
+  -- consent re-stamp (server-authoritative)
   new.terms_accepted_at     := case when new.terms_accepted_at     is not null then now() else null end;
   new.privacy_accepted_at   := case when new.privacy_accepted_at   is not null then now() else null end;
   new.marketing_accepted_at := case when new.marketing_accepted_at is not null then now() else null end;
 
   return new;
 end;
-$$;
+$function$;
 
 drop trigger if exists meetings_guard_before_insert on public.meetings;
 create trigger meetings_guard_before_insert
@@ -943,6 +1022,11 @@ create trigger meetings_notify_after_insert
   for each row execute function public.notify_meeting_on_insert();
 
 -- ── 6. Config RPC: add the Zoom keys ─────────────────────────────────────────
+-- ⚠️ DEAD-IN-FILE: this §6 copy of get_lead_notify_config is immediately
+-- overwritten by §8 below (drift-healed 2026-07 to the canonical whitelist of
+-- observability-sentry-2026-06.sql), so running this whole file always ends on
+-- the canonical definition. NEVER run §6 on its own — its Zoom-era whitelist
+-- would drop the gemini/google/sentry secrets from the allow-list.
 -- FULL REPLACEMENT of get_lead_notify_config (the deployed original came from
 -- a dashboard migration). ⚠️ OWNER: before running, confirm the deployed
 -- function's whitelist matches the names below (run
@@ -982,6 +1066,9 @@ grant execute on function public.get_lead_notify_config() to service_role;
 -- Adds 'gemini_api_key' to the same whitelist get_lead_notify_config() already
 -- exposes to service_role (see section 6). FULL REPLACEMENT for the same
 -- 42P13 reason noted there.
+-- DRIFT-HEALED 2026-07: whitelist mirrors observability-sentry-2026-06.sql —
+-- the CANONICAL copy. Any change to the allow-list goes in a new dated
+-- full-replacement delta first, then gets mirrored here.
 drop function if exists public.get_lead_notify_config();
 create function public.get_lead_notify_config()
 returns jsonb
@@ -995,10 +1082,17 @@ as $$
      'telegram_bot_token', 'telegram_chat_id', 'telegram_allowed_user_ids',
      'resend_api_key', 'resend_from', 'leads_notify_email',
      'openai_api_key', 'anthropic_api_key', 'gemini_api_key', 'lead_webhook_secret',
+     -- Zoom Server-to-Server OAuth (optional)
      'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email',
-     -- Google integration (Calendar event sync + Sheets lead logging) — see
-     -- google-logging-2026-06.sql; config.ts reads these three.
-     'google_service_account_key', 'google_calendar_id', 'google_spreadsheet_id'
+     -- Google integration (Calendar event sync + Sheets lead logging). Keep BOTH
+     -- the legacy names AND the owner's ACTUAL Vault names (config.ts reads the
+     -- latter: google_service_account / leads_spreadsheet_id / switchy_calendar_id)
+     -- so applying this never drops the live Google-logging secrets.
+     'google_service_account_key', 'google_calendar_id', 'google_spreadsheet_id',
+     'google_service_account', 'leads_spreadsheet_id', 'switchy_calendar_id',
+     -- Observability (optional) — Sentry DSN for edge error/message capture.
+     -- config.ts reads this; '' / absent keeps _shared/observability.ts dark.
+     'sentry_dsn'
    );
 $$;
 revoke execute on function public.get_lead_notify_config() from public, anon, authenticated;
@@ -1026,11 +1120,16 @@ alter table public.chat_messages enable row level security;
 grant select, insert on public.chat_messages to service_role;
 
 -- Trim old rows daily so the table doesn't grow unbounded (only the last
--- hour is ever queried). Optional — register once if pg_cron is enabled:
--- select cron.schedule('chat-messages-trim', '17 3 * * *',
---   $$ delete from public.chat_messages where created_at < now() - interval '2 days' $$);
+-- hour is ever queried). The 'chat-messages-trim' registration lives in
+-- retention-cron-2026-07.sql (data-deleting — owner-gated, APPLY MANUALLY);
+-- do not register it from here.
 
 -- ── pg_cron schedules  (digest, sweeps, weekly report) ──────────────────────
+-- ⚠️ SUPERSEDED AS A REGISTRY: cron-and-hardening-2026-07.sql is the REGISTRY
+-- OF RECORD for these renewal-reminders schedules (it registers follow-up /
+-- sweep / weekly; the daily digest was registered by upgrade-2026-06-10 §9 and
+-- is live). The block below stays as DOCUMENTATION ONLY — edit schedules in
+-- cron-and-hardening-2026-07.sql, not here.
 -- Requires: `create extension if not exists pg_cron schema cron;`
 -- To register: run these selects once in the SQL editor. All POST to the
 -- renewal-reminders function with a `mode`; the shared secret comes from Vault.
@@ -1102,28 +1201,33 @@ grant select, insert on public.chat_messages to service_role;
 -- ── Storage: community-media cleanup trigger ────────────────────────────────
 -- Deletes the Storage object whenever a community_post or community_reply row
 -- is deleted, preventing orphaned objects in the community-media bucket.
--- Already live — re-run if the trigger/function is ever dropped.
---
---   create or replace function public.delete_community_storage_object()
---   returns trigger language plpgsql security definer set search_path = public as $$
---   declare obj_path text;
---   begin
---     if old.media_url is not null and old.media_url like '%/community-media/%' then
---       obj_path := substring(old.media_url from '/community%-media/(.+)$');
---       if obj_path is not null then
---         delete from storage.objects where bucket_id = 'community-media' and name = obj_path;
---       end if;
---     end if;
---     return old;
---   end; $$;
---
---   create trigger trg_delete_post_media
---     after delete on public.community_posts
---     for each row execute function public.delete_community_storage_object();
---
---   create trigger trg_delete_reply_media
---     after delete on public.community_replies
---     for each row execute function public.delete_community_storage_object();
+-- Live since 2026-06. DRIFT-HEALED 2026-07: this DDL used to exist here only
+-- as a comment, so a fresh install missed the function — and then ERRORED on
+-- the (A4) `revoke execute ... delete_community_storage_object()` below.
+-- Real, idempotent DDL now:
+
+create or replace function public.delete_community_storage_object()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare obj_path text;
+begin
+  if old.media_url is not null and old.media_url like '%/community-media/%' then
+    obj_path := substring(old.media_url from '/community%-media/(.+)$');
+    if obj_path is not null then
+      delete from storage.objects where bucket_id = 'community-media' and name = obj_path;
+    end if;
+  end if;
+  return old;
+end; $$;
+
+drop trigger if exists trg_delete_post_media on public.community_posts;
+create trigger trg_delete_post_media
+  after delete on public.community_posts
+  for each row execute function public.delete_community_storage_object();
+
+drop trigger if exists trg_delete_reply_media on public.community_replies;
+create trigger trg_delete_reply_media
+  after delete on public.community_replies
+  for each row execute function public.delete_community_storage_object();
 
 -- ── Storage: community-media bucket ─────────────────────────────────────────
 -- The community-media bucket and its RLS live in supabase/storage.sql — the
@@ -1302,9 +1406,12 @@ grant insert, update, delete on public.provider_reviews   to authenticated;
 grant insert, delete         on public.post_likes         to authenticated;
 grant select, insert, update, delete on public.post_bookmarks to authenticated;
 
--- video-consultation booking: anyone may insert a meeting (meetings_guard
--- validates + stamps it); the customer gets the Zoom link by email after a rep
--- confirms. authenticated may also read their own meetings.
+-- video-consultation booking: since meetings-anon-insert-close-2026-06.sql the
+-- client INSERT policy is DROPPED — bookings go through the OTP-gated
+-- meeting-book edge function (service_role). The base-table INSERT grant below
+-- is kept to mirror live (it was never revoked) but is inert: RLS has no client
+-- insert policy, so anon/authenticated inserts are denied regardless.
+-- authenticated may still read their own meetings (column-scoped above).
 grant insert on public.meetings to anon, authenticated;
 grant select on public.meetings to authenticated;
 
@@ -1315,15 +1422,43 @@ grant select on public.meetings to authenticated;
 -- (lib/services/backend/supabase_backend.dart, support_ticket_service.dart).
 -- RLS already gates these (insert-anyone / owner policies verified) — only the
 -- GRANTs were missing, so every one of these flows 401s without the block below.
-grant insert on public.leads            to anon, authenticated;  -- site form (anon) + app (auth)
-grant select on public.leads            to authenticated;        -- leads_select_own
+-- DRIFT-HEALED 2026-07: mirrors leads-client-write-read-lockdown-2026-07.sql
+-- §1+§2 (the canonical grants). The old whole-table `grant insert` let a client
+-- holding the public anon key set server-owned columns (status, claimed_by*,
+-- source_ip, actual_saving, workflow *_at stamps); the old whole-table
+-- `grant select` re-widened the column-scoped SELECT above. Column allowlists:
+revoke insert on public.leads from anon, authenticated;
+grant insert (
+  id, user_id, name, phone, email, provider, plan_id, callback_time,
+  created_at, source, notes, city, referrer_code,
+  consent_marketing_sms, consent_marketing_email, consent_marketing_whatsapp,
+  terms_accepted_at, privacy_accepted_at, marketing_accepted_at
+) on public.leads to anon, authenticated;  -- site form (anon) + app (auth)
+revoke select on public.leads from authenticated;
+grant select (id, user_id, status, created_at) on public.leads to authenticated;  -- leads_select_own
 grant select, insert, update on public.profiles to authenticated;            -- own profile upsert/read
 grant insert on public.plan_views       to anon, authenticated;  -- view analytics (insert-anyone)
 grant select, insert, update, delete on public.tracked_plans to authenticated; -- renewal radar (owner)
-grant select, insert, update on public.support_tickets to authenticated;     -- support (user own)
-grant select, insert        on public.support_messages to authenticated;     -- support thread (own)
-grant select on public.plans            to anon, authenticated;  -- "publicly readable" catalogue
-grant select on public.plan_prices      to anon, authenticated;  -- public price history
+-- GUARDED (2026-07): the four tables below are NOT created by this file —
+-- support_tickets/support_messages come from support-tickets-2026-06-12.sql;
+-- plans/plan_prices were created live (MCP migrations, no repo DDL). Unguarded
+-- grants abort a fresh-install run partway; the DO block no-ops until the
+-- tables exist (re-run this file — or just the grants — after creating them).
+do $$
+begin
+  if to_regclass('public.support_tickets') is not null then
+    grant select, insert, update on public.support_tickets to authenticated;   -- support (user own)
+  end if;
+  if to_regclass('public.support_messages') is not null then
+    grant select, insert        on public.support_messages to authenticated;   -- support thread (own)
+  end if;
+  if to_regclass('public.plans') is not null then
+    grant select on public.plans       to anon, authenticated;  -- "publicly readable" catalogue
+  end if;
+  if to_regclass('public.plan_prices') is not null then
+    grant select on public.plan_prices to anon, authenticated;  -- public price history
+  end if;
+end $$;
 
 -- ── (A4) security-advisor hardening ─────────────────────────────────────────
 -- (1) provider_rating_summary was SECURITY DEFINER (advisor ERROR
@@ -1341,11 +1476,22 @@ alter view public.provider_rating_summary set (security_invoker = on);
 --     rpc() as authenticated (supabase_backend.dart:76).
 revoke execute on function public.delete_community_storage_object() from anon, authenticated, public;
 revoke execute on function public.leads_rate_limit()                from anon, authenticated, public;
-revoke execute on function public.log_plan_price()                  from anon, authenticated, public;
 revoke execute on function public.meetings_guard()                  from anon, authenticated, public;
 revoke execute on function public.notify_meeting_on_insert()        from anon, authenticated, public;
 revoke execute on function public.plan_views_guard()                from anon, authenticated, public;
-revoke execute on function public.rls_auto_enable()                 from anon, authenticated, public;
+-- GUARDED (2026-07): log_plan_price() (plan-price-history trigger fn) and
+-- rls_auto_enable() (event trigger fn) exist only in the LIVE project — no repo
+-- file creates them. Unguarded revokes abort a fresh-install run partway; the
+-- DO block no-ops where they don't exist yet.
+do $$
+begin
+  if to_regprocedure('public.log_plan_price()') is not null then
+    revoke execute on function public.log_plan_price()   from anon, authenticated, public;
+  end if;
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke execute on function public.rls_auto_enable()  from anon, authenticated, public;
+  end if;
+end $$;
 
 -- (3) community-media is a PUBLIC bucket (objects served via public URL), so the
 --     broad SELECT policy only enables the storage LIST api (advisor

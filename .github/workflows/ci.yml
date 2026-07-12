@@ -107,3 +107,115 @@ jobs:
 
       - name: Build debug APK
         run: flutter build apk --debug
+
+  data-consistency:
+    name: Data consistency
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The web app's bundled fallback is a manual copy of the site export.
+      # Nothing else enforces the copy — drift here means the site and the web
+      # app disagree on last-known-good data, so it must be a red build.
+      - name: Catalogue fallback copies are byte-identical
+        run: |
+          if ! cmp web/data/catalogue.json site/data/plans.json; then
+            echo "::error::web/data/catalogue.json has drifted from site/data/plans.json — regenerate via tool/export_plans.dart and copy the SAME output to both."
+            exit 1
+          fi
+          echo "web/data/catalogue.json == site/data/plans.json"
+
+      # Provider names/slugs live in three parallel hand-kept registries
+      # (site/build.js, lib/components/logo_widget/logo_widget.dart,
+      # web/lib/providers.generated.ts + SLUG_OVERRIDES in web/lib/data.ts).
+      # A provider added in one place but not the others ships with a hash-slug
+      # URL or a fallback badge. This derives the provider set from the
+      # committed catalogue and asserts every registry covers it — names and
+      # slugs only, NEVER the per-provider brand color values.
+      - name: Provider registries cover the catalogue
+        run: |
+          python3 - <<'PY'
+          import json, re, sys
+
+          def block(text, start_pat, end_pat, what):
+              m = re.search(start_pat, text)
+              if not m:
+                  sys.exit(f"parse failed: {what} — the source moved; update the extractor in ci.yml")
+              rest = text[m.end():]
+              e = re.search(end_pat, rest)
+              if not e:
+                  sys.exit(f"parse failed (no end): {what} — update the extractor in ci.yml")
+              return rest[:e.start()]
+
+          providers = sorted({p["provider"] for p in json.load(open("site/data/plans.json"))["plans"]})
+          if not providers:
+              sys.exit("no providers found in site/data/plans.json")
+
+          # Registry 1: site/build.js — PROVIDER_SLUGS (exact name) + LOGO (substring keys).
+          site = open("site/build.js", encoding="utf-8").read()
+          site_slugs = dict(re.findall(r"'([^']+)':\s*'([^']+)'",
+                                       block(site, r"const PROVIDER_SLUGS = \{", r"\};", "site PROVIDER_SLUGS")))
+          site_logo_keys = re.findall(r"\['([^']+)',", block(site, r"const LOGO = \[", r"\];", "site LOGO"))
+
+          # Registry 2: lib/components/logo_widget/logo_widget.dart — substring-matched keys.
+          dart = open("lib/components/logo_widget/logo_widget.dart", encoding="utf-8").read()
+          dart_color_keys = re.findall(r"'([^']+)':", block(dart, r"_colors = \{", r"\};", "dart _colors"))
+          dart_initial_keys = re.findall(r"'([^']+)':", block(dart, r"_initials = \{", r"\};", "dart _initials"))
+
+          # Registry 3: web/lib/providers.generated.ts (exact name -> slug) whose
+          # slugs must match web/lib/data.ts providerSlug() (SLUG_OVERRIDES + ascii + hash).
+          gen = open("web/lib/providers.generated.ts", encoding="utf-8").read()
+          web_by_name = {n: s for s, n in
+                         re.findall(r'\{\s*slug:\s*"([^"]+)",\s*name:\s*"([^"]+)"\s*\}', gen)}
+          data_ts = open("web/lib/data.ts", encoding="utf-8").read()
+          overrides = {}
+          for line in block(data_ts, r"const SLUG_OVERRIDES: Record<string, string> = \{", r"\};",
+                            "web SLUG_OVERRIDES").splitlines():
+              m = re.match(r'\s*(?:"([^"]+)"|([^\s:"]+)):\s*"([^"]+)"', line)
+              if m:
+                  overrides[m.group(1) or m.group(2)] = m.group(3)
+          for got, want, what in ((site_slugs, len(providers), "site PROVIDER_SLUGS"),
+                                  (web_by_name, len(providers), "web PROVIDER_REGISTRY")):
+              if not got:
+                  sys.exit(f"parse produced an empty {what} — update the extractor in ci.yml")
+
+          def web_slug(name):  # mirrors web/lib/data.ts providerSlug()
+              name = name.strip()
+              if name in overrides:
+                  return overrides[name]
+              ascii_ = re.sub(r"^-+|-+$", "", re.sub(r"[^a-z0-9]+", "-", name.lower()))
+              if ascii_:
+                  return ascii_
+              h = 0
+              for ch in name:
+                  h = (h * 31 + ord(ch)) & 0xFFFFFFFF
+              digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+              out = ""
+              while h:
+                  h, r = divmod(h, 36)
+                  out = digits[r] + out
+              return "p-" + (out or "0")
+
+          fails = []
+          for p in providers:
+              if p not in site_slugs:
+                  fails.append(f"site/build.js PROVIDER_SLUGS has no exact entry for: {p}")
+              if not any(k in p for k in site_logo_keys):
+                  fails.append(f"site/build.js LOGO has no substring key for: {p}")
+              if not any(k in p for k in dart_color_keys):
+                  fails.append(f"logo_widget.dart _colors has no substring key for: {p}")
+              if not any(k in p for k in dart_initial_keys):
+                  fails.append(f"logo_widget.dart _initials has no substring key for: {p}")
+              if p not in web_by_name:
+                  fails.append(f"web/lib/providers.generated.ts PROVIDER_REGISTRY is missing: {p}")
+              elif web_by_name[p] != web_slug(p):
+                  fails.append(f"web slug drift for {p}: registry={web_by_name[p]} providerSlug()={web_slug(p)}")
+
+          if fails:
+              for f in fails:
+                  print(f"::error::{f}")
+              sys.exit(1)
+          print(f"all {len(providers)} catalogue providers covered by all three registries")
+          PY

@@ -32,6 +32,15 @@ import {
   snippet,
   SNIPPET_LEN,
 } from "../crm-api/crm_logic.ts";
+// The 2026-07 module split: index.ts is the thin gate+router; the handlers live
+// in cohesive actions_*.ts modules over the shared helpers.ts plumbing. These
+// imports pin the module map — a dropped export breaks here, not in dispatch.
+import { cors, json } from "../crm-api/helpers.ts";
+import * as actionsOverview from "../crm-api/actions_overview.ts";
+import * as actionsConversations from "../crm-api/actions_conversations.ts";
+import * as actionsLeads from "../crm-api/actions_leads.ts";
+import * as actionsMeetings from "../crm-api/actions_meetings.ts";
+import * as actionsMembers from "../crm-api/actions_members.ts";
 
 // ── status validation sets ────────────────────────────────────────────────────
 
@@ -383,4 +392,71 @@ Deno.test("aggregateReps ignores unclaimed rows and non-positive savings", () =>
   assertEquals(reps[0].rep, "יעל");
   assertEquals(reps[0].won, 2);
   assertEquals(reps[0].totalSaving, 0);
+});
+
+// ── module split (helpers.ts + actions_*.ts) ─────────────────────────────────
+// index.ts's 1050-line dispatch was split into cohesive modules with NO logic
+// edits. These tests pin (a) the shared response builders the router and every
+// action use, and (b) the action → module map the router's switch depends on.
+
+Deno.test("cors() returns the permissive base headers and merges extras on top", () => {
+  assertEquals(cors(), {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+  });
+  assertEquals(cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }), {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  });
+});
+
+Deno.test("json() wraps a body as application/json + CORS, default 200", async () => {
+  const ok = json({ ok: true });
+  assertEquals(ok.status, 200);
+  assertEquals(ok.headers.get("content-type"), "application/json");
+  assertEquals(ok.headers.get("access-control-allow-origin"), "*");
+  assertEquals(ok.headers.get("access-control-allow-headers"), "*");
+  assertEquals(await ok.json(), { ok: true });
+});
+
+Deno.test("json() carries an explicit error status + the Hebrew error body unchanged", async () => {
+  const err = json({ error: "אין הרשאה לפעולה זו" }, 403);
+  assertEquals(err.status, 403);
+  assertEquals(await err.json(), { error: "אין הרשאה לפעולה זו" });
+});
+
+Deno.test("action → module map: every dispatched handler is exported from its module", () => {
+  const map: Array<[string, Record<string, unknown>, string[]]> = [
+    ["actions_overview", actionsOverview, ["actOverview", "actSlaMetrics"]],
+    ["actions_conversations", actionsConversations, [
+      "actListConversations",
+      "actGetThread",
+      "actSendReply",
+      "actTakeOver",
+      "actHandBack",
+      "actSetContactStatus",
+      "actListContacts",
+    ]],
+    ["actions_leads", actionsLeads, [
+      "actSetLeadStatus",
+      "actListLeads",
+      "actGetLeadDetail",
+      "actListSellableLeads",
+      "actAddNote",
+      "actSetLeadNote",
+      "actRecordSaving",
+      "actClaimLead",
+      "actRepLeaderboard",
+    ]],
+    ["actions_meetings", actionsMeetings, ["actListMeetings", "actGetMeeting", "actSetMeetingStatus"]],
+    ["actions_members", actionsMembers, ["actListMembers", "actSetMemberRole"]],
+  ];
+  for (const [name, mod, fns] of map) {
+    for (const fn of fns) {
+      assertEquals(typeof mod[fn], "function", `${name}.ts must export ${fn}`);
+    }
+  }
+  // 23 handlers total — one per dispatched action in index.ts's switch.
+  assertEquals(map.reduce((n, [, , fns]) => n + fns.length, 0), 23);
 });

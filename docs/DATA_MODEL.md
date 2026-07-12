@@ -7,21 +7,34 @@ the SQL for exact columns, constraints, and policy bodies. The
 **application order** of those migrations is in
 [`DEPLOYMENT.md`](./DEPLOYMENT.md#sql-schema--migration-order).
 
-> **The app's canonical catalogue is static.** The plan catalogue the Flutter
-> app and the web surfaces render is shipped in the app (`lib/data/`) and
-> exported to the web surfaces (`site/data/plans.json`, `web/data/catalogue.json`).
-> There is, however, **also a `public.plans` (and `public.providers`) table in
-> the database** — a publicly-readable *mirror* of the catalogue that exists so
-> the WhatsApp bot and the site AI can ground their answers in SQL. The app/site
-> do not depend on it for rendering; the export tool keeps it in sync. See
-> [Catalogue mirror](#catalogue-mirror-plans--providers) below.
+> **`public.plans` is the runtime-authoritative catalogue; the static files are
+> seed + fallback.** The catalogue is *authored* as hand-curated Dart
+> (`lib/data/plans_*.dart` + the seeds in `lib/data.dart`) and exported by
+> `tool/export_plans.dart` to `site/data/plans.json` (copied to
+> `web/data/catalogue.json`) — but at runtime the owner curates prices/perks
+> directly on `public.plans` in the Supabase dashboard, and **all three
+> consumers read the live table first**, keeping the committed export only as
+> the never-blank last-known-good fallback:
+>
+> - the static site: `site/build.js` reads `public.plans` over anon-key REST at
+>   build time and falls back to `data/plans.json` on any failure;
+> - the web app: `web/lib/live-catalogue.ts` `getLivePlans()` at render/ISR
+>   time, bundled catalogue as fallback (`stale: true`);
+> - the Flutter app: `hydrateCatalogue()` / `CatalogueSync` at cold start +
+>   Realtime/polling refresh, compiled `lib/data/` snapshot as fallback.
+>
+> The export tool is therefore **insert-only** — it seeds plan ids the DB
+> doesn't have yet and never overwrites an existing row, so a dashboard edit
+> always survives a re-export. Never widen it back to merge-duplicates. See
+> [Catalogue (`plans` + `providers`)](#catalogue-plans--providers--db-authoritative)
+> below.
 
 ## RLS posture (project-wide)
 
 - **RLS is enabled on every table.** A table with RLS and no matching policy is
   *locked* — the safe default (Supabase "automatic RLS").
 - **Public reads** are explicit and narrow: community posts/replies/likes and
-  provider reviews (`select using (true)`); the catalogue-mirror tables
+  provider reviews (`select using (true)`); the catalogue tables
   `plans` / `providers` / `plan_price_history`; and the helper views
   `community_feed` and `provider_rating_summary`.
 - **User writes are scoped to `auth.uid() = user_id`** (or `= id`). Satisfied by
@@ -112,16 +125,19 @@ View: `provider_rating_summary` (aggregate stars / counts). The app combines thi
 with the catalogue's seed ratings via `ProviderRatings` — it never fabricates
 ratings.
 
-### Catalogue mirror (`plans` + `providers`)
+### Catalogue (`plans` + `providers`) — DB-authoritative
 
-A publicly-readable copy of the catalogue, kept in the DB so the WhatsApp bot
-(`whatsapp-webhook`) and the site AI can ground their answers in SQL. The app's
-catalogue stays static (`lib/data/`); the export tool (`tool/export_plans.dart`)
-UPSERTs these tables from `lib/data.dart`.
+The publicly-readable, **owner-authoritative** catalogue tables. The site,
+the web app, the Flutter app and the AI agents (WhatsApp bot, site AI) all read
+these live (see the framing note at the top); the compiled `lib/data/`
+catalogue is the authoring seed + offline fallback. The export tool
+(`tool/export_plans.dart`) **INSERT-only-seeds** new plan ids
+(`on_conflict=id` + ignore-duplicates) — it never overwrites an existing row,
+so owner dashboard edits stand.
 
 | Table | Holds | RLS posture |
 |-------|-------|-------------|
-| `plans` | per-plan catalogue rows + bot-grounding columns (`after` / `after_exact` post-promo price, `is_5g`, `no_commit`, `has_abroad`, `specs` jsonb) and owner curation (`featured`, `editor_choice`, `editor_rank`) | **public read** (`grant select … to anon, authenticated`); writes service-role only (the export tool) |
+| `plans` | per-plan catalogue rows + bot-grounding columns (`after` / `after_exact` post-promo price, `is_5g`, `no_commit`, `has_abroad`, `specs` jsonb) and owner curation (`featured`, `editor_choice`, `editor_rank`) | **public read** (`grant select … to anon, authenticated`); writes service-role only (owner dashboard edits + the insert-only export seed) |
 | `providers` | one row per carrier — single source of truth for `logo_url`, `rating`, `review_count`, `categories`, and owner curation (`featured`, `editor_choice`, `sponsored`, `methodology_note`) | **public read** (`providers public read` policy); writes service-role only (owner curates) |
 | `plan_price_history` | append-only daily price snapshots per plan (`price`, `after`, `captured_at`) — the ledger behind the "Market Pulse" trend | **public read** (`plan_price_history public read`); writes service-role only (the catalogue-sync) |
 

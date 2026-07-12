@@ -397,6 +397,38 @@ Deno.test("/leads sends the pipeline header (leads:* + §7b) then one card per r
   }
 });
 
+Deno.test("/leads counts the recent funnel INCLUDING won — the SAME window as the leads:new|all callbacks", async () => {
+  // The drift fix: /leads used to count over only its 5 fetched new+contacted
+  // rows, so "🏆 נסגרו" always rendered 0 there while the identical-looking
+  // leads:* callback header counted a 60-row funnel including won. Both now go
+  // through fetchLeadsPipeline (commands.ts) — one query window, one truth.
+  const funnel = [
+    { id: "11111111-1111-1111-1111-111111111111", name: "ליד-חדש", phone: "0501111111", status: "new", source: "form", created_at: "2026-06-15T10:00:00Z" },
+    { id: "22222222-2222-2222-2222-222222222222", name: "ליד-בטיפול", phone: "0502222222", status: "contacted", source: "plan", created_at: "2026-06-15T09:00:00Z" },
+    { id: "33333333-3333-3333-3333-333333333333", name: "ליד-שנסגר", phone: "0503333333", status: "won", source: "form", created_at: "2026-06-14T08:00:00Z" },
+  ];
+  const { calls, restore } = installRoutes([
+    { match: isLeadsRest, respond: () => jsonRes(funnel) },
+    { match: isTg, respond: tgOk },
+  ]);
+  try {
+    const res = await handleCommand(cfg(), "/leads", "");
+    assertEquals(res, { ok: true, command: "/leads", failures: 0 });
+    // ONE leads query, over the funnel INCLUDING won (the callback view's window).
+    const gets = calls.filter(isLeadsRest);
+    assertEquals(gets.length, 1);
+    assertStringIncludes(gets[0].url, "status=in.(new,contacted,won)");
+    assertStringIncludes(gets[0].url, "limit=60");
+    const sends = tgSends(calls);
+    // header + the 2 OPEN cards — the won lead is COUNTED but never carded.
+    assertEquals(sends.length, 3);
+    assertStringIncludes(sends[0].text, "נסגרו: <b>1</b>");
+    assertFalse(sends.some((s) => s.text.includes("ליד-שנסגר")));
+  } finally {
+    restore();
+  }
+});
+
 Deno.test("/leads with an empty funnel sends only the honest pipeline header (no cards)", async () => {
   const { calls, restore } = installRoutes([
     { match: isLeadsRest, respond: () => jsonRes([]) },

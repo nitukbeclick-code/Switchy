@@ -1,6 +1,17 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- google-logging-2026-06.sql
 --
+-- ⚠️ §1 SUPERSEDED BY observability-sentry-2026-06.sql — DO NOT APPLY §1.
+--    That file holds the CANONICAL get_lead_notify_config() whitelist. It is a
+--    strict superset of the copy below: it adds the owner's ACTUAL Google Vault
+--    names (google_service_account / leads_spreadsheet_id / switchy_calendar_id)
+--    and sentry_dsn. Applying the §1 copy below drops those secrets from the
+--    allow-list and darkens Google logging + Sentry with no error anywhere.
+--    (The "mirrors schema.sql §8 — the canonical/latest copy" claim below is
+--    from before the sentry file existed and is now stale.)
+--    §2 (meetings.gcal_event_id) is still current and safe to re-apply.
+--    Banner added 2026-07 (hygiene pass); the SQL below was not altered.
+--
 -- ⚠️ NOT auto-applied. Review, then run manually against the project
 --    (orzitfqmlvopujsoyigr) — e.g. via the Supabase SQL editor or
 --    `npx supabase db execute`. Idempotent: safe to re-run.

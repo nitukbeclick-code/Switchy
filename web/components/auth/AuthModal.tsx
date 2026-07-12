@@ -8,13 +8,16 @@
 //   • Sign-up REQUIRES accepting Terms + Privacy (marketing optional) and records
 //     it server-side via record_registration_consent, matching the app's flow.
 //
-// Fail-soft, Hebrew errors, RTL, dark-aware, a11y (role=dialog, focus trap, Esc,
-// focus restore). OAuth providers only work once the owner configures them in the
-// Supabase dashboard; email/password works immediately.
+// Fail-soft, Hebrew errors, RTL, dark-aware, a11y (role=dialog, focus trap via
+// the shared useFocusTrap hook, Esc, focus restore). OAuth providers only work
+// once the owner configures them in the Supabase dashboard; email/password works
+// immediately. The OAuth buttons disable + show a spinner while the provider
+// redirect is in flight so slow networks don't invite double-clicks.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getBrowserSupabase, SUPABASE_CONFIGURED } from "@/lib/supabase-browser";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 const CONSENT_VERSION = "2026-06"; // matches record_registration_consent default + the app
 
@@ -47,70 +50,77 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
   const [privacy, setPrivacy] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Which OAuth provider's redirect is in flight — disables both OAuth buttons
+  // (and the email submit) and shows a spinner on the clicked one.
+  const [oauthBusy, setOauthBusy] = useState<"google" | "facebook" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
-  const restoreRef = useRef<HTMLElement | null>(null);
 
-  // Reset + focus management on open/close.
+  // Reset the form state on (re)open.
   useEffect(() => {
     if (!open) return;
-    restoreRef.current = document.activeElement as HTMLElement | null;
     setMode(defaultMode);
     setError(null);
     setInfo(null);
-    const t = setTimeout(() => firstFieldRef.current?.focus(), 40);
-    return () => {
-      clearTimeout(t);
-      if (restoreRef.current && document.contains(restoreRef.current)) restoreRef.current.focus();
-    };
+    setOauthBusy(null);
   }, [open, defaultMode]);
 
-  // Esc to close + a simple focus trap within the card.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab" || !cardRef.current) return;
-      const focusables = cardRef.current.querySelectorAll<HTMLElement>(
-        'a[href],button:not([disabled]),input:not([disabled]),textarea,select,[tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, [open, onClose]);
+  // Focus + keyboard contract (shared useFocusTrap hook): focus the first field
+  // shortly after open, trap Tab within the card, Esc closes, restore to opener.
+  useFocusTrap(cardRef, {
+    active: open,
+    onEscape: onClose,
+    preventDefaultOnEscape: true,
+    initialFocusRef: firstFieldRef,
+    initialFocusDelay: 40,
+    // Preserve the modal's original clamp: only cycle when focus is on the
+    // card's first/last control, never yank focus that has left the card.
+    clampOutsideFocus: false,
+  });
 
-  const oauth = useCallback(async (provider: "google" | "facebook") => {
-    setError(null);
-    if (!SUPABASE_CONFIGURED) return;
-    try {
-      sessionStorage.setItem("swc:return", window.location.pathname + window.location.search);
-    } catch {
-      /* ignore */
-    }
-    const { error: err } = await getBrowserSupabase().auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (err) setError(mapError(err.message));
-    // On success the browser navigates away to the provider — nothing else to do.
+  // If the user comes BACK from the provider via the bfcache (browser back after
+  // the redirect started), the page restores with `oauthBusy` still set — clear
+  // it so the buttons aren't stuck disabled.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setOauthBusy(null);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
+
+  const oauth = useCallback(
+    async (provider: "google" | "facebook") => {
+      if (oauthBusy || loading) return;
+      setError(null);
+      if (!SUPABASE_CONFIGURED) return;
+      setOauthBusy(provider);
+      try {
+        sessionStorage.setItem("swc:return", window.location.pathname + window.location.search);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const { error: err } = await getBrowserSupabase().auth.signInWithOAuth({
+          provider,
+          options: { redirectTo: `${window.location.origin}/auth/callback` },
+        });
+        if (err) {
+          setError(mapError(err.message));
+          setOauthBusy(null);
+        }
+        // On success the browser navigates away to the provider — keep the busy
+        // state so the buttons stay disabled until the redirect lands.
+      } catch {
+        setError(mapError(""));
+        setOauthBusy(null);
+      }
+    },
+    [oauthBusy, loading],
+  );
 
   const submitEmail = useCallback(
     async (e: React.FormEvent) => {
@@ -208,21 +218,27 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
           </button>
         </div>
 
-        {/* OAuth */}
+        {/* OAuth — disabled (with a spinner on the clicked one) while the
+            provider redirect is in flight, so slow networks don't invite
+            double-clicks. Labels unchanged. */}
         <div className="flex flex-col gap-2">
           <button
             type="button"
-            onClick={() => oauth("google")}
-            className="flex items-center justify-center gap-3 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            onClick={() => void oauth("google")}
+            disabled={loading || oauthBusy !== null}
+            aria-busy={oauthBusy === "google"}
+            className="flex items-center justify-center gap-3 rounded-xl border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-accent/[0.06] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            <GoogleMark /> המשך עם Google
+            {oauthBusy === "google" ? <BusySpinner /> : <GoogleMark />} המשך עם Google
           </button>
           <button
             type="button"
-            onClick={() => oauth("facebook")}
-            className="flex items-center justify-center gap-3 rounded-xl border border-transparent bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            onClick={() => void oauth("facebook")}
+            disabled={loading || oauthBusy !== null}
+            aria-busy={oauthBusy === "facebook"}
+            className="flex items-center justify-center gap-3 rounded-xl border border-transparent bg-[#1877F2] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            <FacebookMark /> המשך עם Facebook
+            {oauthBusy === "facebook" ? <BusySpinner /> : <FacebookMark />} המשך עם Facebook
           </button>
         </div>
 
@@ -293,7 +309,7 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || oauthBusy !== null}
             className="mt-1 flex items-center justify-center rounded-xl border border-accent/40 bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-colors hover:bg-accent-hover disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {loading ? "רגע…" : mode === "signin" ? "התחברות" : "הרשמה"}
@@ -316,6 +332,16 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
         </p>
       </div>
     </div>
+  );
+}
+
+/** In-flight spinner shown in place of the provider mark while redirecting. */
+function BusySpinner() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="animate-spin">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
   );
 }
 

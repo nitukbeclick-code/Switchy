@@ -6,10 +6,16 @@
 // Renders the author (avatar + name, verified-customer badge when the row carries
 // it), the channel chip, a relative Hebrew timestamp, the body (with @mentions
 // bolded), and any attached media via <MediaView>. The action row offers like
-// (optimistic, own like-state hydrated via fetchMyLikes on mount), a reply toggle
-// that expands the <Replies> thread, bookmark, and a "⋯" overflow menu with report
-// / block / (own only) delete. Every gated action falls back to onRequireAuth()
-// for guests. The author's own flagged post shows an "under review" note.
+// (optimistic), a reply toggle that expands the <Replies> thread, bookmark, and a
+// "⋯" overflow menu with report / block / (own only) delete. Every gated action
+// falls back to onRequireAuth() for guests. The author's own flagged post shows
+// an "under review" note.
+//
+// HYDRATION: the viewer's like/bookmark state + the extra gallery images come in
+// via the optional `hydration` prop when the card sits inside a list that batches
+// them for the whole page (<CommunityFeed> — one fetchMyLikes/fetchMyBookmarks/
+// fetchPostMedia round-trip per page, not per card). Standalone call-sites
+// (ProfileView, no `hydration` prop) keep the original self-hydration on mount.
 //
 // SECURITY: all user content is rendered through JSX {} (React auto-escapes) —
 // never dangerouslySetInnerHTML. The media URL reaches the DOM only as the `src`
@@ -28,7 +34,6 @@ import {
   fetchMyLikes,
   fetchPostMedia,
   MAX_BODY,
-  MENTION_RE,
   reportContent,
   setBlock,
   setBookmark,
@@ -36,92 +41,18 @@ import {
   setPinned,
   type CommunityPost,
   type Media,
+  type PostHydration,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 import Link from "next/link";
-import { matchProviders, providerBySlug } from "@/lib/providers.generated";
+import { providerBySlug } from "@/lib/providers.generated";
+import { initial, relativeTime, renderBody } from "@/lib/community-render";
 import MediaGallery from "./MediaGallery";
 import MediaView from "./MediaView";
 import ReactionBar from "./ReactionBar";
 import Replies from "./Replies";
 import ShareBar from "./ShareBar";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Relative Hebrew timestamp ("לפני 5 דקות"), no external dep. */
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (!Number.isFinite(then)) return "";
-  const diff = Date.now() - then;
-  const sec = Math.max(0, Math.round(diff / 1000));
-  if (sec < 45) return "לפני רגע";
-  const min = Math.round(sec / 60);
-  if (min < 60) return min === 1 ? "לפני דקה" : `לפני ${min} דקות`;
-  const hr = Math.round(min / 60);
-  if (hr < 24) return hr === 1 ? "לפני שעה" : `לפני ${hr} שעות`;
-  const day = Math.round(hr / 24);
-  if (day < 7) return day === 1 ? "אתמול" : `לפני ${day} ימים`;
-  const wk = Math.round(day / 7);
-  if (wk < 5) return wk === 1 ? "לפני שבוע" : `לפני ${wk} שבועות`;
-  const mo = Math.round(day / 30);
-  if (mo < 12) return mo === 1 ? "לפני חודש" : `לפני ${mo} חודשים`;
-  const yr = Math.round(day / 365);
-  return yr === 1 ? "לפני שנה" : `לפני ${yr} שנים`;
-}
-
-/** First rendered char of a name, for the avatar fallback monogram. */
-function initial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? Array.from(trimmed)[0].toUpperCase() : "מ";
-}
-
-/** Split body into text + @mention (bold) + catalogue-provider (link) segments.
- *  Every segment is a plain string placed via JSX {} (React auto-escapes it) or a
- *  next/link whose children are plain text — raw HTML is never injected. */
-function renderBody(body: string): React.ReactNode {
-  type Span = { start: number; end: number; kind: "mention" | "provider"; slug?: string };
-  const spans: Span[] = [];
-  // @mentions (bold). matchAll on the shared /g regex — no lastIndex bookkeeping.
-  for (const m of body.matchAll(MENTION_RE)) {
-    const start = m.index ?? 0;
-    spans.push({ start, end: start + m[0].length, kind: "mention" });
-  }
-  // Catalogue-provider names (link) — never inside an @mention span.
-  for (const p of matchProviders(body, spans)) {
-    spans.push({ start: p.start, end: p.end, kind: "provider", slug: p.slug });
-  }
-  spans.sort((a, b) => a.start - b.start);
-
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  for (const s of spans) {
-    if (s.start < last) continue; // safety: drop any overlap
-    if (s.start > last) nodes.push(body.slice(last, s.start));
-    const text = body.slice(s.start, s.end);
-    if (s.kind === "mention") {
-      nodes.push(
-        <span key={`s${key++}`} className="font-semibold text-accent-text">
-          {text}
-        </span>,
-      );
-    } else {
-      nodes.push(
-        <Link
-          key={`s${key++}`}
-          href={`/providers/${s.slug}`}
-          className="font-medium text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          {text}
-        </Link>,
-      );
-    }
-    last = s.end;
-  }
-  if (last < body.length) nodes.push(body.slice(last));
-  return nodes;
-}
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -231,7 +162,6 @@ function OverflowMenu({
           {isAdmin && (
             <button
               type="button"
-              role="menuitem"
               onClick={() => runAndClose(onTogglePin)}
               disabled={pinning}
               className={itemClass}
@@ -258,7 +188,6 @@ function OverflowMenu({
           {isOwn && (
             <button
               type="button"
-              role="menuitem"
               onClick={() => runAndClose(onEdit)}
               className={itemClass}
             >
@@ -287,10 +216,15 @@ export default function PostCard({
   post,
   onRequireAuth,
   onDeleted,
+  hydration,
 }: {
   post: CommunityPost;
   onRequireAuth: () => void;
   onDeleted?: (id: string) => void;
+  /** Batched like/bookmark/gallery state from the parent list. `undefined`
+   *  (prop absent) = standalone → the card fetches its own; `null` = the
+   *  parent's batch is still in flight → wait for it, don't self-fetch. */
+  hydration?: PostHydration | null;
 }) {
   const { user, profile } = useAuth();
   const isOwn = !!user && user.id === post.user_id;
@@ -342,13 +276,16 @@ export default function PostCard({
     setPinnedLocal(post.is_pinned);
   }, [post.is_pinned]);
 
-  // Hydrate the viewer's own like + bookmark state for this post on mount.
+  // Hydrate the viewer's own like + bookmark state for this post on mount —
+  // ONLY when standalone (`hydration` prop absent). Inside a list, the parent
+  // batches this for the whole page instead of one round-trip per card.
   useEffect(() => {
     if (!user) {
       setLiked(false);
       setBookmarked(false);
       return;
     }
+    if (hydration !== undefined) return; // parent-owned (batched at the list level)
     let active = true;
     void fetchMyLikes([post.id]).then((set) => {
       if (active) setLiked(set.has(post.id));
@@ -359,10 +296,12 @@ export default function PostCard({
     return () => {
       active = false;
     };
-  }, [user, post.id]);
+  }, [user, post.id, hydration]);
 
-  // Hydrate the extra gallery images for this post on mount.
+  // Hydrate the extra gallery images for this post on mount — standalone only,
+  // same rule as above.
   useEffect(() => {
+    if (hydration !== undefined) return; // parent-owned (batched at the list level)
     let active = true;
     void fetchPostMedia([post.id]).then((map) => {
       if (active) setGallery(map.get(post.id) ?? []);
@@ -370,7 +309,17 @@ export default function PostCard({
     return () => {
       active = false;
     };
-  }, [post.id]);
+  }, [post.id, hydration]);
+
+  // Apply the parent's batched hydration when it lands. The feed keeps each
+  // post's entry referentially stable across map merges, so this runs once per
+  // resolved entry and never clobbers a later optimistic like/bookmark flip.
+  useEffect(() => {
+    if (!hydration) return;
+    setLiked(hydration.liked);
+    setBookmarked(hydration.bookmarked);
+    setGallery(hydration.gallery);
+  }, [hydration]);
 
   const media: Media | null = post.media_url
     ? {
@@ -635,7 +584,7 @@ export default function PostCard({
       ) : (
         body && (
           <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
-            {renderBody(body)}
+            {renderBody(body, { linkProviders: true })}
           </p>
         )
       )}

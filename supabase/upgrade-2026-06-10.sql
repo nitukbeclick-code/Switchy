@@ -214,6 +214,17 @@ create trigger leads_rate_limit_before_insert
   for each row execute function public.leads_rate_limit();
 
 -- 9. pg_cron schedules (cron.schedule upserts by name, so re-running is safe)
+--
+-- ⚠️ SUPERSEDED (registry moved): cron-and-hardening-2026-07.sql is now the
+--    REGISTRY OF RECORD for the renewal-reminders schedules. Three of the four
+--    jobs below (lead-sweep-10min, lead-followup-hourly, weekly-digest) are
+--    re-registered there; do NOT edit or re-apply them from here — schedule
+--    changes made only in one file get silently reverted when the other is
+--    re-run (cron.schedule upserts by name). renewal-reminders-daily was
+--    registered from HERE and is live; its schedule of record is also
+--    documented in cron-and-hardening-2026-07.sql. Any future schedule change
+--    belongs in that file (or a newer dated cron file that supersedes it).
+--    (Banner added 2026-07 hygiene pass; the SQL below was not altered.)
 select cron.schedule(
   'renewal-reminders-daily',
   '0 8 * * *',

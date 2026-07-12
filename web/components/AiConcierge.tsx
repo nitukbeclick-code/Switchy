@@ -20,7 +20,9 @@
 //   • Consent is MANDATORY + default-OFF; submit is disabled until it's checked.
 //   • We never fabricate prices/recommendations — the agent is grounded.
 //
-// UX: dark-mode + premium-2026 tokens, RTL Hebrew, a11y (focus trap-ish, ESC to
+// UX: dark-mode + premium-2026 tokens, RTL Hebrew, a11y (full Tab trap via the
+// shared useFocusTrap hook while the panel is open — the page behind stays
+// interactive, so the clamp only cycles focus that's INSIDE the panel — ESC to
 // close, labelled controls, aria-live transcript), prefers-reduced-motion aware.
 // sessionId persists in sessionStorage so a reload keeps the conversation; the
 // backend also remembers it server-side.
@@ -28,6 +30,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 import Icon from "@/components/Icon";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import { trackEvent, fireLeadConversion } from "@/lib/tracking";
@@ -183,16 +186,6 @@ export default function AiConcierge() {
     leadDismissedRef.current = leadDismissed;
   }, [leadDismissed]);
 
-  // Focus the input when the panel OPENS. (Focus restoration to the launcher is
-  // handled by closePanel, NOT here — an else-branch focus would steal focus to
-  // the header button on the initial mount / every close, including sibling-close.)
-  useEffect(() => {
-    if (!open) return;
-    // Defer so the element exists + the open animation doesn't eat the focus.
-    const t = setTimeout(() => inputRef.current?.focus(), 50);
-    return () => clearTimeout(t);
-  }, [open]);
-
   // Begin the graceful exit: flip closed but keep the panel MOUNTED via `closing`
   // so the reverse origin-aware transition can collapse it back into the launcher
   // corner; finalize on transitionend, with a timeout fallback. `restoreFocus`
@@ -221,15 +214,24 @@ export default function AiConcierge() {
       window.removeEventListener("switchy:popover-open", onSiblingOpen as EventListener);
   }, [closePanel]);
 
-  // ESC closes the panel (through the graceful exit).
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closePanel();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, closePanel]);
+  // Keyboard + focus contract (shared useFocusTrap hook): focus the input shortly
+  // after open (deferred so the element exists + the open animation doesn't eat
+  // the focus), clamp Tab INSIDE the panel (completes the old "trap-ish" gap where
+  // Tab walked out into the page behind), and ESC closes through the graceful
+  // exit. Two deliberate deviations from the modal defaults:
+  //   • restoreFocus: false — closePanel owns restoration (launcher focus on a
+  //     USER close, but NOT when a sibling header popover force-closes this one).
+  //   • clampOutsideFocus: false — the panel is aria-modal="false" and the page
+  //     behind stays interactive; deliberately clicking outside must not get
+  //     focus yanked back into the panel on the next Tab.
+  useFocusTrap(panelRef, {
+    active: open,
+    onEscape: closePanel,
+    initialFocusRef: inputRef,
+    initialFocusDelay: 50,
+    restoreFocus: false,
+    clampOutsideFocus: false,
+  });
 
   // Clear any pending exit timer on unmount.
   useEffect(

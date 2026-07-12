@@ -24,6 +24,12 @@ create index if not exists posts_pinned_idx on public.community_posts (created_a
 -- Surface is_pinned through the feed view. The LIVE community_feed is the explicit-
 -- column version from community-web-fixes-2026-07.sql (NOT select p.*), so a bare
 -- ADD COLUMN does not appear — re-create it with the same column list + is_pinned.
+-- ⚠️ SUPERSEDED: this community_feed definition was later replaced by
+-- community-web-edit → community-web-provider-tag → community-accepted-answer-
+-- 2026-07.sql (the CANONICAL copy, + the security_invoker ALTER in
+-- security-views-hardening-2026-07.sql). Re-running the view below against prod
+-- ERRORS (CREATE OR REPLACE VIEW cannot drop the later columns) — skip it; the
+-- rest of this file (column, index, admin policy) is still current.
 create or replace view public.community_feed as
   select
     p.id, p.user_id, p.author, p.avatar, p.channel, p.body,

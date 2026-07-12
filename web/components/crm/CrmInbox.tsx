@@ -95,64 +95,103 @@ export default function CrmInbox() {
   const selectedIdRef = useRef<string | null>(null);
 
   // Single entry point for changing the selection: the ref updates
-  // synchronously, before any in-flight fetch can resolve.
+  // synchronously, before any in-flight fetch can resolve. Selecting a NEW
+  // conversation also resets the thread pane here, in the click — so the
+  // thread-load effect below never sets state synchronously.
   const selectConversation = useCallback((id: string | null) => {
+    if (id === selectedIdRef.current) return; // re-click on the same row — no-op, same as before
     selectedIdRef.current = id;
     setSelectedId(id);
+    if (id) {
+      setThreadLoading(true);
+      setThread(null);
+      setThreadError(false);
+    }
   }, []);
 
   // `silent` refreshes (from the Realtime feed) skip the skeletons + keep the
   // current view on failure, so a live update never flashes the list or thread.
-  const loadList = useCallback(async (silent = false) => {
+  // Loading/error resets are event-driven: the useState initializers cover the
+  // mount load, and every later load starts from an event (`changeFilter`, the
+  // search submit, retry, `afterMutation`, the Realtime callback) that resets
+  // first — so the load effects never set state synchronously
+  // (react-hooks/set-state-in-effect): state only lands in the .then continuations.
+  const loadList = useCallback((silent = false) => {
     const seq = ++listSeq.current;
-    if (!silent) setListLoading(true);
-    setListError(false);
-    const res = await fetchCrmConversations({
+    return fetchCrmConversations({
       status: filter === "all" ? undefined : filter,
       search: search || undefined,
+    }).then((res) => {
+      if (seq !== listSeq.current) return; // stale — a newer load owns the list
+      if (res) {
+        setConvs(res.conversations);
+        setListLoading(false);
+      } else if (!silent) {
+        setListError(true);
+        setListLoading(false);
+      }
     });
-    if (seq !== listSeq.current) return; // stale — a newer load owns the list
-    if (res) {
-      setConvs(res.conversations);
-      setListLoading(false);
-    } else if (!silent) {
-      setListError(true);
-      setListLoading(false);
-    }
   }, [filter, search]);
 
   useEffect(() => {
     void loadList();
   }, [loadList]);
 
-  const loadThread = useCallback(async (id: string, silent = false) => {
+  // Retry the list from the error notice.
+  const reloadList = useCallback(() => {
+    setListLoading(true);
+    setListError(false);
+    void loadList();
+  }, [loadList]);
+
+  // Switch filters: reset the list in the click, then the effect refetches.
+  const changeFilter = useCallback(
+    (next: Filter) => {
+      if (next === filter) return; // same chip — no reload, same as before
+      setListLoading(true);
+      setListError(false);
+      setFilter(next);
+    },
+    [filter],
+  );
+
+  const loadThread = useCallback((id: string, silent = false): Promise<void> => {
     // Never load (or show a skeleton for) a conversation that isn't the
     // current selection — e.g. a post-mutation refresh whose closure captured
     // an older selection.
-    if (id !== selectedIdRef.current) return;
-    if (!silent) {
-      setThreadLoading(true);
-      setThread(null);
-    }
-    setThreadError(false);
-    const t = await fetchCrmThread(id);
-    // The rep may have switched conversations while this fetch was in flight;
-    // only the latest-selected conversation's response is allowed to land.
-    if (id !== selectedIdRef.current) return;
-    if (t) setThread(t);
-    else if (!silent) setThreadError(true);
-    if (!silent) setThreadLoading(false);
+    if (id !== selectedIdRef.current) return Promise.resolve();
+    return fetchCrmThread(id).then((t) => {
+      // The rep may have switched conversations while this fetch was in flight;
+      // only the latest-selected conversation's response is allowed to land.
+      if (id !== selectedIdRef.current) return;
+      if (t) setThread(t);
+      else if (!silent) setThreadError(true);
+      if (!silent) setThreadLoading(false);
+    });
   }, []);
 
   useEffect(() => {
     if (selectedId) void loadThread(selectedId);
   }, [selectedId, loadThread]);
 
+  // Retry the open thread from the error notice.
+  const retryThread = useCallback(() => {
+    if (!selectedId) return;
+    setThreadLoading(true);
+    setThread(null);
+    setThreadError(false);
+    void loadThread(selectedId);
+  }, [selectedId, loadThread]);
+
   // Live-refresh the list + the open thread whenever a crm_events row lands (an
   // inbound message, rep reply, takeover). Silent so it never flashes; fail-soft.
   useCrmEvents(() => {
+    setListError(false); // a silent refresh starts by clearing any stale error
     void loadList(true);
-    if (selectedId) void loadThread(selectedId, true);
+    if (selectedId) {
+      setThreadError(false);
+      void loadThread(selectedId, true);
+    }
   });
 
   useEffect(() => {
@@ -160,7 +199,14 @@ export default function CrmInbox() {
   }, [thread]);
 
   const afterMutation = useCallback(async () => {
-    if (selectedId) await loadThread(selectedId);
+    if (selectedId) {
+      setThreadLoading(true);
+      setThread(null);
+      setThreadError(false);
+      await loadThread(selectedId);
+    }
+    setListLoading(true);
+    setListError(false);
     void loadList();
   }, [selectedId, loadThread, loadList]);
 
@@ -210,9 +256,9 @@ export default function CrmInbox() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="סינון שיחות">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="סינון שיחות">
           {filters.map((f) => (
-            <button key={f.key} type="button" role="tab" aria-selected={filter === f.key} onClick={() => setFilter(f.key)} className={chip(filter === f.key)}>
+            <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => changeFilter(f.key)} className={chip(filter === f.key)}>
               {f.label}
             </button>
           ))}
@@ -221,7 +267,11 @@ export default function CrmInbox() {
           className="ms-auto flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            setSearch(searchInput.trim());
+            const next = searchInput.trim();
+            if (next === search) return; // unchanged query — no reload, same as before
+            setListLoading(true);
+            setListError(false);
+            setSearch(next);
           }}
         >
           <input
@@ -243,7 +293,7 @@ export default function CrmInbox() {
           {listLoading ? (
             <ListSkeleton />
           ) : listError || !convs ? (
-            <NoticeCard action={<button type="button" onClick={() => void loadList()} className={BTN_GHOST}>נסו שוב</button>}>
+            <NoticeCard action={<button type="button" onClick={reloadList} className={BTN_GHOST}>נסו שוב</button>}>
               לא הצלחנו לטעון שיחות.
             </NoticeCard>
           ) : convs.length === 0 ? (
@@ -322,7 +372,7 @@ export default function CrmInbox() {
                 ) : threadError || !thread ? (
                   <div className="text-center">
                     <p className="text-sm text-muted">לא הצלחנו לטעון את השיחה.</p>
-                    <button type="button" onClick={() => selectedId && void loadThread(selectedId)} className={`${BTN_GHOST} mt-3`}>
+                    <button type="button" onClick={retryThread} className={`${BTN_GHOST} mt-3`}>
                       נסו שוב
                     </button>
                   </div>

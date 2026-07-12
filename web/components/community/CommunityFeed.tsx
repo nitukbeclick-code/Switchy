@@ -10,6 +10,12 @@
 // block list so blocked authors never appear (in the initial page, in older
 // pages, and in Realtime inserts).
 //
+// It also batch-hydrates the per-post viewer state for each page of posts in ONE
+// round-trip per concern — fetchMyLikes + fetchMyBookmarks + fetchPostMedia
+// (passed down via <PostCard hydration>) plus fetchReactions + fetchMyReactions
+// (provided via ReactionHydrationContext, since <ReactionBar> sits inside
+// <PostCard>) — instead of every card fanning out its own requests (the old N+1).
+//
 // Realtime: a Supabase channel subscribes to INSERTs on `community_posts`. New
 // rows are PREPENDED live — de-duped against what's already on screen and filtered
 // against the viewer's block list. This is the ONLY place the feed touches
@@ -37,11 +43,17 @@ import {
   fetchFeed,
   fetchHighlights,
   fetchMyBlocks,
+  fetchMyBookmarks,
+  fetchMyLikes,
+  fetchMyReactions,
+  fetchPostMedia,
+  fetchReactions,
   searchPosts,
   type Channel,
   type CommunityHighlights,
   type CommunityPost,
   type ComposerPrefill,
+  type PostHydration,
 } from "@/lib/community";
 import { providerBySlug } from "@/lib/providers.generated";
 import { useAuth } from "@/lib/auth-context";
@@ -50,6 +62,7 @@ import { trackEvent } from "@/lib/tracking";
 import AuthModal from "@/components/auth/AuthModal";
 import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
+import { ReactionHydrationContext, type ReactionHydration } from "./ReactionBar";
 
 const INTRO_DISMISSED_KEY = "switchy_community_intro_dismissed";
 
@@ -166,6 +179,80 @@ export default function CommunityFeed() {
   // ── Truthful trending strip ("מה חם בקהילה") ──────────────────────────────────
   // Empty arrays when there's no real 7-day activity → the strip renders nothing.
   const [highlights, setHighlights] = useState<CommunityHighlights | null>(null);
+
+  // ── Batched per-post hydration (likes / bookmarks / gallery / reactions) ──────
+  // ONE fetchMyLikes + fetchMyBookmarks + fetchPostMedia + fetchReactions +
+  // fetchMyReactions round-trip per PAGE of posts instead of per <PostCard> /
+  // <ReactionBar>. Entries are keyed by post id and kept referentially stable
+  // across merges, so a card's later optimistic like/bookmark/reaction flip is
+  // never clobbered by a new page landing. Likes/bookmarks/gallery flow down as
+  // the <PostCard hydration> prop; reactions flow through ReactionHydrationContext
+  // (each <ReactionBar> sits inside <PostCard>, which doesn't know about them).
+  const [hydration, setHydration] = useState<Map<string, PostHydration>>(new Map());
+  const [reactionHydration, setReactionHydration] = useState<Map<string, ReactionHydration>>(
+    new Map(),
+  );
+  // Ids already fetched (or in flight) — only NEW posts (older pages, flushed
+  // live inserts, search results) trigger another batch.
+  const hydratedIds = useRef<Set<string>>(new Set());
+  // Bumped when the viewer changes, so an in-flight batch for the previous
+  // account is dropped instead of applied.
+  const hydrationGen = useRef(0);
+
+  // Like/bookmark/reaction state is per-viewer — start over when the account
+  // changes. (Declared BEFORE the fetch effect below so the reset runs first.)
+  useEffect(() => {
+    hydrationGen.current += 1;
+    hydratedIds.current = new Set();
+    setHydration(new Map());
+    setReactionHydration(new Map());
+  }, [user?.id]);
+
+  // Hydrate any not-yet-hydrated on-screen posts (feed, or search results while
+  // searching) in one batch. Deliberately NOT cancelled on re-run: an in-flight
+  // page batch is still valid when more posts arrive — only a viewer change
+  // invalidates it (via the generation counter).
+  useEffect(() => {
+    const ids: string[] = [];
+    for (const p of results ?? posts) {
+      if (!hydratedIds.current.has(p.id)) {
+        hydratedIds.current.add(p.id);
+        ids.push(p.id);
+      }
+    }
+    if (ids.length === 0) return;
+    const gen = hydrationGen.current;
+    void Promise.all([
+      fetchMyLikes(ids),
+      fetchMyBookmarks(ids),
+      fetchPostMedia(ids),
+      fetchReactions("post", ids),
+      fetchMyReactions("post", ids),
+    ]).then(([likes, bookmarks, media, reactions, myReactions]) => {
+      if (gen !== hydrationGen.current) return; // viewer changed mid-flight
+      setHydration((prev) => {
+        const next = new Map(prev);
+        for (const id of ids) {
+          next.set(id, {
+            liked: likes.has(id),
+            bookmarked: bookmarks.has(id),
+            gallery: media.get(id) ?? [],
+          });
+        }
+        return next;
+      });
+      setReactionHydration((prev) => {
+        const next = new Map(prev);
+        for (const id of ids) {
+          next.set(id, {
+            summaries: reactions.get(id) ?? [],
+            mine: myReactions.get(id) ?? null,
+          });
+        }
+        return next;
+      });
+    });
+  }, [posts, results, user?.id]);
 
   // Keep the current block list in a ref so the Realtime handler (bound once)
   // always sees the freshest value without re-subscribing.
@@ -575,6 +662,9 @@ export default function CommunityFeed() {
     (highlights.channels.length > 0 || highlights.active_posts.length > 0);
 
   return (
+    // Provider (no DOM) for the page-batched post reactions — reaches every post
+    // <ReactionBar> (feed + search results) without threading through <PostCard>.
+    <ReactionHydrationContext.Provider value={reactionHydration}>
     <div className="flex flex-col gap-4">
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
 
@@ -815,6 +905,7 @@ export default function CommunityFeed() {
                     post={post}
                     onRequireAuth={onRequireAuth}
                     onDeleted={handleDeleted}
+                    hydration={hydration.get(post.id) ?? null}
                   />
                 </li>
               ))}
@@ -882,6 +973,7 @@ export default function CommunityFeed() {
                   post={post}
                   onRequireAuth={onRequireAuth}
                   onDeleted={handleDeleted}
+                  hydration={hydration.get(post.id) ?? null}
                 />
               </li>
             ))}
@@ -913,5 +1005,6 @@ export default function CommunityFeed() {
       </div>
       )}
     </div>
+    </ReactionHydrationContext.Provider>
   );
 }

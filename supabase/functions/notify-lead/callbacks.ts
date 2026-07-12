@@ -3,18 +3,25 @@
 
 import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgInlineKeyboard, TgMessage } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
+import { sendUserBotMessage, userBotToken } from "../_shared/telegram_user.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import { HANDOFF_ENDED_REPLY } from "../_shared/handoff.ts";
 import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { lastSendWasOutside24hWindow, sendText as waSendText } from "../_shared/whatsapp.ts";
-import { aiMeetingsSummary, applyBookSlot, auditBookedMeeting, baresPhone, handleCommand } from "./commands.ts";
+import {
+  aiMeetingsSummary,
+  applyBookSlot,
+  auditBookedMeeting,
+  baresPhone,
+  fetchLeadsPipeline,
+  handleCommand,
+} from "./commands.ts";
 import { handleMeetingCallback, handleMeetingLinkReply, handleMeetingRescheduleReply } from "./meeting_callbacks.ts";
 import { applyMeetingAct, buildBoard, fetchOpenMeetings } from "./console.ts";
 import {
   type BoardTab,
-  type LeadsPipeline,
-  pipelineCounts,
   renderLeadCard,
   renderLeadsPipeline,
   renderMeetingsBoard,
@@ -438,24 +445,6 @@ async function handleRelayHandback(
 // same reply-capture pattern as the meeting cards) and apply on the reply.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Open leads for the pipeline view: status new|contacted|won so the counts header
-// reflects the live funnel, newest first. `recent` (the cards we surface) is the
-// caller's filtered slice. Returns null on a failed query (the caller reports it).
-async function fetchLeadsPipeline(view: "new" | "all"): Promise<LeadsPipeline | null> {
-  const open = await fetchRows<Lead>(
-    "/rest/v1/leads?status=in.(new,contacted,won)&order=created_at.desc&limit=60&select=*",
-  );
-  if (open === null) return null;
-  const counts = pipelineCounts(open);
-  // "new" view → only uncontacted cards; "all" → the live funnel (new+contacted),
-  // never the closed (won/lost) rows. Cap the cards so we don't flood the chat.
-  const recent = (view === "new"
-    ? open.filter((l) => String(l.status ?? "new") === "new")
-    : open.filter((l) => ["new", "contacted"].includes(String(l.status ?? "new"))))
-    .slice(0, 5);
-  return { counts, recent };
-}
-
 // The reply-capture markers for the native board's free-text acts. A board zoom /
 // reschedule tap posts a single-button prompt whose callback_data is the marker;
 // a reply to that prompt resolves the meeting id + which act to apply. Mirrors
@@ -865,14 +854,6 @@ export function escClip(text: unknown, max: number = MAX_TG_RELAY_LEN): string {
   return esc(text).slice(0, max);
 }
 
-// The customer-facing USER bot token. Read from env (the user bot ships with its
-// own TELEGRAM_USER_BOT_TOKEN — distinct from the team bot's cfg.tgToken). Empty
-// ⇒ the relay-back can't send (the user bot is dark); we report it honestly.
-function userBotToken(): string {
-  const v = Deno.env.get("TELEGRAM_USER_BOT_TOKEN");
-  return v && v.trim() ? v.trim() : "";
-}
-
 // Parse a customer Telegram chat id out of a tgu:<chatId>:<action> callback_data
 // in a message's inline keyboard. Telegram chat ids are integers (optionally
 // negative for groups). Returns null when no tgu: button is present.
@@ -893,30 +874,14 @@ function tguSessionKey(chatId: string): string {
   return `tg-u-${chatId}`;
 }
 
-// Send ONE message to the customer's Telegram chat via the USER bot. Plain HTML,
-// single attempt (the caller treats a failure as "not delivered" and tells the
-// rep to retry — same fail-soft contract as the WhatsApp relay). Returns whether
-// Telegram accepted it. Never throws.
-async function sendUserBot(chatId: string, text: string): Promise<boolean> {
-  const token = userBotToken();
-  if (!token) return false;
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
-    });
-    return r.ok;
-  } catch (e) {
-    jlog({ at: "tgu.relay.send", ok: false, error: String(e) });
-    return false;
-  }
-}
+// Send ONE message to the customer's Telegram chat via the USER bot — the SAME
+// hardened shared sender the user bot's own replies use (_shared/telegram_user.ts:
+// 429 retry honoring retry_after, transient-network retry, permanent HTML-rejection
+// → clipped plain-text fallback), so a rep's relayed reply survives exactly what
+// the bot's replies survive. Fail-soft: returns whether Telegram accepted it
+// (the caller tells the rep to retry on a miss). Never throws.
+const sendUserBot = (chatId: string, text: string): Promise<boolean> =>
+  sendUserBotMessage(chatId, text);
 
 // §30A STOP gate for the Telegram customer channel: a durable marketing_suppression
 // row (channel='telegram', contact='tg:<chatId>') means the customer asked us to
@@ -969,10 +934,8 @@ async function handleTgHandback(
   // below stay UNCONDITIONAL: handing the conversation back to the bot is an
   // internal state change the rep must always be able to complete.
   if (!(await isTelegramSuppressed(chatId))) {
-    await sendUserBot(
-      chatId,
-      "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.",
-    );
+    // Canonical hand-back copy — _shared/handoff.ts, shared with the user bot.
+    await sendUserBot(chatId, HANDOFF_ENDED_REPLY);
   }
   await answer("הוחזר לבוט 🤖");
   await sendTelegram(cfg, `🤖 <b>שיחת הטלגרם הוחזרה לבוט</b> (<code>tg:${esc(chatId)}</code>) — העוזר האוטומטי חזר לענות ללקוח.`);

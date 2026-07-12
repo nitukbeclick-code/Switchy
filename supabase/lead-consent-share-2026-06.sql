@@ -39,6 +39,11 @@ comment on column public.leads.consent_share_at is
   'Privacy Law: timestamp the person EXPLICITLY consented to share their details with third-party providers (the "sellable" gate). null = no consent (safe default). Separate from §30A terms/privacy consent and from marketing opt-ins; the ONLY signal the lead export uses to mark a row sellable. Server-stamped (cannot be backdated).';
 
 -- ── 2. Re-stamp on insert so the consent time can't be backdated ──────────────
+-- ✅ CANONICAL leads_consent_stamp() BODY (supersedes legal-consent-2026-06 §3).
+-- ⚠️ CAUTION on re-apply: cron-and-hardening-2026-07.sql §2 later pinned this
+-- function's search_path to '' (ALTER FUNCTION). CREATE OR REPLACE resets that
+-- setting, so after re-running this section, re-run:
+--   alter function public.leads_consent_stamp() set search_path = '';
 -- Mirror the existing leads_consent_stamp pattern (legal-consent-2026-06.sql):
 -- the client sends a NON-NULL value to INDICATE share consent; the trigger
 -- overwrites it with the server now() so the proof is authoritative and can't be

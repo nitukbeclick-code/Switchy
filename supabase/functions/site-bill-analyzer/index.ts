@@ -52,7 +52,7 @@ import {
   normalizeProvider,
   type Plan,
 } from "../_shared/catalogue.ts";
-import { buildParsedBill, type Extracted, parseExtraction, parseImage } from "./lib.ts";
+import { buildParsedBill, type Extracted, parseExtraction, parseImage } from "../_shared/bill.ts";
 import { auditBill, type Finding } from "../_shared/bill-forensics.ts";
 import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
 
@@ -86,8 +86,9 @@ function loadPlans(): Plan[] {
 // provider-alias table and category synonyms, shared with the WhatsApp bot so a
 // brand either surface knows is matched on both. (B4/B8 drift fix.)
 //
-// parseImage / parseExtraction (+ the Extracted type) are imported from ./lib.ts
-// so they can be unit-tested without booting the Deno.serve entrypoint.
+// parseImage / parseExtraction (+ the Extracted type) are imported from
+// _shared/bill.ts — the single home of the pure bill parsers, shared with the
+// in-chat photo path — so they can be unit-tested without booting Deno.serve.
 
 // Vision extraction prompt. We additionally ask the model to be HONEST about
 // image quality: it returns a `confidence` (0-1) AND a short `warnings` list

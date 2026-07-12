@@ -15,6 +15,7 @@ import '../../widgets/media/community_media.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_card.dart';
 import '../../widgets/skeleton.dart';
 import '../../services/media_service.dart';
 import '../../services/backend/local_backend.dart';
@@ -463,10 +464,11 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   const SizedBox(height: 12),
 
                   // Original post (mini) — standard flat card + 1px hairline.
-                  Container(
+                  AppCard(
+                    variant: AppCardVariant.card,
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     padding: const EdgeInsets.all(12),
-                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
+                    borderRadius: ffTheme.radiusCard,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

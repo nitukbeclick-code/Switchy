@@ -14,6 +14,29 @@
 --
 -- Tunable: if long-tail plans stay hidden once real data accrues, lower
 -- v_min_reports toward 8. Never below 5.
+--
+-- ✅ CANONICAL get_street_price() — supersedes the k=5 copy in
+-- street-prices-2026-06.sql §3 (banner added there).
+--
+-- ── The TWO street-price RPCs now have DIFFERENT k-anonymity floors — BY
+-- DESIGN. Do not "fix" either one blindly:
+--   • get_street_price (THIS file)            → floor 10 (v_min_reports below).
+--     It answers for a SINGLE plan / provider cohort — the narrowest published
+--     aggregate, where a min/max can come within inference distance of one
+--     person's real bill. 10 distinct reporters is the deliberate floor here.
+--   • get_street_prices_by_category
+--     (street-prices-web-2026-06.sql)         → floor 5 (p_min_reports default,
+--     the web lib passes STREET_PRICE_MIN_REPORTS = 5).
+--     It aggregates a WHOLE CATEGORY — many plans and providers pooled — so
+--     each reporter hides in a much larger, coarser crowd; 5 remains the
+--     intended threshold there. Its header comment claiming the gate is "kept
+--     == the plan/provider RPC's gate" predates this file and is stale — the
+--     per-RPC floors above are canonical.
+--   • The edge fn constant STREET_PRICE_MIN_REPORTS (street-price/lib.ts) is
+--     still 5: it drives the category RPC + the "need N more reports" UI copy.
+--     A plan/provider cohort with 5–9 reporters therefore shows as "collected"
+--     by the messaging while the DB (correctly) still withholds its figures.
+--     If that mismatch bites, raise the constant — never lower this floor.
 
 CREATE OR REPLACE FUNCTION public.get_street_price(p_plan_id text DEFAULT NULL::text, p_provider text DEFAULT NULL::text)
  RETURNS TABLE(report_count bigint, typical_price integer, median_price integer, min_price integer, max_price integer, avg_price integer, meets_threshold boolean, first_at timestamp with time zone, last_at timestamp with time zone)

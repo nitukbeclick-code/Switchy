@@ -24,7 +24,6 @@ import {
   editReply,
   fetchReplies,
   MAX_BODY,
-  MENTION_RE,
   orderByAccepted,
   setAcceptedReply,
   toReplyTree,
@@ -40,60 +39,12 @@ import {
 } from "@/lib/media-upload";
 import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
+// Shared render helpers. renderBody here stays mentions-only (no linkProviders):
+// reply bodies bold @mentions but deliberately don't linkify provider names.
+import { initial, relativeTime, renderBody } from "@/lib/community-render";
 import MediaView from "./MediaView";
 import MentionTextarea from "./MentionTextarea";
 import ReactionBar from "./ReactionBar";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Relative Hebrew timestamp ("לפני 5 דקות"), no external dep. */
-function relativeTime(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (!Number.isFinite(then)) return "";
-  const diff = Date.now() - then;
-  const sec = Math.max(0, Math.round(diff / 1000));
-  if (sec < 45) return "לפני רגע";
-  const min = Math.round(sec / 60);
-  if (min < 60) return min === 1 ? "לפני דקה" : `לפני ${min} דקות`;
-  const hr = Math.round(min / 60);
-  if (hr < 24) return hr === 1 ? "לפני שעה" : `לפני ${hr} שעות`;
-  const day = Math.round(hr / 24);
-  if (day < 7) return day === 1 ? "אתמול" : `לפני ${day} ימים`;
-  const wk = Math.round(day / 7);
-  if (wk < 5) return wk === 1 ? "לפני שבוע" : `לפני ${wk} שבועות`;
-  const mo = Math.round(day / 30);
-  if (mo < 12) return mo === 1 ? "לפני חודש" : `לפני ${mo} חודשים`;
-  const yr = Math.round(day / 365);
-  return yr === 1 ? "לפני שנה" : `לפני ${yr} שנים`;
-}
-
-/** First rendered char of a name, for the avatar fallback monogram. */
-function initial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? Array.from(trimmed)[0].toUpperCase() : "מ";
-}
-
-/** Split body into text + @mention segments; mentions render as bold spans.
- *  All segments are plain strings placed via JSX {}, so React escapes them. */
-function renderBody(body: string): React.ReactNode {
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  // MENTION_RE is a shared /g regex — reset lastIndex before each use.
-  MENTION_RE.lastIndex = 0;
-  let m: RegExpExecArray | null;
-  while ((m = MENTION_RE.exec(body)) !== null) {
-    if (m.index > last) nodes.push(body.slice(last, m.index));
-    nodes.push(
-      <span key={`m${key++}`} className="font-semibold text-accent-text">
-        {m[0]}
-      </span>,
-    );
-    last = m.index + m[0].length;
-  }
-  if (last < body.length) nodes.push(body.slice(last));
-  return nodes;
-}
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 

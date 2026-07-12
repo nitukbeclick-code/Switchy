@@ -376,7 +376,7 @@ export const HANDOFF_RELAY_FAIL_REPLY =
   "ההודעה נשמרה ותועבר לנציג. אם זה דחוף אפשר גם להשוות הכול ב-https://switchy-ai.com 🙏";
 
 // The notice the customer gets when a rep ENDS the takeover (hand-back to the
-// bot). Sent by the team side via the user bot, but defined here so the copy
-// lives with the rest of the bot's voice.
-export const HANDOFF_ENDED_REPLY =
-  "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.";
+// bot). Sent by the team side (notify-lead/callbacks.ts) via the user bot; the
+// canonical copy lives in _shared/handoff.ts so both senders share one voice —
+// re-exported here so it still reads with the rest of the bot's replies.
+export { HANDOFF_ENDED_REPLY } from "../_shared/handoff.ts";

@@ -13,6 +13,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_card.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -173,10 +174,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     ...appState.userReviews.take(3).map((r) {
                       final overall = r['overall'] as int? ?? 0;
                       final text = r['text'] as String? ?? '';
-                      return Container(
+                      return AppCard(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
+                        borderRadius: ffTheme.radiusCard,
                         child: Row(
                           children: [
                             Expanded(
@@ -250,9 +251,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   // surface the active language honestly and mark the rest as
                   // upcoming rather than pretending they're selectable.
                   _buildSectionHeader('שפה', ffTheme),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+                  AppCard(
+                    variant: AppCardVariant.card,
+                    borderRadius: ffTheme.radiusLg,
                     child: Row(
                       children: [
                         Container(
@@ -292,9 +293,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
                   // Appearance — live theme control (system / light / dark)
                   _buildSectionHeader('מראה', ffTheme),
-                  Container(
+                  AppCard(
+                    variant: AppCardVariant.card,
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+                    borderRadius: ffTheme.radiusLg,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -743,11 +745,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     // Button role for the tappable card (Pressable adds no semantics itself).
     return Semantics(
       button: true,
-      child: Pressable(
-      onTap: () => context.goNamed('Community'),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+      child: AppCard(
+        onTap: () => context.goNamed('Community'),
+        variant: AppCardVariant.card,
+        borderRadius: ffTheme.radiusLg,
         child: Row(
           children: [
             Container(
@@ -774,7 +775,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
           ],
         ),
-      ),
       ),
     ).animate().fadeIn(duration: 300.ms).settleY(context);
   }
@@ -858,12 +858,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 : 'בעוד $days ימים';
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Pressable(
+          child: AppCard(
             onTap: () => context.pushNamed('RenewalReport', pathParameters: {'trackedId': tp.id}),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
-              child: Row(
+            padding: const EdgeInsets.all(12),
+            borderRadius: ffTheme.radiusCard,
+            child: Row(
                 children: [
                   LogoWidget(provider: tp.provider, size: 40),
                   const SizedBox(width: 12),
@@ -890,7 +889,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   ),
                 ],
               ),
-            ),
           ),
         ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).settleX(context);
       }).toList(),
@@ -967,9 +965,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildQuizSummary(BuildContext context, AppTheme ffTheme, AppState appState) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ffTheme.glassDecoration(radius: ffTheme.radiusCard),
+    return AppCard(
+      borderRadius: ffTheme.radiusCard,
       child: Wrap(
         spacing: 8,
         runSpacing: 6,
@@ -990,11 +987,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     // Button role for the tappable card (Pressable adds no semantics itself).
     return Semantics(
       button: true,
-      child: Pressable(
-      onTap: () => context.pushNamed('Quiz'),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+      child: AppCard(
+        onTap: () => context.pushNamed('Quiz'),
+        variant: AppCardVariant.card,
+        borderRadius: ffTheme.radiusLg,
         child: Row(
           children: [
             Container(
@@ -1021,7 +1017,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, color: ffTheme.secondaryText, size: 14)),
           ],
         ),
-      ),
       ),
     );
   }

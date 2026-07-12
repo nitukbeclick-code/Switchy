@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { type CrmMember, type CrmRole, fetchMembers, setCrmMemberRole } from "@/lib/crm-admin";
-import { BTN_GHOST, BTN_PRIMARY, NoticeCard, when } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, isUuid, NoticeCard, when } from "./ui";
 
 const ROLE_LABEL: Record<string, string> = { viewer: "צופה", rep: "נציג" };
 
@@ -84,7 +84,12 @@ export default function CrmTeam() {
 
   const grant = useCallback(async () => {
     const uid = newUid.trim();
-    if (!uid) return;
+    // Client-side UUID validation: a mistyped uid fails fast with a specific
+    // message instead of a server round-trip and a generic failure.
+    if (!isUuid(uid)) {
+      setNotice("מזהה המשתמש אינו UUID תקין (8-4-4-4-12 ספרות הקסדצימליות).");
+      return;
+    }
     setBusy("__grant__");
     setNotice(null);
     const ok = await setCrmMemberRole(uid, newRole);
@@ -174,7 +179,11 @@ export default function CrmTeam() {
         </p>
       </div>
 
-      {notice && <NoticeCard>{notice}</NoticeCard>}
+      {/* Always-mounted live region so grant/role-change outcomes are announced
+          to screen readers even when the card pops in after an async write. */}
+      <div role="status" aria-live="polite">
+        {notice && <NoticeCard>{notice}</NoticeCard>}
+      </div>
 
       {loading ? (
         <Skeleton />

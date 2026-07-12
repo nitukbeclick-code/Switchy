@@ -2,33 +2,63 @@
 
 // ────────────────────────────────────────────────────────────────────────────
 // <CrmLeads> — the lead pipeline as a filterable, responsive table (desktop) /
-// card list (mobile). Reads crm-api `listLeads` (service_role, admin-gated),
+// card list (mobile). Reads crm-api `listLeads` (service_role, access-gated),
 // which returns a deliberately column-limited, PII-safe shape (name, phone,
 // provider, source, status, created_at — no email/notes/source_ip/consent).
 // Filter by stage, a client-side created-at quick-view (24h/7d/30d) and rep,
 // search by name/phone (debounced), sort by recency, export the current view as
 // CSV (built in-browser, no new endpoint), and multi-select rows for a bulk stage
-// change (each write is the same audited setLeadStatus, fanned out in bounded
-// waves); each row opens the detail drawer (status, won-flow, brief).
+// change or a bulk "claim to me" (each write is the same audited crm-api action,
+// fanned out in bounded waves) with a one-shot undo that restores the stages
+// captured before the apply. Every filter is mirrored into the URL (shallow
+// replaceState) so a refresh or tab-switch restores the exact view. New-lead rows
+// carry a relative-age chip that flips to an SLA-breach tone past the server's
+// slaHours. The desktop table is keyboard-navigable (↑/↓ rows, Enter opens,
+// Space selects, "/" jumps to search); each row opens the detail drawer
+// (status, won-flow, brief) with prev/next paging between leads.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type CrmLead, fetchCrmLeads, LEAD_STATUSES, type LeadSort, type LeadStatus, setCrmLeadStatus } from "@/lib/crm-admin";
+import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  claimCrmLead,
+  type CrmFailure,
+  type CrmLead,
+  fetchCrmLeads,
+  fetchCrmSla,
+  isLeadStatus,
+  LEAD_STATUSES,
+  type LeadSort,
+  type LeadStatus,
+  setCrmLeadStatus,
+} from "@/lib/crm-admin";
+import { useAuth } from "@/lib/auth-context";
 import { runChunked } from "@/lib/batch";
-import { buildCsv, downloadCsv } from "@/lib/csv";
+import { buildCsv, csvFileName, downloadCsv } from "@/lib/csv";
 import { type DateRange, withinRange } from "@/lib/date-range";
 import CrmLeadDrawer from "./CrmLeadDrawer";
-import { BTN_GHOST, LEAD_STATUS_META, NoticeCard, StatusPill, when } from "./ui";
+import { BTN_GHOST, ErrorNotice, LEAD_STATUS_META, LeadAgeChip, mirrorUrlParams, NoticeCard, StatusPill, when } from "./ui";
 
 type Filter = LeadStatus | "all";
 
-// Stages a bulk action can move a selection to. `won` is deliberately excluded —
-// closing as won goes through the drawer's guided flow (it records the real annual
-// saving); these two are the safe "triage" transitions that need no extra data.
+// What a bulk action can do to a selection. Stage targets: `won` is deliberately
+// excluded — closing as won goes through the drawer's guided flow (it records the
+// real annual saving); these two are the safe "triage" transitions that need no
+// extra data. "claim" assigns every selected lead to the signed-in rep.
+type BulkTarget = LeadStatus | "claim";
 const BULK_TARGETS: { status: LeadStatus; label: string }[] = [
   { status: "contacted", label: "יצרנו קשר" },
   { status: "lost", label: "אבוד" },
 ];
+
+const RANGE_KEYS: readonly DateRange[] = ["all", "1d", "7d", "30d"];
 
 function LeadsSkeleton() {
   return (
@@ -41,34 +71,58 @@ function LeadsSkeleton() {
 }
 
 export default function CrmLeads() {
-  const [filter, setFilter] = useState<Filter>("all");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<LeadSort>("recent");
-  const [range, setRange] = useState<DateRange>("all");
-  const [rep, setRep] = useState<string>("all");
+  // Filters initialize from the URL (mirrored below on every change), so a
+  // refresh / tab-switch / shared link restores the exact view.
+  const params = useSearchParams();
+  const [filter, setFilter] = useState<Filter>(() => {
+    const v = params.get("lead_status");
+    return isLeadStatus(v) ? v : "all";
+  });
+  const [searchInput, setSearchInput] = useState(() => params.get("lead_q") ?? "");
+  const [search, setSearch] = useState(() => (params.get("lead_q") ?? "").trim());
+  const [sort, setSort] = useState<LeadSort>(() => (params.get("lead_sort") === "oldest" ? "oldest" : "recent"));
+  const [range, setRange] = useState<DateRange>(() => {
+    const v = params.get("lead_range");
+    return v && (RANGE_KEYS as readonly string[]).includes(v) ? (v as DateRange) : "all";
+  });
+  const [rep, setRep] = useState<string>(() => params.get("lead_rep") ?? "all");
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // The typed reason of the last failed load (server message + retryability).
+  const [failure, setFailure] = useState<CrmFailure | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The server's SLA window (hours), for the age chip on new-lead rows.
+  // Best-effort: without it the chip still shows the age, just never "breach".
+  const [slaHours, setSlaHours] = useState<number | null>(null);
   // Bulk selection (by lead id) + its in-flight/result state. `bulkMsg.ok`
   // drives the tone: full success renders in the value token, a partial
   // failure in the danger token so it can't be skimmed past as a win.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkMsg, setBulkMsg] = useState<{ text: string; ok: boolean } | null>(null);
-  // Two-step confirm for the bulk stage buttons: the first click arms the
-  // target, the second actually applies it (no window.confirm).
-  const [confirmStatus, setConfirmStatus] = useState<LeadStatus | null>(null);
+  // Two-step confirm for the bulk buttons: the first click arms the target,
+  // the second actually applies it (no window.confirm).
+  const [confirmTarget, setConfirmTarget] = useState<BulkTarget | null>(null);
+  // One-shot undo for the last bulk STAGE change: each entry is a lead's stage
+  // as captured BEFORE the apply. Consumed on use; replaced by the next apply.
+  const [undoEntries, setUndoEntries] = useState<{ id: string; status: LeadStatus }[] | null>(null);
+  // Roving keyboard focus over the desktop table rows.
+  const [activeRow, setActiveRow] = useState(0);
+  const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
+  const searchRef = useRef<HTMLInputElement | null>(null);
   // Monotonic sequence for loads: rapid filter/sort switches fire overlapping
   // fetches, and HTTP ordering isn't guaranteed — only the newest may land.
   const loadSeq = useRef(0);
-  // The rolling-window clock for the quick-view date filter. Sampled when the
-  // inputs of `shown` actually change (a load landing, a range/rep click) —
-  // exactly when the memo used to call Date.now() — instead of impurely during
-  // render (react-hooks/purity). 0 is safe: it's never read before a sample
-  // (no rows before the first load; `all` ignores it).
+  // The rolling-window clock for the quick-view date filter + the age chips.
+  // Sampled when the inputs of `shown` actually change (a load landing, a
+  // range/rep click) — exactly when the memo used to call Date.now() — instead
+  // of impurely during render (react-hooks/purity). 0 is safe: it's never read
+  // before a sample (no rows before the first load; `all` ignores it).
   const [nowMs, setNowMs] = useState(0);
+
+  const { profile } = useAuth();
+  const repName = (profile?.name ?? "").trim() || "מנהל";
 
   // Event-side reset before a (re)load: skeleton up, stale view state cleared.
   // The useState initializers cover the mount load; every later load starts
@@ -78,8 +132,9 @@ export default function CrmLeads() {
   const beginLoad = useCallback(() => {
     setLoading(true);
     setError(false);
+    setFailure(null);
     setSelected(new Set()); // a fresh view invalidates any prior selection
-    setConfirmStatus(null);
+    setConfirmTarget(null);
   }, []);
 
   // Debounce the search box so we don't fire a request per keystroke; when the
@@ -91,9 +146,17 @@ export default function CrmLeads() {
       if (next === search) return; // unchanged query — no reload, same as before
       beginLoad();
       setSearch(next);
+      mirrorUrlParams({ lead_q: next || null });
     }, 300);
     return () => clearTimeout(t);
   }, [searchInput, search, beginLoad]);
+
+  // The server's SLA window, once (best-effort — failure just hides "breach").
+  useEffect(() => {
+    void fetchCrmSla().then((r) => {
+      if (r.data) setSlaHours(r.data.sla.slaHours);
+    });
+  }, []);
 
   // The set of reps present in the loaded window, for the rep filter dropdown.
   const repOptions = useMemo(
@@ -115,13 +178,14 @@ export default function CrmLeads() {
   const clearOnFilterChange = useCallback(() => {
     setSelected(new Set()); // a narrower view invalidates a selection of hidden rows
     setBulkMsg(null);
-    setConfirmStatus(null);
+    setConfirmTarget(null);
   }, []);
 
   const changeRange = useCallback((r: DateRange) => {
     if (r !== range) {
       setNowMs(Date.now()); // re-sample the window clock, as the memo used to
       setRange(r);
+      mirrorUrlParams({ lead_range: r === "all" ? null : r });
     }
     clearOnFilterChange();
   }, [range, clearOnFilterChange]);
@@ -130,14 +194,15 @@ export default function CrmLeads() {
     if (r !== rep) {
       setNowMs(Date.now()); // re-sample the window clock, as the memo used to
       setRep(r);
+      mirrorUrlParams({ lead_rep: r === "all" ? null : r });
     }
     clearOnFilterChange();
   }, [rep, clearOnFilterChange]);
 
-  // Fetch the current view. Loading/error/selection resets are event-driven
-  // (`beginLoad` above; the useState initializers cover the mount load) — so
-  // the load effect never sets state synchronously
-  // (react-hooks/set-state-in-effect): state only lands in the .then continuation.
+  // Fetch the current view. Loading/error resets are event-driven (`beginLoad`
+  // above; the useState initializers cover the mount load) — so the load effect
+  // never sets state synchronously (react-hooks/set-state-in-effect): state
+  // only lands in the .then continuation.
   const load = useCallback(() => {
     const seq = ++loadSeq.current;
     return fetchCrmLeads({
@@ -146,13 +211,17 @@ export default function CrmLeads() {
       sort,
     }).then((res) => {
       if (seq !== loadSeq.current) return; // a newer load superseded this one
-      if (res) {
-        setLeads(res.leads);
+      if (res.data) {
+        setLeads(res.data.leads);
         setNowMs(Date.now()); // fresh window clock for the fresh rows
         // If this load dropped the currently-filtered rep from the window, fall
         // back to all (previously a separate effect over repOptions).
-        setRep((prev) => (prev !== "all" && !res.leads.some((l) => l.claimedBy === prev) ? "all" : prev));
-      } else setError(true);
+        const rows = res.data.leads;
+        setRep((prev) => (prev !== "all" && !rows.some((l) => l.claimedBy === prev) ? "all" : prev));
+      } else {
+        setFailure(res.failure);
+        setError(true);
+      }
       setLoading(false);
     });
   }, [filter, search, sort]);
@@ -169,6 +238,7 @@ export default function CrmLeads() {
       if (next === filter) return; // same chip — no reload, same as before
       beginLoad();
       setFilter(next);
+      mirrorUrlParams({ lead_status: next === "all" ? null : next });
     },
     [filter, beginLoad],
   );
@@ -178,13 +248,14 @@ export default function CrmLeads() {
       if (next === sort) return; // same button — no reload, same as before
       beginLoad();
       setSort(next);
+      mirrorUrlParams({ lead_sort: next === "oldest" ? next : null });
     },
     [sort, beginLoad],
   );
 
   const toggleOne = useCallback((id: string) => {
     setBulkMsg(null);
-    setConfirmStatus(null);
+    setConfirmTarget(null);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -195,60 +266,134 @@ export default function CrmLeads() {
 
   const toggleAll = useCallback(() => {
     setBulkMsg(null);
-    setConfirmStatus(null);
+    setConfirmTarget(null);
     setSelected((prev) => {
       if (shown.length > 0 && shown.every((l) => prev.has(l.id))) return new Set();
       return new Set(shown.map((l) => l.id));
     });
   }, [shown]);
 
-  // Apply a stage to every selected lead. Each call is the SAME audited
-  // setLeadStatus the drawer uses (server writes lead_events + security_audit_log),
-  // just fanned out in small waves. Partial failures are reported, not swallowed.
-  const applyBulkStatus = useCallback(
-    async (status: LeadStatus) => {
+  // Apply a bulk action to every selected lead. Each call is the SAME audited
+  // crm-api write the drawer uses (the server writes lead_events +
+  // security_audit_log), just fanned out in small waves. Partial failures are
+  // reported, not swallowed. A stage change first captures each lead's current
+  // stage so the one-shot undo below can restore exactly what was on screen.
+  const applyBulk = useCallback(
+    async (target: BulkTarget) => {
       if (selected.size === 0 || bulkBusy) return;
       setBulkBusy(true);
       setBulkMsg(null);
-      setConfirmStatus(null);
+      setConfirmTarget(null);
+      setUndoEntries(null); // a new apply replaces any prior (now-ambiguous) undo
       const ids = [...selected];
-      const ok = await runChunked(ids, 5, (id) => setCrmLeadStatus(id, status));
+      let ok: number;
+      if (target === "claim") {
+        ok = await runChunked(ids, 5, (id) => claimCrmLead(id, repName));
+        setBulkMsg(
+          ok === ids.length
+            ? { text: `שויכו ${ok} לידים אליך (${repName}).`, ok: true }
+            : { text: `שויכו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`, ok: false },
+        );
+      } else {
+        // Captured BEFORE the writes; only known stages are restorable.
+        const prior: { id: string; status: LeadStatus }[] = [];
+        for (const l of leads ?? []) {
+          if (selected.has(l.id) && isLeadStatus(l.status) && l.status !== target) {
+            prior.push({ id: l.id, status: l.status });
+          }
+        }
+        ok = await runChunked(ids, 5, (id) => setCrmLeadStatus(id, target));
+        if (ok > 0 && prior.length > 0) setUndoEntries(prior);
+        setBulkMsg(
+          ok === ids.length
+            ? { text: `עודכנו ${ok} לידים.`, ok: true }
+            : { text: `עודכנו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`, ok: false },
+        );
+      }
       setBulkBusy(false);
-      setBulkMsg(
-        ok === ids.length
-          ? { text: `עודכנו ${ok} לידים.`, ok: true }
-          : { text: `עודכנו ${ok} מתוך ${ids.length} לידים (חלק נכשלו).`, ok: false },
-      );
       await reload(); // refresh statuses + clear the (now-stale) selection
     },
-    [selected, bulkBusy, reload],
+    [selected, bulkBusy, leads, repName, reload],
   );
+
+  // One-shot undo: restore the pre-apply stages (each restore is the same
+  // audited setLeadStatus). Consumed immediately — success or not — so it can
+  // never be double-fired against a view that already moved on.
+  const applyUndo = useCallback(async () => {
+    const entries = undoEntries;
+    if (!entries || bulkBusy) return;
+    setUndoEntries(null);
+    setBulkBusy(true);
+    setBulkMsg(null);
+    const ok = await runChunked(entries, 5, (e) => setCrmLeadStatus(e.id, e.status));
+    setBulkBusy(false);
+    setBulkMsg(
+      ok === entries.length
+        ? { text: `שוחזרו ${ok} לידים לשלב הקודם.`, ok: true }
+        : { text: `שוחזרו ${ok} מתוך ${entries.length} לידים (חלק נכשלו).`, ok: false },
+    );
+    await reload();
+  }, [undoEntries, bulkBusy, reload]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   // Export the CURRENT view as CSV. The rows are already in the admin's browser
-  // (fetched via crm-api behind the admin gate), so this adds no new endpoint and
+  // (fetched via crm-api behind the access gate), so this adds no new endpoint and
   // no new PII surface — csv.ts guards against formula injection on the way out.
+  // The id column makes a row traceable back to the console; a full 200-row
+  // server window gets the honest "-partial" filename suffix.
   const exportCsv = useCallback(() => {
     if (shown.length === 0) return;
-    const headers = ["שם", "טלפון", "ספק", "מקור", "נציג", "שלב", "נוצר"];
+    const headers = ["id", "שם", "טלפון", "ספק", "מקור", "נציג", "שלב", "נוצר"];
     const rows = shown.map((l) => [
+      l.id,
       l.name,
       l.phone,
       l.provider ?? "",
       l.source ?? "",
       l.claimedBy ?? "",
-      LEAD_STATUS_META[l.status]?.label ?? l.status,
+      isLeadStatus(l.status) ? LEAD_STATUS_META[l.status].label : l.status,
       l.createdAt ?? "",
     ]);
-    downloadCsv(`leads-${filter}${range === "all" ? "" : `-${range}`}.csv`, buildCsv(headers, rows));
-  }, [shown, filter, range]);
+    const partial = (leads?.length ?? 0) >= 200;
+    downloadCsv(
+      csvFileName(`leads-${filter}${range === "all" ? "" : `-${range}`}`, partial),
+      buildCsv(headers, rows),
+    );
+  }, [shown, leads, filter, range]);
 
   const canExport = shown.length > 0;
   const allSelected = shown.length > 0 && shown.every((l) => selected.has(l.id));
   const someSelected = selected.size > 0 && !allSelected;
+
+  // Roving tabindex home for the keyboard-navigable table (clamped so a
+  // shrinking view can't strand the tab stop on a removed row).
+  const effActiveRow = Math.min(activeRow, Math.max(0, shown.length - 1));
+
+  // Keyboard triage on a desktop table row: ↑/↓ move (roving tabindex), Enter
+  // opens the drawer, Space toggles selection, "/" jumps to the search box.
+  // Enter/Space act only when the ROW itself is focused — inner controls (the
+  // checkbox, the name button) keep their native keyboard behaviour.
+  const onRowKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLTableRowElement>, idx: number, lead: CrmLead) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        const next = e.key === "ArrowDown" ? Math.min(idx + 1, shown.length - 1) : Math.max(idx - 1, 0);
+        setActiveRow(next);
+        rowRefs.current[next]?.focus();
+      } else if (e.key === "/") {
+        e.preventDefault();
+        searchRef.current?.focus();
+      } else if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+        e.preventDefault();
+        if (e.key === "Enter") setSelectedId(lead.id);
+        else toggleOne(lead.id);
+      }
+    },
+    [shown.length, toggleOne],
+  );
 
   const RANGES: { key: DateRange; label: string }[] = [
     { key: "all", label: "הכול" },
@@ -261,6 +406,11 @@ export default function CrmLeads() {
     { key: "all", label: "הכול" },
     ...LEAD_STATUSES.map((s) => ({ key: s as Filter, label: LEAD_STATUS_META[s].label })),
   ];
+
+  // prev/next paging targets for the drawer, over the CURRENT view's order.
+  const selIdx = selectedId ? shown.findIndex((l) => l.id === selectedId) : -1;
+  const prevLeadId = selIdx > 0 ? shown[selIdx - 1].id : null;
+  const nextLeadId = selIdx >= 0 && selIdx < shown.length - 1 ? shown[selIdx + 1].id : null;
 
   return (
     <div className="space-y-4">
@@ -287,6 +437,7 @@ export default function CrmLeads() {
 
       <div className="flex flex-wrap items-center gap-2">
         <input
+          ref={searchRef}
           type="search"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
@@ -360,15 +511,7 @@ export default function CrmLeads() {
       {loading ? (
         <LeadsSkeleton />
       ) : error || !leads ? (
-        <NoticeCard
-          action={
-            <button type="button" onClick={() => void reload()} className={BTN_GHOST}>
-              נסו שוב
-            </button>
-          }
-        >
-          לא הצלחנו לטעון את הלידים.
-        </NoticeCard>
+        <ErrorNotice failure={failure} fallback="לא הצלחנו לטעון את הלידים." onRetry={() => void reload()} />
       ) : leads.length === 0 ? (
         <NoticeCard>{search ? "לא נמצאו לידים תואמים לחיפוש." : "אין לידים בשלב הזה."}</NoticeCard>
       ) : (
@@ -378,13 +521,13 @@ export default function CrmLeads() {
               <span className="text-sm font-semibold text-ink">{selected.size.toLocaleString("he-IL")} נבחרו</span>
               <span className="text-xs text-muted">העבר ל־</span>
               {BULK_TARGETS.map((t) =>
-                confirmStatus === t.status ? (
+                confirmTarget === t.status ? (
                   // Armed: the first click swapped the button for an explicit
                   // confirm + escape, so a bulk stage change is never one click.
                   <span key={t.status} className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => void applyBulkStatus(t.status)}
+                      onClick={() => void applyBulk(t.status)}
                       disabled={bulkBusy}
                       className={`${BTN_GHOST} text-xs ${t.status === "lost" ? "border-danger/40 text-danger-text" : "border-accent/40 text-accent-text"}`}
                     >
@@ -392,7 +535,7 @@ export default function CrmLeads() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setConfirmStatus(null)}
+                      onClick={() => setConfirmTarget(null)}
                       disabled={bulkBusy}
                       className={`${BTN_GHOST} text-xs`}
                     >
@@ -403,7 +546,7 @@ export default function CrmLeads() {
                   <button
                     key={t.status}
                     type="button"
-                    onClick={() => setConfirmStatus(t.status)}
+                    onClick={() => setConfirmTarget(t.status)}
                     disabled={bulkBusy}
                     className={`${BTN_GHOST} text-xs`}
                   >
@@ -411,12 +554,41 @@ export default function CrmLeads() {
                   </button>
                 ),
               )}
+              {confirmTarget === "claim" ? (
+                <span className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => void applyBulk("claim")}
+                    disabled={bulkBusy}
+                    className={`${BTN_GHOST} border-accent/40 text-xs text-accent-text`}
+                  >
+                    {`אישור: שייך ${selected.size.toLocaleString("he-IL")} אליי (${repName})`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmTarget(null)}
+                    disabled={bulkBusy}
+                    className={`${BTN_GHOST} text-xs`}
+                  >
+                    ביטול
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmTarget("claim")}
+                  disabled={bulkBusy}
+                  className={`${BTN_GHOST} text-xs`}
+                >
+                  שייך אליי
+                </button>
+              )}
               {bulkBusy && <span className="text-xs text-muted">מעדכן…</span>}
               <button
                 type="button"
                 onClick={() => {
                   setSelected(new Set());
-                  setConfirmStatus(null);
+                  setConfirmTarget(null);
                 }}
                 disabled={bulkBusy}
                 className="ms-auto text-xs text-muted underline underline-offset-2 disabled:opacity-50"
@@ -428,6 +600,16 @@ export default function CrmLeads() {
           {bulkMsg && (
             <p className={`text-xs font-medium ${bulkMsg.ok ? "text-value-text" : "text-danger-text"}`} role="status">
               {bulkMsg.text}
+              {undoEntries && (
+                <button
+                  type="button"
+                  onClick={() => void applyUndo()}
+                  disabled={bulkBusy}
+                  className="ms-2 font-semibold text-accent-text underline underline-offset-2 disabled:opacity-50"
+                >
+                  ביטול — שחזור השלבים הקודמים
+                </button>
+              )}
             </p>
           )}
           {shown.length === 0 ? (
@@ -466,15 +648,24 @@ export default function CrmLeads() {
                 </tr>
               </thead>
               <tbody>
-                {shown.map((l) => (
-                  // A plain <tr> keeps row/cell semantics (the scope="col" headers
-                  // stay associated); the row onClick is a pointer-only convenience.
-                  // Keyboard/AT access lives on the real name-cell <button> below,
-                  // a sibling control of the selection checkbox.
+                {shown.map((l, i) => (
+                  // A focusable <tr> (roving tabindex) keeps row/cell semantics
+                  // (the scope="col" headers stay associated) while giving the
+                  // keyboard ↑/↓/Enter/Space triage above; the row onClick stays
+                  // a pointer convenience. The real name-cell <button> remains a
+                  // sibling control of the selection checkbox for AT users.
                   <tr
                     key={l.id}
+                    ref={(el) => {
+                      rowRefs.current[i] = el;
+                    }}
+                    tabIndex={i === effActiveRow ? 0 : -1}
+                    onFocus={(e) => {
+                      if (e.target === e.currentTarget) setActiveRow(i);
+                    }}
+                    onKeyDown={(e) => onRowKeyDown(e, i, l)}
                     onClick={() => setSelectedId(l.id)}
-                    className={`cursor-pointer border-b border-border/60 last:border-0 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5 ${
+                    className={`cursor-pointer border-b border-border/60 outline-none last:border-0 focus-visible:bg-accent/5 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/5 ${
                       selected.has(l.id) ? "bg-accent/5" : ""
                     }`}
                   >
@@ -505,7 +696,12 @@ export default function CrmLeads() {
                     <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
                     <td className="px-4 py-2 text-muted">{l.source || "—"}</td>
                     <td className="px-4 py-2 text-muted">{l.claimedBy || "—"}</td>
-                    <td className="px-4 py-2"><StatusPill status={l.status} /></td>
+                    <td className="px-4 py-2">
+                      <span className="inline-flex flex-wrap items-center gap-1.5">
+                        <StatusPill status={l.status} />
+                        {l.status === "new" && <LeadAgeChip createdAt={l.createdAt} nowMs={nowMs} slaHours={slaHours} />}
+                      </span>
+                    </td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted">{when(l.createdAt)}</td>
                   </tr>
                 ))}
@@ -547,7 +743,10 @@ export default function CrmLeads() {
                       <p className="truncate text-xs text-muted" dir="ltr">{l.phone || "—"}</p>
                     </div>
                   </div>
-                  <StatusPill status={l.status} />
+                  <span className="inline-flex flex-col items-end gap-1">
+                    <StatusPill status={l.status} />
+                    {l.status === "new" && <LeadAgeChip createdAt={l.createdAt} nowMs={nowMs} slaHours={slaHours} />}
+                  </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
                   {l.provider && <span>ספק: {l.provider}</span>}
@@ -564,8 +763,15 @@ export default function CrmLeads() {
       )}
 
       {selectedId && (
+        // key={selectedId} remounts the drawer per lead, preserving its
+        // "leadId is fixed for this instance" load contract while prev/next
+        // pages between the current view's leads.
         <CrmLeadDrawer
+          key={selectedId}
           leadId={selectedId}
+          prevId={prevLeadId}
+          nextId={nextLeadId}
+          onNavigate={(id) => setSelectedId(id)}
           onClose={() => setSelectedId(null)}
           onChanged={() => void reload()}
         />

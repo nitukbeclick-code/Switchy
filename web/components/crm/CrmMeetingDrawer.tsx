@@ -19,7 +19,7 @@ import {
   type MeetingStatus,
   setCrmMeetingStatus,
 } from "@/lib/crm-admin";
-import { BTN_GHOST, BTN_PRIMARY, MEETING_STATUS_META, when } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, eventTint, MEETING_STATUS_META, MeetingStatusPill, relTime, when } from "./ui";
 
 // The lifecycle transitions a rep actually performs by hand. `pending`/`expired`
 // are system states, so they're not offered as buttons (the server still accepts
@@ -61,7 +61,12 @@ export default function CrmMeetingDrawer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [savingStatus, setSavingStatus] = useState<MeetingStatus | null>(null);
-  const [notice, setNotice] = useState("");
+  // Action feedback: `ok:false` renders in the danger token so a failed write
+  // can never be skimmed past as a success message.
+  const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
+  // Clock for the timeline's relative ages — sampled when a load lands (in the
+  // .then continuation), never during render (react-hooks/purity).
+  const [nowMs, setNowMs] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -74,8 +79,10 @@ export default function CrmMeetingDrawer({
   const load = useCallback(
     () =>
       fetchCrmMeetingDetail(meetingId).then((d) => {
-        if (d) setData(d);
-        else setError(true);
+        if (d) {
+          setData(d);
+          setNowMs(Date.now()); // fresh clock for the fresh timeline
+        } else setError(true);
         setLoading(false);
       }),
     [meetingId],
@@ -99,15 +106,15 @@ export default function CrmMeetingDrawer({
     async (status: MeetingStatus) => {
       if (!data || status === data.meeting.status || savingStatus) return;
       setSavingStatus(status);
-      setNotice("");
+      setNotice(null);
       const ok = await setCrmMeetingStatus(meetingId, status);
       setSavingStatus(null);
       if (ok) {
-        setNotice("הסטטוס עודכן.");
+        setNotice({ text: "הסטטוס עודכן.", ok: true });
         await reload();
         onChanged?.();
       } else {
-        setNotice("עדכון הסטטוס נכשל. נסו שוב.");
+        setNotice({ text: "עדכון הסטטוס נכשל. נסו שוב.", ok: false });
       }
     },
     [data, savingStatus, meetingId, reload, onChanged],
@@ -138,8 +145,8 @@ export default function CrmMeetingDrawer({
           {loading ? (
             <p className="text-sm text-muted">טוען…</p>
           ) : error || !meeting ? (
-            <div className="rounded-2xl border border-border bg-surface p-4 text-center shadow-soft">
-              <p className="text-sm text-muted">לא הצלחנו לטעון את הפגישה.</p>
+            <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4 text-center shadow-soft">
+              <p className="text-sm font-medium text-danger-text">לא הצלחנו לטעון את הפגישה.</p>
               <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
                 נסו שוב
               </button>
@@ -181,8 +188,12 @@ export default function CrmMeetingDrawer({
                     );
                   })}
                 </div>
-                <p role="status" aria-live="polite" className="mt-2 min-h-4 text-xs text-accent-text">
-                  {notice}
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-2 min-h-4 text-xs ${notice && !notice.ok ? "text-danger-text" : "text-accent-text"}`}
+                >
+                  {notice?.text ?? ""}
                 </p>
               </section>
 
@@ -229,15 +240,18 @@ export default function CrmMeetingDrawer({
                 ) : (
                   <ul className="space-y-2">
                     {data?.events.map((e) => (
-                      <li key={e.id} className="rounded-xl border border-border bg-surface p-2.5 text-xs">
+                      <li key={e.id} className={`rounded-xl border p-2.5 text-xs ${eventTint(e.event)}`}>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-ink">{EVENT_LABEL[e.event] ?? e.event}</span>
-                          <span className="text-muted">{when(e.createdAt)}</span>
+                          <span className="text-muted" title={when(e.createdAt)}>
+                            {relTime(e.createdAt, nowMs) || when(e.createdAt)}
+                          </span>
                         </div>
                         {(e.oldStatus || e.newStatus) && (
-                          <p className="mt-0.5 text-muted">
-                            {e.oldStatus ? `${statusLabel(e.oldStatus)} → ` : ""}
-                            {statusLabel(e.newStatus)}
+                          <p className="mt-1 flex flex-wrap items-center gap-1 text-muted">
+                            {e.oldStatus && <MeetingStatusPill status={e.oldStatus} />}
+                            {e.oldStatus && e.newStatus && <span aria-hidden="true">←</span>}
+                            {e.newStatus && <MeetingStatusPill status={e.newStatus} />}
                           </p>
                         )}
                         {e.note && <p className="mt-0.5 whitespace-pre-wrap text-foreground">{e.note}</p>}

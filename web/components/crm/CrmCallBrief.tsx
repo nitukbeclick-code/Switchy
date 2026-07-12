@@ -134,6 +134,11 @@ export default function CrmCallBrief({ leadId }: { leadId: string }) {
       <button type="button" onClick={() => void copy()} className={`${BTN_GHOST} w-full`}>
         {copied ? "הועתק ✓" : "העתק תדריך מלא"}
       </button>
+      {/* Always-mounted polite live region so a screen reader announces the
+          copy confirmation (the button's text swap alone isn't announced). */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {copied ? "התדריך הועתק ללוח" : ""}
+      </span>
     </div>
   );
 }

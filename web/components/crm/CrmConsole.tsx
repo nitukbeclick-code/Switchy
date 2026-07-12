@@ -3,17 +3,21 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <CrmConsole> — the CRM management console shell: the admin UX gate + the
 // section tab-nav, routing to each section component. The is_admin check here is
-// UX ONLY — every crm-api call re-verifies is_admin server-side (requireAdmin),
+// UX ONLY — every crm-api call re-verifies access server-side (requireCrmAccess),
 // so a forced non-admin just gets empty/failed loads. Sections own their own
 // data + loading/error states; this shell stays thin.
 //
 // The active section lives in the URL (?tab=leads) so refresh, back/forward and
-// shared deep-links land on the right tab. useSearchParams on a prerendered
-// route CSR-bails to the nearest <Suspense>, so the boundary is provided here
-// (the /crm server shell stays a plain <CrmConsole />).
+// shared deep-links land on the right tab: tab hops replace (never pile up
+// history), a popstate (browser back/forward across history entries whose ?tab=
+// differs) re-syncs the local state, and switching tabs PRESERVES the sibling
+// tabs' mirrored filter params (each list view keeps its own keys in the URL).
+// useSearchParams on a prerendered route CSR-bails to the nearest <Suspense>,
+// so the boundary is provided here (the /crm server shell stays a plain
+// <CrmConsole />).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { type KeyboardEvent, Suspense, useRef, useState } from "react";
+import { type KeyboardEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import CrmAnalytics from "./CrmAnalytics";
@@ -77,11 +81,30 @@ function CrmConsoleInner() {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Local state switches instantly; the URL mirrors it. replace (not push) —
-  // tab hops shouldn't pile up history entries.
-  const selectTab = (key: TabKey) => {
-    setTab(key);
-    router.replace(`?tab=${key}`, { scroll: false });
-  };
+  // tab hops shouldn't pile up history entries. The sibling tabs' mirrored
+  // filter params are preserved so switching back restores their exact view.
+  const selectTab = useCallback(
+    (key: TabKey) => {
+      setTab(key);
+      const qs = new URLSearchParams(window.location.search);
+      qs.set("tab", key);
+      router.replace(`?${qs.toString()}`, { scroll: false });
+    },
+    [router],
+  );
+
+  // Back/forward sync: when the browser navigates between history entries whose
+  // ?tab= differs (deep links, cross-page returns), re-derive the local tab from
+  // the URL. popstate is an EVENT, so the setState here stays event-driven —
+  // never a synchronous set inside an effect body (react-hooks/set-state-in-effect).
+  useEffect(() => {
+    const onPop = () => {
+      const t = new URLSearchParams(window.location.search).get("tab");
+      setTab(isTabKey(t) ? t : "dashboard");
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   // ARIA tabs keyboard model (roving tabindex). The row renders right→left
   // (RTL), so ArrowLeft moves to the NEXT tab and ArrowRight to the previous;
@@ -162,7 +185,7 @@ function CrmConsoleInner() {
       </nav>
 
       <div role="tabpanel" id="crm-tabpanel" aria-labelledby={`crm-tab-${tab}`}>
-        {tab === "dashboard" && <CrmDashboard />}
+        {tab === "dashboard" && <CrmDashboard onNavigate={selectTab} />}
         {tab === "leads" && <CrmLeads />}
         {tab === "meetings" && <CrmMeetings />}
         {tab === "conversations" && <CrmInbox />}

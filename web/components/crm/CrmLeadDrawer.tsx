@@ -3,10 +3,13 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <CrmLeadDrawer> — a slide-in panel with one lead's full CRM detail + activity
 // timeline, and the pipeline-stage changer. Reads crm-api `getLeadDetail` and
-// writes via `setLeadStatus` (both admin-gated, service_role, audited). Every
+// writes via `setLeadStatus` (both access-gated, service_role, audited). Every
 // field is a real crm-api value; nothing is fabricated. Closes on overlay click
 // or Escape. As an aria-modal dialog it owns focus while open: focus moves to the
 // close button on open, Tab is trapped inside, and focus returns to the opener.
+// When the parent list passes prev/next ids, the header pages between leads —
+// the parent remounts the drawer per lead (key={selectedId}), so `leadId` stays
+// fixed for each instance's lifetime.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,6 +18,7 @@ import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
   addCrmNote,
   claimCrmLead,
+  type CrmFailure,
   type CrmLeadDetail,
   type CrmLeadEvent,
   fetchCrmLeadDetail,
@@ -25,7 +29,7 @@ import {
   setCrmLeadStatus,
 } from "@/lib/crm-admin";
 import CrmCallBrief from "./CrmCallBrief";
-import { BTN_GHOST, BTN_PRIMARY, LEAD_STATUS_META, when } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, eventTint, LEAD_STATUS_META, relTime, StatusPill, when } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
 
@@ -51,22 +55,37 @@ export default function CrmLeadDrawer({
   leadId,
   onClose,
   onChanged,
+  prevId,
+  nextId,
+  onNavigate,
 }: {
   leadId: string;
   onClose: () => void;
   onChanged?: () => void;
+  /** The previous/next lead in the parent list's current view (null at an edge). */
+  prevId?: string | null;
+  nextId?: string | null;
+  /** Page to another lead — the parent swaps selectedId and remounts the drawer. */
+  onNavigate?: (id: string) => void;
 }) {
   const [data, setData] = useState<{ lead: CrmLeadDetail; events: CrmLeadEvent[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // The typed reason of the last failed load (server message + retryability).
+  const [failure, setFailure] = useState<CrmFailure | null>(null);
   const [savingStatus, setSavingStatus] = useState<LeadStatus | null>(null);
-  const [notice, setNotice] = useState("");
+  // Action feedback: `ok:false` renders in the danger token so a failed write
+  // can never be skimmed past as a success message.
+  const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
   const { profile } = useAuth();
   const [note, setNote] = useState("");
   const [mainNote, setMainNote] = useState("");
   const [savingInput, setSavingInput] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
+  // Clock for the timeline's relative ages — sampled when a load lands (in the
+  // .then continuation), never during render (react-hooks/purity).
+  const [nowMs, setNowMs] = useState(0);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -84,14 +103,18 @@ export default function CrmLeadDrawer({
   const load = useCallback(
     () =>
       fetchCrmLeadDetail(leadId).then((d) => {
-        if (d) {
-          setData(d);
+        if (d.data) {
+          setData(d.data);
+          setNowMs(Date.now()); // fresh clock for the fresh timeline
           // Keep the editable main-note field in sync with the loaded/saved value.
-          if (d.lead.notes !== lastNotesRef.current) {
-            lastNotesRef.current = d.lead.notes;
-            setMainNote(d.lead.notes ?? "");
+          if (d.data.lead.notes !== lastNotesRef.current) {
+            lastNotesRef.current = d.data.lead.notes;
+            setMainNote(d.data.lead.notes ?? "");
           }
-        } else setError(true);
+        } else {
+          setFailure(d.failure);
+          setError(true);
+        }
         setLoading(false);
       }),
     [leadId],
@@ -104,6 +127,7 @@ export default function CrmLeadDrawer({
   const reload = useCallback(async () => {
     setLoading(true);
     setError(false);
+    setFailure(null);
     await load();
   }, [load]);
 
@@ -115,15 +139,15 @@ export default function CrmLeadDrawer({
     async (status: LeadStatus) => {
       if (!data || status === data.lead.status || savingStatus) return;
       setSavingStatus(status);
-      setNotice("");
+      setNotice(null);
       const ok = await setCrmLeadStatus(leadId, status);
       setSavingStatus(null);
       if (ok) {
-        setNotice("הסטטוס עודכן.");
+        setNotice({ text: "הסטטוס עודכן.", ok: true });
         await reload();
         onChanged?.();
       } else {
-        setNotice("עדכון הסטטוס נכשל. נסו שוב.");
+        setNotice({ text: "עדכון הסטטוס נכשל. נסו שוב.", ok: false });
       }
     },
     [data, savingStatus, leadId, reload, onChanged],
@@ -135,15 +159,15 @@ export default function CrmLeadDrawer({
     async (fn: () => Promise<boolean>, okMsg: string): Promise<boolean> => {
       if (actionBusy) return false;
       setActionBusy(true);
-      setNotice("");
+      setNotice(null);
       const ok = await fn();
       setActionBusy(false);
       if (ok) {
-        setNotice(okMsg);
+        setNotice({ text: okMsg, ok: true });
         await reload();
         onChanged?.();
       } else {
-        setNotice("הפעולה נכשלה. נסו שוב.");
+        setNotice({ text: "הפעולה נכשלה. נסו שוב.", ok: false });
       }
       return ok;
     },
@@ -162,7 +186,7 @@ export default function CrmLeadDrawer({
   const onRecordSaving = useCallback(async () => {
     const n = Number(savingInput);
     if (!Number.isFinite(n) || n <= 0) {
-      setNotice("הזינו סכום חיסכון שנתי תקין.");
+      setNotice({ text: "הזינו סכום חיסכון שנתי תקין.", ok: false });
       return;
     }
     const ok = await runAction(() => recordCrmSaving(leadId, n), "החיסכון נרשם והליד נסגר בהצלחה.");
@@ -188,20 +212,48 @@ export default function CrmLeadDrawer({
               </p>
             )}
           </div>
-          <button ref={closeBtnRef} type="button" onClick={onClose} className={`${BTN_GHOST} min-h-9 px-3`}>
-            סגור
-          </button>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {onNavigate && (prevId != null || nextId != null) && (
+              // prev/next paging over the parent's current view. RTL: the
+              // previous lead sits visually to the right, next to the left.
+              <>
+                <button
+                  type="button"
+                  disabled={!prevId}
+                  onClick={() => prevId && onNavigate(prevId)}
+                  aria-label="הליד הקודם"
+                  className={`${BTN_GHOST} min-h-9 px-2.5`}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  disabled={!nextId}
+                  onClick={() => nextId && onNavigate(nextId)}
+                  aria-label="הליד הבא"
+                  className={`${BTN_GHOST} min-h-9 px-2.5`}
+                >
+                  ›
+                </button>
+              </>
+            )}
+            <button ref={closeBtnRef} type="button" onClick={onClose} className={`${BTN_GHOST} min-h-9 px-3`}>
+              סגור
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 space-y-5 p-4">
           {loading ? (
             <p className="text-sm text-muted">טוען…</p>
           ) : error || !lead ? (
-            <div className="rounded-2xl border border-border bg-surface p-4 text-center shadow-soft">
-              <p className="text-sm text-muted">לא הצלחנו לטעון את הליד.</p>
-              <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
-                נסו שוב
-              </button>
+            <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4 text-center shadow-soft">
+              <p className="text-sm font-medium text-danger-text">{failure?.message || "לא הצלחנו לטעון את הליד."}</p>
+              {(failure ? failure.retryable : true) && (
+                <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
+                  נסו שוב
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -229,8 +281,12 @@ export default function CrmLeadDrawer({
                     );
                   })}
                 </div>
-                <p role="status" aria-live="polite" className="mt-2 min-h-4 text-xs text-accent-text">
-                  {notice}
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className={`mt-2 min-h-4 text-xs ${notice && !notice.ok ? "text-danger-text" : "text-accent-text"}`}
+                >
+                  {notice?.text ?? ""}
                 </p>
               </section>
 
@@ -379,15 +435,18 @@ export default function CrmLeadDrawer({
                 ) : (
                   <ul className="space-y-2">
                     {data?.events.map((e) => (
-                      <li key={e.id} className="rounded-xl border border-border bg-surface p-2.5 text-xs">
+                      <li key={e.id} className={`rounded-xl border p-2.5 text-xs ${eventTint(e.event)}`}>
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-ink">{EVENT_LABEL[e.event] ?? e.event}</span>
-                          <span className="text-muted">{when(e.createdAt)}</span>
+                          <span className="text-muted" title={when(e.createdAt)}>
+                            {relTime(e.createdAt, nowMs) || when(e.createdAt)}
+                          </span>
                         </div>
                         {(e.oldStatus || e.newStatus) && (
-                          <p className="mt-0.5 text-muted">
-                            {e.oldStatus ? `${LEAD_STATUS_META[e.oldStatus as LeadStatus]?.label ?? e.oldStatus} → ` : ""}
-                            {e.newStatus ? LEAD_STATUS_META[e.newStatus as LeadStatus]?.label ?? e.newStatus : ""}
+                          <p className="mt-1 flex flex-wrap items-center gap-1 text-muted">
+                            {e.oldStatus && <StatusPill status={e.oldStatus} />}
+                            {e.oldStatus && e.newStatus && <span aria-hidden="true">←</span>}
+                            {e.newStatus && <StatusPill status={e.newStatus} />}
                           </p>
                         )}
                         {e.note && <p className="mt-0.5 whitespace-pre-wrap text-foreground">{e.note}</p>}

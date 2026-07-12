@@ -1,15 +1,17 @@
 "use client";
 
 // ────────────────────────────────────────────────────────────────────────────
-// Shared CRM-console UI primitives — button recipes, date formatting, lead-status
-// display metadata, status pills, KPI stat cards, and small state panels. One
-// place so every console section (dashboard / leads / inbox / analytics) renders
-// consistently against the premium-2026 design tokens. Presentation only; all
-// data + authority live in crm-api behind the admin gate.
+// Shared CRM-console UI primitives — button recipes, date/relative-time
+// formatting, lead-status display metadata, status pills, event tints, KPI stat
+// cards, small state panels, and the URL-mirroring helper the list views use to
+// keep their filters refresh/tab-switch-proof. One place so every console
+// section (dashboard / leads / inbox / analytics) renders consistently against
+// the premium-2026 design tokens. Presentation only; all data + authority live
+// in crm-api behind the access gate.
 // ────────────────────────────────────────────────────────────────────────────
 
 import type { ReactNode } from "react";
-import type { LeadStatus } from "@/lib/crm-admin";
+import type { CrmFailure, LeadStatus } from "@/lib/crm-admin";
 
 // Button recipes — identical to the moderation console (AdminModeration.tsx) so
 // the whole admin surface feels like one product.
@@ -18,13 +20,47 @@ export const BTN_PRIMARY =
 export const BTN_GHOST =
   "interactive inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-1.5 text-sm font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10";
 
-/** he-IL short date-time (e.g. "3 ביולי, 14:05"), or "" for an absent/bad value. */
+/** he-IL short date-time (e.g. "3 ביולי, 14:05"), or "" for an absent/bad value.
+ *  A timestamp from a DIFFERENT year than today's includes the year — "3 ביולי
+ *  2025, 14:05" — so an old lead can't masquerade as this year's. */
 export function when(ts: string | null | undefined): string {
   if (!ts) return "";
   const d = new Date(ts);
-  return Number.isNaN(d.getTime())
-    ? ""
-    : d.toLocaleString("he-IL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  if (Number.isNaN(d.getTime())) return "";
+  const opts: Intl.DateTimeFormatOptions = {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleString("he-IL", opts);
+}
+
+/**
+ * Short Hebrew relative age ("עכשיו", "לפני 5 דק׳", "לפני שעה", "לפני 3 ימים").
+ * Pure over (ts, nowMs) so it is unit-testable without a clock — callers sample
+ * Date.now() in an event/continuation (never during render) and pass it in.
+ * Beyond ~30 days (or for a future/absent timestamp) it falls back to the
+ * absolute `when()` string — a stale "לפני 60 ימים" reads worse than a date.
+ */
+export function relTime(ts: string | null | undefined, nowMs: number): string {
+  if (!ts) return "";
+  const t = Date.parse(ts);
+  if (!Number.isFinite(t)) return "";
+  const diff = nowMs - t;
+  if (diff < 0) return when(ts); // future → absolute, never a negative age
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "עכשיו";
+  if (mins === 1) return "לפני דקה";
+  if (mins < 60) return `לפני ${mins} דק׳`;
+  const hours = Math.floor(mins / 60);
+  if (hours === 1) return "לפני שעה";
+  if (hours < 24) return `לפני ${hours} שע׳`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "אתמול";
+  if (days <= 30) return `לפני ${days} ימים`;
+  return when(ts);
 }
 
 /** A short he-IL duration from minutes ("42 דק׳", "2 שע׳ 5 דק׳"), or "—" for a
@@ -36,6 +72,30 @@ export function formatMinutes(mins: number | null | undefined): string {
   const h = Math.floor(m / 60);
   const r = m % 60;
   return r > 0 ? `${h} שע׳ ${r} דק׳` : `${h} שע׳`;
+}
+
+/** Canonical-form UUID check (the grant form validates a pasted uid with this
+ *  before ever sending it, so a typo fails fast client-side). */
+export function isUuid(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
+/**
+ * Mirror list-view filters into the current URL via a shallow
+ * history.replaceState (no Next navigation, no scroll, no history entry), so a
+ * refresh or a tab-switch restores the exact view. A null/"" value DELETES its
+ * key — default filters keep the URL clean. Other params (?tab=, sibling tabs'
+ * filters) are preserved untouched.
+ */
+export function mirrorUrlParams(entries: Record<string, string | null>): void {
+  if (typeof window === "undefined") return;
+  const qs = new URLSearchParams(window.location.search);
+  for (const [k, v] of Object.entries(entries)) {
+    if (v == null || v === "") qs.delete(k);
+    else qs.set(k, v);
+  }
+  const s = qs.toString();
+  window.history.replaceState(null, "", s ? `?${s}` : window.location.pathname);
 }
 
 type Tone = "neutral" | "info" | "value" | "danger";
@@ -118,26 +178,93 @@ export function ContactStatusPill({ status }: { status: string }) {
   return <Pill label={meta?.label ?? status} tone={meta?.tone ?? "neutral"} />;
 }
 
-/** A KPI stat card: a big number with a label and an optional hint/sub-line. */
+// Per-event-type tint for the drawers' activity timelines: a saving lands in the
+// value tone, a status change in the accent, an undo in danger — so a rep can
+// scan the trail's shape without reading every line. Unknown kinds stay neutral.
+const EVENT_TINT: Record<string, string> = {
+  status_change: "border-accent/30 bg-accent/5",
+  claim: "border-accent/30 bg-accent/5",
+  saving: "border-value/40 bg-value/5",
+  won: "border-value/40 bg-value/5",
+  undo: "border-danger/30 bg-danger/5",
+  created: "border-accent/30 bg-accent/5",
+};
+
+/** Timeline-card border/background classes for a lead/meeting event kind. */
+export function eventTint(event: string): string {
+  return EVENT_TINT[event] ?? "border-border bg-surface";
+}
+
+/**
+ * The age of a (new) lead as a chip: relative time since createdAt, flipping to
+ * the danger tone + an "SLA" tag once the wait exceeds `slaHours` (from the
+ * server's slaMetrics — never a client-invented threshold). Renders nothing
+ * until the caller has sampled a clock (nowMs > 0) — no guessed ages.
+ */
+export function LeadAgeChip({
+  createdAt,
+  nowMs,
+  slaHours,
+}: {
+  createdAt: string | null;
+  nowMs: number;
+  slaHours: number | null;
+}) {
+  if (!createdAt || nowMs <= 0) return null;
+  const t = Date.parse(createdAt);
+  if (!Number.isFinite(t)) return null;
+  const label = relTime(createdAt, nowMs);
+  if (!label) return null;
+  const breach = slaHours != null && slaHours > 0 && nowMs - t > slaHours * 3_600_000;
+  return (
+    <span
+      title={breach ? `ממתין מעל ${slaHours} שעות — חריגת SLA` : "ממתין מאז שנוצר"}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums ${
+        breach ? TONE_PILL.danger : TONE_PILL.neutral
+      }`}
+    >
+      {breach ? `${label} · SLA` : label}
+    </span>
+  );
+}
+
+/** A KPI stat card: a big number with a label and an optional hint/sub-line.
+ *  With `onClick` it renders as a real button (the dashboard's morning-launcher
+ *  cards deep-link into their tab) — same visual, keyboard/AT-reachable. */
 export function StatCard({
   label,
   value,
   hint,
   tone = "neutral",
+  onClick,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
   tone?: Tone;
+  onClick?: () => void;
 }) {
   const accent = tone === "value" ? "text-value-text" : tone === "danger" ? "text-danger-text" : tone === "info" ? "text-accent-text" : "text-ink";
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
+  const body = (
+    <>
       <p className="text-xs font-medium text-muted">{label}</p>
       <p className={`mt-1 font-display text-3xl font-bold tabular-nums ${accent}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
-    </div>
+    </>
   );
+  const box = "rounded-2xl border border-border bg-surface p-4 shadow-soft";
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${box} interactive block w-full text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40`}
+      >
+        {body}
+      </button>
+    );
+  }
+  return <div className={box}>{body}</div>;
 }
 
 /** Centered notice card for empty / no-access / error / coming-soon states. */
@@ -147,5 +274,36 @@ export function NoticeCard({ children, action }: { children: ReactNode; action?:
       <p className="text-sm text-muted">{children}</p>
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
+  );
+}
+
+/**
+ * A load-failure NoticeCard: shows the typed server failure's Hebrew message
+ * when one exists (else `fallback`), and offers the retry action ONLY when a
+ * retry can actually help — a 401/403 (non-retryable) hides the button instead
+ * of inviting a loop that can never succeed.
+ */
+export function ErrorNotice({
+  failure,
+  fallback,
+  onRetry,
+}: {
+  failure?: CrmFailure | null;
+  fallback: string;
+  onRetry?: () => void;
+}) {
+  const retryable = failure ? failure.retryable : true;
+  return (
+    <NoticeCard
+      action={
+        onRetry && retryable ? (
+          <button type="button" onClick={onRetry} className={BTN_GHOST}>
+            נסו שוב
+          </button>
+        ) : undefined
+      }
+    >
+      {failure?.message || fallback}
+    </NoticeCard>
   );
 }

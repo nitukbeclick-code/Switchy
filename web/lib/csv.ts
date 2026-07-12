@@ -30,6 +30,17 @@ export function buildCsv(headers: string[], rows: readonly unknown[][]): string 
   return "﻿" + lines.join("\r\n");
 }
 
+/**
+ * Build an export filename, marking a truncated window honestly: when `partial`
+ * is true (the source list filled its server window, e.g. exactly 200 rows, so
+ * older rows exist that this file does NOT contain) the name gains a
+ * "-partial" suffix — `leads-all-partial.csv` can't be mistaken for the whole
+ * pipeline. Shared by the leads/contacts/meetings exports.
+ */
+export function csvFileName(base: string, partial: boolean): string {
+  return `${base}${partial ? "-partial" : ""}.csv`;
+}
+
 /** Trigger a browser download of `content` as `filename` (no-op server-side). */
 export function downloadCsv(filename: string, content: string): void {
   if (typeof document === "undefined") return;

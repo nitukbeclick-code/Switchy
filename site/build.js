@@ -1072,7 +1072,7 @@ function planCardHtml(p, best) {
   const afterTxt = `ואז <span dir="ltr">₪${p.afterExact != null ? p.afterExact : p.after}</span>`;
   const after = p.after
     ? (p.id
-      ? `<button type="button" class="plan__after plan__after--btn" data-plan-more="${esc(p.id)}" aria-haspopup="dialog" aria-label="${esc(`מה קורה אחרי המבצע ב${p.provider} ${p.plan} — כל הפרטים`)}">${afterTxt}</button>`
+      ? `<button type="button" class="plan__after plan__after--btn" data-plan-more="${esc(p.id)}" aria-haspopup="dialog" aria-label="${esc(`ואז ₪${p.afterExact != null ? p.afterExact : p.after} — מה קורה אחרי המבצע ב${p.provider} ${p.plan}`)}">${afterTxt}</button>`
       : `<span class="plan__after">${afterTxt}</span>`)
     : '';
   // Card variant: the value anchor (cheapest in its category) reads as a budget
@@ -1098,11 +1098,11 @@ function planCardHtml(p, best) {
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת בוואטסאפ — ${p.provider} ${p.plan}`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
           <a class="plan__compare" role="button" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
           <button type="button" class="plan__watch" data-watch="${esc(p.id || '')}" data-watch-name="${esc(`${p.provider} ${p.plan}`)}" title="עקבו אחרי המסלול — עדכון במייל כשהמחיר יורד" aria-label="${esc(`קבלו עדכון במייל כשהמחיר של ${p.provider} ${p.plan} יורד`)}" aria-pressed="false">${svgIcon('bell')}</button>
         </div>
-        <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול${chev(true)}</button>
+        <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על המסלול — ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול${chev(true)}</button>
       </article>`;
 }
 

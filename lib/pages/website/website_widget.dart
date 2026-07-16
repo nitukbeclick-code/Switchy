@@ -7,6 +7,7 @@ import '../../theme/app_icons.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../widgets/pressable.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
@@ -281,7 +282,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                           button: true,
                           selected: active,
                           label: cat.name,
-                          child: GestureDetector(
+                          child: Pressable(
                             onTap: () => setState(() => _activeCat = cat.id),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -592,7 +593,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             Semantics(
               button: true,
               label: 'בדוק עכשיו — עד ₪$saving לשנה $catLabel',
-              child: GestureDetector(
+              child: Pressable(
                 onTap: () {
                   final appState = Provider.of<AppState>(context, listen: false);
                   appState.setCategory(cat);

@@ -392,7 +392,7 @@ class AccountWidget extends StatelessWidget {
                             child: Text('תקציב השאלון: ₪${appState.quizBudget}${billUnitLabel(appState.quizCat)}',
                                 style: ffTheme.bodyMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                           ),
-                          GestureDetector(
+                          Pressable(
                             onTap: () => context.goNamed('Results'),
                             child: Text('לתוצאות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                           ),
@@ -574,7 +574,7 @@ class _SectionHeader extends StatelessWidget {
         ],
         if (trailingLabel != null) ...[
           const Spacer(),
-          GestureDetector(
+          Pressable(
             onTap: onTrailingTap,
             child: Text(trailingLabel!,
                 style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),

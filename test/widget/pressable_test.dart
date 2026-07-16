@@ -52,7 +52,7 @@ void main() {
 
   testWidgets('scales down to pressedScale on tap-down', (tester) async {
     await tester.pumpWidget(_wrap(
-      const Pressable(scale: 0.8, child: Text('לחץ')),
+      Pressable(scale: 0.8, onTap: () {}, child: const Text('לחץ')),
     ));
 
     // At rest the scale is 1.0.
@@ -74,6 +74,23 @@ void main() {
       tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
       1.0,
     );
+  });
+
+  testWidgets('does not scale when it has no handler', (tester) async {
+    // A conditionally-null onTap (e.g. a logged-out avatar) must not give
+    // press feedback — feedback without an action reads as a broken button.
+    await tester.pumpWidget(_wrap(
+      const Pressable(scale: 0.8, child: Text('מנוטרל')),
+    ));
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text('מנוטרל')));
+    await tester.pump();
+    expect(
+      tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
+      1.0,
+    );
+    await gesture.up();
+    await tester.pump();
   });
 
   testWidgets('honours reduced-motion by skipping the scale', (tester) async {

@@ -503,7 +503,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 Semantics(
                   button: appState.isLoggedIn,
                   label: appState.isLoggedIn ? 'עריכת פרופיל' : null,
-                  child: GestureDetector(
+                  child: Pressable(
                   onTap: appState.isLoggedIn ? () => _showEditProfile(context, appState, ffTheme) : null,
                   child: Stack(
                     children: [
@@ -1092,9 +1092,8 @@ class _ThemeSegmented extends StatelessWidget {
               button: true,
               selected: active,
               label: s.$2,
-              child: GestureDetector(
+              child: Pressable(
                 onTap: () => onChanged(s.$1),
-                behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: ffTheme.motionMedium,
                   curve: ffTheme.easeOut,

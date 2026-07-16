@@ -343,8 +343,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     return Semantics(
                       button: true,
                       selected: active,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
+                      child: Pressable(
                         onTap: () => setSheet(() => selectedReason = r),
                         child: _MinTapTarget(
                           child: AnimatedContainer(
@@ -668,8 +667,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 child: Semantics(
                                   button: true,
                                   label: 'הסר צירוף',
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
+                                  child: Pressable(
                                     onTap: () => setSheet(() {
                                       replyPendingType = null;
                                       replyPendingData = null;
@@ -856,8 +854,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     return Semantics(
                       button: true,
                       selected: active,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
+                      child: Pressable(
                         onTap: () => setSheet(() => selectedChannel = ch),
                         child: _MinTapTarget(
                           child: AnimatedContainer(
@@ -966,8 +963,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                               child: Semantics(
                                 button: true,
                                 label: 'הסר צירוף',
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
+                                child: Pressable(
                                   onTap: () => setSheet(() { pendingType = null; pendingData = null; pendingDur = null; }),
                                   // 40dp hit area; the painted 20dp X keeps its corner.
                                   child: SizedBox(
@@ -1187,8 +1183,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 return Semantics(
                   button: true,
                   selected: active,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
+                  child: Pressable(
                     onTap: () => setState(() {
                       _activeChannel = ch;
                       _visibleCount = _feedPageSize;
@@ -1240,8 +1235,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 Semantics(
                   button: true,
                   toggled: _sortByPopular,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
+                  child: Pressable(
                     onTap: () => setState(() {
                       _sortByPopular = !_sortByPopular;
                       _visibleCount = _feedPageSize;
@@ -1276,8 +1270,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   label: 'פוסטים שמורים',
                   child: Tooltip(
                     message: 'פוסטים שמורים',
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
+                      haptic: false,
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() {
@@ -1322,8 +1316,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           : Semantics(
                               button: true,
                               label: 'נקה חיפוש',
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
+                              child: Pressable(
                                 onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
                                 // Center fills the 48dp prefix box so the whole
                                 // area accepts the tap, not just the 18px glyph.
@@ -1350,7 +1343,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             Semantics(
               button: true,
               label: 'עסקת השבוע — צפייה בחבילה',
-              child: GestureDetector(
+              child: Pressable(
               onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.planId!}),
               child: Container(
                 margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -1624,8 +1617,8 @@ class _PostCardState extends State<_PostCard> {
                       label: widget.bookmarked ? 'הסר מהשמורים' : 'שמור פוסט',
                       child: Tooltip(
                         message: widget.bookmarked ? 'הסר מהשמורים' : 'שמור',
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
+                        child: Pressable(
+                          haptic: false,
                           onTap: () => widget.onBookmark(post.id),
                           // >=48dp hit area; the painted 28dp chip stays put.
                           child: _MinTapTarget(
@@ -1739,8 +1732,7 @@ class _PostCardState extends State<_PostCard> {
                   Semantics(
                     button: true,
                     label: 'צפייה בחבילה',
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                       onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
                       // >=48dp hit area; neutral chip = surface + 1px hairline.
                       child: _MinTapTarget(
@@ -1986,8 +1978,7 @@ class _ReplyBubble extends StatelessWidget {
                       Semantics(
                         button: true,
                         label: 'דווח על תגובה',
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
+                        child: Pressable(
                           onTap: onReport,
                           // >=48dp hit area; the tiny painted flag stays put.
                           child: _MinTapTarget(

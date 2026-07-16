@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../legal.dart';
@@ -309,7 +310,7 @@ class _BillQuestionPage extends StatelessWidget {
                   button: true,
                   selected: isActive,
                   label: '₪$v לחודש',
-                  child: GestureDetector(
+                  child: Pressable(
                     onTap: () => onSelect(v),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
@@ -340,7 +341,7 @@ class _BillQuestionPage extends StatelessWidget {
               Semantics(
                 button: true,
                 label: 'לא יודע',
-                child: GestureDetector(
+                child: Pressable(
                   onTap: onDontKnow,
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 48, minWidth: 64),

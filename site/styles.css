@@ -255,7 +255,7 @@
 html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 
 body {
-  font-family: 'Assistant', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif;
   color: var(--ink);
   /* Living paper: a whisper dot-grid + an icy wash at the top of every page —
      depth for all ~240 pages from one rule. Sections with their own ground
@@ -286,7 +286,7 @@ body::after {
 
 ::selection { background: var(--ink-800); color: #fff; }
 
-h1, h2, h3, .brand__name { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; line-height: 1.12; }
+h1, h2, h3, .brand__name { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; line-height: 1.12; }
 /* Display headings get balanced wrapping so multi-line titles break evenly
    (no lonely orphan word on the last line) — a quiet editorial polish. */
 h1, h2 { text-wrap: balance; }
@@ -343,7 +343,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .btn {
   position: relative; overflow: hidden;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 15px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 15px;
   padding: 13px 24px; border-radius: 16px; border: 0; cursor: pointer;
   transition: transform .15s var(--ease-spring), box-shadow .18s var(--ease), background .18s;
   white-space: nowrap; isolation: isolate;
@@ -602,7 +602,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .hero__social strong { color: var(--ink); }
 .hero__stats { list-style: none; display: flex; flex-wrap: wrap; gap: 28px; margin-top: 34px; }
 .hero__stats li { display: flex; flex-direction: column; }
-.hero__stats b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 26px; font-weight: 800; color: var(--green-d); }
+.hero__stats b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 26px; font-weight: 800; color: var(--green-d); }
 .hero__stats span { font-size: 13px; color: var(--muted); }
 
 /* ── Calm INK hero — a flat near-black ink panel (matches the app's hero
@@ -704,7 +704,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 :root.a11y-contrast .hero__launch-prompt { color: var(--ink); -webkit-text-fill-color: var(--ink); }
 
 .hero__launch-prompt {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 19px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 19px;
   letter-spacing: -.4px; color: var(--ink-900); margin: 30px 0 0;
 }
 :root[data-theme="dark"] .hero__launch-prompt { color: #EAF7EF; }
@@ -748,7 +748,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .launch-tile__ico svg { width: 24px; height: 24px; fill: none; stroke: var(--tt, var(--accent-d)); }
 :root[data-theme="dark"] .launch-tile__ico svg { stroke: var(--tf, var(--accent)); }
 .launch-tile__body { margin-top: auto; padding-top: 14px; }
-.launch-tile__name { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
+.launch-tile__name { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
 .launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: var(--muted); }
 .launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tf, var(--accent)) 15%, transparent); color: var(--tt, var(--accent-ink)); font-weight: 800; font-size: 12.5px; }
 :root[data-theme="dark"] .launch-tile__price { color: var(--tf, var(--accent)); }
@@ -796,18 +796,18 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .card { background: #fff; border-radius: 18px; padding: 14px; box-shadow: var(--shadow-sm); }
 .card--save { background: linear-gradient(135deg, var(--green-d), var(--green)); color: #fff; text-align: center; padding: 18px; }
 .card__label { font-size: 12px; opacity: .8; }
-.card__big { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 38px; font-weight: 900; color: var(--value); margin: 4px 0; }
+.card__big { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 38px; font-weight: 900; color: var(--value); margin: 4px 0; }
 .card__hint { font-size: 11px; opacity: .7; }
 .card--row { display: flex; align-items: center; gap: 10px; padding: 11px 13px; }
 .card--row.best { border: 2px solid var(--green); }
 .card__text { display: flex; flex-direction: column; line-height: 1.25; }
 .card__text b { font-size: 14px; }
 .card__text small { font-size: 11px; color: var(--muted); }
-.logo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 13px; flex: none; }
+.logo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 13px; flex: none; }
 .logo--cel { background: #ece7fb; color: #4527a0; }
 .logo--par { background: #e6f3e8; color: #2e7d32; }
 .logo--gol { background: #e0f1ee; color: #00695c; }
-.tag { margin-inline-start: auto; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green); font-size: 15px; }
+.tag { margin-inline-start: auto; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green); font-size: 15px; }
 .tag--win { background: var(--accent-t); color: var(--accent-ink); font-weight: 800; padding: 4px 9px; border-radius: 9px; font-size: 12px; }
 
 /* ── Providers strip ─────────────────────────────────────────────────── */
@@ -831,7 +831,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 /* ── Trust strip (honest process signals, just below the hero) ─────────── */
 .trust { padding: 24px 0; background: var(--white); border-block: 1px solid var(--line); }
 .trust__row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 30px; }
-.trust__item { display: inline-flex; align-items: center; gap: 8px; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 15px; color: var(--ink-800); }
+.trust__item { display: inline-flex; align-items: center; gap: 8px; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 15px; color: var(--ink-800); }
 .trust__item .ico { width: 20px; height: 20px; color: var(--accent); flex: none; }
 @media (max-width: 560px) { .trust__row { gap: 10px 18px; } .trust__item { font-size: 12.5px; } }
 
@@ -884,7 +884,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 .section--alt .step { background: var(--cream); }
 .step { box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 /* .step:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
-.step__num { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: var(--glint), 0 6px 16px rgba(22,163,74,.32); }
+.step__num { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: var(--glint), 0 6px 16px rgba(22,163,74,.32); }
 @media (max-width: 900px) { .steps::before { display: none; } }
 .step h3 { font-size: 19px; color: var(--green-d); margin-bottom: 8px; }
 .step p { color: var(--muted); }
@@ -903,7 +903,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 /* Category cards are links to their landing pages — a quiet action cue that is
    always visible (so it reads as tappable on touch, where there is no hover)
    and nudges its arrow on hover. */
-.cat__go { display: block; margin-top: 12px; color: var(--accent-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; opacity: 1; transition: none; }
+.cat__go { display: block; margin-top: 12px; color: var(--accent-ink); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; opacity: 1; transition: none; }
 .cat__go { transition: transform .18s var(--ease); } /* overrides the letter-spacing transition above — transform-only, no layout */
 .cat:hover .cat__go { transform: translateX(-2px); }
 @media (prefers-reduced-motion: reduce) { .cat:hover .cat__go { transform: none; } }
@@ -920,7 +920,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 }
 .calc__card > * { position: relative; }
 .calc__row { display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-bottom: 12px; }
-.calc__row output { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 22px; color: var(--lime); }
+.calc__row output { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 22px; color: var(--lime); }
 .calc__card input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: rgba(255,255,255,.25); outline: none; }
 .calc__card input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.35); }
 .calc__card input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border: 3px solid #fff; border-radius: 50%; background: var(--accent); cursor: pointer; }
@@ -930,7 +930,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 .calc__card input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--green-d), 0 0 0 6px #fff; }
 .calc__result { text-align: center; margin: 26px 0 22px; }
 .calc__resultLabel { display: block; font-size: 14px; opacity: .8; }
-.calc__resultBig { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 52px; font-weight: 900; color: var(--value); letter-spacing: -1px; }
+.calc__resultBig { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 52px; font-weight: 900; color: var(--value); letter-spacing: -1px; }
 .calc__resultUnit { font-size: 14px; opacity: .8; }
 .calc__fine { font-size: 12px; opacity: .65; text-align: center; margin-top: 12px; }
 
@@ -971,7 +971,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 .faq__list details { background: var(--cream); border: 1px solid var(--line); border-radius: 14px; padding: 4px 20px; transition: box-shadow .2s var(--ease), border-color .2s, background .2s; }
 .faq__list details:hover { border-color: var(--ink-200); }
 .faq__list details[open] { box-shadow: var(--shadow); background: #fff; border-color: var(--ink-100); }
-.faq__list summary { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 17px; color: var(--green-d); padding: 16px 0; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: color .15s; border-radius: 8px; }
+.faq__list summary { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 17px; color: var(--green-d); padding: 16px 0; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: color .15s; border-radius: 8px; }
 .faq__list summary::-webkit-details-marker { display: none; }
 .faq__list summary:focus-visible { outline: none; box-shadow: var(--ring-flush); }
 .faq__list summary { transition: color .15s, transform .16s var(--ease); }
@@ -1014,7 +1014,7 @@ details > summary:active { transform: scale(.98); }
 .cta h2 { font-size: clamp(30px, 4.6vw, 52px); font-weight: 900; letter-spacing: -1.4px; line-height: 1.04; }
 .cta p { opacity: .85; margin-top: 12px; font-size: 18px; }
 .cta__form { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 30px 0 12px; }
-.cta__form input { flex: 1 1 220px; min-width: 0; padding: 14px 16px; border: 0; border-radius: 14px; font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-size: 16px; background: rgba(255,255,255,.95); color: var(--ink); }
+.cta__form input { flex: 1 1 220px; min-width: 0; padding: 14px 16px; border: 0; border-radius: 14px; font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-size: 16px; background: rgba(255,255,255,.95); color: var(--ink); }
 /* Offset white ring — a flush light-grey outline vanished against the white
    input itself; the offset lets it read against the dark band. */
 .cta__form input:focus { outline: 3px solid #fff; outline-offset: 2px; }
@@ -1081,7 +1081,7 @@ details > summary:active { transform: scale(.98); }
 /* Visually-hidden: keeps text in the a11y tree (screen readers) but off-screen.
    RTL-safe — uses clip/clip-path only, no directional offsets. */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
-.footer__col h3, .footer__col h4 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.55); font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+.footer__col h3, .footer__col h4 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.55); font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
 /* A tiny hue dot per column heading — one wink of colour per group. */
 .footer__col h3::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #4ADE80; flex: 0 0 auto; }
 .footer__col:nth-of-type(2) h3::before { background: #7DD3FC; }
@@ -1317,7 +1317,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    its normal rhythm. (Simple selectors only — no fragile complex :not().) */
 :root.a11y-readfont body,
 :root.a11y-readfont body * {
-  font-family: Arial, 'Assistant', 'Segoe UI', Arial, sans-serif !important;
+  font-family: Arial, 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif !important;
   letter-spacing: .02em !important; line-height: 1.75 !important;
 }
 :root.a11y-readfont .a11y-panel__sheet,
@@ -1374,7 +1374,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 }
 .trust-block__head { text-align: center; margin-bottom: 22px; }
 .trust-block__head .eyebrow { justify-content: center; }
-.trust-block__head h2 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(22px, 3vw, 30px); font-weight: 800; color: var(--green-d); letter-spacing: -.6px; margin-top: 8px; }
+.trust-block__head h2 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: clamp(22px, 3vw, 30px); font-weight: 800; color: var(--green-d); letter-spacing: -.6px; margin-top: 8px; }
 /* Real catalogue counters — the only numbers shown are the provable ones. */
 .trust-stats {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
@@ -1385,7 +1385,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
   background: var(--mint); border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
-.trust-stat dd { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--accent-ink); line-height: 1; font-variant-numeric: tabular-nums; }
+.trust-stat dd { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--accent-ink); line-height: 1; font-variant-numeric: tabular-nums; }
 .trust-stat dt { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .trust-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .trust-points li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--muted); }
@@ -1404,7 +1404,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
   content: ""; position: absolute; inset: 0 0 auto 0; height: 360px; z-index: -1;
   background: radial-gradient(800px 380px at 70% -20%, rgba(17,24,39,.06), transparent 60%);
 }
-.lead-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(34px, 5.4vw, 66px); font-weight: 900; color: var(--green-d); letter-spacing: -1.6px; line-height: 1.04; }
+.lead-hero h1 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: clamp(34px, 5.4vw, 66px); font-weight: 900; color: var(--green-d); letter-spacing: -1.6px; line-height: 1.04; }
 .lead-hero h1 .hl { color: var(--green); }
 /* Category pages carry their hue (--tf/--tt stamped by build.js): the headline
    highlight and the hero pill speak the category colour — instant orientation.
@@ -1435,7 +1435,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 
 /* ── Guides / articles (generated) ───────────────────────────────────── */
 .article-hero { padding: 44px 0 4px; }
-.article-hero h1 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(27px, 3.8vw, 44px); font-weight: 900; color: var(--green-d); letter-spacing: -.4px; max-width: 17em; }
+.article-hero h1 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: clamp(27px, 3.8vw, 44px); font-weight: 900; color: var(--green-d); letter-spacing: -.4px; max-width: 17em; }
 .article-meta { color: var(--muted); font-size: 14px; margin-top: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
 /* Hued article hero — brings the guide/hub pages into the category-hue
    language. --decor = containment only (legal pages, neutral); --hued opts in
@@ -1450,8 +1450,8 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    horizontal page scroll on narrow screens. */
 .prose { max-width: 760px; margin: 0 auto; overflow-wrap: break-word; }
 .prose > p { font-size: 17px; color: var(--ink-700); margin: 0 0 20px; line-height: 1.8; }
-.prose h2 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 25px; color: var(--green-d); margin: 36px 0 12px; }
-.prose h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin: 22px 0 8px; }
+.prose h2 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 25px; color: var(--green-d); margin: 36px 0 12px; }
+.prose h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin: 22px 0 8px; }
 .prose ul { padding-inline-start: 22px; margin: 0 0 18px; }
 .prose li { margin-bottom: 9px; font-size: 17px; color: var(--ink-700); line-height: 1.72; }
 /* Inline links in long-form copy: green (action), with an underline that
@@ -1463,7 +1463,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .article-cta { position: relative; overflow: hidden; max-width: 760px; margin: 36px auto 0; background: linear-gradient(140deg, var(--green-d), var(--green)); color: #fff; border-radius: 18px; padding: 28px; text-align: center; box-shadow: var(--shadow-ink), inset 0 1px 0 rgba(255,255,255,.08); }
 .article-cta::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(560px 220px at 50% -30%, rgba(255,255,255,.09), transparent 70%); }
 .article-cta > * { position: relative; }
-.article-cta h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 22px; margin-bottom: 6px; }
+.article-cta h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 22px; margin-bottom: 6px; }
 .article-cta p { opacity: .9; margin-bottom: 16px; }
 .guide-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .guide-card { background: rgba(255,255,255,.66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.6); border-radius: var(--radius); padding: 24px; box-shadow: 0 3px 10px rgba(15,27,34,.03); transition: transform .2s var(--ease), box-shadow .2s; display: flex; flex-direction: column; }
@@ -1475,7 +1475,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    said nothing (UX audit). The card's hover state carries the green instead. */
 .guide-card .tag-cat { align-self: flex-start; background: var(--mint); color: var(--ink-600); border: 1px solid var(--line); font-weight: 700; font-size: 12px; padding: 3px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s, border-color .18s; }
 .guide-card:hover .tag-cat { background: var(--accent-t); color: var(--accent-ink); border-color: transparent; }
-.guide-card h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin-bottom: 8px; line-height: 1.32; transition: color .15s; }
+.guide-card h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 19px; color: var(--green-d); margin-bottom: 8px; line-height: 1.32; transition: color .15s; }
 .guide-card:hover h3, .guide-card:focus-visible h3 { color: var(--accent-ink); }
 .guide-card p { color: var(--muted); flex: 1; line-height: 1.6; }
 /* Meta line sits under a hairline rule — separates the date/read-time from the
@@ -1502,9 +1502,9 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    ring would be lost against the glass). */
 .plan:focus-within { transform: translateY(-4px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
 .plan__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.plan__provider { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d); font-size: 16px; }
+.plan__provider { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d); font-size: 16px; }
 .plan__id { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.plogo { display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid; border-color: currentColor; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; flex: none; vertical-align: middle; letter-spacing: -.5px; }
+.plogo { display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid; border-color: currentColor; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; flex: none; vertical-align: middle; letter-spacing: -.5px; }
 /* Real logo image variant: a UNIFORM white rounded badge container that every
    provider logo sits inside — a consistent tile rim + glass-glint, so a row of
    mixed brand marks reads as one tidy set. The mark itself is never recoloured. */
@@ -1514,7 +1514,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .provider-card { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 /* .provider-card:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .provider-card:focus-visible, .provider-card:focus-within { transform: translateY(-3px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
-.provider-card b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; display: block; }
+.provider-card b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; display: block; }
 .provider-card small { color: var(--muted); font-size: 13px; display: block; }
 .provider-card__cats { font-size: 11px !important; opacity: .65; margin-top: 2px; }
 .plan__provider:hover { color: var(--green); text-decoration: underline; }
@@ -1535,7 +1535,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .pflag--5g { background: var(--lime); color: var(--green-d); }
 .plan__bottom { margin-top: auto; padding-top: 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
 /* The price is the card's decision datum — let it lead the visual hierarchy. */
-.plan__price b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -.5px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.plan__price b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -.5px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
 .plan--hasjump .plan__after { color: var(--value-ink); font-weight: 600; }
@@ -1560,7 +1560,7 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
 .plan__cta {
   flex: 1 1 auto;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: #fff;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: #fff;
   text-decoration: none; padding: 10px 14px; min-height: 44px;
   white-space: nowrap; /* the label must never wrap into two lines inside a card */
   border-radius: 12px;
@@ -1583,7 +1583,7 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
 
 /* filter bar (all-plans page) */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; }
-.filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
+.filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
 .filter-btn:hover { border-color: var(--ink-300); }
 @media (hover: hover) and (pointer: fine) {
   .filter-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
@@ -1594,7 +1594,7 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
 /* Solid green fills behind WHITE text use --accent-d: white on --accent (#16A34A)
    is only 3.3:1 (fails normal AA), while on --accent-d (#15803D) it's 5.0:1. */
 .filter-btn.active { background: var(--accent-d); color: #fff; border-color: var(--accent-d); }
-.filter-search { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-size: 15px; background: var(--white); transition: border-color .15s, box-shadow .15s; }
+.filter-search { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-size: 15px; background: var(--white); transition: border-color .15s, box-shadow .15s; }
 .filter-search:hover { border-color: var(--ink-300); }
 /* Use the site's own focus ring (was a raw 2px outline — inconsistent with
    :focus-visible everywhere else, and it fired on mouse clicks too). */
@@ -1605,8 +1605,8 @@ input[type="number"].filter-search { flex: 0 0 auto; width: 90px; -moz-appearanc
 input[type="number"].filter-search::-webkit-outer-spin-button,
 input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .filter-price { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
-.filter-price__label { font-size: 14px; color: var(--sage); font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-weight: 600; white-space: nowrap; }
-.flag-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; padding: 8px 14px; min-height: 44px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
+.filter-price__label { font-size: 14px; color: var(--sage); font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 600; white-space: nowrap; }
+.flag-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; padding: 8px 14px; min-height: 44px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
 .flag-chip:hover { border-color: var(--ink-300); }
 @media (hover: hover) and (pointer: fine) {
   .flag-chip:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
@@ -1618,7 +1618,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .plan-count { margin-right: auto; font-size: 13px; color: var(--ink-500, #6b7280); white-space: nowrap; }
 .calc-result { display: grid; gap: 10px; }
 .calc-result__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.calc-result__row strong { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; text-align: left; }
+.calc-result__row strong { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; text-align: left; }
 .calc-result__sep { border: none; border-top: 1px solid #D1D5DB; margin: 2px 0; }
 .calc-result__row--main { font-size: 1.05rem; }
 .calc-result__row--main .saving { color: var(--value-ink); font-size: 1.15rem; }
@@ -1631,10 +1631,10 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   background: var(--white); border: 1px solid var(--line);
   border-radius: var(--radius); box-shadow: var(--glint), var(--shadow);
 }
-.calc-card__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: clamp(20px, 2.6vw, 24px); color: var(--green-d); margin: 0 0 8px; letter-spacing: -.3px; }
+.calc-card__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: clamp(20px, 2.6vw, 24px); color: var(--green-d); margin: 0 0 8px; letter-spacing: -.3px; }
 .calc-card__lead { color: var(--ink-700); margin: 0 0 4px; font-size: 15px; }
 .calc-card__lead b { color: var(--ink); font-variant-numeric: tabular-nums; }
-.calc-card__label { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--ink); margin: 16px 0 0; font-size: 15px; }
+.calc-card__label { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--ink); margin: 16px 0 0; font-size: 15px; }
 .calc-card__quick { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
 .calc-card__quick .chip { font-variant-numeric: tabular-nums; }
 .calc-card__inputrow { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 16px; }
@@ -1652,7 +1652,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
    deepens crawl reach from each definition. Direction-aware chevron via ::after. */
 .glossary__link {
   display: inline-flex; align-items: center; gap: 4px; margin-top: 10px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
   color: var(--accent-ink); text-decoration: none;
 }
 .glossary__link::after { content: "‹"; font-weight: 800; line-height: 1; }
@@ -1664,14 +1664,14 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   background: var(--cream); border: 1px dashed var(--ink-200); border-radius: var(--radius);
 }
 .plan-empty::before { content: "🔍"; display: block; font-size: 30px; margin-bottom: 12px; opacity: .7; }
-.plan-empty strong { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d); font-size: 17px; margin-bottom: 4px; }
+.plan-empty strong { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d); font-size: 17px; margin-bottom: 4px; }
 .plan-empty__reset {
   background: none; border: none; padding: 0; font: inherit; color: var(--accent-ink);
   font-weight: 700; text-decoration: underline; cursor: pointer;
 }
 .plan-empty__reset:hover, .plan-empty__reset:focus-visible { color: var(--accent-d, var(--accent-ink)); }
 .cat-plans-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 14px; }
-.cat-plans-head h2 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 24px; color: var(--green-d); }
+.cat-plans-head h2 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 24px; color: var(--green-d); }
 .cat-plans-head .count { color: var(--muted); font-size: 14px; }
 
 /* ── Side-by-side comparison (compare.html) ──────────────────────────────── */
@@ -1685,13 +1685,13 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .cmp-empty::before { content: "⇄"; display: block; font-size: 26px; margin-bottom: 10px; opacity: .7; color: var(--accent); }
 .cmp-table { width: 100%; border-collapse: collapse; background: var(--white); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .cmp-table th, .cmp-table td { padding: 13px 14px; text-align: center; border-bottom: 1px solid var(--line); font-size: 15px; }
-.cmp-table thead th { background: var(--green-d); color: #fff; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; vertical-align: top; }
+.cmp-table thead th { background: var(--green-d); color: #fff; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; vertical-align: top; }
 .cmp-table thead th small { display: block; font-weight: 500; font-size: 12px; opacity: .8; margin-top: 3px; }
-.cmp-table tbody th[scope="row"] { text-align: start; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); background: rgba(17,24,39,.04); white-space: nowrap; }
+.cmp-table tbody th[scope="row"] { text-align: start; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); background: rgba(17,24,39,.04); white-space: nowrap; }
 .cmp-table tbody tr { transition: background .15s; }
 .cmp-table tbody tr:hover td { background: var(--accent-t); }
 .cmp-table tbody tr:last-child th, .cmp-table tbody tr:last-child td { border-bottom: none; }
-.cmp-price { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 18px; color: var(--green-d); }
+.cmp-price { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 18px; color: var(--green-d); }
 .cmp-after { display: block; font-size: 11px; color: var(--muted); }
 .cmp-yes { color: var(--green); font-weight: 900; }
 /* "Absent" mark — must stay VISIBLE (it carries meaning: feature not included).
@@ -1746,7 +1746,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   background: var(--cream);
 }
 .app-shot figcaption {
-  margin-top: 12px; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--ink-700);
+  margin-top: 12px; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--ink-700);
   display: inline-flex; align-items: center; gap: 6px;
 }
 .app-shot__zoom { width: 16px; height: 16px; vertical-align: -3px; }
@@ -1878,7 +1878,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 }
 .plan__badge {
   position: absolute; top: -10px; inset-inline-start: 14px; z-index: 2;
-  background: var(--value-t); color: var(--value-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
+  background: var(--value-t); color: var(--value-ink); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800;
   font-size: 11px; padding: 4px 11px; border-radius: 999px; box-shadow: 0 6px 14px rgba(180,83,9,.22);
 }
 
@@ -1979,7 +1979,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .collection-chip__icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; }
-.collection-chip__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
+.collection-chip__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 14px; font-weight: 600; color: var(--ink); }
 .collection-chip__sub { font-size: 12px; color: var(--muted); }
 @media (max-width: 1024px) { .collections-grid { grid-template-columns: repeat(4, 1fr); } }
 /* Phones (no-JS fallback): 2-col grid. With JS, the carousel enhancer takes
@@ -2021,7 +2021,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   display: inline-flex; align-items: center; gap: 9px; flex: none;
   min-height: 44px; padding: 8px 16px; border-radius: 999px;
   background: var(--white); border: 1px solid var(--line);
-  color: var(--ink-700); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
+  color: var(--ink-700); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
   text-decoration: none; box-shadow: var(--glint), var(--shadow-sm);
   transition: border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);
 }
@@ -2061,7 +2061,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    Amber = value tier; green stays exclusively for actions. */
 .plan__score {
   display: inline-flex; align-items: center; gap: 4px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; line-height: 1;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; line-height: 1;
   color: var(--value-ink); background: var(--value-t); padding: 4px 9px; border-radius: 999px;
   box-shadow: 0 3px 10px rgba(180,83,9,.18);
   /* Never wrap or shrink — long provider names squeeze the flex row and would
@@ -2098,7 +2098,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   font-size: 14px; line-height: 1.5; padding-inline-start: 2px;
   border-inline-start: 2px solid var(--line);
 }
-.toc__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 0 0 10px; padding-inline-start: 12px; }
+.toc__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 0 0 10px; padding-inline-start: 12px; }
 .toc ul, .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .toc__link {
   display: block; position: relative; padding: 6px 12px; border-radius: 8px;
@@ -2144,7 +2144,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    icon-based .mega-menu__link, so it needs its own row styling). */
 .mega > .mega-menu .mega-menu__col { display: flex; flex-direction: column; gap: 1px; }
 .mega-menu__head {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
   font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
   color: var(--ink-400); font-weight: 700; padding: 4px 10px; margin-bottom: 2px;
 }
@@ -2185,7 +2185,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   opacity: 1; visibility: visible; transform: translateY(0);
 }
 .mega-menu__panel[hidden] { display: none; }
-.mega-menu__col h4 { grid-column: 1 / -1; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 4px 0 6px; }
+.mega-menu__col h4 { grid-column: 1 / -1; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 4px 0 6px; }
 .mega-menu__link {
   display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: var(--radius-sm);
   color: var(--ink); font-weight: 600; text-decoration: none; transition: background .15s, color .15s, transform .15s var(--ease);
@@ -2258,7 +2258,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .field--float > textarea {
   width: 100%; padding: 20px 16px 8px; min-height: 56px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);
-  font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
   transition: border-color .15s, box-shadow .2s var(--ease), background .15s;
 }
 .field--float > label {
@@ -2335,7 +2335,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .advisor__progress span.is-done, .advisor__progress span.is-active { background: var(--accent); }
 .advisor__step { display: none; }
 .advisor__step.is-active { display: block; animation: advisor-in .3s var(--ease) both; }
-.advisor__step h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); margin-bottom: 6px; }
+.advisor__step h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); margin-bottom: 6px; }
 .advisor__step > p { color: var(--muted); margin-bottom: 18px; }
 .advisor__options { display: grid; gap: 10px; }
 .advisor__option {
@@ -2365,7 +2365,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .bill-drop:focus-within { box-shadow: var(--ring); border-color: var(--accent); }
 .bill-drop__icon { width: 40px; height: 40px; color: var(--accent); }
 .bill-drop__icon .ico { width: 40px; height: 40px; }
-.bill-drop strong { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; }
+.bill-drop strong { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; }
 .bill-drop small { font-size: 13px; }
 .bill-drop input[type="file"] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
 .bill-drop__preview { max-width: 220px; max-height: 160px; border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
@@ -2377,13 +2377,13 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .subscribe__field { flex: 1 1 220px; min-width: 0; display: grid; gap: 6px; }
 /* The footer newsletter renders label → row(input+btn) → consent → note. These
    were unstyled in markup; this lays them out as a tidy stacked capture block. */
-.subscribe__label { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: rgba(255,255,255,.92); margin-bottom: 2px; flex: 1 1 100%; }
+.subscribe__label { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: rgba(255,255,255,.92); margin-bottom: 2px; flex: 1 1 100%; }
 .footer .subscribe__label { color: rgba(255,255,255,.85); }
 .subscribe__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; flex: 1 1 100%; }
 .subscribe input[type="email"], .subscribe__input {
   flex: 1 1 200px; min-width: 0;
   width: 100%; padding: 13px 16px; border: 1px solid var(--line); border-radius: var(--radius-sm);
-  font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
   transition: border-color .15s, box-shadow .2s var(--ease);
 }
 .subscribe input[type="email"]:hover, .subscribe__input:hover { border-color: var(--ink-300); }
@@ -2419,7 +2419,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   box-shadow: var(--glint), var(--shadow-sm);
   text-align: start;
 }
-.subscribe--panel .subscribe__copy h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); }
+.subscribe--panel .subscribe__copy h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); }
 .subscribe--panel .subscribe__copy p { color: var(--muted); font-size: 14.5px; margin-top: 4px; }
 .subscribe--panel .subscribe__form { display: grid; gap: 12px; margin-top: 12px; }
 .subscribe--panel .subscribe__field { display: block; }
@@ -2443,7 +2443,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   background: var(--accent-t); border: 1px solid var(--accent); border-radius: var(--radius);
   color: var(--ink-700);
 }
-.community__join strong { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; color: var(--green-d); display: block; font-size: 16px; }
+.community__join strong { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--green-d); display: block; font-size: 16px; }
 .community__join small { color: var(--muted); font-size: 13.5px; }
 .community__join .btn { flex: 0 0 auto; }
 /* A quiet status/empty line while posts load or when none are available. */
@@ -2456,7 +2456,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    pairs with aria-pressed), with hover + the standard focus ring. */
 .community__filter { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 18px; }
 .community__chan, .community__chip {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
   padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center;
   background: var(--white); border: 1px solid var(--line); color: var(--green-d);
   border-radius: 999px; cursor: pointer; box-shadow: var(--shadow-sm);
@@ -2499,18 +2499,18 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .post-card__avatar {
   width: 40px; height: 40px; flex: none; border-radius: 50%; object-fit: cover;
   display: grid; place-items: center; background: var(--lime); color: var(--green-d);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px; overflow: hidden;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px; overflow: hidden;
   border: 1px solid var(--line);
 }
 .post-card__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .post-card__who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.post-card__author { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); font-size: 15px; }
+.post-card__author { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); font-size: 15px; }
 .post-card__time { color: var(--ink-400); font-size: 12.5px; }
 /* Channel chip — quiet ink tablet identifying the community channel. */
 .post-card__channel {
   margin-inline-start: auto; flex: none;
   background: var(--mint); color: var(--ink-700); border: 1px solid var(--line);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 11.5px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 11.5px;
   padding: 4px 11px; border-radius: 999px; white-space: nowrap;
 }
 .post-card__body { color: var(--ink-700); margin-top: 12px; line-height: 1.7; white-space: pre-line; word-break: break-word; }
@@ -2522,7 +2522,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* Replies toggle — a borderless ACTION-coloured text button. */
 .post-card__more {
   margin-top: 12px; background: none; border: 0; padding: 6px 4px; cursor: pointer;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
   display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; transition: color .15s;
 }
 .post-card__more:hover { color: var(--accent-d); }
@@ -2538,7 +2538,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   border-inline-start: 3px solid var(--ink-200); border-radius: 12px;
 }
 .reply__head { display: flex; align-items: baseline; gap: 8px; }
-.reply__author { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--green-d); }
+.reply__author { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--green-d); }
 .reply__time { color: var(--ink-400); font-size: 12px; }
 .reply__body { color: var(--muted); font-size: 14px; line-height: 1.6; margin-top: 4px; white-space: pre-line; word-break: break-word; }
 .reply__media { display: block; margin-top: 8px; max-width: 220px; max-height: 200px; border-radius: 10px; border: 1px solid var(--line); }
@@ -2556,9 +2556,9 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 @media (hover: hover) and (pointer: fine) {
   .rating-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 }
-.rating-card__provider { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d); font-size: 16px; }
+.rating-card__provider { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d); font-size: 16px; }
 .rating-card__score { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
-.rating-card__avg { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 26px; color: var(--green-d); letter-spacing: -.5px; }
+.rating-card__avg { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 26px; color: var(--green-d); letter-spacing: -.5px; }
 .rating-card__count { color: var(--muted); font-size: 13px; }
 /* Star rows — amber VALUE stars over a faint empty track. The filled width is
    driven by --stars (0–5) set inline from the average. */
@@ -2582,14 +2582,14 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   padding: 16px 18px; box-shadow: var(--shadow-sm);
 }
 .review-card__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.review-card__provider { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); font-size: 14.5px; }
+.review-card__provider { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); font-size: 14.5px; }
 .review-card__time { color: var(--ink-400); font-size: 12px; margin-inline-start: auto; }
 .review-card__body { color: var(--ink-700); margin-top: 8px; line-height: 1.65; word-break: break-word; }
 /* Verified-customer pill — a small green VALUE-of-trust badge. */
 .verified-badge {
   display: inline-flex; align-items: center; gap: 5px;
   background: var(--accent-t); color: var(--accent-ink); border: 1px solid var(--accent);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 11px; line-height: 1;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 11px; line-height: 1;
   padding: 4px 9px; border-radius: 999px; white-space: nowrap;
 }
 .verified-badge::before { content: "✓"; font-weight: 900; }
@@ -2617,7 +2617,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 .booking__step-dot {
   display: inline-flex; align-items: center; gap: 8px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px;
   color: var(--ink-400); white-space: nowrap;
 }
 .booking__step-dot + .booking__step-dot::before {
@@ -2649,16 +2649,16 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    the shared control styling so name/phone/email/date all match exactly. */
 .booking__field {
   display: flex; flex-direction: column; gap: 8px; min-width: 0;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--green-d);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--green-d);
 }
 .booking__field-label {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--green-d);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; color: var(--green-d);
 }
 .booking__field input,
 .booking__field select {
   width: 100%; min-height: 48px; padding: 12px 16px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);
-  font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-weight: 500; font-size: 16px;
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 500; font-size: 16px;
   background: var(--white); color: var(--ink);
   transition: border-color .15s, box-shadow .15s, background .15s;
 }
@@ -2681,7 +2681,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    forward-compat alias so both carry the focus ring + the pressed (green) state. */
 .booking__providers { border: 0; padding: 0; margin: 0; min-width: 0; }
 .booking__providers legend {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
   color: var(--green-d); margin-bottom: 12px; padding: 0;
 }
 /* Even auto-fit grid so the 7 carrier chips align in tidy rows (no ragged
@@ -2690,7 +2690,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .booking__providers .provider-pick,
 .booking__providers-grid .booking__provider,
 .booking__providers .booking__provider {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
   gap: 9px; padding: 11px 14px; min-height: 50px; display: inline-flex; align-items: center; justify-content: center;
   background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
   border-radius: var(--radius-sm); cursor: pointer; text-align: center;
@@ -2727,7 +2727,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    label + its own responsive .slot-grid of chips. */
 .slot-groups { display: flex; flex-direction: column; gap: 14px; }
 .slot-group__label {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 12.5px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 12.5px;
   color: var(--muted); margin: 0 0 8px; letter-spacing: .02em;
 }
 .slot-groups > .booking__note { color: var(--muted); font-size: 13.5px; margin: 0; padding: 10px 2px; text-align: start; }
@@ -2736,7 +2736,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    out-of-window slots render disabled. */
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
 .slot {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
   min-height: 44px; padding: 10px 8px; text-align: center;
   background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
   border-radius: var(--radius-xs); cursor: pointer;
@@ -2897,7 +2897,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 /* "הכי זול" pill stamped on the cheapest row's provider cell. */
 .cmp__best-pill {
   display: inline-block; margin-inline-start: 8px; vertical-align: middle;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 11px; line-height: 1;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 11px; line-height: 1;
   color: #fff; background: var(--accent-d); padding: 4px 9px; border-radius: 999px;
   white-space: nowrap;
 }
@@ -2918,7 +2918,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   min-height: 34px; padding: 7px 12px; border-radius: 8px;
   background: var(--accent-t); color: var(--accent-ink);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; white-space: nowrap;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; white-space: nowrap;
   transition: background .16s, color .16s, transform .16s var(--ease);
 }
 .cmp__cta a:hover { background: var(--accent-d); color: #fff; }
@@ -2990,7 +2990,7 @@ body.pmodal-lock { overflow: hidden; }
 .pmodal__x:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 .pmodal__head { padding-inline-end: 40px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
 .pmodal__brand { color: var(--muted); font-weight: 600; font-size: .9rem; }
-.pmodal__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 1.4rem; margin: 4px 0 10px; color: var(--ink); line-height: 1.2; }
+.pmodal__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 1.4rem; margin: 4px 0 10px; color: var(--ink); line-height: 1.2; }
 .pmodal__price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .pmodal__price b { font-size: 1.7rem; color: var(--ink); }
 .pmodal__price > span { color: var(--muted); }
@@ -2999,7 +2999,7 @@ body.pmodal-lock { overflow: hidden; }
 .pmodal__flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .pmodal__flag { font-size: .78rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-t); color: var(--accent); }
 .pmodal__sec { margin-top: 18px; }
-.pmodal__sec h3 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 1rem; margin: 0 0 10px; color: var(--ink); }
+.pmodal__sec h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 1rem; margin: 0 0 10px; color: var(--ink); }
 .pmodal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 460px) { .pmodal__grid { grid-template-columns: 1fr; } }
 .pmodal__row { display: flex; justify-content: space-between; gap: 12px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 9px 12px; }
@@ -3143,7 +3143,7 @@ body.pmodal-lock { overflow: hidden; }
    live flow into .advisor__stage with these classes. Mirror the advisor's card
    language so the rendered steps + recs read as one component. */
 .advisor__stage { display: grid; gap: 4px; }
-.advisor__q { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); margin: 4px 0 14px; line-height: 1.25; }
+.advisor__q { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); margin: 4px 0 14px; line-height: 1.25; }
 .advisor__progress { color: var(--ink-400); font-size: 13px; font-weight: 700; letter-spacing: .02em; margin-bottom: 2px; }
 .advisor__back { align-self: start; margin-top: 14px; }
 .advisor__followup { color: var(--muted); margin: -6px 0 14px; line-height: 1.6; }
@@ -3156,8 +3156,8 @@ body.pmodal-lock { overflow: hidden; }
   padding: 16px 18px; box-shadow: var(--shadow-sm);
 }
 .advisor__rec:first-child { border-inline-start-color: var(--accent); background: var(--accent-t); }
-.advisor__rec h4 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 16px; color: var(--green-d); margin: 0 0 4px; }
-.advisor__rec-price { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 18px; color: var(--green-d); margin: 2px 0; }
+.advisor__rec h4 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 16px; color: var(--green-d); margin: 0 0 4px; }
+.advisor__rec-price { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 18px; color: var(--green-d); margin: 2px 0; }
 /* Saving = amber VALUE; the one figure on the card that wears the value colour. */
 .advisor__rec-saving { color: var(--value-ink); font-weight: 700; font-size: 14px; margin: 2px 0; }
 .advisor__rec-reason { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 6px 0 0; }
@@ -3170,7 +3170,7 @@ body.pmodal-lock { overflow: hidden; }
    advisor) and a busy state on the zone itself while the call is in flight. */
 .bill-drop.is-loading { pointer-events: none; opacity: .75; cursor: progress; }
 .bill-drop__result { width: 100%; display: grid; gap: 12px; margin-top: 6px; text-align: start; }
-.bill-drop__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 17px; color: var(--green-d); margin: 0; }
+.bill-drop__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 17px; color: var(--green-d); margin: 0; }
 .bill-drop__summary { color: var(--ink-700); font-size: 14.5px; line-height: 1.6; margin: 0; }
 .bill-drop__suggestions { display: grid; gap: 10px; }
 .bill-drop__suggestion {
@@ -3178,8 +3178,8 @@ body.pmodal-lock { overflow: hidden; }
   border-inline-start: 4px solid var(--accent); border-radius: 12px;
   padding: 14px 16px; box-shadow: var(--shadow-sm); text-align: start;
 }
-.bill-drop__suggestion h4 { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--green-d); margin: 0 0 4px; }
-.bill-drop__suggestion-price { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 16px; color: var(--green-d); margin: 2px 0; }
+.bill-drop__suggestion h4 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--green-d); margin: 0 0 4px; }
+.bill-drop__suggestion-price { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 16px; color: var(--green-d); margin: 2px 0; }
 .bill-drop__suggestion-saving { color: var(--value-ink); font-weight: 700; font-size: 13.5px; margin: 2px 0; }
 .bill-drop__result .btn { justify-self: start; }
 
@@ -3192,7 +3192,7 @@ body.pmodal-lock { overflow: hidden; }
 .calc-result__chart.barchart { margin-bottom: 16px; }
 .barchart__rows { display: grid; gap: 12px; }
 .barchart__row { display: grid; grid-template-columns: minmax(72px, max-content) 1fr; align-items: center; gap: 12px; }
-.barchart__label { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-700); white-space: nowrap; }
+.barchart__label { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-700); white-space: nowrap; }
 .barchart__track {
   position: relative; height: 30px; border-radius: 999px;
   background: var(--ink-050); border: 1px solid var(--line); overflow: hidden;
@@ -3210,7 +3210,7 @@ body.pmodal-lock { overflow: hidden; }
 /* The value label rides at the inline-end of the track, on the inside. */
 .barchart__val {
   position: absolute; inset-inline-end: 12px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums;
   color: var(--green-d); font-variant-numeric: tabular-nums;
 }
 @media (max-width: 480px) {
@@ -3270,7 +3270,7 @@ body.pmodal-lock { overflow: hidden; }
 @keyframes skel-wave { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .post-skel i { animation: none; } }
 :root[data-theme="dark"] .post-skel { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
-.rating-card__score { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 24px; color: var(--green-d); margin-top: 8px; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.rating-card__score { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 24px; color: var(--green-d); margin-top: 8px; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
 .rating-card__count { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
 
 /* ── Post card runtime bits (dynamic feed) ───────────────────────────────────
@@ -3281,7 +3281,7 @@ body.pmodal-lock { overflow: hidden; }
 .post-card__avatar--ph { background: var(--lime); color: var(--green-d); }
 .post-card__toggle {
   margin-top: 12px; background: none; border: 0; padding: 6px 4px; cursor: pointer;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
   display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; transition: color .15s;
 }
 .post-card__toggle:hover { color: var(--accent-d); }
@@ -3648,7 +3648,7 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); color: var(--accent-ink); }
 .counts-bar li { display: inline-flex; align-items: center; padding-inline: 16px; }
 .counts-bar li:first-child { padding-inline-start: 0; }
 .counts-bar li + li { border-inline-start: 1px solid rgba(245,247,248,.18); }
-.counts-bar b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: #fff; font-size: 18px; margin-inline-end: 6px; }
+.counts-bar b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: #fff; font-size: 18px; margin-inline-end: 6px; }
 @media (max-width: 520px) {
   .counts-bar { gap: 6px 0; font-size: 13px; }
   .counts-bar li { padding-inline: 12px; }
@@ -3708,7 +3708,7 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); color: var(--accent-ink); }
 .stat-band li:first-child { padding-inline-start: 0; }
 .stat-band li + li { border-inline-start: 1px solid var(--line); }
 .stat-band b {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d);
   font-size: 20px; margin-inline-end: 6px;
   font-variant-numeric: tabular-nums;
 }
@@ -3887,7 +3887,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 }
 .finder__cats { display: flex; flex-wrap: wrap; gap: 8px; }
 .finder__cat {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
   padding: 8px 16px; min-height: 40px; border-radius: 999px; cursor: pointer;
   background: var(--cream); color: var(--ink-700); border: 1px solid var(--line);
   transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring);
@@ -3897,7 +3897,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .finder__cat:focus-visible { outline: none; box-shadow: var(--ring); }
 .finder__cat.is-active { background: var(--accent-d); color: #fff; border-color: var(--accent-d); }
 .finder__bill { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-weight: 600; font-size: 14px; color: var(--ink-700); }
-.finder__bill output { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.finder__bill output { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .finder input[type="range"] { width: 100%; accent-color: var(--accent); }
 .finder__results { display: grid; border-top: 1px solid var(--line); }
 .finder__row {
@@ -3908,14 +3908,14 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .finder__row:hover { background: var(--accent-t); }
 .finder__row:focus-visible { outline: none; box-shadow: var(--ring-flush); border-radius: 8px; }
 .finder__meta { display: grid; gap: 1px; min-width: 0; }
-.finder__prov { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 14px; color: var(--ink-900); }
+.finder__prov { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 14px; color: var(--ink-900); }
 .finder__plan { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .finder__net { margin-inline-start: auto; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: var(--mint); color: var(--ink-700); flex: none; }
-.finder__price { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; flex: none; }
+.finder__price { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; flex: none; }
 .finder__net + .finder__price { margin-inline-start: 8px; }
 .finder__meta { flex: 1 1 auto; }
 .finder__save { margin: 0; font-size: 14px; color: var(--ink-700); }
-.finder__save b { color: var(--value-ink); font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; }
+.finder__save b { color: var(--value-ink); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; }
 
 /* ── DEAL TICKER — one rotating line of today's cheapest, right under the trust
    strip. Items cross-fade via transitions (interruptible), never keyframes. */
@@ -3930,7 +3930,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
   pointer-events: none;
 }
 .ticker__item.is-on { opacity: 1; transform: none; pointer-events: auto; }
-.ticker__item b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; color: var(--ink-900); }
+.ticker__item b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--ink-900); }
 @media (prefers-reduced-motion: reduce) { .ticker__item { transition: none; } }
 
 /* ── Wave separator — a soft flowing edge into the dark CTA band ──────────── */
@@ -3941,7 +3941,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 
 /* ── Community provider rating — stars row on provider pages ───────────────── */
 .prov-rating { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 4px 0 0; font-size: 14.5px; color: var(--ink-700); flex-wrap: wrap; }
-.prov-rating b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); }
+.prov-rating b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); }
 .prov-rating a { color: var(--accent-ink); font-weight: 700; text-decoration: none; }
 .prov-rating a:hover { text-decoration: underline; }
 /* Partial-fill stars: grey base + a green overlay clipped to --fill percent. */
@@ -3966,7 +3966,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp-tray.is-on { opacity: 1; transform: none; pointer-events: auto; }
 /* While the cookie banner is up, the tray rides above it instead of underneath. */
 body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
-.cmp-tray__count { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-800); white-space: nowrap; }
+.cmp-tray__count { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-800); white-space: nowrap; }
 .cmp-tray__clear { background: none; border: 0; cursor: pointer; color: var(--ink-400); font-size: 15px; width: 32px; height: 32px; border-radius: 50%; }
 .cmp-tray__clear:hover { background: var(--mint); color: var(--ink-800); }
 .cmp-tray__clear:focus-visible { outline: none; box-shadow: var(--ring-flush); }
@@ -3992,7 +3992,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 
 /* Watch dialog — rides the shared .pmodal chrome; only the form bits are custom. */
 .watch-modal__panel { max-width: 440px; }
-.watch-modal__title { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 20px; margin: 0 24px 6px 0; color: var(--ink-900); }
+.watch-modal__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 20px; margin: 0 24px 6px 0; color: var(--ink-900); }
 .watch-modal__lead { margin: 0 0 14px; font-size: 14.5px; line-height: 1.6; color: var(--ink-600); }
 .watch-modal__form { display: flex; flex-direction: column; gap: 12px; }
 .watch-modal__email {
@@ -4022,7 +4022,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   .home-post:hover { transform: none; }
 }
 .home-post__head { display: flex; align-items: baseline; gap: 8px; font-size: 13px; color: var(--muted); }
-.home-post__head b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; color: var(--ink-900); font-size: 14px; }
+.home-post__head b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--ink-900); font-size: 14px; }
 .home-post__head time { margin-inline-start: auto; }
 .home-post__channel { background: var(--accent-t); color: var(--accent-ink); font-weight: 700; font-size: 11.5px; padding: 2px 9px; border-radius: 999px; }
 .home-post__body { font-size: 14.5px; color: var(--ink-700); line-height: 1.55; }
@@ -4043,7 +4043,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 .plan__drop {
   position: absolute; top: -10px; inset-inline-end: 14px; z-index: 2;
   background: var(--value-t); color: var(--value-ink);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 11px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 11px;
   padding: 4px 11px; border-radius: 999px; box-shadow: 0 6px 14px rgba(180,83,9,.22);
   transition: opacity .24s cubic-bezier(.23,1,.32,1), transform .24s cubic-bezier(.23,1,.32,1);
   @starting-style { opacity: 0; transform: translateY(4px); }
@@ -4154,16 +4154,16 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .plan-label__t {
   margin: 0 0 10px; padding-bottom: 8px; border-bottom: 2px solid var(--ink-900);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 16px; color: var(--ink-900);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 16px; color: var(--ink-900);
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
 }
-.plan-label__t span { font-family: 'Assistant', 'Segoe UI', Arial, sans-serif; font-weight: 600; font-size: 11.5px; color: var(--muted); }
+.plan-label__t span { font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 600; font-size: 11.5px; color: var(--muted); }
 .plan-label__row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
   padding: 7px 0; border-bottom: 1px solid var(--ink-100); font-size: 13.5px; color: var(--ink-600);
 }
 .plan-label__row:last-child { border-bottom: 0; padding-bottom: 0; }
-.plan-label__row b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.plan-label__row b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .plan-label__row--after b { color: var(--value-ink); }
 :root[data-theme="dark"] .plan-label { background: rgba(28,36,46,.6); border-color: var(--ink-800); box-shadow: none; }
 :root[data-theme="dark"] .plan-label__t { border-color: var(--ink-800); }
@@ -4217,7 +4217,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-lg);
   padding: 24px 22px; box-shadow: var(--glint), var(--shadow); max-width: 420px; margin-inline: auto;
 }
-.jump-card__title { margin: 0 0 4px; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 17px; color: var(--ink-900); }
+.jump-card__title { margin: 0 0 4px; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 17px; color: var(--ink-900); }
 .jump-card__plan { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; font-size: 13.5px; color: var(--ink-600); }
 .jump-card__bars { display: grid; gap: 14px; }
 .jump-bar { display: grid; grid-template-columns: 84px 1fr 56px; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-600); }
@@ -4229,7 +4229,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .jump-bar--after i { background: linear-gradient(90deg, var(--value), var(--value-d)); transition-delay: .3s; }
 .jump-card.in .jump-bar i { transform: scaleX(1); }
-.jump-bar b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
+.jump-bar b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .jump-bar--after b { color: var(--value-ink); }
 .jump-card__note { margin: 16px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-600); }
 .jump-card__note b { color: var(--value-ink); }
@@ -4286,7 +4286,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: var(--white); border: 1px solid var(--ink-100); box-shadow: var(--shadow-sm);
 }
 .community-stats__item b {
-  display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif;
+  display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
   font-weight: 800; font-size: 26px; color: var(--ink-900); font-variant-numeric: tabular-nums;
 }
 .community-stats__item span { font-size: 12.5px; color: var(--muted); }
@@ -4297,7 +4297,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: var(--white); border: 1px solid var(--ink-100); border-radius: var(--radius);
   padding: 18px 16px; box-shadow: var(--shadow-sm);
 }
-.rule-card b { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 15.5px; color: var(--ink-900); margin-bottom: 6px; }
+.rule-card b { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 15.5px; color: var(--ink-900); margin-bottom: 6px; }
 .rule-card p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-600); }
 :root[data-theme="dark"] .rule-card { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
 .rules-note { text-align: center; margin: 20px auto 0; max-width: 60ch; font-size: 14px; color: var(--ink-600); }
@@ -4319,7 +4319,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: var(--white); border: 1px solid var(--line); box-shadow: var(--glint), var(--shadow-sm);
 }
 .bento__cell b {
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: -1.5px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: -1.5px;
   font-size: clamp(34px, 3.4vw, 46px); line-height: 1; color: var(--ink-900); font-variant-numeric: tabular-nums;
 }
 .bento__cell b small { font-size: .45em; font-weight: 800; letter-spacing: 0; }
@@ -4360,7 +4360,7 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
 }
 .leaders__medal {
   width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 15px;
   background: var(--mint); color: var(--ink-700);
 }
 .leaders__medal--gold { background: linear-gradient(150deg, #FDE68A, #F59E0B); color: #78350F; }
@@ -4369,10 +4369,10 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
 .leaders__avatar {
   width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none;
   background: var(--accent-t); color: var(--accent-ink);
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800;
 }
 .leaders__meta { display: grid; gap: 1px; }
-.leaders__meta b { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink-900); }
+.leaders__meta b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 15px; color: var(--ink-900); }
 .leaders__meta span { font-size: 12.5px; color: var(--muted); }
 
 /* ── System accessibility media queries ──────────────────────────────────────

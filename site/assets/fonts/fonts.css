@@ -1,3 +1,13 @@
+/* Metric-calibrated LOCAL fallbacks — eliminate the font-swap layout shift (CLS).
+   While Rubik/Assistant load (font-display: swap), local Arial/Helvetica renders
+   with the WEBFONT's exact vertical metrics + a Hebrew-weighted size-adjust, so
+   the swap re-paints without moving a single line. Values computed from the real
+   font files (fontTools): Rubik UPM 1000 asc 935 desc 250 gap 0, Hebrew avg
+   advance vs Arial-metric fonts = 1.0678; Assistant asc 1021 desc 287 gap 0,
+   ratio 0.8913. Browsers without override support simply ignore these faces'
+   descriptors and behave as before. */
+@font-face{font-family:"Rubik Fallback";src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:106.78%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%}
+@font-face{font-family:"Assistant Fallback";src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:89.13%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:0%}
 /* Self-hosted Rubik + Assistant (fontsource woff2, hebrew+latin subsets).
    No Google Fonts dependency — headings can never fall back to a serif. */
 @font-face{font-family:"Rubik";font-style:normal;font-weight:400;font-display:swap;src:url("rubik-hebrew-400-normal.woff2") format("woff2");unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}

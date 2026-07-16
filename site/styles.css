@@ -973,6 +973,14 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 .faq__list summary { transition: color .15s, transform .16s var(--ease); }
 .faq__list summary:active { transform: scale(.98); }
 @media (prefers-reduced-motion: reduce) { .faq__list summary:active { transform: none; } }
+/* Guide-article accordions use bare <details> — give every summary the same
+   press treatment (lower specificity, so .faq__list keeps its richer rule). */
+details > summary { transition: transform .16s var(--ease); }
+details > summary:active { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) {
+  details > summary { transition: none; }
+  details > summary:active { transform: none; }
+}
 .faq__list details:not([open]) summary:hover { color: var(--accent-ink); }
 /* The toggle marker as a soft ink chip — rotates to an × when the panel opens. */
 .faq__list summary::after {
@@ -1098,6 +1106,9 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
   transition: background .18s, color .18s, transform .18s var(--ease-spring), border-color .18s;
 }
 .footer__social-link:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* Press feedback — icon-button anchors, missed by the button-only hook. */
+.footer__social-link:active { transform: translateY(0) scale(.94); }
+@media (prefers-reduced-motion: reduce) { .footer__social-link:active { transform: none; } }
 @media (hover: hover) and (pointer: fine) {
   .footer__social-link:hover { transform: translateY(-2px); }
 }

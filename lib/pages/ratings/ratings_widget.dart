@@ -890,7 +890,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 500.ms);
+    ).animate().fadeIn(duration: 300.ms);
   }
 }
 

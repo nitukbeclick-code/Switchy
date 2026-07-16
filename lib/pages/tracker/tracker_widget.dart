@@ -175,7 +175,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   height: 100,
                   decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
                   child: Icon(Icons.verified_rounded, size: 60, color: ffTheme.primary),
-                ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+                ).animate().scale(duration: 450.ms, curve: Curves.easeOutBack),
                 const SizedBox(height: 24),
                 Text('ברוכים הבאים\nלחבילה החדשה!',
                     // Display token on the theme-locked ink hero — white ink is the

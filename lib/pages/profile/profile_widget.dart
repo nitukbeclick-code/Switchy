@@ -45,7 +45,9 @@ extension _ProfileSettleX on Animate {
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (reduceMotion) return this;
-    return scale(duration: 500.ms, curve: Curves.elasticOut);
+    // One confident beat, then settle (multi-wobble elasticOut reads jittery
+    // on a regular screen) — same convention as the community/meeting badges.
+    return scale(duration: 350.ms, curve: Curves.easeOutBack);
   }
 }
 

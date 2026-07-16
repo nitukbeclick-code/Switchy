@@ -112,7 +112,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   Text(
                     'השוואת מחירי תקשורת\nהכי חכמה בישראל',
                     style: GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
-                  ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
+                  ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.08, end: 0),
                   const SizedBox(height: 12),
                   Text(
                     'כל מסלולי הסלולר, האינטרנט והטלוויזיה במקום אחד — שקוף ואמין',

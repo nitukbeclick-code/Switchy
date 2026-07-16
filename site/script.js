@@ -1161,6 +1161,34 @@
     window.addEventListener('blur', () => document.querySelectorAll('.is-pressed').forEach((b) => b.classList.remove('is-pressed')));
   })();
 
+  // ── Tooltip warm state ───────────────────────────────────────────────────────
+  // Once one nav tooltip has actually shown (hover held past its .25s delay),
+  // neighbouring tooltips open instantly — skip delay + skip fade — so scanning
+  // the toolbar feels fast without losing the accidental-hover guard on the
+  // first one. Leaving the tools for a moment cools the state back down.
+  // CSS: .nav[data-tips-warm] [data-tip]::after { transition: opacity 0s 0s; }
+  (() => {
+    const nav = document.querySelector('.nav');
+    if (!nav || !nav.querySelector('[data-tip]')) return;
+    let warmTimer = 0;
+    let coolTimer = 0;
+    nav.addEventListener('pointerover', (e) => {
+      const tip = e.target && e.target.closest && e.target.closest('[data-tip]');
+      if (!tip) return;
+      clearTimeout(coolTimer);
+      if (nav.hasAttribute('data-tips-warm')) return;
+      clearTimeout(warmTimer);
+      warmTimer = setTimeout(() => nav.setAttribute('data-tips-warm', ''), 400);
+    });
+    nav.addEventListener('pointerout', (e) => {
+      const tip = e.target && e.target.closest && e.target.closest('[data-tip]');
+      if (!tip) return;
+      clearTimeout(warmTimer);
+      clearTimeout(coolTimer);
+      coolTimer = setTimeout(() => nav.removeAttribute('data-tips-warm'), 600);
+    });
+  })();
+
   // ── Mega-menu (.mega-menu) — open/close with click, Esc, outside-click, kbd ──
   // A trigger (data-mega-trigger / aria-controls) toggles a .mega-menu panel.
   // aria-expanded mirrors state; Esc and outside-click close and (for Esc)

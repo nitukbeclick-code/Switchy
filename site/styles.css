@@ -527,6 +527,10 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
     transition: opacity .15s .25s; z-index: 60;
   }
   .nav [data-tip]:hover::after { opacity: 1; }
+  /* Once one tooltip has shown, adjacent tooltips open instantly (skip delay +
+     skip fade) — the toolbar feels faster without losing the accidental-hover
+     guard on the first one. script.js toggles data-tips-warm. */
+  .nav[data-tips-warm] [data-tip]::after { transition: opacity 0s 0s; }
 }
 /* flex-shrink/min-width guard: without it the icon row squeezes the burger to a
    ~20px sliver that clips off-screen at 390px (header scrollWidth > viewport). */
@@ -1381,7 +1385,7 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
   background: var(--mint); border: 1px solid var(--line);
   border-radius: var(--radius-sm);
 }
-.trust-stat dd { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--accent-ink); line-height: 1; }
+.trust-stat dd { font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--accent-ink); line-height: 1; font-variant-numeric: tabular-nums; }
 .trust-stat dt { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .trust-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
 .trust-points li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--muted); }
@@ -3206,7 +3210,7 @@ body.pmodal-lock { overflow: hidden; }
 /* The value label rides at the inline-end of the track, on the inside. */
 .barchart__val {
   position: absolute; inset-inline-end: 12px;
-  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 13px;
+  font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums;
   color: var(--green-d); font-variant-numeric: tabular-nums;
 }
 @media (max-width: 480px) {
@@ -3266,7 +3270,7 @@ body.pmodal-lock { overflow: hidden; }
 @keyframes skel-wave { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 @media (prefers-reduced-motion: reduce) { .post-skel i { animation: none; } }
 :root[data-theme="dark"] .post-skel { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
-.rating-card__score { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 24px; color: var(--green-d); margin-top: 8px; letter-spacing: -.5px; }
+.rating-card__score { display: block; font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 24px; color: var(--green-d); margin-top: 8px; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
 .rating-card__count { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
 
 /* ── Post card runtime bits (dynamic feed) ───────────────────────────────────
@@ -3706,6 +3710,7 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); color: var(--accent-ink); }
 .stat-band b {
   font-family: 'Rubik', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--green-d);
   font-size: 20px; margin-inline-end: 6px;
+  font-variant-numeric: tabular-nums;
 }
 .lead-hero--split .stat-band { justify-content: flex-start; }
 /* On a centered (non-split) lead-hero the whole column is centered, so the stat

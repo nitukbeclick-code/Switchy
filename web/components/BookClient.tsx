@@ -437,7 +437,7 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
           aria-label="התקדמות קביעת הפגישה"
         >
           <div
-            className="h-full rounded-full bg-accent transition-all duration-300 ease-[var(--ease-out)]"
+            className="h-full rounded-full bg-accent transition-[width] duration-300 ease-[var(--ease-out)]"
             style={{ width: `${progress}%` }}
           />
         </div>

@@ -512,6 +512,15 @@ button:not([disabled]):active {
 button {
   transition: transform var(--duration-press) var(--ease-out);
 }
+/* The CRM drawers' full-bleed dismiss backdrop renders as a <button> (for
+   keyboard/SR access, not just a pointer-only div) so it inherits the blanket
+   press-scale above — but scaling a viewport-spanning overlay by 3% pulls its
+   edges visibly inward on every close. Opt out of just the transform; higher
+   specificity than the blanket rule (adds a class + repeats the type selector)
+   so it wins without !important. */
+button.crm-overlay-btn:not([disabled]):active {
+  transform: none;
+}
 
 /* ── Origin-aware popover / dropdown enter ────────────────────────────────────
    Per Emil's rule (7): popovers and dropdowns scale UP FROM the trigger, not from

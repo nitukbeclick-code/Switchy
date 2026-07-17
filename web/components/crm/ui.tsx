@@ -249,7 +249,7 @@ export function StatCard({
     <>
       <p className="text-xs font-medium text-muted">{label}</p>
       <p className={`mt-1 font-display text-3xl font-bold tabular-nums ${accent}`}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-muted tabular-nums">{hint}</p>}
     </>
   );
   const box = "rounded-2xl border border-border bg-surface p-4 shadow-soft";

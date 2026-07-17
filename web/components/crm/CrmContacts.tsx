@@ -245,7 +245,7 @@ export default function CrmContacts() {
         <NoticeCard>{search ? "לא נמצאו אנשי קשר תואמים." : "אין אנשי קשר בסטטוס הזה."}</NoticeCard>
       ) : (
         <>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted tabular-nums">
             {contacts.length.toLocaleString("he-IL")} אנשי קשר{contacts.length >= 200 ? " (מוצגים 200 האחרונים)" : ""}
           </p>
 

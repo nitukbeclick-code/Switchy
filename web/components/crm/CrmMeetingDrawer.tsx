@@ -125,7 +125,7 @@ export default function CrmMeetingDrawer({
 
   return (
     <div ref={rootRef} className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי פגישה">
-      <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="flex-1 bg-ink/40 backdrop-blur-[1px]" />
+      <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="crm-overlay-btn flex-1 bg-ink/40 backdrop-blur-[1px]" />
       <div className="ms-auto flex h-full w-full max-w-md flex-col overflow-y-auto border-s border-border bg-background shadow-float">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
           <div className="min-w-0">

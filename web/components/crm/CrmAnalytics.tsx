@@ -365,7 +365,7 @@ export default function CrmAnalytics() {
               )}
             </Section>
             <Section title="בריאות משימות מתוזמנות">
-              <p className="text-xs text-muted">
+              <p className="text-xs text-muted tabular-nums">
                 {he(data.cron.known)} משימות מוכרות · {data.cron.ok ? "הכול תקין ✓" : "יש בעיות"}
               </p>
               {data.cron.failing.length > 0 && (

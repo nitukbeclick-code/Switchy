@@ -51,7 +51,7 @@ function StatusSelect({
       disabled={busy}
       onChange={(e) => onChange(e.target.value as ContactStatus)}
       aria-label="שינוי סטטוס איש קשר"
-      className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-50"
+      className="rounded-xl border border-border bg-surface px-2 py-1 text-xs text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:opacity-50"
     >
       {!CONTACT_STATUSES.includes(value as ContactStatus) && <option value="">{value || "—"}</option>}
       {CONTACT_STATUSES.map((s) => (
@@ -210,7 +210,7 @@ export default function CrmContacts() {
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="חיפוש שם / טלפון"
           aria-label="חיפוש אנשי קשר"
-          className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="w-48 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
         <button
           type="button"

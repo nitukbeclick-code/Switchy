@@ -169,7 +169,7 @@ function CrmConsoleInner() {
               onClick={() => selectTab(t.key)}
               className={`interactive -mb-px flex items-center rounded-t-lg border-b-2 px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
-                  ? "border-accent text-accent-text"
+                  ? "border-accent bg-accent/10 text-accent-text"
                   : "border-transparent text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground"
               }`}
             >

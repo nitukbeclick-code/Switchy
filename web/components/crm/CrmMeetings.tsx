@@ -167,7 +167,7 @@ export default function CrmMeetings() {
           onChange={(e) => changeSearch(e.target.value)}
           placeholder="חיפוש שם / טלפון"
           aria-label="חיפוש פגישות"
-          className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="w-48 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
         <button
           type="button"
@@ -198,7 +198,7 @@ export default function CrmMeetings() {
         <NoticeCard>לא נמצאו פגישות תואמות לחיפוש.</NoticeCard>
       ) : (
         <>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted tabular-nums">
             {shown.length.toLocaleString("he-IL")} פגישות{meetings.length >= 200 ? " (מוצגות 200 האחרונות)" : ""}
           </p>
 

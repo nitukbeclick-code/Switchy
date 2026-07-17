@@ -318,7 +318,7 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
                     </div>
                     <div className="shrink-0 text-start">
                       <ConversationStatusPill status={c.status} />
-                      {c.lastAt && <p className="mt-1 text-[11px] text-muted">{when(c.lastAt)}</p>}
+                      {c.lastAt && <p className="mt-1 text-xs text-muted">{when(c.lastAt)}</p>}
                     </div>
                   </div>
                   {c.lastSnippet && <p className="mt-2 line-clamp-2 text-xs text-foreground">{c.lastSnippet}</p>}

@@ -497,15 +497,18 @@ export function fetchCrmMeetings(
   ).then((r) => r.data);
 }
 
-/** One meeting's full detail + its status timeline. */
+/** One meeting's full detail + its status timeline. Returns the full
+ *  {data,failure} shape (like fetchCrmLeadDetail) so the drawer can show the
+ *  server's real error message and hide "retry" on a non-retryable failure,
+ *  instead of a single generic string for every kind of load failure. */
 export function fetchCrmMeetingDetail(
   meetingId: string,
-): Promise<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] } | null> {
+): Promise<CrmFetch<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] }>> {
   return crmRead<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] }>(
     "getMeeting",
     { meetingId },
     (j) => hasObject(j, "meeting") && hasArray(j, "events"),
-  ).then((r) => r.data);
+  );
 }
 
 /** Move a meeting to a new lifecycle status (server validates + audits). */

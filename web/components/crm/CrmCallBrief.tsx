@@ -71,7 +71,7 @@ export default function CrmCallBrief({ leadId }: { leadId: string }) {
 
   return (
     <div className="space-y-3 text-sm">
-      <p className="text-xs text-muted">
+      <p className="text-xs font-semibold text-ink">
         {data.need.categoryHe}
         {data.need.budget > 0 ? ` · תקציב ₪${he(data.need.budget)}` : ""}
         {data.need.provider ? ` · ספק נוכחי: ${data.need.provider}` : ""}
@@ -119,7 +119,7 @@ export default function CrmCallBrief({ leadId }: { leadId: string }) {
       )}
 
       {data.compliance.length > 0 && (
-        <div className="rounded-xl border border-value/40 bg-value/5 p-2">
+        <div className="rounded-2xl border border-value/40 bg-value/5 p-2">
           <p className="mb-1 text-xs font-semibold text-value-text">חובה לומר (ציות)</p>
           <ul className="space-y-1 text-xs text-foreground">
             {data.compliance.map((c, i) => (

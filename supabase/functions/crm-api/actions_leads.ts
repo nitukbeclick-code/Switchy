@@ -11,7 +11,10 @@ import {
   eventPreview,
   isUuidish,
   LEAD_SORTS,
+  LEAD_PRIORITIES,
   LEAD_STATUSES,
+  MAX_FOLLOW_UP_NOTE_LEN,
+  MAX_LOST_REASON_LEN,
   MAX_NOTE_LEN,
   s,
   shapeLeadDetail,
@@ -34,6 +37,7 @@ import { actorName, err, json, logAudit, q, type Row } from "./helpers.ts";
 export async function actSetLeadStatus(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
   const status = s(b.status).trim();
+  const lostReason = s(b.lostReason).trim().slice(0, MAX_LOST_REASON_LEN);
   if (!leadId || !status) return err("leadId/status חסרים", 400, "bad_request");
   if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
   if (!LEAD_STATUSES.has(status)) return err("סטטוס ליד לא תקין", 400, "invalid_status");
@@ -44,7 +48,10 @@ export async function actSetLeadStatus(b: Row, actorUid: string): Promise<Respon
   if (cur === null) return err("עדכון הליד נכשל", 502, "db_error");
   if (!cur.length) return err("הליד לא נמצא", 404, "not_found");
   const oldStatus = s(cur[0].status) || null;
-  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, { status });
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    status,
+    ...(status === "lost" && lostReason ? { lost_reason: lostReason } : {}),
+  });
   if (n === null) {
     jlog({ at: "crm.setLeadStatus", ok: false, leadId });
     return err("עדכון הליד נכשל", 502, "db_error");
@@ -64,9 +71,65 @@ export async function actSetLeadStatus(b: Row, actorUid: string): Promise<Respon
     old_status: oldStatus,
     new_status: status,
     actor_name: actor,
+    ...(status === "lost" && lostReason ? { note: `סיבת סגירה: ${lostReason}` } : {}),
   });
   // Reg.13 security-audit: which admin moved which lead to which pipeline status.
-  await logAudit(actorUid, "crm_lead_status", { lead_id: leadId, status, old_status: oldStatus });
+  await logAudit(actorUid, "crm_lead_status", {
+    lead_id: leadId,
+    status,
+    old_status: oldStatus,
+    has_lost_reason: Boolean(lostReason),
+  });
+  return json({ ok: true });
+}
+
+// setLeadWorkflow {leadId, priority, followUpAt?, followUpNote?, lostReason?}
+// → update the rep's next-action controls. The public clients have no column
+// grants for these fields; this access-gated service-role action is the only web
+// write path. Free text is length-bounded and the security audit records only
+// presence flags, never the note/reason bytes.
+export async function actSetLeadWorkflow(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  const priority = s(b.priority).trim();
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+  if (!LEAD_PRIORITIES.has(priority)) return err("עדיפות לא תקינה", 400, "bad_request");
+
+  const rawFollowUpAt = s(b.followUpAt).trim();
+  let followUpAt: string | null = null;
+  if (rawFollowUpAt) {
+    const parsed = new Date(rawFollowUpAt);
+    if (Number.isNaN(parsed.getTime())) return err("מועד המעקב לא תקין", 400, "bad_request");
+    followUpAt = parsed.toISOString();
+  }
+  const followUpNote = s(b.followUpNote).trim().slice(0, MAX_FOLLOW_UP_NOTE_LEN) || null;
+  const lostReason = s(b.lostReason).trim().slice(0, MAX_LOST_REASON_LEN) || null;
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    priority,
+    follow_up_at: followUpAt,
+    follow_up_note: followUpNote,
+    lost_reason: lostReason,
+  });
+  if (n === null) {
+    jlog({ at: "crm.setLeadWorkflow", ok: false, leadId });
+    return err("שמירת תכנית הטיפול נכשלה", 502, "db_error");
+  }
+  if (n === 0) return err("הליד לא נמצא", 404, "not_found");
+
+  const dueText = followUpAt ? new Date(followUpAt).toLocaleString("he-IL") : "ללא מועד";
+  await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "workflow_update",
+    note: `עדיפות: ${priority} · מעקב: ${dueText}`,
+    actor_name: await actorName(actorUid),
+  });
+  await logAudit(actorUid, "crm_lead_workflow", {
+    lead_id: leadId,
+    priority,
+    follow_up_at: followUpAt,
+    has_follow_up_note: Boolean(followUpNote),
+    has_lost_reason: Boolean(lostReason),
+  });
   return json({ ok: true });
 }
 
@@ -90,7 +153,7 @@ export async function actListLeads(b: Row): Promise<Response> {
   const offset = clampOffset(b.offset);
   // Fetch one row past the window — the cheap "is there a next page?" probe.
   let path =
-    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=${limit + 1}&offset=${offset}&select=id,name,phone,provider,source,status,created_at,claimed_by`;
+    `/rest/v1/leads?order=created_at.${asc ? "asc" : "desc"}&limit=${limit + 1}&offset=${offset}&select=id,name,phone,provider,source,status,created_at,claimed_by,priority,follow_up_at`;
   if (status) path += `&status=eq.${q(status)}`;
   const rows = await fetchRows<Row>(path);
   if (rows === null) return err("שגיאה בטעינת הלידים", 502, "db_error");
@@ -104,6 +167,8 @@ export async function actListLeads(b: Row): Promise<Response> {
     status: s(r.status),
     createdAt: s(r.created_at) || null,
     claimedBy: s(r.claimed_by) || null,
+    priority: s(r.priority) || "normal",
+    followUpAt: s(r.follow_up_at) || null,
   }));
   if (search) {
     leads = leads.filter((l) =>
@@ -124,7 +189,7 @@ export async function actGetLeadDetail(b: Row, actorUid: string): Promise<Respon
   if (!leadId) return err("leadId חסר", 400, "bad_request");
   if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
   const rows = await fetchRows<Row>(
-    `/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=id,name,phone,email,provider,plan_id,source,callback_time,city,status,created_at,claimed_by,claimed_at,contacted_at,actual_saving,notes,referrer_code,consent_marketing_sms,consent_marketing_email,consent_marketing_whatsapp`,
+    `/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=id,name,phone,email,provider,plan_id,source,callback_time,city,status,created_at,claimed_by,claimed_at,contacted_at,actual_saving,priority,follow_up_at,follow_up_note,lost_reason,notes,referrer_code,consent_marketing_sms,consent_marketing_email,consent_marketing_whatsapp`,
   );
   if (rows === null) return err("שגיאה בטעינת הליד", 502, "db_error");
   if (rows.length === 0) return err("הליד לא נמצא", 404, "not_found");

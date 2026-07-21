@@ -138,16 +138,17 @@ function CrmConsoleInner() {
   }
 
   return (
-    <main id="main" className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
-      <header className="mb-5">
-        <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">CRM · ניהול לקוחות</h1>
-        <p className="mt-1 text-sm text-muted">
+    <main id="main" className="crm-shell mx-auto w-full px-4">
+      <header className="crm-hero mb-5">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-accent-text">מרכז התפעול של SWITCHY</p>
+        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">CRM · ניהול לקוחות</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted sm:text-base">
           צנרת לידים, שיחות ונתוני מכירות. הנתונים נטענים בשרת (למנהלים בלבד) וכל פעולה נרשמת ביומן.
         </p>
       </header>
 
       <nav
-        className="mb-6 flex flex-wrap gap-1 border-b border-border"
+        className="crm-tabs mb-6"
         role="tablist"
         aria-label="מדורי הקונסולה"
         onKeyDown={onTablistKeyDown}
@@ -167,10 +168,10 @@ function CrmConsoleInner() {
               aria-controls="crm-tabpanel"
               tabIndex={active ? 0 : -1}
               onClick={() => selectTab(t.key)}
-              className={`interactive -mb-px flex items-center rounded-t-lg border-b-2 px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+              className={`crm-tab interactive flex items-center text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
                 active
-                  ? "border-accent bg-accent/10 text-accent-text"
-                  : "border-transparent text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground"
+                  ? ""
+                  : "text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10 [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground"
               }`}
             >
               {t.label}
@@ -184,7 +185,7 @@ function CrmConsoleInner() {
         })}
       </nav>
 
-      <div role="tabpanel" id="crm-tabpanel" aria-labelledby={`crm-tab-${tab}`}>
+      <div className="crm-panel" role="tabpanel" id="crm-tabpanel" aria-labelledby={`crm-tab-${tab}`}>
         {tab === "dashboard" && <CrmDashboard onNavigate={selectTab} />}
         {tab === "leads" && <CrmLeads />}
         {tab === "meetings" && <CrmMeetings />}

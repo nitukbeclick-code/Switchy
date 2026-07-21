@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Deno
         uses: denoland/setup-deno@v2
@@ -64,6 +64,41 @@ jobs:
         working-directory: supabase/functions
         run: deno task test
 
+  next-web:
+    name: Next.js app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Lint
+        working-directory: web
+        run: npm run lint
+
+      - name: Type-check
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Unit and component tests
+        working-directory: web
+        run: npm test
+
+      - name: Production build
+        working-directory: web
+        run: npm run build
+
   build-web:
     name: Build web
     runs-on: ubuntu-latest
@@ -71,7 +106,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -93,7 +128,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -114,7 +149,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       # The web app's bundled fallback is a manual copy of the site export.
       # Nothing else enforces the copy — drift here means the site and the web
@@ -129,7 +164,8 @@ jobs:
 
       # Provider names/slugs live in three parallel hand-kept registries
       # (site/build.js, lib/components/logo_widget/logo_widget.dart,
-      # web/lib/providers.generated.ts + SLUG_OVERRIDES in web/lib/data.ts).
+      # web/lib/providers.generated.ts + SLUG_OVERRIDES in the client-safe
+      # web/lib/provider-slug.ts module).
       # A provider added in one place but not the others ships with a hash-slug
       # URL or a fallback badge. This derives the provider set from the
       # committed catalogue and asserts every registry covers it — names and
@@ -169,9 +205,9 @@ jobs:
           gen = open("web/lib/providers.generated.ts", encoding="utf-8").read()
           web_by_name = {n: s for s, n in
                          re.findall(r'\{\s*slug:\s*"([^"]+)",\s*name:\s*"([^"]+)"\s*\}', gen)}
-          data_ts = open("web/lib/data.ts", encoding="utf-8").read()
+          slug_ts = open("web/lib/provider-slug.ts", encoding="utf-8").read()
           overrides = {}
-          for line in block(data_ts, r"const SLUG_OVERRIDES: Record<string, string> = \{", r"\};",
+          for line in block(slug_ts, r"const SLUG_OVERRIDES: Readonly<Record<string, string>> = \{", r"\};",
                             "web SLUG_OVERRIDES").splitlines():
               m = re.match(r'\s*(?:"([^"]+)"|([^\s:"]+)):\s*"([^"]+)"', line)
               if m:

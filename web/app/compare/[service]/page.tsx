@@ -42,6 +42,7 @@ import {
   getCities,
   getProviders,
   buildProviderRankings,
+  isConsumerHeadlinePlan,
 } from "@/lib/data";
 import type { Service, City } from "@/lib/data";
 import type { Plan, Provider } from "@/lib/types";
@@ -316,19 +317,25 @@ export default async function ServiceHubPage({ params }: Params) {
   // Resilient fallback: if the live read yields an empty set for this service,
   // fall back to the bundled service plans so the page is never blank.
   const plans = livePlans.length ? livePlans : plansForService(service);
+  // Headline claims compare like with like: monthly consumer plans only. Data
+  // SIMs remain visible in the full table, but no longer win "cheapest phone
+  // plan" wording. If a category has no monthly consumer plan, fall back to the
+  // full real list rather than render an empty answer.
+  const comparablePlans = plans.filter(isConsumerHeadlinePlan);
+  const headlinePlans = comparablePlans.length ? comparablePlans : plans;
   // Real "data as of" date: the newest live updated_at, else derived from rows.
   const asOf = lastUpdated ?? lastDataDate(plans);
 
   // AEO surfaces, all from the SAME `plans`.
-  const directAnswer = directAnswerFor(service, undefined, plans);
-  const questions: AeoQuestion[] = pageQuestions(service, plans);
+  const directAnswer = directAnswerFor(service, undefined, headlinePlans);
+  const questions: AeoQuestion[] = pageQuestions(service, headlinePlans);
 
   const cities: City[] = getCities();
   // Lowest headline price across the live plans — surfaced as the green (VALUE)
   // hero stat. Derived from the SAME `plans` the table renders (no drift).
-  const heroMin = minPriceOf(plans);
-  const summary = buildSummary(svc, plans);
-  const authority = buildAuthority(svc, plans);
+  const heroMin = minPriceOf(headlinePlans);
+  const summary = buildSummary(svc, headlinePlans);
+  const authority = buildAuthority(svc, headlinePlans);
   const ranked = topProviders(svc);
   const faqs = faqForService(svc);
   const reasoning = buildReasoning(svc, plans);
@@ -575,6 +582,7 @@ export default async function ServiceHubPage({ params }: Params) {
               plans={plans}
               caption={`השוואת ${svc.label} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
               groupByProvider
+              interactiveFilters
             />
             <PriceCaveat className="mt-3" />
           </>

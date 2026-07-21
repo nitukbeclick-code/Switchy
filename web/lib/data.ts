@@ -18,6 +18,15 @@ import type {
   RecommendedEntity,
 } from "./types";
 import { CATEGORY_HE } from "./categories";
+import { providerSlug } from "./provider-slug";
+import { isConsumerHeadlinePlan } from "./plan-classification";
+
+export { providerSlug } from "./provider-slug";
+export {
+  isMonthlyPlan,
+  isDataOnlyPlan,
+  isConsumerHeadlinePlan,
+} from "./plan-classification";
 
 // ── Raw catalogue load (once, at module init) ────────────────────────────────
 interface RawCatalogue {
@@ -48,19 +57,6 @@ export { CATEGORY_HE };
  * and looks untrustworthy in AI answers. Each value is the carrier's own
  * well-known English brand handle. KEEP IN SYNC with the catalogue provider names.
  */
-const SLUG_OVERRIDES: Record<string, string> = {
-  סלקום: "cellcom",
-  פרטנר: "partner",
-  פלאפון: "pelephone",
-  "גולן טלקום": "golan",
-  "הוט מובייל": "hot-mobile",
-  "רמי לוי": "rami-levy",
-  "וואלה מובייל": "walla-mobile",
-  בזק: "bezeq",
-  גילת: "gilat",
-  "019 מובייל": "019mobile",
-};
-
 /**
  * Legacy `p-<hash>` slugs → the new readable slug, for 301 redirects so existing
  * links / indexed URLs don't 404 after the slug change. These are the exact
@@ -89,25 +85,6 @@ export const LEGACY_PROVIDER_SLUG_REDIRECTS: Readonly<Record<string, string>> = 
  * Latin names lowercase + hyphenate, and any remaining non-ASCII name falls back
  * to a deterministic hashed token so every provider still gets a stable slug.
  */
-export function providerSlug(name: string): string {
-  const trimmed = (name ?? "").trim();
-  if (SLUG_OVERRIDES[trimmed]) return SLUG_OVERRIDES[trimmed];
-
-  // ASCII path: lowercase, non-alnum → hyphen, collapse + trim hyphens.
-  const ascii = trimmed
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  if (ascii) return ascii;
-
-  // Non-ASCII (e.g. Hebrew): build a deterministic ascii token from char codes.
-  let hash = 0;
-  for (let i = 0; i < trimmed.length; i++) {
-    hash = (hash * 31 + trimmed.charCodeAt(i)) >>> 0;
-  }
-  return `p-${hash.toString(36)}`;
-}
-
 // ── Core accessors ───────────────────────────────────────────────────────────
 /** All plans in the catalogue (build-time, immutable copy). */
 export function getPlans(): Plan[] {
@@ -162,7 +139,8 @@ function buildProviders(): Provider[] {
     usedSlugs.add(slug);
 
     const categories = [...new Set(plans.map((p) => p.cat))];
-    const minPrice = plans.reduce(
+    const comparablePlans = plans.filter(isConsumerHeadlinePlan);
+    const minPrice = comparablePlans.reduce(
       (min, p) => (typeof p.price === "number" && p.price < min ? p.price : min),
       Number.POSITIVE_INFINITY,
     );
@@ -463,12 +441,7 @@ export function priceStats(): Record<string, PriceStat> {
     // surface a per-minute ₪1 as the category "cheapest" (and a meaningless
     // blended average). Mirror the static site's `!priceUnit || priceUnit ===
     // 'month'` guard (site/build.js) so both surfaces report the same figure.
-    const priced = plansByCategory(cat).filter(
-      (p) =>
-        typeof p.price === "number" &&
-        Number.isFinite(p.price) &&
-        (!p.priceUnit || p.priceUnit === "month"),
-    );
+    const priced = plansByCategory(cat).filter(isConsumerHeadlinePlan);
     if (!priced.length) continue;
     let min = Infinity;
     let max = -Infinity;
@@ -507,6 +480,7 @@ export function priceStats(): Record<string, PriceStat> {
 export function buildProviderRankings(category?: string): Provider[] {
   if (!category) {
     return getProviders()
+      .filter((provider) => provider.minPrice > 0)
       .slice()
       .sort(
         (a, b) =>
@@ -520,7 +494,7 @@ export function buildProviderRankings(category?: string): Provider[] {
   const scoped: Provider[] = [];
   for (const provider of getProviders()) {
     const plans = plansByProvider(provider.slug).filter(
-      (p) => p.cat === category,
+      (p) => p.cat === category && isConsumerHeadlinePlan(p),
     );
     if (!plans.length) continue;
     const minPrice = plans.reduce(

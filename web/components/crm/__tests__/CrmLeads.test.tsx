@@ -55,6 +55,8 @@ function lead(id: string, over: Partial<CrmLead> = {}): CrmLead {
     status: "new",
     createdAt: "2026-07-12T08:00:00Z",
     claimedBy: null,
+    priority: "normal",
+    followUpAt: null,
     ...over,
   };
 }
@@ -127,8 +129,8 @@ describe("CrmLeads bulk actions", () => {
 
     selectLead("a");
     selectLead("b");
-    fireEvent.click(bulkBar().getByRole("button", { name: "אבוד" }));
-    fireEvent.click(bulkBar().getByRole("button", { name: /אישור: העבר 2 ל״אבוד״/ }));
+    fireEvent.click(bulkBar().getByRole("button", { name: "יצרנו קשר" }));
+    fireEvent.click(bulkBar().getByRole("button", { name: /אישור: העבר 2 ל״יצרנו קשר״/ }));
 
     const msg = await screen.findByText("עודכנו 1 מתוך 2 לידים (חלק נכשלו).");
     expect(msg.className).toContain("text-danger-text");
@@ -153,14 +155,14 @@ describe("CrmLeads bulk actions", () => {
   });
 
   it("one-shot undo restores the statuses captured BEFORE the apply", async () => {
-    mocks.fetchCrmLeads.mockResolvedValue(ok([lead("a", { status: "new" }), lead("b", { status: "contacted" })]));
+    mocks.fetchCrmLeads.mockResolvedValue(ok([lead("a", { status: "new" }), lead("b", { status: "lost" })]));
     render(<CrmLeads />);
     await screen.findAllByText("ליד a");
 
     selectLead("a");
     selectLead("b");
-    fireEvent.click(bulkBar().getByRole("button", { name: "אבוד" }));
-    fireEvent.click(bulkBar().getByRole("button", { name: /אישור: העבר 2 ל״אבוד״/ }));
+    fireEvent.click(bulkBar().getByRole("button", { name: "יצרנו קשר" }));
+    fireEvent.click(bulkBar().getByRole("button", { name: /אישור: העבר 2 ל״יצרנו קשר״/ }));
     await screen.findByText("עודכנו 2 לידים.");
     mocks.setCrmLeadStatus.mockClear();
 
@@ -169,7 +171,7 @@ describe("CrmLeads bulk actions", () => {
     await screen.findByText("שוחזרו 2 לידים לשלב הקודם.");
     // Restored to what each lead showed before the bulk — not a blanket value.
     expect(mocks.setCrmLeadStatus).toHaveBeenCalledWith("a", "new");
-    expect(mocks.setCrmLeadStatus).toHaveBeenCalledWith("b", "contacted");
+    expect(mocks.setCrmLeadStatus).toHaveBeenCalledWith("b", "lost");
     // One-shot: consumed on use.
     expect(screen.queryByRole("button", { name: /שחזור השלבים הקודמים/ })).toBeNull();
   });

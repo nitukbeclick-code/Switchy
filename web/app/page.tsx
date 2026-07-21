@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
@@ -20,6 +21,7 @@ import {
   getProviders,
   getPlans,
   plansByCategory,
+  isConsumerHeadlinePlan,
   buildProviderRankings,
   getCities,
   CATEGORY_HE,
@@ -49,7 +51,7 @@ export const metadata: Metadata = pageMetadata({
 // Pick the N cheapest plans in a category as a representative featured table.
 function cheapestIn(cat: string, n: number) {
   return [...plansByCategory(cat)]
-    .filter((p) => typeof p.price === "number")
+    .filter(isConsumerHeadlinePlan)
     .sort((a, b) => a.price - b.price)
     .slice(0, n);
 }
@@ -59,7 +61,7 @@ function cheapestIn(cat: string, n: number) {
 // anchors on the hero / category cards can never drift from the data.
 function catEntryPriceText(cat: string): string | null {
   const priced = plansByCategory(cat).filter(
-    (p) => typeof p.price === "number",
+    isConsumerHeadlinePlan,
   );
   if (priced.length === 0) return null;
   // The cheapest priced plan's EXACT advertised price (₪10.90, not a rounded-up
@@ -91,18 +93,18 @@ function categoryEntryLabel(cat: string): string {
 // categories fall back to the brand green, so a new category is never un-styled.
 type CategoryVis = { icon: IconName; from: string; to: string; deep: string };
 const CATEGORY_VIS: Record<string, CategoryVis> = {
-  cellular: { icon: "cellular", from: "#22C55E", to: "#0B7A38", deep: "#0B5E2C" },
-  internet: { icon: "internet", from: "#38BDF8", to: "#0369A1", deep: "#075985" },
-  tv: { icon: "tv", from: "#818CF8", to: "#4338CA", deep: "#3730A3" },
-  triple: { icon: "triple", from: "#FBBF24", to: "#B45309", deep: "#92400E" },
-  abroad: { icon: "abroad", from: "#F472B6", to: "#BE185D", deep: "#9D174D" },
-  electricity: { icon: "bolt", from: "#2DD4BF", to: "#0F766E", deep: "#115E59" },
+  cellular: { icon: "cellular", from: "#168B69", to: "#075B46", deep: "#064635" },
+  internet: { icon: "internet", from: "#3C9690", to: "#14686A", deep: "#0E4E50" },
+  tv: { icon: "tv", from: "#85965A", to: "#55662B", deep: "#3F4C20" },
+  triple: { icon: "triple", from: "#D9A83A", to: "#9C6510", deep: "#744A0B" },
+  abroad: { icon: "abroad", from: "#C97861", to: "#8E4335", deep: "#6D3329" },
+  electricity: { icon: "bolt", from: "#6F9D78", to: "#3F6D52", deep: "#315540" },
 };
 const CATEGORY_VIS_FALLBACK: CategoryVis = {
   icon: "spark",
-  from: "#22C55E",
-  to: "#0B7A38",
-  deep: "#0B5E2C",
+  from: "#168B69",
+  to: "#075B46",
+  deep: "#064635",
 };
 const categoryVis = (cat: string): CategoryVis =>
   CATEGORY_VIS[cat] ?? CATEGORY_VIS_FALLBACK;
@@ -121,7 +123,9 @@ export default function Home() {
   // Featured table: cheapest cellular plans (the highest-traffic category).
   const featuredCat = categories.includes("cellular") ? "cellular" : categories[0];
   const featured = cheapestIn(featuredCat, 6);
-  // Keep the cheapest featured plan ITSELF (not just its rounded sort-key price)
+  // Keep the cheapest comparable consumer plan itself (not a data-only SIM or a
+  // per-minute/day tariff) so the hero makes a like-for-like monthly claim.
+  // Keep the plan (not just its rounded sort-key price)
   // so the hero / trust-band floor renders with priceText — the SAME decimal-
   // preserving helper the ComparisonTable rows below use — and never rounds a
   // ₪10.90 plan UP to ₪11 (which would OVERSTATE the floor and drift from the
@@ -193,13 +197,14 @@ export default function Home() {
            a soft near-white green on dark; high-contrast a11y mode restores pure ink. */
         .hero-panel {
           background:
-            radial-gradient(115% 90% at 50% -10%, #e6faf0 0%, rgba(230, 250, 240, 0) 60%),
-            var(--surface);
+            radial-gradient(90% 80% at 92% 0%, rgba(8, 122, 91, 0.16), transparent 64%),
+            radial-gradient(70% 70% at 0% 100%, rgba(211, 154, 36, 0.14), transparent 66%),
+            linear-gradient(145deg, #fffcf6, #f7ecd6);
         }
-        .hero-ink { color: #123d2e; }
+        .hero-ink { color: #14211d; }
         :root[data-theme="dark"] .hero-panel {
           background:
-            radial-gradient(115% 90% at 50% -10%, rgba(74, 222, 128, 0.10) 0%, rgba(74, 222, 128, 0) 60%),
+            radial-gradient(115% 90% at 50% -10%, rgba(93, 214, 171, 0.12) 0%, rgba(93, 214, 171, 0) 60%),
             var(--surface);
         }
         :root[data-theme="dark"] .hero-ink { color: #eaf7ef; }
@@ -250,7 +255,7 @@ export default function Home() {
           {/* H1 — deep forest-green ink (NOT black); the price clause keeps the
               green VALUE emphasis, bound to the real catalogue entry prices. */}
           <h1 className="hero-ink sw-reveal mt-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-            משווים תקשורת, משלמים פחות.{" "}
+            התקשורת שלכם. במחיר שמרגיש נכון.{" "}
             <span className="text-accent-text">
               סלולר מ-₪{minFeaturedText}
               {internetEntry != null ? ` · אינטרנט מ-₪${internetEntry}` : ""}{" "}
@@ -261,8 +266,8 @@ export default function Home() {
             className="sw-reveal mt-4 max-w-2xl text-base font-medium leading-relaxed text-muted sm:text-lg [text-wrap:pretty]"
             style={{ animationDelay: "60ms" }}
           >
-            השוואה חינמית של כל {providers.length} ספקי התקשורת בישראל — כולל
-            המחיר שאחרי המבצע. בלי התחייבות.
+            משווים את כל {providers.length} ספקי התקשורת בישראל, מציגים גם את
+            המחיר שאחרי המבצע ומלווים אתכם עד שהמעבר הושלם. בלי לחץ ובלי אותיות קטנות.
           </p>
 
           {/* Launcher prompt + tiles — the kama-ze-style "pick a service" grid,
@@ -271,7 +276,7 @@ export default function Home() {
             className="hero-ink sw-reveal mt-8 font-display text-lg font-bold tracking-tight"
             style={{ animationDelay: "90ms" }}
           >
-            איזה שירות בא לכם להוזיל?
+            איפה מתחילים לחסוך?
           </h2>
           <ul className="nums-tabular mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {primaryCats.map((cat, i) => {
@@ -362,7 +367,7 @@ export default function Home() {
               label="compare"
               className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
             >
-              בדקו כמה תחסכו
+              מצאו את המסלול שלכם
               <Icon name="chevron" size={18} aria-hidden="true" />
             </TrackedCtaLink>
             <TrackedCtaLink
@@ -371,7 +376,7 @@ export default function Home() {
               label="consult"
               className="interactive text-sm font-medium text-muted underline-offset-4 hover:text-accent-text hover:underline"
             >
-              או דברו עם יועץ
+              או התייעצו עם נציג
             </TrackedCtaLink>
           </div>
           {/* Trust band — REAL catalogue counts; the entry price carries the
@@ -490,9 +495,47 @@ export default function Home() {
             label="compare"
             className="press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98]"
           >
-            בדקו כמה תחסכו
+            מצאו את המסלול שלכם
             <Icon name="chevron" size={18} aria-hidden="true" />
           </TrackedCtaLink>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="clarity-h"
+        className="mt-16 overflow-hidden rounded-3xl border border-border/70 bg-surface shadow-soft"
+      >
+        <div className="grid items-stretch lg:grid-cols-[0.82fr_1.18fr]">
+          <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-10">
+            <p className="text-xs font-bold tracking-[0.16em] text-accent-text">
+              פחות רעש. יותר ודאות.
+            </p>
+            <h2
+              id="clarity-h"
+              className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl"
+            >
+              מבלגן של חבילות לבחירה אחת ברורה.
+            </h2>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
+              אנחנו מסדרים את המחירים, תנאי המבצע והאותיות הקטנות באותה שפה — כדי שתראו מה באמת מתאים לכם, בלי לנחש.
+            </p>
+            <Link
+              href="/how-it-works"
+              className="interactive mt-6 inline-flex w-fit items-center gap-1.5 font-semibold text-accent-text hover:text-accent-hover"
+            >
+              כך ההשוואה עובדת
+              <Icon name="chevron" size={17} aria-hidden="true" />
+            </Link>
+          </div>
+          <figure className="relative min-h-64 overflow-hidden border-t border-border/60 bg-[#f7f1e5] lg:min-h-[23rem] lg:border-s lg:border-t-0">
+            <Image
+              src="/assets/switchy-editorial-clarity.webp"
+              alt="המחשה של חבילות תקשורת רבות שמתכנסות לבחירה אחת ברורה"
+              fill
+              sizes="(max-width: 1024px) 100vw, 58vw"
+              className="object-cover"
+            />
+          </figure>
         </div>
       </section>
 

@@ -15,74 +15,60 @@ const double kMinTapTarget = 48.0;
 class AppColors {
   const AppColors._();
 
-  // Brand — "white glass & black ink": a formal, editorial base of ink black
-  // for text/structure/borders, true black for depth, slate + grey neutrals.
-  // Colour is carried by a single, disciplined accent: green is the ONE brand
-  // hue, used for both ACTION (CTAs/links/focus) and VALUE (savings). VALUE is
-  // told apart NOT by a second colour but by a distinct pill TREATMENT — a
-  // pale-green tint + leading savings glyph + tabular figures (see SavingPill
-  // and the accent block below). The ink/glass base stays monochrome so the
-  // green reads clearly.
+  // Brand — warm editorial fintech: ivory canvas, paper cards and forest ink.
+  // Emerald is ACTION (CTAs/links/focus); restrained amber is VALUE (savings).
+  // Provider colours remain separate and are never recoloured by this system.
   // GEIST neutrals — monochrome, border-defined. `primary` = near-black ink
   // (Geist neutral-950) for text + flat black hero surfaces; structure is carried
   // by 1px gray hairlines, not dark borders.
-  static const Color primary = Color(0xFF0A0A0A); // near-black ink / flat black surface
-  static const Color primaryDark = Color(0xFF000000); // true black
-  static const Color tertiary = Color(0xFF737373); // neutral-600 grey
-  static const Color secondary = Color(0xFFF5F5F5); // neutral-100 chip surface
-  static const Color sage = Color(0xFF737373); // neutral-600 muted grey (AA: 4.7:1)
+  static const Color primary = Color(0xFF14211D); // warm editorial ink
+  static const Color primaryDark = Color(0xFF0C1713); // deepest forest ink
+  static const Color tertiary = Color(0xFF65756D); // botanical muted ink
+  static const Color secondary = Color(0xFFECE8DE); // warm neutral chip surface
+  static const Color sage = Color(0xFF65756D); // botanical muted accent
 
   // Surfaces — Geist: near-white canvas, pure-white card (separated by 1px border).
-  static const Color background = Color(0xFFFAFAFA); // neutral-50 canvas
-  static const Color secondaryBackground = Color(0xFFFFFFFF); // white card
+  static const Color background = Color(0xFFF6F2E9); // warm ivory canvas
+  static const Color secondaryBackground = Color(0xFFFFFCF6); // paper card
 
   // Text — Geist neutral-900 ink on near-white.
-  static const Color primaryText = Color(0xFF171717); // neutral-900
-  static const Color secondaryText = Color(0xFF525252); // neutral-700 (AA 7:1)
+  static const Color primaryText = Color(0xFF14211D); // warm forest ink
+  static const Color secondaryText = Color(0xFF596860); // secondary botanical ink
 
   // Lines & borders — Geist 1px gray hairlines (NOT dark). `alternate` = the
   // emphasis/input border; `lineColor` = the default hairline + dividers.
-  static const Color alternate = Color(0xFFE1E1E1); // neutral-300 border (inputs/emphasis)
-  static const Color lineColor = Color(0xFFEAEAEA); // neutral-200 hairline/divider
+  static const Color alternate = Color(0xFFC8CEC8); // emphasis/input border
+  static const Color lineColor = Color(0xFFD8D8CE); // warm hairline/divider
 
   // Status (kept functional — errors/warnings still need their semantic hue)
   static const Color error = Color(0xFFDC2626);
   static const Color warning = Color(0xFFB45309);
-  static const Color success = Color(0xFF111827); // neutral ink base; the green accent (brandAccent) carries positive emphasis
-  static const Color info = Color(0xFF374151);
+  static const Color success = Color(0xFF087A5B);
+  static const Color info = Color(0xFF3C7772);
 
   // Surface tints — neutral grey washes for tinted cards/chips (no color).
-  static const Color accent1 = Color(0xFFF5F5F5); // neutral-100 tint surface
-  static const Color accent2 = Color(0xFFFAFAFA); // neutral-50
-  static const Color accent3 = Color(0xFFF5F5F5); // neutral-100
-  static const Color accent4 = Color(0xFFFAFAFA); // neutral-50
-  static const Color mint = Color(0xFFF5F5F5); // alias for accent1, semantic
+  static const Color accent1 = Color(0xFFDCEDE5); // emerald tint surface
+  static const Color accent2 = Color(0xFFF8E9C8); // amber tint surface
+  static const Color accent3 = Color(0xFFECE8DE); // warm neutral surface
+  static const Color accent4 = Color(0xFFF4EDE0); // paper wash
+  static const Color mint = Color(0xFFDCEDE5); // semantic emerald wash
 
-  // Refined accent system — a SINGLE green accent used with intent over the
-  // ink/glass base. brandAccent (green) = ACTION: primary CTAs, active states,
-  // links, focus. Matches the Switchy logo. The `saving*` tokens below are the
-  // SAME green: VALUE (savings) shares the one brand hue and is told apart by
-  // the SavingPill TREATMENT (pale-green tint + savings glyph + tabular
-  // figures), not by a competing colour. Provider/carrier brand colours are
-  // separate and never use these.
-  static const Color brandAccent = Color(0xFF16A34A); // green 600
-  static const Color brandAccentDark = Color(0xFF15803D); // green 700 (gradient depth)
-  static const Color brandAccentTint = Color(0xFFDCFCE7); // pale-green VALUE-pill tint surface
+  // Refined accent system: emerald = ACTION; amber = VALUE. Both are used
+  // sparingly over the warm ink/paper base.
+  static const Color brandAccent = Color(0xFF087A5B); // emerald action
+  static const Color brandAccentDark = Color(0xFF075B46); // deep emerald
+  static const Color brandAccentTint = Color(0xFFDCEDE5); // pale emerald tint
   // AA-safe ink for green TEXT/links on light glass. The fill hue (#16A34A)
   // only reaches ~3:1 as small text — green 700 clears 4.5:1 on white, the
   // tint chip, and the glass bg while still reading as the same brand green.
-  static const Color brandAccentText = Color(0xFF15803D); // green 700 — small-text/link
-  // VALUE tokens (savings figures, "best value" badges). These are NOT a second
-  // hue — they are the SAME brand green as brandAccent (deliberately aliased so
-  // VALUE and ACTION share one colour). Distinction comes from the pill shape +
-  // savings glyph + tabular figures (SavingPill), never from a different colour.
-  // Kept as named tokens because call sites read `saving`/`savingText` to mean
-  // "the green used on a VALUE surface"; do not delete or rename them.
-  static const Color saving = Color(0xFF16A34A); // green 600 (== brandAccent)
-  static const Color savingDark = Color(0xFF15803D); // green 700 (gradient depth)
+  static const Color brandAccentText = Color(0xFF075B46); // AA emerald text/link
+  // VALUE tokens (savings figures, "best value" badges): amber is reserved for
+  // money moments and paired with the SavingPill glyph + tabular figures.
+  static const Color saving = Color(0xFFD39A24); // restrained amber value
+  static const Color savingDark = Color(0xFF9C6510); // deep amber value
   // AA-safe ink for small VALUE TEXT on light glass — green 700 clears 4.5:1 on
   // white (the fill #16A34A only ~3:1 as small text), same as brandAccentText.
-  static const Color savingText = Color(0xFF15803D); // green 700 — small savings text
+  static const Color savingText = Color(0xFF8A570D); // AA amber savings text
   // The ink read out ON a SOLID green VALUE fill (e.g. "best value" badges that
   // fill with [saving]) — white, matching white-on-green CTAs. Note: the
   // SavingPill itself uses the pale TINT bg + green text, not this solid fill;
@@ -94,24 +80,24 @@ class AppColors {
   // cards, off-white ink, and the green accent lifted so it stays vivid on dark.
   // Brand identity is preserved: the SAME single green (for both ACTION and
   // VALUE), just at a brighter tint that holds contrast against the dark surface.
-  static const Color darkBackground = Color(0xFF0F1419); // app canvas
-  static const Color darkSurface = Color(0xFF141A23); // raised scaffolds/sheets
-  static const Color darkCard = Color(0xFF1A1F2B); // slate card surface
-  static const Color darkCardHi = Color(0xFF222A38); // hover/raised card
-  static const Color darkPrimaryText = Color(0xFFF0F2F4); // off-white ink
-  static const Color darkSecondaryText = Color(0xFF9BA6B4); // muted slate ink
-  static const Color darkBorder = Color(0xFF2A3442); // hairline on dark
-  static const Color darkLine = Color(0xFF232C38); // subtle inner divider
+  static const Color darkBackground = Color(0xFF0E1713);
+  static const Color darkSurface = Color(0xFF111D18);
+  static const Color darkCard = Color(0xFF15231E);
+  static const Color darkCardHi = Color(0xFF1A2D26);
+  static const Color darkPrimaryText = Color(0xFFF2EDE3);
+  static const Color darkSecondaryText = Color(0xFFB8C0BA);
+  static const Color darkBorder = Color(0xFF2C3B34);
+  static const Color darkLine = Color(0xFF24332C);
   // Accent lifted for dark: a brighter green keeps AA contrast on slate. VALUE
   // (darkSaving*) reuses the SAME lifted green — distinction is the pill
   // treatment, not a second hue.
-  static const Color darkBrandAccent = Color(0xFF4ADE80); // green 400
-  static const Color darkBrandAccentDark = Color(0xFF22C55E); // green 500
-  static const Color darkBrandAccentTint = Color(0xFF14301F); // deep green VALUE-pill wash
-  static const Color darkSaving = Color(0xFF4ADE80); // green 400 (== darkBrandAccent; VALUE lifted for dark)
-  static const Color darkSavingDark = Color(0xFF22C55E); // green 500
+  static const Color darkBrandAccent = Color(0xFF5DD6AB);
+  static const Color darkBrandAccentDark = Color(0xFF36B98B);
+  static const Color darkBrandAccentTint = Color(0xFF16382D);
+  static const Color darkSaving = Color(0xFFF2C66D);
+  static const Color darkSavingDark = Color(0xFFD7A640);
   // Surface tints on dark — faint slate washes for tinted chips/cards.
-  static const Color darkAccent1 = Color(0xFF1C2330);
+  static const Color darkAccent1 = Color(0xFF1A2D26);
   static const Color darkError = Color(0xFFF87171); // red 400, lifted
   static const Color darkWarning = Color(0xFFFBBF24);
 }
@@ -225,7 +211,7 @@ class AppTheme {
   /// SavingPill uses the pale [brandAccentTint] bg + [savingText] instead, so
   /// reach for [onSaving] only where a chip/badge fills solid green underneath.
   Color get onSaving =>
-      dark ? const Color(0xFF062817) : AppColors.onSaving;
+      dark ? const Color(0xFF2C1F08) : AppColors.onSaving;
 
   // ── Spacing scale — one shared rhythm for gaps, padding, insets ────────────
   // Use these instead of ad-hoc magic numbers so vertical/horizontal rhythm
@@ -334,15 +320,18 @@ class AppTheme {
   // removed. Real elevation is carried by [shadowCard] (the resting card) and
   // [shadowLifted] (sheets/modals/FABs); reach for those when a surface needs
   // genuine depth.
-  /// FLAT (empty) — the primary (ink) CTA carries no drop shadow under GEIST.
-  List<BoxShadow> get shadowPrimary => const [];
+  /// Premium ink elevation for dark editorial hero actions.
+  List<BoxShadow> get shadowPrimary => dark
+      ? const [BoxShadow(color: Color(0x66000000), blurRadius: 22, offset: Offset(0, 9))]
+      : const [BoxShadow(color: Color(0x3314211D), blurRadius: 22, offset: Offset(0, 9))];
 
-  /// FLAT (empty) — green ACTION surfaces carry no drop shadow under GEIST.
-  List<BoxShadow> get shadowAccent => const [];
+  /// Soft emerald action lift; restrained enough for dense screens.
+  List<BoxShadow> get shadowAccent => dark
+      ? const [BoxShadow(color: Color(0x405DD6AB), blurRadius: 26, offset: Offset(0, 10))]
+      : const [BoxShadow(color: Color(0x3D087A5B), blurRadius: 24, offset: Offset(0, 10))];
 
-  /// FLAT (empty) — the green ACTION "glow" is disabled under GEIST (no glow).
-  /// Kept (vs. deleted) only because it has live call sites outside this file.
-  List<BoxShadow> get glowAccent => const [];
+  /// Focused emerald glow for the small number of highest-intent actions.
+  List<BoxShadow> get glowAccent => shadowAccent;
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
   List<BoxShadow> get shadowGlass => dark
@@ -446,8 +435,8 @@ class AppTheme {
   /// restrained band. This is a genuine two-stop gradient, not a flat solid.
   LinearGradient get brandGradient => LinearGradient(
         colors: dark
-            ? const [Color(0xFF1C1C1C), Color(0xFF0A0A0A)]
-            : const [Color(0xFF161616), Color(0xFF050505)],
+            ? const [Color(0xFF1A2D26), Color(0xFF0E1713)]
+            : const [Color(0xFF24352E), Color(0xFF0C1713)],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       );
@@ -458,8 +447,8 @@ class AppTheme {
   /// without ever reading as a green panel. Real two-stop gradient.
   LinearGradient get freshGradient => LinearGradient(
         colors: dark
-            ? [const Color(0xFF1C1C1C), Color.alphaBlend(AppColors.darkBrandAccent.withValues(alpha: 0.06), const Color(0xFF0A0A0A))]
-            : [const Color(0xFF161616), Color.alphaBlend(AppColors.brandAccent.withValues(alpha: 0.06), const Color(0xFF050505))],
+            ? [const Color(0xFF1A2D26), Color.alphaBlend(AppColors.darkBrandAccent.withValues(alpha: 0.08), const Color(0xFF0E1713))]
+            : [const Color(0xFF24352E), Color.alphaBlend(AppColors.saving.withValues(alpha: 0.08), const Color(0xFF0C1713))],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
       );
@@ -475,8 +464,8 @@ class AppTheme {
   /// lifted on dark so the CTA stays vivid.
   LinearGradient get accentGradient => LinearGradient(
         colors: dark
-            ? const [AppColors.darkBrandAccent, AppColors.darkBrandAccent]
-            : const [AppColors.brandAccent, AppColors.brandAccent],
+            ? const [AppColors.darkBrandAccent, AppColors.darkBrandAccentDark]
+            : const [AppColors.brandAccent, AppColors.brandAccentDark],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
       );
@@ -485,18 +474,18 @@ class AppTheme {
   // Tightened to a crisp, professional rounding (bank-grade). The old 20-24
   // corners read soft/playful; 10-16 reads considered + serious while still
   // friendly. One change here re-corners every card/sheet/button app-wide.
-  double get radiusXs => 6; // GEIST: chips/tags/small buttons
-  double get radiusSm => 8;
-  double get radiusMd => 8; // default button/input
-  double get radiusLg => 10; // cards
-  double get radiusCard => 12; // large containers/bento
-  double get radiusXl => 12; // dialogs/popovers + the largest CONTENT corner
+  double get radiusXs => 10;
+  double get radiusSm => 12;
+  double get radiusMd => 14; // default button/input
+  double get radiusLg => 20; // cards
+  double get radiusCard => 24; // large containers/bento
+  double get radiusXl => 28; // dialogs/popovers + the largest CONTENT corner
   /// Bottom sheets and large slide-up surfaces. The ONE exception to the 12-cap:
   /// a sheet anchored to the screen edge needs a more generous top corner to read
   /// as a distinct surface lifting over the page, so it gets [radiusSheet] (20).
   /// Use this token for every bottom-sheet / drawer top corner — it is the single
   /// source for that corner, so re-rounding all sheets is a one-line change here.
-  double get radiusSheet => 20;
+  double get radiusSheet => 28;
   // RULE: content corners (chips→bento) never exceed [radiusXl] (12); only
   // edge-anchored sheets/drawers use the larger [radiusSheet] (20). [radiusPill]
   // (999) is the full-round shape for pills/avatars and is not part of that cap.
@@ -562,12 +551,12 @@ class AppTheme {
   /// introducing any colour.
   LinearGradient get surfaceWash => dark
       ? const LinearGradient(
-          colors: [Color(0xFF0A0A0A), Color(0xFF0A0A0A)],
+          colors: [Color(0xFF13221C), AppColors.darkBackground],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         )
       : const LinearGradient(
-          colors: [AppColors.background, AppColors.background],
+          colors: [Color(0xFFFBF7EF), AppColors.background],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         );
@@ -697,7 +686,7 @@ class AppTheme {
         // Clean light/surface app bar with ink text — the bank-grade replacement
         // for the old solid ink-black bar (which read heavy + "app-y"). Surface
         // on both themes; dark ink foreground on light.
-        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        backgroundColor: isDark ? AppColors.darkSurface : AppColors.secondaryBackground,
         foregroundColor: t.primaryText,
         surfaceTintColor: Colors.transparent,
         elevation: 0,

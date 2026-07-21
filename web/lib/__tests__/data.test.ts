@@ -7,6 +7,9 @@ import {
   getProviders,
   getCategories,
   plansByCategory,
+  isConsumerHeadlinePlan,
+  isDataOnlyPlan,
+  isMonthlyPlan,
 } from "@/lib/data";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -139,6 +142,32 @@ describe("buildProviderRankings — ordering (transparent best value)", () => {
       expect(scoped[i - 1].minPrice).toBeLessThanOrEqual(scoped[i].minPrice);
     }
   });
+
+  it("never uses roaming day/minute prices or data-only SIMs as a monthly entry price", () => {
+    for (const provider of buildProviderRankings()) {
+      expect(provider.minPrice).toBeGreaterThanOrEqual(10);
+    }
+    const cellular = buildProviderRankings("cellular");
+    for (const provider of cellular) {
+      const eligible = plansByCategory("cellular").filter(
+        (p) => p.provider === provider.name && isConsumerHeadlinePlan(p),
+      );
+      expect(provider.minPrice).toBe(Math.min(...eligible.map((p) => p.price)));
+    }
+  });
+});
+
+describe("consumer headline price eligibility", () => {
+  it("accepts monthly consumer plans and rejects incompatible units/data SIMs", () => {
+    const regular = plansByCategory("cellular").find(
+      (p) => isMonthlyPlan(p) && !isDataOnlyPlan(p),
+    );
+    const dataOnly = plansByCategory("cellular").find(isDataOnlyPlan);
+    const nonMonthly = plansByCategory("abroad").find((p) => !isMonthlyPlan(p));
+    expect(regular && isConsumerHeadlinePlan(regular)).toBe(true);
+    expect(dataOnly && isConsumerHeadlinePlan(dataOnly)).toBe(false);
+    expect(nonMonthly && isConsumerHeadlinePlan(nonMonthly)).toBe(false);
+  });
 });
 
 describe("priceStats", () => {
@@ -146,13 +175,7 @@ describe("priceStats", () => {
 
   it("omits categories with no priced plans, includes those that have them", () => {
     for (const cat of getCategories()) {
-      // Mirror priceStats' comparable-unit guard (monthly / unit-less only).
-      const priced = plansByCategory(cat).filter(
-        (p) =>
-          typeof p.price === "number" &&
-          Number.isFinite(p.price) &&
-          (!p.priceUnit || p.priceUnit === "month"),
-      );
+      const priced = plansByCategory(cat).filter(isConsumerHeadlinePlan);
       if (priced.length === 0) {
         expect(stats[cat]).toBeUndefined();
       } else {
@@ -165,12 +188,7 @@ describe("priceStats", () => {
     for (const [cat, s] of Object.entries(stats)) {
       // Mirror priceStats' comparable-unit guard so min/max/avg/count match:
       // abroad mixes per-minute/day/package/month, and only monthly counts.
-      const priced = plansByCategory(cat).filter(
-        (p) =>
-          typeof p.price === "number" &&
-          Number.isFinite(p.price) &&
-          (!p.priceUnit || p.priceUnit === "month"),
-      );
+      const priced = plansByCategory(cat).filter(isConsumerHeadlinePlan);
       const min = Math.min(...priced.map((p) => p.price));
       const max = Math.max(...priced.map((p) => p.price));
       const sum = priced.reduce((acc, p) => acc + p.price, 0);

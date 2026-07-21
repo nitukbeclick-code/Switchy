@@ -179,12 +179,14 @@ export default function BookClient({ supportedProviders }: BookClientProps = {})
 
   // When the chosen day changes, clear a slot that no longer belongs to it.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Invalid selections must be cleared when live availability changes.
     if (slot && !slotsForDay.includes(slot)) setSlot("");
   }, [slotsForDay, slot]);
 
   // Honesty guard: never keep a chosen provider that isn't in the supported list
   // (e.g. the live list changed). An UNsupported provider must not be bookable.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- The provider list is live and can invalidate an existing selection.
     if (provider && !meetingProviders.includes(provider)) setProvider("");
   }, [meetingProviders, provider]);
 

@@ -47,12 +47,12 @@ const GA4_MEASUREMENT_ID = "G-YCTGRVN7SJ";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Switchy AI — השוואת מסלולי תקשורת בישראל",
-    template: "%s | Switchy AI",
+    default: "SWITCHY — התקשורת שלכם, במחיר שמרגיש נכון",
+    template: "%s | SWITCHY",
   },
   description:
-    "השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות " +
-    "חו״ל בישראל. משווים מחירים, רואים מה מתאים, ומתחברים לספק — בלי עלות.",
+    "משווים מסלולי סלולר, אינטרנט, טלוויזיה וחבילות משולבות מכל הספקים בישראל. " +
+    "רואים גם את המחיר שאחרי המבצע ועוברים בליווי אנושי — בחינם וללא התחייבות.",
   applicationName: SITE_NAME,
   alternates: { canonical: "/" },
   openGraph: {
@@ -60,9 +60,9 @@ export const metadata: Metadata = {
     locale: "he_IL",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "Switchy AI — השוואת מסלולי תקשורת בישראל",
+    title: "SWITCHY — התקשורת שלכם, במחיר שמרגיש נכון",
     description:
-      "השוואה חינמית של מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה ועוד.",
+      "השוואה שקופה של מסלולי תקשורת בישראל, כולל המחיר שאחרי המבצע וליווי במעבר.",
   },
   robots: {
     index: true,

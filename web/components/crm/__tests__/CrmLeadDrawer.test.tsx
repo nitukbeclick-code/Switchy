@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   setCrmLeadStatus: vi.fn(),
   addCrmNote: vi.fn(),
   setCrmLeadNote: vi.fn(),
+  setCrmLeadWorkflow: vi.fn(),
   recordCrmSaving: vi.fn(),
   claimCrmLead: vi.fn(),
 }));
@@ -26,6 +27,7 @@ vi.mock("@/lib/crm-admin", async (importOriginal) => {
     setCrmLeadStatus: mocks.setCrmLeadStatus,
     addCrmNote: mocks.addCrmNote,
     setCrmLeadNote: mocks.setCrmLeadNote,
+    setCrmLeadWorkflow: mocks.setCrmLeadWorkflow,
     recordCrmSaving: mocks.recordCrmSaving,
     claimCrmLead: mocks.claimCrmLead,
   };
@@ -54,6 +56,10 @@ function detail(over: Partial<CrmLeadDetail> = {}, events: CrmLeadEvent[] = []):
         claimedAt: null,
         contactedAt: null,
         actualSaving: null,
+        priority: "normal",
+        followUpAt: null,
+        followUpNote: null,
+        lostReason: null,
         notes: "הערה מהשרת",
         referrerCode: null,
         consent: { sms: true, email: false, whatsapp: true },
@@ -72,6 +78,7 @@ beforeEach(() => {
   mocks.recordCrmSaving.mockResolvedValue(true);
   mocks.addCrmNote.mockResolvedValue(true);
   mocks.setCrmLeadNote.mockResolvedValue(true);
+  mocks.setCrmLeadWorkflow.mockResolvedValue(true);
   mocks.claimCrmLead.mockResolvedValue(true);
 });
 
@@ -146,7 +153,7 @@ describe("CrmLeadDrawer failure tones", () => {
     render(<CrmLeadDrawer leadId="L1" onClose={() => {}} />);
     await screen.findByRole("heading", { name: "דנה כהן" });
 
-    fireEvent.click(screen.getByRole("button", { name: "אבוד" }));
+    fireEvent.click(screen.getByRole("button", { name: "יצרנו קשר" }));
     const notice = await screen.findByText("עדכון הסטטוס נכשל. נסו שוב.");
     expect(notice.className).toContain("text-danger-text");
   });

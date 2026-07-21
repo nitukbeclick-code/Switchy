@@ -36,11 +36,11 @@ data flow.
 
 ## Brand
 
-White-glass + black-ink editorial base, green-forward (matching the Switchy
-robot logo), with a disciplined two-accent system:
+Warm editorial-fintech base: ivory canvas, paper surfaces and forest ink, with
+a disciplined two-accent system:
 
-- **Green `#16A34A`** = ACTION (primary CTAs, active nav, links, focus).
-- **Amber `#F59E0B`** = VALUE (savings figures, "best value" / win states).
+- **Emerald `#087A5B`** = ACTION (primary CTAs, active nav, links, focus).
+- **Amber `#D39A24`** = VALUE (savings figures, "best value" / win states).
 
 Fonts: **Rubik** for display/headings, **Assistant** for body/labels. The
 authoritative token rules (ink/glass palette, frosted-glass helpers, the

@@ -34,12 +34,41 @@ const STATIC_ORIGIN =
 const MOBILE_UA =
   /android|iphone|ipod|iemobile|blackberry|opera mini|mobile|silk|kindle|playbook|tablet|ipad|webos|windows phone/i;
 
+// Root assets emitted by the static site. These must always come from the
+// static project, including when a phone opens a legacy *.html URL. Previously
+// the HTML was proxied but these follow-up requests stayed in Next and 404'd.
+const STATIC_ROOT_ASSETS = new Set([
+  "/styles.css",
+  "/styles.min.css",
+  "/script.js",
+  "/script.min.js",
+]);
+
 function isMobileUA(ua: string): boolean {
   return ua.length > 0 && MOBILE_UA.test(ua);
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const ua = request.headers.get("user-agent") ?? "";
+
+  // Retire the one legacy directory-style provider URL seen in production logs.
+  // Keep the public URL clean and let the normal device split choose the surface.
+  if (request.nextUrl.pathname === "/providers/index.html") {
+    return NextResponse.redirect(new URL("/providers", request.url), 308);
+  }
+
+  // The static HTML imports these files with root-relative URLs. Route them to
+  // the static origin for every device so a legacy *.html page is complete on
+  // mobile as well as desktop.
+  if (STATIC_ROOT_ASSETS.has(request.nextUrl.pathname)) {
+    const target = new URL(
+      request.nextUrl.pathname + request.nextUrl.search,
+      STATIC_ORIGIN,
+    );
+    const res = NextResponse.rewrite(target);
+    res.headers.set("Vary", "User-Agent");
+    return res;
+  }
 
   // A ".html" URL exists ONLY on the static site — the Next app has no .html
   // routes. Serve it from the static origin for EVERY device: desktop already

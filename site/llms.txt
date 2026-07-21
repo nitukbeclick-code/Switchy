@@ -28,7 +28,7 @@ SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plan
 - [איך זה עובד / How it works](https://switchy-ai.com/how-it-works.html)
 
 ## העסקאות של היום (Today's cheapest — live catalogue prices)
-- סלולר: הוט מובייל — 20GB Data Only — ₪10.9/חודש
+- סלולר: רמי לוי — זול להיות בקשר כשר — ₪14.9/חודש
 - אינטרנט: פרטנר — Fiber 1000Mb — ₪39/חודש (אחרי מבצע: ₪159)
 - טלוויזיה: STING TV — HBO Max Standard — ₪49/חודש (אחרי מבצע: ₪150)
 - חבילה משולבת: NextTV — אינטרנט סיבים + TV 1GB — ₪119/חודש
@@ -36,14 +36,14 @@ SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plan
 - [כל העסקאות של היום / Today's deals](https://switchy-ai.com/deals.html)
 
 ## קטגוריות (Categories)
-- [סלולר](https://switchy-ai.com/cellular.html) — 59 מסלולים, החל מ-₪11.
+- [סלולר](https://switchy-ai.com/cellular.html) — 59 מסלולים, החל מ-₪15.
 - [אינטרנט](https://switchy-ai.com/internet.html) — 30 מסלולים, החל מ-₪39.
 - [טלוויזיה](https://switchy-ai.com/tv.html) — 9 מסלולים, החל מ-₪49.
 - [חבילה משולבת](https://switchy-ai.com/triple.html) — 11 מסלולים, החל מ-₪119.
-- [חבילות חו״ל](https://switchy-ai.com/abroad.html) — 11 מסלולים, החל מ-₪1.
+- [חבילות חו״ל](https://switchy-ai.com/abroad.html) — 11 מסלולים, החל מ-₪19.
 
 ## ספקים (Providers)
-- [019 מובייל](https://switchy-ai.com/provider-019mobile.html) — 11 מסלולים, החל מ-₪1.
+- [019 מובייל](https://switchy-ai.com/provider-019mobile.html) — 11 מסלולים, החל מ-₪19.
 - [Airalo eSIM](https://switchy-ai.com/provider-airalo.html) — 3 מסלולים, החל מ-₪13.
 - [CCC](https://switchy-ai.com/provider-ccc.html) — 6 מסלולים, החל מ-₪80.
 - [HOT](https://switchy-ai.com/provider-hot.html) — 7 מסלולים, החל מ-₪89.
@@ -53,11 +53,11 @@ SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plan
 - [Xphone](https://switchy-ai.com/provider-xphone.html) — 13 מסלולים, החל מ-₪23.
 - [yes](https://switchy-ai.com/provider-yes.html) — 3 מסלולים, החל מ-₪49.
 - [בזק](https://switchy-ai.com/provider-bezeq.html) — 8 מסלולים, החל מ-₪65.
-- [גולן טלקום](https://switchy-ai.com/provider-golan.html) — 9 מסלולים, החל מ-₪10.
+- [גולן טלקום](https://switchy-ai.com/provider-golan.html) — 9 מסלולים, החל מ-₪35.
 - [גילת](https://switchy-ai.com/provider-gilat.html) — 3 מסלולים, החל מ-₪49.
-- [הוט מובייל](https://switchy-ai.com/provider-hot-mobile.html) — 7 מסלולים, החל מ-₪9.
+- [הוט מובייל](https://switchy-ai.com/provider-hot-mobile.html) — 7 מסלולים, החל מ-₪60.
 - [וואלה מובייל](https://switchy-ai.com/provider-walla-mobile.html) — 3 מסלולים, החל מ-₪31.
-- [סלקום](https://switchy-ai.com/provider-cellcom.html) — 12 מסלולים, החל מ-₪8.
+- [סלקום](https://switchy-ai.com/provider-cellcom.html) — 12 מסלולים, החל מ-₪40.
 - [פלאפון](https://switchy-ai.com/provider-pelephone.html) — 4 מסלולים, החל מ-₪40.
 - [פרטנר](https://switchy-ai.com/provider-partner.html) — 11 מסלולים, החל מ-₪29.
 - [רמי לוי](https://switchy-ai.com/provider-rami-levy.html) — 9 מסלולים, החל מ-₪15.

@@ -34,6 +34,7 @@ import {
   actRecordSaving,
   actSetLeadNote,
   actSetLeadStatus,
+  actSetLeadWorkflow,
 } from "../crm-api/actions_leads.ts";
 import { actGetThread, actSendReply, actSetContactStatus } from "../crm-api/actions_conversations.ts";
 import { actSetMeetingStatus } from "../crm-api/actions_meetings.ts";
@@ -257,6 +258,41 @@ Deno.test("setLeadStatus NEVER re-stamps an existing contacted_at (first touch w
       const r = await actSetLeadStatus({ leadId: LEAD, status: "contacted" }, ACTOR);
       assertEquals(r.status, 200);
       assertEquals(of(rec, "?id=eq.", "PATCH").length, 1, "no second stamp PATCH");
+    });
+  });
+});
+
+Deno.test("setLeadWorkflow validates, writes the work plan, and keeps free text out of security audit", async () => {
+  await withEnv(async () => {
+    const rec: Call[] = [];
+    await withFetchStub([
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i), () => jsonResponse([{ id: LEAD }])),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const invalid = await actSetLeadWorkflow({ leadId: LEAD, priority: "critical" }, ACTOR);
+      assertEquals(invalid.status, 400);
+      assertEquals(rec.length, 0);
+
+      const response = await actSetLeadWorkflow({
+        leadId: LEAD,
+        priority: "urgent",
+        followUpAt: "2026-07-23T12:30:00Z",
+        followUpNote: "לחזור עם הצעת סיבים",
+        lostReason: "המחיר לא התאים",
+      }, ACTOR);
+      assertEquals(response.status, 200);
+      const body = JSON.parse(of(rec, "/rest/v1/leads?id=eq.", "PATCH")[0].body);
+      assertEquals(body, {
+        priority: "urgent",
+        follow_up_at: "2026-07-23T12:30:00.000Z",
+        follow_up_note: "לחזור עם הצעת סיבים",
+        lost_reason: "המחיר לא התאים",
+      });
+      const audit = JSON.parse(of(rec, "/rest/v1/security_audit_log", "POST")[0].body);
+      assertEquals(audit.event, "crm_lead_workflow");
+      assertEquals(audit.detail.has_follow_up_note, true);
+      assertFalse(JSON.stringify(audit).includes("לחזור עם הצעת סיבים"));
     });
   });
 });

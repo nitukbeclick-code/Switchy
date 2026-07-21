@@ -17,7 +17,7 @@
 
 import Link from "next/link";
 import type { Plan } from "@/lib/types";
-import { providerSlug } from "@/lib/data";
+import { providerSlug } from "@/lib/provider-slug";
 import { planDisplay } from "@/lib/plan-display";
 import Icon from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";

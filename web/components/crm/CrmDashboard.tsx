@@ -15,11 +15,13 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   type CrmFailure,
+  type CrmLead,
   type CrmMeeting,
   type CrmOverview,
   type CrmPipeline,
   type CrmSla,
   fetchCrmMeetings,
+  fetchCrmLeads,
   fetchCrmOverview,
   fetchCrmSla,
 } from "@/lib/crm-admin";
@@ -28,11 +30,16 @@ import CrmMeetingDrawer from "./CrmMeetingDrawer";
 import {
   ConversationStatusPill,
   ErrorNotice,
+  FollowUpChip,
   formatMinutes,
   LEAD_STATUS_META,
+  LeadAgeChip,
+  leadNeedsAttention,
   MeetingStatusPill,
   NoticeCard,
+  PriorityPill,
   StatCard,
+  mirrorUrlParams,
   when,
 } from "./ui";
 
@@ -157,6 +164,8 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
   // meeting whose drawer is open.
   const [todayMeetings, setTodayMeetings] = useState<CrmMeeting[] | null>(null);
   const [openMeetingId, setOpenMeetingId] = useState<string | null>(null);
+  const [workQueue, setWorkQueue] = useState<CrmLead[]>([]);
+  const [nowMs, setNowMs] = useState(0);
 
   // `silent` refreshes (from the Realtime feed) skip the skeleton + keep stale data
   // on failure, so a live update never flashes or blanks the dashboard.
@@ -172,7 +181,12 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
       // furthest-future-first window down to today so the strip can't go empty
       // just because ≥200 future bookings sit ahead of today's.
       const now = new Date();
-      return Promise.all([fetchCrmOverview(), fetchCrmSla(), collectTodayMeetings(now)]).then(([d, sm, mm]) => {
+      return Promise.all([
+        fetchCrmOverview(),
+        fetchCrmSla(),
+        collectTodayMeetings(now),
+        fetchCrmLeads({ sort: "oldest" }),
+      ]).then(([d, sm, mm, lm]) => {
         if (d.data) setData(d.data);
         else if (!silent) {
           setFailure(d.failure);
@@ -180,6 +194,23 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
         }
         if (sm.data) setSla(sm.data.sla);
         if (mm) setTodayMeetings(mm); // already today-only
+        if (lm.data) {
+          const clock = now.getTime();
+          const slaWindow = sm.data?.sla.slaHours ?? null;
+          const priorityRank: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 };
+          setNowMs(clock);
+          setWorkQueue(
+            lm.data.leads
+              .filter((lead) => leadNeedsAttention(lead, clock, slaWindow))
+              .sort((a, b) => {
+                const byPriority = (priorityRank[b.priority] ?? 0) - (priorityRank[a.priority] ?? 0);
+                if (byPriority) return byPriority;
+                const aDue = a.followUpAt ? Date.parse(a.followUpAt) : Number.POSITIVE_INFINITY;
+                const bDue = b.followUpAt ? Date.parse(b.followUpAt) : Number.POSITIVE_INFINITY;
+                return aDue - bDue;
+              }),
+          );
+        }
         if (!silent) setLoading(false);
       });
     },
@@ -235,6 +266,61 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
       </div>
 
       <PipelineBar pipeline={p} total={total} />
+
+      <section className="rounded-2xl border border-accent/25 bg-accent/[0.04] p-4 shadow-soft sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">מרכז עבודה</p>
+            <h2 className="mt-1 font-display text-xl font-bold text-ink">מה דורש טיפול עכשיו</h2>
+            <p className="mt-1 text-sm text-muted">מעקבים שהגיע זמנם, חריגות SLA ולידים בעדיפות גבוהה.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              mirrorUrlParams({ lead_attention: "1" });
+              onNavigate?.("leads");
+            }}
+            className="interactive min-h-11 rounded-xl border border-accent/30 bg-surface px-4 text-sm font-bold text-accent-text shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            {workQueue.length > 0 ? `${he(workQueue.length)} לטיפול` : "פתיחת הלידים"}
+          </button>
+        </div>
+
+        {workQueue.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-value/30 bg-value/10 p-3 text-sm font-medium text-value-text">
+            אין כרגע לידים דחופים או מעקבים באיחור.
+          </p>
+        ) : (
+          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+            {workQueue.slice(0, 6).map((lead) => (
+              <li key={lead.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    mirrorUrlParams({ lead_attention: "1" });
+                    onNavigate?.("leads");
+                  }}
+                  className="interactive block w-full rounded-xl border border-border bg-surface p-3 text-start shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-bold text-ink">{lead.name || lead.phone}</span>
+                      <span className="mt-0.5 block truncate text-xs text-muted">{lead.provider || "ללא ספק"}</span>
+                    </span>
+                    <PriorityPill priority={lead.priority} />
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <FollowUpChip followUpAt={lead.followUpAt} nowMs={nowMs} />
+                    {lead.status === "new" ? (
+                      <LeadAgeChip createdAt={lead.createdAt} nowMs={nowMs} slaHours={sla?.slaHours ?? null} />
+                    ) : null}
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {todayMeetings && todayMeetings.length > 0 && (
         <section>

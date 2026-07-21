@@ -108,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!SUPABASE_CONFIGURED) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Missing configuration resolves the provider synchronously as ready.
       setReady(true);
       return;
     }

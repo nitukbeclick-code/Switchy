@@ -11,14 +11,14 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import type { ReactNode } from "react";
-import type { CrmFailure, LeadStatus } from "@/lib/crm-admin";
+import type { CrmFailure, CrmLead, LeadPriority, LeadStatus } from "@/lib/crm-admin";
 
 // Button recipes — identical to the moderation console (AdminModeration.tsx) so
 // the whole admin surface feels like one product.
 export const BTN_PRIMARY =
-  "interactive inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover";
+  "interactive press inline-flex min-h-11 items-center justify-center rounded-2xl bg-accent px-4 py-2 text-sm font-bold text-accent-contrast shadow-[var(--glow-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover";
 export const BTN_GHOST =
-  "interactive inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-1.5 text-sm font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10";
+  "interactive press inline-flex min-h-11 items-center justify-center rounded-2xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10";
 
 /** he-IL short date-time (e.g. "3 ביולי, 14:05"), or "" for an absent/bad value.
  *  A timestamp from a DIFFERENT year than today's includes the year — "3 ביולי
@@ -109,6 +109,13 @@ export const LEAD_STATUS_META: Record<LeadStatus, { label: string; tone: Tone }>
   lost: { label: "אבוד", tone: "danger" },
 };
 
+export const LEAD_PRIORITY_META: Record<LeadPriority, { label: string; tone: Tone }> = {
+  low: { label: "נמוכה", tone: "neutral" },
+  normal: { label: "רגילה", tone: "neutral" },
+  high: { label: "גבוהה", tone: "info" },
+  urgent: { label: "דחופה", tone: "danger" },
+};
+
 // Conversation status (whatsapp_conversations.status) is a DIFFERENT enum from the
 // lead pipeline — bot/human/open/closed — so it gets its own label map.
 export const CONVERSATION_STATUS_META: Record<string, { label: string; tone: Tone }> = {
@@ -160,6 +167,57 @@ export function StatusPill({ status }: { status: string }) {
   return <Pill label={meta?.label ?? status} tone={meta?.tone ?? "neutral"} />;
 }
 
+/** Lead work priority. Unknown wire values remain visible in a neutral tone. */
+export function PriorityPill({ priority }: { priority: string }) {
+  const meta = LEAD_PRIORITY_META[priority as LeadPriority];
+  return <Pill label={`עדיפות ${meta?.label ?? priority}`} tone={meta?.tone ?? "neutral"} />;
+}
+
+/** True when an open lead belongs in the rep's immediate work queue. */
+export function leadNeedsAttention(
+  lead: Pick<CrmLead, "status" | "priority" | "followUpAt" | "createdAt">,
+  nowMs: number,
+  slaHours: number | null,
+): boolean {
+  if (lead.status !== "new" && lead.status !== "contacted") return false;
+  if (lead.priority === "urgent" || lead.priority === "high") return true;
+  const followAt = lead.followUpAt ? Date.parse(lead.followUpAt) : NaN;
+  if (Number.isFinite(followAt) && followAt <= nowMs) return true;
+  const createdAt = lead.createdAt ? Date.parse(lead.createdAt) : NaN;
+  return (
+    lead.status === "new" &&
+    slaHours != null &&
+    slaHours > 0 &&
+    Number.isFinite(createdAt) &&
+    nowMs - createdAt > slaHours * 3_600_000
+  );
+}
+
+/** A due-date chip for the next scheduled action. */
+export function FollowUpChip({
+  followUpAt,
+  nowMs,
+}: {
+  followUpAt: string | null;
+  nowMs: number;
+}) {
+  if (!followUpAt) return null;
+  const due = Date.parse(followUpAt);
+  if (!Number.isFinite(due)) return null;
+  const overdue = nowMs > 0 && due <= nowMs;
+  const label = overdue ? `מעקב באיחור · ${relTime(followUpAt, nowMs)}` : `מעקב · ${when(followUpAt)}`;
+  return (
+    <span
+      title={`מועד המעקב: ${when(followUpAt)}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold tabular-nums ${
+        overdue ? TONE_PILL.danger : TONE_PILL.info
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
 /** A conversation-status chip (bot/human/open/closed). */
 export function ConversationStatusPill({ status }: { status: string }) {
   const meta = CONVERSATION_STATUS_META[status];
@@ -185,6 +243,7 @@ const EVENT_TINT: Record<string, string> = {
   status_change: "border-accent/30 bg-accent/5",
   claim: "border-accent/30 bg-accent/5",
   saving: "border-value/40 bg-value/5",
+  workflow_update: "border-accent/30 bg-accent/5",
   won: "border-value/40 bg-value/5",
   undo: "border-danger/30 bg-danger/5",
   created: "border-accent/30 bg-accent/5",
@@ -252,7 +311,7 @@ export function StatCard({
       {hint && <p className="mt-1 text-xs text-muted tabular-nums">{hint}</p>}
     </>
   );
-  const box = "rounded-2xl border border-border bg-surface p-4 shadow-soft";
+  const box = "rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-soft";
   if (onClick) {
     return (
       <button
@@ -270,7 +329,7 @@ export function StatCard({
 /** Centered notice card for empty / no-access / error / coming-soon states. */
 export function NoticeCard({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-soft">
+    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-7 text-center shadow-soft">
       <p className="text-sm text-muted">{children}</p>
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>

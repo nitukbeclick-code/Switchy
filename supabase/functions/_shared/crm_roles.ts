@@ -53,6 +53,7 @@ export const ACTION_CAP: Readonly<Record<string, CrmCapability>> = {
   // lead / meeting mutations
   setContactStatus: "write_leads",
   setLeadStatus: "write_leads",
+  setLeadWorkflow: "write_leads",
   addNote: "write_leads",
   setLeadNote: "write_leads",
   recordSaving: "write_leads",

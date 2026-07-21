@@ -175,6 +175,7 @@ export default function CrmAnalytics() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial CRM data loading owns its loading/error state.
     void loadReps();
   }, [loadReps]);
 

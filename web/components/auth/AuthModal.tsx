@@ -62,6 +62,7 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
   // Reset the form state on (re)open.
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reopening the modal intentionally resets its transient form state.
     setMode(defaultMode);
     setError(null);
     setInfo(null);

@@ -243,6 +243,7 @@ export default function PwaInstaller() {
       document.addEventListener("visibilitychange", onVisible);
       return () => document.removeEventListener("visibilitychange", onVisible);
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Eligibility is derived from browser install lifecycle state.
     setShowPrompt(true);
   }, [eligible, engaged]);
 

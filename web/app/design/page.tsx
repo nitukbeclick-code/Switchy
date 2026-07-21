@@ -19,6 +19,7 @@
 // [data-theme] tokens) and is RTL/Hebrew-first like the rest of the site.
 // ────────────────────────────────────────────────────────────────────────────
 
+/* eslint-disable react/no-unescaped-entities -- This internal design specimen intentionally displays literal quote syntax. */
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Icon, { type IconName } from "@/components/Icon";

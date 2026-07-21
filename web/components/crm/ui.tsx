@@ -16,9 +16,9 @@ import type { CrmFailure, LeadStatus } from "@/lib/crm-admin";
 // Button recipes — identical to the moderation console (AdminModeration.tsx) so
 // the whole admin surface feels like one product.
 export const BTN_PRIMARY =
-  "interactive inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover";
+  "interactive press inline-flex min-h-11 items-center justify-center rounded-2xl bg-accent px-4 py-2 text-sm font-bold text-accent-contrast shadow-[var(--glow-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover";
 export const BTN_GHOST =
-  "interactive inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-1.5 text-sm font-medium text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10";
+  "interactive press inline-flex min-h-11 items-center justify-center rounded-2xl border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/10";
 
 /** he-IL short date-time (e.g. "3 ביולי, 14:05"), or "" for an absent/bad value.
  *  A timestamp from a DIFFERENT year than today's includes the year — "3 ביולי
@@ -252,7 +252,7 @@ export function StatCard({
       {hint && <p className="mt-1 text-xs text-muted tabular-nums">{hint}</p>}
     </>
   );
-  const box = "rounded-2xl border border-border bg-surface p-4 shadow-soft";
+  const box = "rounded-[var(--radius-lg)] border border-border bg-surface p-5 shadow-soft";
   if (onClick) {
     return (
       <button
@@ -270,7 +270,7 @@ export function StatCard({
 /** Centered notice card for empty / no-access / error / coming-soon states. */
 export function NoticeCard({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-6 text-center shadow-soft">
+    <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-7 text-center shadow-soft">
       <p className="text-sm text-muted">{children}</p>
       {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>

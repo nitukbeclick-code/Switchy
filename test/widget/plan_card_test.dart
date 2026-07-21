@@ -132,13 +132,13 @@ void main() {
         .first);
     final deco = chip.decoration as BoxDecoration;
     expect(deco.gradient, isNull); // no solid ACTION gradient
-    expect(deco.color, const Color(0xFFDCFCE7)); // brandAccentTint surface
-    expect(deco.border?.top.width, 1); // hairline green border
-    expect(deco.border?.top.color, const Color(0xFF16A34A)); // brandAccent
+    expect(deco.color, const Color(0xFFDCEDE5)); // brandAccentTint surface
+    expect(deco.border?.top.width, 1); // hairline emerald border
+    expect(deco.border?.top.color, const Color(0xFF087A5B)); // brandAccent
 
     // The score text itself is green-on-tint (brandAccentText), not white.
     final scoreText = tester.widget<Text>(find.text('87% התאמה'));
-    expect(scoreText.style?.color, const Color(0xFF15803D));
+    expect(scoreText.style?.color, const Color(0xFF075B46));
   });
 
   testWidgets('no match chip when matchPct is omitted', (tester) async {
@@ -149,7 +149,7 @@ void main() {
     expect(find.textContaining('% התאמה'), findsNothing);
   });
 
-  testWidgets('bestMatch shows the floating badge and the green VALUE ring', (tester) async {
+  testWidgets('bestMatch shows the floating badge and the amber VALUE ring', (tester) async {
     await tester.pumpWidget(_wrap(
       const PlanCardWidget(plan: _testPlan, currentBill: 119, bestMatch: true),
     ));
@@ -159,7 +159,7 @@ void main() {
     final box = tester.widgetList<Container>(find.byType(Container)).firstWhere(
       (c) => c.decoration is BoxDecoration && ((c.decoration as BoxDecoration).border?.top.width ?? 0) == 2,
     );
-    expect(((box.decoration as BoxDecoration).border!.top.color), const Color(0xFF16A34A));
+    expect(((box.decoration as BoxDecoration).border!.top.color), const Color(0xFFD39A24));
   });
 
   testWidgets('regular card has no best-match badge', (tester) async {

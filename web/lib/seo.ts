@@ -33,8 +33,8 @@ const BRAND_SUFFIX = ` | ${SITE_NAME}`;
 
 /** Shared OG/Twitter alt text (mirrors app/opengraph-image.alt.txt). */
 const SHARE_IMAGE_ALT =
-  "Switchy AI — השוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה " +
-  "וחבילות. חינם ובלי התחייבות.";
+  "SWITCHY — התקשורת שלכם, במחיר שמרגיש נכון. השוואת מסלולים שקופה, " +
+  "כולל המחיר שאחרי המבצע וליווי אנושי במעבר.";
 
 /**
  * The file-convention share images at the app root (Next serves them with a

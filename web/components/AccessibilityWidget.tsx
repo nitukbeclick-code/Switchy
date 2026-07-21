@@ -132,6 +132,7 @@ export default function AccessibilityWidget() {
   // ran, but this keeps React state and the DOM in agreement).
   useEffect(() => {
     const loaded = readSettings();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Mount hydration mirrors persisted accessibility state into React.
     setSettings(loaded);
     applySettings(loaded);
   }, []);

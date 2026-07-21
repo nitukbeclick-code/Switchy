@@ -697,11 +697,11 @@ const heroDecor = () =>
 // --tf/--tt so CSS can tint icons, pills and headline highlights per category.
 // Never applied to plan CTAs (those stay action-green) or provider brands.
 const CAT_HUES = {
-  cellular: ['#22C55E', '#0B7A38'],
-  internet: ['#38BDF8', '#0369A1'],
-  tv: ['#818CF8', '#4338CA'],
-  triple: ['#FBBF24', '#B45309'],
-  abroad: ['#FB7185', '#BE123C'],
+  cellular: ['#168B69', '#075B46'],
+  internet: ['#3C9690', '#14686A'],
+  tv: ['#85965A', '#55662B'],
+  triple: ['#D9A83A', '#9C6510'],
+  abroad: ['#C97861', '#8E4335'],
 };
 const catHueStyle = (slug) => {
   const h = CAT_HUES[slug];
@@ -1420,7 +1420,7 @@ const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
 // Single source of truth for the OG/Twitter image so the dimensions + alt match
 // the hand-written index.html (1200×630) on every generated page too.
 const OG_IMAGE = `${SITE}/og-image.png`;
-const OG_IMAGE_ALT = 'SWITCHY — השוואת מחירי תקשורת חכמה';
+const OG_IMAGE_ALT = 'SWITCHY — התקשורת שלכם, במחיר שמרגיש נכון';
 
 // ── Site-wide structured-data identities (Organization + WebSite) ────────────
 // Stable @id values let every page reference the same entity (publisher, brand)

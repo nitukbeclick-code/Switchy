@@ -183,18 +183,25 @@ const nextConfig: NextConfig = {
   // 301-redirect old provider slugs to the new readable ones so existing links /
   // indexed URLs (/providers/p-*, /switch/p-*) never 404 after the slug change.
   async redirects() {
-    return Object.entries(LEGACY_PROVIDER_SLUGS).flatMap(([oldSlug, newSlug]) => [
+    return [
       {
-        source: `/providers/${oldSlug}`,
-        destination: `/providers/${newSlug}`,
+        source: "/providers/index.html",
+        destination: "/providers",
         permanent: true,
       },
-      {
-        source: `/switch/${oldSlug}`,
-        destination: `/switch/${newSlug}`,
-        permanent: true,
-      },
-    ]);
+      ...Object.entries(LEGACY_PROVIDER_SLUGS).flatMap(([oldSlug, newSlug]) => [
+        {
+          source: `/providers/${oldSlug}`,
+          destination: `/providers/${newSlug}`,
+          permanent: true,
+        },
+        {
+          source: `/switch/${oldSlug}`,
+          destination: `/switch/${newSlug}`,
+          permanent: true,
+        },
+      ]),
+    ];
   },
 };
 

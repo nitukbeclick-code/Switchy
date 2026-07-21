@@ -27,6 +27,7 @@ import {
   isLeadStatus,
   isMeetingStatus,
   setCrmLeadStatus,
+  setCrmLeadWorkflow,
 } from "@/lib/crm-admin";
 import { SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
@@ -281,5 +282,28 @@ describe("crm-admin: in-flight dedupe (reads only)", () => {
 
     fetchMock.mockResolvedValue(jsonResponse(404, { error: "not found" }));
     await expect(setCrmLeadStatus("missing", "won")).resolves.toBe(false);
+  });
+
+  it("serializes the private lead workflow fields through the CRM API", async () => {
+    withSession();
+    fetchMock.mockResolvedValue(jsonResponse(200, { ok: true }));
+
+    await expect(
+      setCrmLeadWorkflow("L1", {
+        priority: "urgent",
+        followUpAt: "2026-07-23T09:30:00.000Z",
+        followUpNote: "Call after the morning meeting",
+        lostReason: "",
+      }),
+    ).resolves.toBe(true);
+
+    expect(JSON.parse(String(lastRequest().init.body))).toEqual({
+      action: "setLeadWorkflow",
+      leadId: "L1",
+      priority: "urgent",
+      followUpAt: "2026-07-23T09:30:00.000Z",
+      followUpNote: "Call after the morning meeting",
+      lostReason: "",
+    });
   });
 });

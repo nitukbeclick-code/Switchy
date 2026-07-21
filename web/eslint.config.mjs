@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated browser bundles are linted at their source in /site.
+    "public/translate-runtime*.js",
   ]),
 ]);
 

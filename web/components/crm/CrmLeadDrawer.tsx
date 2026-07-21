@@ -23,14 +23,17 @@ import {
   type CrmLeadEvent,
   fetchCrmLeadDetail,
   fetchCrmSla,
+  isLeadPriority,
   LEAD_STATUSES,
+  type LeadPriority,
   type LeadStatus,
   recordCrmSaving,
   setCrmLeadNote,
   setCrmLeadStatus,
+  setCrmLeadWorkflow,
 } from "@/lib/crm-admin";
 import CrmCallBrief from "./CrmCallBrief";
-import { BTN_GHOST, BTN_PRIMARY, eventTint, LEAD_STATUS_META, LeadAgeChip, relTime, StatusPill, when } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, eventTint, FollowUpChip, LEAD_PRIORITY_META, LEAD_STATUS_META, LeadAgeChip, PriorityPill, relTime, StatusPill, when } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
 
@@ -41,7 +44,24 @@ const EVENT_LABEL: Record<string, string> = {
   note_edit: "עריכת הערה",
   undo: "ביטול פעולה",
   saving: "חיסכון נרשם",
+  workflow_update: "תכנית טיפול עודכנה",
 };
+
+const LOST_REASON_SUGGESTIONS = [
+  "המחיר לא התאים",
+  "לא מעוניין כרגע",
+  "לא הצלחנו ליצור קשר",
+  "בחר בספק אחר",
+  "התזמון לא מתאים",
+];
+
+function toLocalDateTime(value: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -82,6 +102,10 @@ export default function CrmLeadDrawer({
   const [note, setNote] = useState("");
   const [mainNote, setMainNote] = useState("");
   const [savingInput, setSavingInput] = useState("");
+  const [priority, setPriority] = useState<LeadPriority>("normal");
+  const [followUpAt, setFollowUpAt] = useState("");
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [lostReason, setLostReason] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [showBrief, setShowBrief] = useState(false);
   // Clock for the timeline's relative ages — sampled when a load lands (in the
@@ -116,6 +140,10 @@ export default function CrmLeadDrawer({
             lastNotesRef.current = d.data.lead.notes;
             setMainNote(d.data.lead.notes ?? "");
           }
+          setPriority(isLeadPriority(d.data.lead.priority) ? d.data.lead.priority : "normal");
+          setFollowUpAt(toLocalDateTime(d.data.lead.followUpAt));
+          setFollowUpNote(d.data.lead.followUpNote ?? "");
+          setLostReason(d.data.lead.lostReason ?? "");
         } else {
           setFailure(d.failure);
           setError(true);
@@ -149,9 +177,17 @@ export default function CrmLeadDrawer({
   const changeStatus = useCallback(
     async (status: LeadStatus) => {
       if (!data || status === data.lead.status || savingStatus) return;
+      if (status === "lost" && !lostReason.trim()) {
+        setNotice({ text: "כדי לסגור כליד אבוד, יש לתעד קודם סיבת סגירה.", ok: false });
+        return;
+      }
       setSavingStatus(status);
       setNotice(null);
-      const ok = await setCrmLeadStatus(leadId, status);
+      const ok = await setCrmLeadStatus(
+        leadId,
+        status,
+        status === "lost" ? lostReason.trim() : undefined,
+      );
       setSavingStatus(null);
       if (ok) {
         setNotice({ text: "הסטטוס עודכן.", ok: true });
@@ -161,7 +197,7 @@ export default function CrmLeadDrawer({
         setNotice({ text: "עדכון הסטטוס נכשל. נסו שוב.", ok: false });
       }
     },
-    [data, savingStatus, leadId, reload, onChanged],
+    [data, savingStatus, leadId, lostReason, reload, onChanged],
   );
 
   // Run a write action, then refresh the detail + notify the parent list. Returns
@@ -207,6 +243,28 @@ export default function CrmLeadDrawer({
   const onClaim = useCallback(() => {
     void runAction(() => claimCrmLead(leadId, repName), `הליד שויך ל${repName}.`);
   }, [leadId, repName, runAction]);
+
+  const onSaveWorkflow = useCallback(async () => {
+    let followUpIso: string | null = null;
+    if (followUpAt) {
+      const parsed = new Date(followUpAt);
+      if (Number.isNaN(parsed.getTime())) {
+        setNotice({ text: "מועד המעקב אינו תקין.", ok: false });
+        return;
+      }
+      followUpIso = parsed.toISOString();
+    }
+    await runAction(
+      () =>
+        setCrmLeadWorkflow(leadId, {
+          priority,
+          followUpAt: followUpIso,
+          followUpNote,
+          lostReason,
+        }),
+      "תכנית הטיפול נשמרה.",
+    );
+  }, [followUpAt, followUpNote, leadId, lostReason, priority, runAction]);
 
   const lead = data?.lead;
 
@@ -304,6 +362,78 @@ export default function CrmLeadDrawer({
                 </p>
               </section>
 
+              <section className="space-y-3 rounded-2xl border border-accent/25 bg-accent/[0.04] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-display text-sm font-bold text-ink">תכנית טיפול</p>
+                    <p className="mt-0.5 text-xs text-muted">מגדירים מי דורש תשומת לב ומה הפעולה הבאה.</p>
+                  </div>
+                  <span className="flex flex-wrap gap-1.5">
+                    <PriorityPill priority={priority} />
+                    <FollowUpChip followUpAt={lead.followUpAt} nowMs={nowMs} />
+                  </span>
+                </div>
+
+                <label className="block text-xs text-muted">
+                  עדיפות
+                  <select
+                    value={priority}
+                    onChange={(event) => setPriority(event.target.value as LeadPriority)}
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  >
+                    {(Object.keys(LEAD_PRIORITY_META) as LeadPriority[]).map((value) => (
+                      <option key={value} value={value}>{LEAD_PRIORITY_META[value].label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block text-xs text-muted">
+                  מועד פעולה הבאה
+                  <input
+                    type="datetime-local"
+                    value={followUpAt}
+                    onChange={(event) => setFollowUpAt(event.target.value)}
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  />
+                </label>
+
+                <label className="block text-xs text-muted">
+                  מה עושים במעקב
+                  <textarea
+                    value={followUpNote}
+                    onChange={(event) => setFollowUpNote(event.target.value)}
+                    maxLength={500}
+                    rows={2}
+                    placeholder="לדוגמה: לחזור עם הצעת סיבים אחרי 17:00"
+                    className="mt-1.5 w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  />
+                </label>
+
+                <label className="block text-xs text-muted">
+                  סיבת סגירה כאבוד
+                  <input
+                    list="crm-lost-reasons"
+                    value={lostReason}
+                    onChange={(event) => setLostReason(event.target.value)}
+                    maxLength={240}
+                    placeholder="נדרש לפני מעבר ל׳אבוד׳"
+                    className="mt-1.5 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  />
+                  <datalist id="crm-lost-reasons">
+                    {LOST_REASON_SUGGESTIONS.map((reason) => <option key={reason} value={reason} />)}
+                  </datalist>
+                </label>
+
+                <button
+                  type="button"
+                  disabled={actionBusy}
+                  onClick={() => void onSaveWorkflow()}
+                  className={`${BTN_PRIMARY} w-full`}
+                >
+                  שמירת תכנית טיפול
+                </button>
+              </section>
+
               <section className="rounded-2xl border border-border bg-surface p-3">
                 <button
                   type="button"
@@ -394,6 +524,9 @@ export default function CrmLeadDrawer({
                 )}
                 {lead.contactedAt && <Field label="נוצר קשר">{when(lead.contactedAt)}</Field>}
                 {lead.actualSaving != null && <Field label="חיסכון שנרשם">₪{he(lead.actualSaving)} לשנה</Field>}
+                {lead.followUpAt && <Field label="מעקב הבא">{when(lead.followUpAt)}</Field>}
+                {lead.followUpNote && <Field label="הערת מעקב">{lead.followUpNote}</Field>}
+                {lead.lostReason && <Field label="סיבת סגירה">{lead.lostReason}</Field>}
                 {lead.referrerCode && <Field label="קוד הפניה">{lead.referrerCode}</Field>}
               </dl>
 

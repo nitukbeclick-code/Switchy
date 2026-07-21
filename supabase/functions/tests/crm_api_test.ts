@@ -243,11 +243,17 @@ Deno.test("shapeLeadDetail maps the CRM fields + coerces empties/consent honestl
     city: "חיפה", status: "contacted", created_at: "2026-07-01T10:00:00Z",
     claimed_by: "רון", claimed_at: "2026-07-01T11:00:00Z", contacted_at: "",
     actual_saving: 480, notes: "מעוניין", referrer_code: "",
+    priority: "high", follow_up_at: "2026-07-02T15:00:00Z",
+    follow_up_note: "לחזור בערב", lost_reason: "",
     consent_marketing_sms: true, consent_marketing_email: false, consent_marketing_whatsapp: true,
   });
   assertEquals(d.name, "דנה לוי");
   assertEquals(d.email, "d@x.com");
   assertEquals(d.actualSaving, 480);
+  assertEquals(d.priority, "high");
+  assertEquals(d.followUpAt, "2026-07-02T15:00:00Z");
+  assertEquals(d.followUpNote, "לחזור בערב");
+  assertEquals(d.lostReason, null);
   assertEquals(d.contactedAt, null); // "" → null, never an empty string
   assertEquals(d.referrerCode, null);
   assertEquals(d.consent, { sms: true, email: false, whatsapp: true });

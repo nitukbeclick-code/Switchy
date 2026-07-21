@@ -26,7 +26,6 @@ import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getPlans,
   getCategories,
-  plansByCategory,
   CATEGORY_HE,
 } from "@/lib/data";
 import type { Plan, Category } from "@/lib/types";

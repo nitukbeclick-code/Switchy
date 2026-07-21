@@ -5,6 +5,13 @@
   "framework": null,
   "outputDirectory": "site",
   "cleanUrls": false,
+  "redirects": [
+    {
+      "source": "/providers/index.html",
+      "destination": "/providers.html",
+      "statusCode": 308
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

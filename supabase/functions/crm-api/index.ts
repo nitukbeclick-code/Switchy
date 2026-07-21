@@ -24,6 +24,7 @@
 //   setContactStatus    → patch whatsapp_contacts.status
 //   listContacts        → the WhatsApp-contact lifecycle list
 //   setLeadStatus       → patch leads.status + lead_events audit row
+//   setLeadWorkflow     → priority + next follow-up + disposition reason
 //   listLeads           → the lead pipeline
 //   listSellableLeads   → READ-ONLY consented-sharing feed (audited; no buyer push)
 //   repLeaderboard      → per-rep performance (claimed/won/lost + booked saving)
@@ -71,6 +72,7 @@ import {
   actRepLeaderboard,
   actSetLeadNote,
   actSetLeadStatus,
+  actSetLeadWorkflow,
 } from "./actions_leads.ts";
 import { actGetMeeting, actListMeetings, actSetMeetingStatus } from "./actions_meetings.ts";
 import { actListMembers, actSetMemberRole } from "./actions_members.ts";
@@ -144,6 +146,8 @@ Deno.serve(async (req: Request) => {
         return await actListContacts(body);
       case "setLeadStatus":
         return await actSetLeadStatus(body, access.uid);
+      case "setLeadWorkflow":
+        return await actSetLeadWorkflow(body, access.uid);
       case "listLeads":
         return await actListLeads(body);
       case "getLeadDetail":

@@ -8,6 +8,8 @@ export const SNIPPET_LEN = 60;
 export const MAX_REPLY_LEN = 4000; // matches the body.slice cap on the stored row
 export const EVENT_PREVIEW_LEN = 80; // crm_events.preview cap — a short, PII-light snippet
 export const MAX_NOTE_LEN = 5000; // THE note cap — both addNote and setLeadNote clamp to this
+export const MAX_FOLLOW_UP_NOTE_LEN = 500;
+export const MAX_LOST_REASON_LEN = 240;
 export const LIST_LIMIT = 200; // the historical hard window for the list actions
 export const THREAD_MSG_CAP = 300; // getThread reads at most the newest 300 messages
 
@@ -23,6 +25,7 @@ export const CONTACT_STATUSES = new Set([
   "blocked",
 ]);
 export const LEAD_STATUSES = new Set(["new", "contacted", "won", "lost"]);
+export const LEAD_PRIORITIES = new Set(["low", "normal", "high", "urgent"]);
 export const CONVERSATION_STATUSES = new Set(["open", "bot", "human", "closed"]);
 // Zoom-booking lifecycle (mirrors the meetings.status enum + MeetingRow in
 // _shared/types.ts). Writes AND filter params are validated against this set.
@@ -169,6 +172,10 @@ export interface LeadDetail {
   claimedAt: string | null;
   contactedAt: string | null;
   actualSaving: number | null;
+  priority: string;
+  followUpAt: string | null;
+  followUpNote: string | null;
+  lostReason: string | null;
   notes: string | null;
   referrerCode: string | null;
   consent: { sms: boolean; email: boolean; whatsapp: boolean };
@@ -197,6 +204,10 @@ export function shapeLeadDetail(r: Record<string, unknown>): LeadDetail {
     claimedAt: emptyToNull(r.claimed_at),
     contactedAt: emptyToNull(r.contacted_at),
     actualSaving: r.actual_saving == null ? null : Number(r.actual_saving),
+    priority: s(r.priority) || "normal",
+    followUpAt: emptyToNull(r.follow_up_at),
+    followUpNote: emptyToNull(r.follow_up_note),
+    lostReason: emptyToNull(r.lost_reason),
     notes: emptyToNull(r.notes),
     referrerCode: emptyToNull(r.referrer_code),
     consent: {

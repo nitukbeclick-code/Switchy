@@ -721,7 +721,7 @@ const zoomCta = (txt) => `<a class="zoom-cta" href="book.html"><svg viewBox="0 0
 // callers then keep their centered hero (or the category app shot).
 function promoJumpCard(catPlans) {
   const candidates = (catPlans || []).filter((p) =>
-    (!p.priceUnit || p.priceUnit === 'month') && p.after && (p.after - p.price) >= 20);
+    isConsumerMonthlyPlan(p) && p.after && (p.after - p.price) >= 20);
   if (!candidates.length) return null;
   const p = candidates.slice().sort((a, b) => (b.after - b.price) - (a.after - a.price))[0];
   const todayPct = Math.max(18, Math.round((p.price / p.after) * 100));
@@ -972,7 +972,7 @@ const heroTrustLine = () =>
 // '' when there are fewer than `min` monthly plans (a 2-item band adds no weight).
 function heroStatBand(plans, { min = 3 } = {}) {
   const list = (plans || []).slice();
-  const monthly = list.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const monthly = list.filter(isConsumerMonthlyPlan);
   const set = monthly.length ? monthly : list;
   if (set.length < min) return '';
   const entry = Math.min(...set.map((p) => offerPrice(p)));
@@ -1091,8 +1091,7 @@ function planCardHtml(p, best) {
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
   const compareHref = p.id ? `compare.html?p0=${encodeURIComponent(p.id)}` : 'compare.html';
   return `<article class="plan${isBest ? ' plan--best' : ''}${variant}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}" data-provider="${providerSlug(p.provider)}" data-id="${esc(p.id || '')}">
-        ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
-        <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span>${scoreBadge}</div>
+${isBest ? '        <span class="plan__badge">המחיר הנמוך ביותר</span>\n' : ''}        <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span>${scoreBadge}</div>
         <div class="plan__name">${esc(p.plan)} <span class="plan__net">${esc(p.net)}</span></div>
         ${specs ? `<div class="plan__specs">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
@@ -1415,6 +1414,14 @@ const trustBlock = () => `    <section class="section trust-block" aria-label="�
 // Offer price for structured data — the exact advertised figure when present,
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
 const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
+
+// Headline "from ₪X/month" claims compare like with like. A data-only SIM is
+// still rendered in its dedicated collection and full comparison tables, but it
+// must not masquerade as the cheapest consumer phone plan in a category hero,
+// provider hero, ticker, deal card or machine-readable summary.
+const isConsumerMonthlyPlan = (p) =>
+  (!p.priceUnit || p.priceUnit === 'month') &&
+  !(p.cat === 'cellular' && String(p.kind || '').toLowerCase() === 'dataonly');
 
 // ── Shared social-card image metadata ───────────────────────────────────────
 // Single source of truth for the OG/Twitter image so the dimensions + alt match
@@ -1924,9 +1931,10 @@ function page(c) {
   // Cards are sorted cheapest-first (plansByCat sort), so card 0 is honestly the
   // lowest price in this category — badge it as the value anchor (only when the
   // list is long enough for the highlight to mean something).
-  const planCards = catPlans.map((p, i) => planCardHtml(p, i === 0 && catPlans.length > 2)).join('\n      ');
+  const valueAnchor = catPlans.find((p) => (p.kind || 'regular') === 'regular');
+  const planCards = catPlans.map((p) => planCardHtml(p, p.id === valueAnchor?.id && catPlans.length > 2)).join('\n      ');
   const heroStats = (() => {
-    const monthly = catPlans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+    const monthly = catPlans.filter(isConsumerMonthlyPlan);
     if (monthly.length < 3) return '';
     const cheapest = monthly[0].price;
     const maxP = monthly[monthly.length - 1].price;
@@ -1940,7 +1948,8 @@ function page(c) {
   // count, its provider count, its honest entry price). Rendered only when the
   // category has enough plans for the numbers to carry weight.
   const catProviderCount = new Set(catPlans.map((p) => p.provider)).size;
-  const catEntryPrice = catPlans.length ? Math.min(...catPlans.map((p) => p.price)) : null;
+  const headlinePlans = catPlans.filter(isConsumerMonthlyPlan);
+  const catEntryPrice = headlinePlans.length ? Math.min(...headlinePlans.map(offerPrice)) : null;
   const statBand = catPlans.length >= 4 && catEntryPrice != null
     ? `<ul class="stat-band" aria-label="נתוני הקטלוג בקטגוריה זו — מהקטלוג">
             <li><b data-count-to="${catPlans.length}">${catPlans.length}</b> מסלולים</li>
@@ -2812,7 +2821,7 @@ function howItWorksPage() {
   // whole card links into the category hub, deepening crawl depth from this page.
   const catCards = categories.map((c) => {
     const list = plansByCat[c.slug] || [];
-    const monthly = list.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+    const monthly = list.filter(isConsumerMonthlyPlan);
     // Count and price MUST come from the same set, or the line lies (e.g. abroad
     // would pair "11 plans" with a ₪19 price that only exists in the 4-plan
     // monthly subset, then stamp it /חודש on a mixed-unit category). Mirror the
@@ -3264,7 +3273,7 @@ ${footer}
 // most (the honest angle: know the jump BEFORE you sign).
 function dealsPage() {
   const url = `${SITE}/deals.html`;
-  const monthly = catalogue.plans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const monthly = catalogue.plans.filter(isConsumerMonthlyPlan);
   const bestPer = categories
     .map((c) => {
       const list = monthly.filter((p) => p.cat === c.slug)
@@ -3474,7 +3483,9 @@ ${footer}
 function providerPage(name, plans) {
   const slug = providerSlug(name);
   const url = `${SITE}/provider-${slug}.html`;
-  const cheapest = plans.reduce((m, p) => Math.min(m, p.price), Infinity);
+  const headlinePlans = plans.filter(isConsumerMonthlyPlan);
+  const headlineSet = headlinePlans.length ? headlinePlans : plans;
+  const cheapest = headlineSet.reduce((m, p) => Math.min(m, offerPrice(p)), Infinity);
   const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
   const sortedPlans = plans.slice().sort((a, b) => a.price - b.price);
   const cards = sortedPlans.map((p, i) => planCardHtml(p, i === 0 && sortedPlans.length > 1)).join('\n        ');
@@ -3670,7 +3681,9 @@ function providersIndexPage() {
   const sortedNames = Object.keys(map).sort((a, b) => map[b].length - map[a].length);
   const cards = sortedNames.map((name) => {
     const ps = map[name];
-    const min = ps.reduce((m, p) => Math.min(m, p.price), Infinity);
+    const comparable = ps.filter(isConsumerMonthlyPlan);
+    const priced = comparable.length ? comparable : ps;
+    const min = priced.reduce((m, p) => Math.min(m, offerPrice(p)), Infinity);
     const cats = [...new Set(ps.map((p) => p.cat))].filter((c) => catLabel[c]).sort((a, b) => Object.keys(catLabel).indexOf(a) - Object.keys(catLabel).indexOf(b)).map((c) => catLabel[c]).join(' · ');
     return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small>${cats ? `<small class="provider-card__cats">${esc(cats)}</small>` : ''}</span></a>`;
   }).join('\n');
@@ -4650,7 +4663,7 @@ ${nav}
           <label for="calcBill" class="calc-card__label">כמה אתם משלמים היום? (₪ לחודש)</label>
           <div class="calc-quick calc-card__quick" role="group" aria-label="בחירה מהירה">
             ${(() => {
-              const monthly = (plansByCat[c.slug] || []).filter((p) => !p.priceUnit || p.priceUnit === 'month').map((p) => p.price).sort((a, b) => a - b);
+              const monthly = (plansByCat[c.slug] || []).filter(isConsumerMonthlyPlan).map((p) => offerPrice(p)).sort((a, b) => a - b);
               if (!monthly.length) return '';
               const pct = (p) => monthly[Math.floor(p * (monthly.length - 1))];
               const vals = [pct(0.4), pct(0.6), pct(0.8), pct(0.95)].map((v) => Math.round((v * 1.6) / 10) * 10).filter((v, i, a) => a.indexOf(v) === i && v > (offerPrice(ch)));
@@ -4876,7 +4889,8 @@ const VERSUS = [
 function versusSideHtml(side, catSlug, sideKey) {
   const matched = catalogue.plans.filter(side.filter).sort((a, b) => offerPrice(a) - offerPrice(b));
   if (matched.length < 1) return null;
-  const cheapest = matched[0];
+  const headlineMatched = matched.filter(isConsumerMonthlyPlan);
+  const cheapest = (headlineMatched.length ? headlineMatched : matched)[0];
   const fromTxt = `${matched.length} מסלולים · החל מ-₪${cheapest.price}${(!cheapest.priceUnit || cheapest.priceUnit === 'month') ? '/חודש' : ''}`;
   // `sideKey` (e.g. 'a'/'b') keeps each table's id unique on the page (the labels
   // are Hebrew and would collapse to an empty ASCII slug → duplicate ids).
@@ -5015,7 +5029,7 @@ function providerVsSide(provider, catSlug) {
     .filter((p) => p.cat === catSlug && p.provider === provider)
     .sort((a, b) => offerPrice(a) - offerPrice(b));
   if (!plans.length) return null;
-  const monthly = plans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const monthly = plans.filter(isConsumerMonthlyPlan);
   const priced = monthly.length ? monthly : plans;
   const from = Math.min(...priced.map((p) => offerPrice(p)));
   const avg = priced.reduce((s, p) => s + offerPrice(p), 0) / priced.length;
@@ -5434,7 +5448,8 @@ const AI_BOTS = [
 // Real per-category counts + cheapest entry price, straight from the catalogue.
 const llmCategoryLines = categories.map((c) => {
   const catPlans = plansByCat[c.slug] || [];
-  const prices = catPlans
+  const headlinePlans = catPlans.filter(isConsumerMonthlyPlan);
+  const prices = (headlinePlans.length ? headlinePlans : catPlans)
     .map(offerPrice)
     .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
   const from = prices.length ? `, החל מ-₪${Math.round(Math.min(...prices))}` : '';
@@ -5444,7 +5459,8 @@ const llmCategoryLines = categories.map((c) => {
 // Real per-provider counts + cheapest entry price, straight from the catalogue.
 const llmProviderLines = providerNames.map((name) => {
   const plans = providersMap[name] || [];
-  const prices = plans
+  const headlinePlans = plans.filter(isConsumerMonthlyPlan);
+  const prices = (headlinePlans.length ? headlinePlans : plans)
     .map(offerPrice)
     .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
   const from = prices.length ? `, החל מ-₪${Math.round(Math.min(...prices))}` : '';
@@ -5492,7 +5508,7 @@ const llmsTxt = [
   "## העסקאות של היום (Today's cheapest — live catalogue prices)",
   ...categories.map((c) => {
     const best = catalogue.plans
-      .filter((p) => p.cat === c.slug && (!p.priceUnit || p.priceUnit === 'month'))
+      .filter((p) => p.cat === c.slug && isConsumerMonthlyPlan(p))
       .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price))[0];
     return best
       ? `- ${c.name}: ${best.provider} — ${best.plan} — ₪${best.price}/חודש${best.after ? ` (אחרי מבצע: ₪${best.after})` : ''}`
@@ -5670,7 +5686,7 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
   const heroPlans = {};
   for (const cat of FINDER_CATS) {
     heroPlans[cat] = catalogue.plans
-      .filter((p) => p.cat === cat && (!p.priceUnit || p.priceUnit === 'month'))
+      .filter((p) => p.cat === cat && isConsumerMonthlyPlan(p))
       .sort((a, b) => (a.priceExact || a.price) - (b.priceExact || b.price))
       .slice(0, 8)
       .map((p) => ({ p: p.provider, n: p.plan, pr: p.price, a: p.after || null, net: p.net || '' }));

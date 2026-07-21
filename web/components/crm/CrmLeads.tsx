@@ -33,8 +33,11 @@ import {
   type CrmLead,
   fetchCrmLeads,
   fetchCrmSla,
+  isLeadPriority,
   isLeadStatus,
+  LEAD_PRIORITIES,
   LEAD_STATUSES,
+  type LeadPriority,
   type LeadSort,
   type LeadStatus,
   setCrmLeadStatus,
@@ -44,9 +47,10 @@ import { runChunked } from "@/lib/batch";
 import { buildCsv, csvFileName, downloadCsv } from "@/lib/csv";
 import { type DateRange, withinRange } from "@/lib/date-range";
 import CrmLeadDrawer from "./CrmLeadDrawer";
-import { BTN_GHOST, ErrorNotice, LEAD_STATUS_META, LeadAgeChip, mirrorUrlParams, NoticeCard, StatusPill, when } from "./ui";
+import { BTN_GHOST, ErrorNotice, FollowUpChip, LEAD_PRIORITY_META, LEAD_STATUS_META, LeadAgeChip, leadNeedsAttention, mirrorUrlParams, NoticeCard, PriorityPill, StatusPill, when } from "./ui";
 
 type Filter = LeadStatus | "all";
+type PriorityFilter = LeadPriority | "all";
 
 // What a bulk action can do to a selection. Stage targets: `won` is deliberately
 // excluded — closing as won goes through the drawer's guided flow (it records the
@@ -55,7 +59,6 @@ type Filter = LeadStatus | "all";
 type BulkTarget = LeadStatus | "claim";
 const BULK_TARGETS: { status: LeadStatus; label: string }[] = [
   { status: "contacted", label: "יצרנו קשר" },
-  { status: "lost", label: "אבוד" },
 ];
 
 const RANGE_KEYS: readonly DateRange[] = ["all", "1d", "7d", "30d"];
@@ -86,6 +89,11 @@ export default function CrmLeads() {
     return v && (RANGE_KEYS as readonly string[]).includes(v) ? (v as DateRange) : "all";
   });
   const [rep, setRep] = useState<string>(() => params.get("lead_rep") ?? "all");
+  const [priority, setPriority] = useState<PriorityFilter>(() => {
+    const value = params.get("lead_priority");
+    return isLeadPriority(value) ? value : "all";
+  });
+  const [attentionOnly, setAttentionOnly] = useState(() => params.get("lead_attention") === "1");
   const [leads, setLeads] = useState<CrmLead[] | null>(null);
   // The server's authoritative "there are more rows past this window" flag —
   // drives the honest "-partial" CSV suffix (NOT `leads.length >= 200`, which
@@ -171,13 +179,25 @@ export default function CrmLeads() {
   // Quick-view date window + rep filter, applied CLIENT-side over the fetched rows
   // (already server-sorted), so switching is instant and needs no round-trip.
   // Everything downstream — count, export, select-all — reads `shown`, not `leads`.
-  const shown = useMemo(
-    () =>
-      (leads ?? []).filter(
-        (l) => withinRange(l.createdAt, range, nowMs) && (rep === "all" || l.claimedBy === rep),
-      ),
-    [leads, range, rep, nowMs],
-  );
+  const shown = useMemo(() => {
+    const filtered = (leads ?? []).filter(
+      (lead) =>
+        withinRange(lead.createdAt, range, nowMs) &&
+        (rep === "all" || lead.claimedBy === rep) &&
+        (priority === "all" || lead.priority === priority) &&
+        (!attentionOnly || leadNeedsAttention(lead, nowMs, slaHours)),
+    );
+    if (!attentionOnly) return filtered;
+    const rank: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 };
+    return [...filtered].sort((a, b) => {
+      const priorityDelta = (rank[b.priority] ?? 0) - (rank[a.priority] ?? 0);
+      if (priorityDelta) return priorityDelta;
+      const aDue = a.followUpAt ? Date.parse(a.followUpAt) : Number.POSITIVE_INFINITY;
+      const bDue = b.followUpAt ? Date.parse(b.followUpAt) : Number.POSITIVE_INFINITY;
+      if (aDue !== bDue) return aDue - bDue;
+      return Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? "");
+    });
+  }, [attentionOnly, leads, nowMs, priority, range, rep, slaHours]);
 
   const clearOnFilterChange = useCallback(() => {
     setSelected(new Set()); // a narrower view invalidates a selection of hidden rows
@@ -202,6 +222,22 @@ export default function CrmLeads() {
     }
     clearOnFilterChange();
   }, [rep, clearOnFilterChange]);
+
+  const changePriority = useCallback((next: PriorityFilter) => {
+    setPriority(next);
+    mirrorUrlParams({ lead_priority: next === "all" ? null : next });
+    clearOnFilterChange();
+  }, [clearOnFilterChange]);
+
+  const toggleAttention = useCallback(() => {
+    setNowMs(Date.now());
+    setAttentionOnly((current) => {
+      const next = !current;
+      mirrorUrlParams({ lead_attention: next ? "1" : null });
+      return next;
+    });
+    clearOnFilterChange();
+  }, [clearOnFilterChange]);
 
   // Fetch the current view. Loading/error resets are event-driven (`beginLoad`
   // above; the useState initializers cover the mount load) — so the load effect
@@ -353,7 +389,7 @@ export default function CrmLeads() {
   // partial.
   const exportCsv = useCallback(() => {
     if (shown.length === 0) return;
-    const headers = ["id", "שם", "טלפון", "ספק", "מקור", "נציג", "שלב", "נוצר"];
+    const headers = ["id", "שם", "טלפון", "ספק", "מקור", "נציג", "שלב", "עדיפות", "מעקב הבא", "נוצר"];
     const rows = shown.map((l) => [
       l.id,
       l.name,
@@ -362,6 +398,8 @@ export default function CrmLeads() {
       l.source ?? "",
       l.claimedBy ?? "",
       isLeadStatus(l.status) ? LEAD_STATUS_META[l.status].label : l.status,
+      l.priority,
+      l.followUpAt ?? "",
       l.createdAt ?? "",
     ]);
     downloadCsv(
@@ -421,6 +459,18 @@ export default function CrmLeads() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2" role="group" aria-label="סינון לפי שלב">
+        <button
+          type="button"
+          aria-pressed={attentionOnly}
+          onClick={toggleAttention}
+          className={`interactive rounded-full border px-3 py-1.5 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            attentionOnly
+              ? "border-danger bg-danger/10 text-danger-text"
+              : "border-accent/40 bg-accent/5 text-accent-text"
+          }`}
+        >
+          לטיפול עכשיו
+        </button>
         {filters.map((f) => {
           const active = filter === f.key;
           return (
@@ -512,6 +562,18 @@ export default function CrmLeads() {
             </select>
           </>
         )}
+        <span className="ms-2">עדיפות:</span>
+        <select
+          value={priority}
+          onChange={(event) => changePriority(event.target.value as PriorityFilter)}
+          aria-label="סינון לפי עדיפות"
+          className="rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+        >
+          <option value="all">הכול</option>
+          {LEAD_PRIORITIES.map((value) => (
+            <option key={value} value={value}>{LEAD_PRIORITY_META[value].label}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
@@ -646,6 +708,7 @@ export default function CrmLeads() {
                   </th>
                   <th scope="col" className="px-4 py-2 font-medium">שם</th>
                   <th scope="col" className="px-4 py-2 font-medium">שלב</th>
+                  <th scope="col" className="px-4 py-2 font-medium">טיפול הבא</th>
                   <th scope="col" className="px-4 py-2 font-medium">נציג</th>
                   <th scope="col" className="px-4 py-2 font-medium">טלפון</th>
                   <th scope="col" className="px-4 py-2 font-medium">ספק</th>
@@ -697,6 +760,12 @@ export default function CrmLeads() {
                       >
                         {l.name || "—"}
                       </button>
+                    </td>
+                    <td className="px-4 py-2">
+                      <span className="flex min-w-40 flex-col items-start gap-1">
+                        <PriorityPill priority={l.priority} />
+                        <FollowUpChip followUpAt={l.followUpAt} nowMs={nowMs} />
+                      </span>
                     </td>
                     <td className="px-4 py-2">
                       <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -752,12 +821,14 @@ export default function CrmLeads() {
                   <span className="inline-flex flex-col items-end gap-1">
                     <StatusPill status={l.status} />
                     {l.status === "new" && <LeadAgeChip createdAt={l.createdAt} nowMs={nowMs} slaHours={slaHours} />}
+                    <PriorityPill priority={l.priority} />
                   </span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
                   {l.provider && <span>ספק: {l.provider}</span>}
                   {l.source && <span>מקור: {l.source}</span>}
                   {l.claimedBy && <span>נציג: {l.claimedBy}</span>}
+                  {l.followUpAt && <FollowUpChip followUpAt={l.followUpAt} nowMs={nowMs} />}
                   {l.createdAt && <span>{when(l.createdAt)}</span>}
                 </div>
               </li>

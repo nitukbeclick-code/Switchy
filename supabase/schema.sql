@@ -86,6 +86,10 @@ create table if not exists public.leads (
   callback_pinged_at timestamptz,            -- "the customer asked for evening" reminder sent
   actual_saving     integer,                 -- ₪/year captured by the won-flow reply
   source_ip         text,                    -- set by the insert gate for per-IP rate limiting
+  priority          text not null default 'normal', -- CRM-only: low / normal / high / urgent
+  follow_up_at      timestamptz,             -- CRM-only: next action due time
+  follow_up_note    text,                    -- CRM-only: next-action context (max 500)
+  lost_reason       text,                    -- CRM-only: disposition reason (max 240)
   created_at    timestamptz not null default now()
 );
 
@@ -102,6 +106,31 @@ alter table public.leads add column if not exists nudged_at timestamptz;
 alter table public.leads add column if not exists callback_pinged_at timestamptz;
 alter table public.leads add column if not exists actual_saving integer;
 alter table public.leads add column if not exists source_ip text;
+alter table public.leads add column if not exists priority text not null default 'normal';
+alter table public.leads add column if not exists follow_up_at timestamptz;
+alter table public.leads add column if not exists follow_up_note text;
+alter table public.leads add column if not exists lost_reason text;
+
+do $$ begin
+  alter table public.leads
+    add constraint leads_priority_check
+    check (priority in ('low', 'normal', 'high', 'urgent'));
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table public.leads
+    add constraint leads_follow_up_note_length_check
+    check (follow_up_note is null or char_length(follow_up_note) <= 500);
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table public.leads
+    add constraint leads_lost_reason_length_check
+    check (lost_reason is null or char_length(lost_reason) <= 240);
+exception when duplicate_object then null;
+end $$;
 
 -- Live columns added by later deltas, mirrored here because the INSERT column
 -- allowlist below grants on them (a fresh install would otherwise error):
@@ -150,6 +179,10 @@ grant select (id, user_id, status, created_at) on public.leads to authenticated;
 
 create index if not exists leads_user_idx on public.leads (user_id);
 create index if not exists leads_created_idx on public.leads (created_at desc);
+create index if not exists leads_follow_up_due_idx on public.leads (follow_up_at)
+  where follow_up_at is not null and status in ('new', 'contacted');
+create index if not exists leads_open_priority_idx on public.leads (priority, created_at)
+  where status in ('new', 'contacted');
 -- partial index for the renewal-reminders unnotified-leads sweep
 create index if not exists leads_unnotified_idx on public.leads (created_at)
   where notified_at is null;
@@ -176,6 +209,8 @@ begin
   new.claimed_by := null;      new.claimed_by_tg_id := null;  new.claimed_at := null;
   new.contacted_at := null;    new.nudged_at := null;         new.callback_pinged_at := null;
   new.actual_saving := null;   new.notified_at := null;
+  new.priority := 'normal';    new.follow_up_at := null;
+  new.follow_up_note := null;  new.lost_reason := null;
   if length(trim(new.name)) < 2 or length(new.name) > 80 then
     raise exception 'invalid name';
   end if;

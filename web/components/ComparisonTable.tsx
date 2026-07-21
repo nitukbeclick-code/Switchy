@@ -1,3 +1,5 @@
+"use client";
+
 // ────────────────────────────────────────────────────────────────────────────
 // <ComparisonTable> — the RICH, category-aware plan comparison for a list of
 // plans. MOBILE-FIRST: phones get one clean card per plan (<PlanCard>); lg+
@@ -16,6 +18,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 import type { Plan } from "@/lib/types";
 import { priceUnitLabel } from "@/lib/format";
 import { ProviderLogo } from "@/components/ProviderLogo";
@@ -27,6 +30,12 @@ import PlanCard, {
   type FeatureLabel,
 } from "@/components/PlanCard";
 import ProviderCarousels from "@/components/ProviderCarousels";
+import Icon from "@/components/Icon";
+import {
+  filterAndSortPlans,
+  type ComparisonSort,
+} from "@/lib/comparison-filter";
+import { isDataOnlyPlan } from "@/lib/plan-classification";
 
 export type { FeatureLabel };
 
@@ -60,6 +69,8 @@ export interface ComparisonTableProps {
    * unaffected. Skeleton/empty states always use the flat path.
    */
   groupByProvider?: boolean;
+  /** Add client-side search, provider, feature and sorting controls. */
+  interactiveFilters?: boolean;
   /**
    * When the table can render before its data has arrived, set this true to show a
    * pulsing skeleton (matching the real layout, zero layout shift). `loadingRows`
@@ -89,6 +100,33 @@ function SkelBar({ className }: { className?: string }) {
   );
 }
 
+function FilterToggle({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={[
+        "interactive min-h-11 rounded-full border px-3.5 text-sm font-semibold transition",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        active
+          ? "border-accent bg-accent text-white shadow-sm"
+          : "border-border bg-background text-foreground hover:border-accent/50 hover:bg-accent/[0.04]",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function ComparisonTable({
   plans,
   caption,
@@ -97,18 +135,76 @@ export default function ComparisonTable({
   autoPriceDrops = false,
   priceDropSparkline = false,
   groupByProvider = false,
+  interactiveFilters = false,
   loading = false,
   loadingRows = 4,
   className,
 }: ComparisonTableProps) {
+  const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
+  const [provider, setProvider] = useState("");
+  const [sort, setSort] = useState<ComparisonSort>("price-asc");
+  const [noCommit, setNoCommit] = useState(false);
+  const [fiveG, setFiveG] = useState(false);
+  const [fixedPrice, setFixedPrice] = useState(false);
+  const [includeDataOnly, setIncludeDataOnly] = useState(false);
+
+  const providers = useMemo(
+    () => [...new Set(plans.map((plan) => plan.provider))].sort((a, b) =>
+      a.localeCompare(b, "he"),
+    ),
+    [plans],
+  );
+  const dataOnlyCount = useMemo(
+    () => plans.filter(isDataOnlyPlan).length,
+    [plans],
+  );
+  const visiblePlans = useMemo(
+    () =>
+      interactiveFilters
+        ? filterAndSortPlans(plans, {
+            query: deferredQuery,
+            provider,
+            sort,
+            noCommit,
+            fiveG,
+            fixedPrice,
+            includeDataOnly,
+          })
+        : plans,
+    [
+      deferredQuery,
+      fixedPrice,
+      fiveG,
+      includeDataOnly,
+      interactiveFilters,
+      noCommit,
+      plans,
+      provider,
+      sort,
+    ],
+  );
+  const hasActiveFilters = Boolean(
+    query || provider || noCommit || fiveG || fixedPrice || includeDataOnly,
+  );
+  const resetFilters = () => {
+    setQuery("");
+    setProvider("");
+    setSort("price-asc");
+    setNoCommit(false);
+    setFiveG(false);
+    setFixedPrice(false);
+    setIncludeDataOnly(false);
+  };
+
   // Only treat as "loading" when asked AND there's no real data yet, so a late
   // `loading` flag can never blank out plans that already arrived.
-  const showSkeleton = loading && plans.length === 0;
-  const isEmpty = !showSkeleton && plans.length === 0;
+  const showSkeleton = loading && visiblePlans.length === 0;
+  const isEmpty = !showSkeleton && visiblePlans.length === 0;
 
   // Build every plan's display bundle ONCE; both the mobile cards and the desktop
   // table render from these so the two views can never disagree.
-  const displays: PlanDisplay[] = plans.map(planDisplay);
+  const displays: PlanDisplay[] = visiblePlans.map(planDisplay);
 
   // Desktop rich columns: the UNION of the category field labels actually present
   // across the visible plans, in first-seen order (mirrors the static `keep` rule).
@@ -141,6 +237,96 @@ export default function ComparisonTable({
       role="region"
       aria-label={caption}
     >
+      {interactiveFilters ? (
+        <div className="mb-5 rounded-2xl border border-border/70 bg-surface p-4 elevate-card sm:p-5">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="min-w-[15rem] flex-1">
+              <span className="mb-1.5 block text-sm font-semibold text-foreground">
+                חיפוש מסלול או ספק
+              </span>
+              <span className="relative block">
+                <Icon
+                  name="search"
+                  size={17}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted"
+                />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="לדוגמה: 5G, סלקום, Fiber"
+                  className="min-h-11 w-full rounded-xl border border-border bg-background px-3 pe-10 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+              </span>
+            </label>
+            <label className="min-w-[10rem] flex-1 sm:max-w-[14rem]">
+              <span className="mb-1.5 block text-sm font-semibold text-foreground">ספק</span>
+              <select
+                value={provider}
+                onChange={(event) => setProvider(event.target.value)}
+                className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">כל הספקים</option>
+                {providers.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[11rem] flex-1 sm:max-w-[15rem]">
+              <span className="mb-1.5 block text-sm font-semibold text-foreground">מיון</span>
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value as ComparisonSort)}
+                className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="price-asc">מחיר התחלתי — מהנמוך</option>
+                <option value="long-term-asc">מחיר לטווח ארוך — מהנמוך</option>
+                <option value="provider">שם הספק</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2" aria-label="סינון מהיר">
+            <FilterToggle active={noCommit} onClick={() => setNoCommit((v) => !v)}>
+              ללא התחייבות
+            </FilterToggle>
+            <FilterToggle active={fixedPrice} onClick={() => setFixedPrice((v) => !v)}>
+              מחיר קבוע
+            </FilterToggle>
+            {plans.some((plan) => plan.is5G) ? (
+              <FilterToggle active={fiveG} onClick={() => setFiveG((v) => !v)}>
+                5G בלבד
+              </FilterToggle>
+            ) : null}
+            {dataOnlyCount > 0 ? (
+              <FilterToggle
+                active={includeDataOnly}
+                onClick={() => setIncludeDataOnly((v) => !v)}
+              >
+                כולל SIM לגלישה בלבד ({dataOnlyCount})
+              </FilterToggle>
+            ) : null}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 text-sm">
+            <p className="text-muted" aria-live="polite">
+              מציגים <strong className="text-foreground">{visiblePlans.length}</strong> מתוך {plans.length} מסלולים
+              {dataOnlyCount > 0 && !includeDataOnly ? " · חבילות גלישה בלבד מוסתרות כברירת מחדל" : ""}
+            </p>
+            {hasActiveFilters || sort !== "price-asc" ? (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="interactive min-h-11 rounded-lg px-3 font-semibold text-accent-text underline underline-offset-4 hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                איפוס סינון
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {/* Visible + accessible caption, shared by both views. */}
       <p className="mb-3 text-start text-sm font-normal text-muted lg:sr-only">
         {caption}
@@ -151,7 +337,7 @@ export default function ComparisonTable({
           one card per plan (also the skeleton / empty path). */}
       {useCarousels ? (
         <ProviderCarousels
-          plans={plans}
+          plans={visiblePlans}
           featured={featured}
           {...sharedDropProps}
           className="lg:hidden"

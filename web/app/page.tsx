@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
@@ -20,6 +21,7 @@ import {
   getProviders,
   getPlans,
   plansByCategory,
+  isConsumerHeadlinePlan,
   buildProviderRankings,
   getCities,
   CATEGORY_HE,
@@ -49,7 +51,7 @@ export const metadata: Metadata = pageMetadata({
 // Pick the N cheapest plans in a category as a representative featured table.
 function cheapestIn(cat: string, n: number) {
   return [...plansByCategory(cat)]
-    .filter((p) => typeof p.price === "number")
+    .filter(isConsumerHeadlinePlan)
     .sort((a, b) => a.price - b.price)
     .slice(0, n);
 }
@@ -59,7 +61,7 @@ function cheapestIn(cat: string, n: number) {
 // anchors on the hero / category cards can never drift from the data.
 function catEntryPriceText(cat: string): string | null {
   const priced = plansByCategory(cat).filter(
-    (p) => typeof p.price === "number",
+    isConsumerHeadlinePlan,
   );
   if (priced.length === 0) return null;
   // The cheapest priced plan's EXACT advertised price (₪10.90, not a rounded-up
@@ -121,7 +123,9 @@ export default function Home() {
   // Featured table: cheapest cellular plans (the highest-traffic category).
   const featuredCat = categories.includes("cellular") ? "cellular" : categories[0];
   const featured = cheapestIn(featuredCat, 6);
-  // Keep the cheapest featured plan ITSELF (not just its rounded sort-key price)
+  // Keep the cheapest comparable consumer plan itself (not a data-only SIM or a
+  // per-minute/day tariff) so the hero makes a like-for-like monthly claim.
+  // Keep the plan (not just its rounded sort-key price)
   // so the hero / trust-band floor renders with priceText — the SAME decimal-
   // preserving helper the ComparisonTable rows below use — and never rounds a
   // ₪10.90 plan UP to ₪11 (which would OVERSTATE the floor and drift from the
@@ -494,6 +498,44 @@ export default function Home() {
             מצאו את המסלול שלכם
             <Icon name="chevron" size={18} aria-hidden="true" />
           </TrackedCtaLink>
+        </div>
+      </section>
+
+      <section
+        aria-labelledby="clarity-h"
+        className="mt-16 overflow-hidden rounded-3xl border border-border/70 bg-surface shadow-soft"
+      >
+        <div className="grid items-stretch lg:grid-cols-[0.82fr_1.18fr]">
+          <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-10">
+            <p className="text-xs font-bold tracking-[0.16em] text-accent-text">
+              פחות רעש. יותר ודאות.
+            </p>
+            <h2
+              id="clarity-h"
+              className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl"
+            >
+              מבלגן של חבילות לבחירה אחת ברורה.
+            </h2>
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
+              אנחנו מסדרים את המחירים, תנאי המבצע והאותיות הקטנות באותה שפה — כדי שתראו מה באמת מתאים לכם, בלי לנחש.
+            </p>
+            <Link
+              href="/how-it-works"
+              className="interactive mt-6 inline-flex w-fit items-center gap-1.5 font-semibold text-accent-text hover:text-accent-hover"
+            >
+              כך ההשוואה עובדת
+              <Icon name="chevron" size={17} aria-hidden="true" />
+            </Link>
+          </div>
+          <figure className="relative min-h-64 overflow-hidden border-t border-border/60 bg-[#f7f1e5] lg:min-h-[23rem] lg:border-s lg:border-t-0">
+            <Image
+              src="/assets/switchy-editorial-clarity.webp"
+              alt="המחשה של חבילות תקשורת רבות שמתכנסות לבחירה אחת ברורה"
+              fill
+              sizes="(max-width: 1024px) 100vw, 58vw"
+              className="object-cover"
+            />
+          </figure>
         </div>
       </section>
 

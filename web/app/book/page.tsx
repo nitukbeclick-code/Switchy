@@ -17,7 +17,6 @@
 
 import Link from "next/link";
 import type { Metadata } from "next";
-import Icon from "@/components/Icon";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";

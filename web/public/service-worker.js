@@ -32,7 +32,7 @@ const CACHE_VERSION = "chosech-shell-v2";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
-  "/manifest.json",
+  "/manifest.webmanifest",
   "/icons/Icon-192.png",
   "/icons/Icon-512.png",
 ];

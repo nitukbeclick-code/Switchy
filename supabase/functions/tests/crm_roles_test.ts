@@ -31,6 +31,7 @@ const CONVERSE_ACTIONS = ["sendReply", "takeOver", "handBack"];
 const WRITE_ACTIONS = [
   "setContactStatus",
   "setLeadStatus",
+  "setLeadWorkflow",
   "addNote",
   "setLeadNote",
   "recordSaving",

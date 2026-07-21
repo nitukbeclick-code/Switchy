@@ -1,4 +1,4 @@
-import { providerSlug } from "@/lib/data";
+import { providerSlug } from "@/lib/provider-slug";
 import {
   providerBrandColor,
   providerInitials,

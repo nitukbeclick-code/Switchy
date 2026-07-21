@@ -7,7 +7,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import PriceCaveat from "@/components/PriceCaveat";
 import { PRICE_ACCURACY_CAVEAT } from "@/lib/legal";
 

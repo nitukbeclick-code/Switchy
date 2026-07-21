@@ -30,6 +30,13 @@ export function isLeadStatus(v: string | null | undefined): v is LeadStatus {
   return !!v && (LEAD_STATUSES as readonly string[]).includes(v);
 }
 
+export type LeadPriority = "low" | "normal" | "high" | "urgent";
+export const LEAD_PRIORITIES: readonly LeadPriority[] = ["low", "normal", "high", "urgent"];
+
+export function isLeadPriority(v: string | null | undefined): v is LeadPriority {
+  return !!v && (LEAD_PRIORITIES as readonly string[]).includes(v);
+}
+
 export interface CrmPipeline {
   new: number;
   contacted: number;
@@ -61,6 +68,8 @@ export interface CrmLead {
   status: string; // wire-wide: narrow with isLeadStatus before keying stage maps
   createdAt: string | null;
   claimedBy: string | null;
+  priority: string;
+  followUpAt: string | null;
 }
 
 export interface RepStat {
@@ -359,6 +368,10 @@ export interface CrmLeadDetail {
   claimedAt: string | null;
   contactedAt: string | null;
   actualSaving: number | null;
+  priority: string;
+  followUpAt: string | null;
+  followUpNote: string | null;
+  lostReason: string | null;
   notes: string | null;
   referrerCode: string | null;
   consent: { sms: boolean; email: boolean; whatsapp: boolean };
@@ -386,8 +399,35 @@ export function fetchCrmLeadDetail(
 }
 
 /** Move a lead to a new pipeline stage (server validates + audits). true on success. */
-export async function setCrmLeadStatus(leadId: string, status: LeadStatus): Promise<boolean> {
-  const res = await crmPost<{ ok?: boolean }>("setLeadStatus", { leadId, status });
+export async function setCrmLeadStatus(
+  leadId: string,
+  status: LeadStatus,
+  lostReason?: string,
+): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setLeadStatus", {
+    leadId,
+    status,
+    ...(lostReason ? { lostReason } : {}),
+  });
+  return !!res?.ok;
+}
+
+export interface LeadWorkflowInput {
+  priority: LeadPriority;
+  followUpAt: string | null;
+  followUpNote: string;
+  lostReason: string;
+}
+
+/** Save priority, next action and disposition context through the audited CRM API. */
+export async function setCrmLeadWorkflow(
+  leadId: string,
+  workflow: LeadWorkflowInput,
+): Promise<boolean> {
+  const res = await crmPost<{ ok?: boolean }>("setLeadWorkflow", {
+    leadId,
+    ...workflow,
+  });
   return !!res?.ok;
 }
 

@@ -4598,3 +4598,61 @@ textarea:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)
   .launch-tile { border-radius: 18px; }
   .section { padding-block: 58px; }
 }
+
+/* Original editorial visual — turns catalogue complexity into one clear path. */
+.editorial-clarity { padding-block: clamp(38px, 5vw, 72px); }
+.editorial-clarity__card {
+  display: grid;
+  grid-template-columns: .82fr 1.18fr;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+.editorial-clarity__copy {
+  align-self: center;
+  padding: clamp(30px, 4vw, 56px);
+}
+.editorial-clarity__copy h2 {
+  margin: 12px 0 16px;
+  color: var(--ink);
+  font-size: clamp(30px, 3.3vw, 46px);
+  line-height: 1.08;
+  letter-spacing: -.035em;
+}
+.editorial-clarity__copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.75;
+}
+.editorial-clarity__link {
+  display: inline-flex;
+  margin-top: 22px;
+  color: var(--accent-ink);
+  font-weight: 750;
+}
+.editorial-clarity__media {
+  min-height: 360px;
+  margin: 0;
+  overflow: hidden;
+  border-inline-start: 1px solid var(--line);
+  background: #f7f1e5;
+}
+.editorial-clarity__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+:root[data-theme="dark"] .editorial-clarity__card { background: var(--white); }
+
+@media (max-width: 860px) {
+  .editorial-clarity__card { grid-template-columns: 1fr; }
+  .editorial-clarity__media {
+    min-height: 250px;
+    border-block-start: 1px solid var(--line);
+    border-inline-start: 0;
+  }
+}

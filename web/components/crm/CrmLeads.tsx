@@ -449,7 +449,7 @@ export default function CrmLeads() {
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder="חיפוש שם / טלפון"
           aria-label="חיפוש לידים"
-          className="w-48 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="w-48 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
         <div className="ms-auto flex items-center gap-1 text-xs text-muted">
           <span>מיון:</span>
@@ -622,7 +622,7 @@ export default function CrmLeads() {
             <NoticeCard>אין לידים בטווח הזמן שנבחר.</NoticeCard>
           ) : (
           <>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted tabular-nums">
             {shown.length.toLocaleString("he-IL")} לידים
             {range === "all" && leads && leads.length >= 200 ? " (מתוך 200 שנטענו)" : ""}
           </p>
@@ -645,11 +645,11 @@ export default function CrmLeads() {
                     />
                   </th>
                   <th scope="col" className="px-4 py-2 font-medium">שם</th>
+                  <th scope="col" className="px-4 py-2 font-medium">שלב</th>
+                  <th scope="col" className="px-4 py-2 font-medium">נציג</th>
                   <th scope="col" className="px-4 py-2 font-medium">טלפון</th>
                   <th scope="col" className="px-4 py-2 font-medium">ספק</th>
                   <th scope="col" className="px-4 py-2 font-medium">מקור</th>
-                  <th scope="col" className="px-4 py-2 font-medium">נציג</th>
-                  <th scope="col" className="px-4 py-2 font-medium">שלב</th>
                   <th scope="col" className="px-4 py-2 font-medium">נוצר</th>
                 </tr>
               </thead>
@@ -693,21 +693,21 @@ export default function CrmLeads() {
                         type="button"
                         onClick={() => setSelectedId(l.id)}
                         aria-label={`פרטי הליד ${l.name || l.phone}`}
-                        className="font-medium text-ink underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:underline"
+                        className="font-semibold text-ink underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:underline"
                       >
                         {l.name || "—"}
                       </button>
                     </td>
-                    <td className="px-4 py-2 text-muted" dir="ltr">{l.phone || "—"}</td>
-                    <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
-                    <td className="px-4 py-2 text-muted">{l.source || "—"}</td>
-                    <td className="px-4 py-2 text-muted">{l.claimedBy || "—"}</td>
                     <td className="px-4 py-2">
                       <span className="inline-flex flex-wrap items-center gap-1.5">
                         <StatusPill status={l.status} />
                         {l.status === "new" && <LeadAgeChip createdAt={l.createdAt} nowMs={nowMs} slaHours={slaHours} />}
                       </span>
                     </td>
+                    <td className="px-4 py-2 text-foreground">{l.claimedBy || "—"}</td>
+                    <td className="px-4 py-2 text-muted" dir="ltr">{l.phone || "—"}</td>
+                    <td className="px-4 py-2 text-foreground">{l.provider || "—"}</td>
+                    <td className="px-4 py-2 text-muted">{l.source || "—"}</td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted">{when(l.createdAt)}</td>
                   </tr>
                 ))}

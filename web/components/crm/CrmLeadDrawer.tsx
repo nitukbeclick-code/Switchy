@@ -22,6 +22,7 @@ import {
   type CrmLeadDetail,
   type CrmLeadEvent,
   fetchCrmLeadDetail,
+  fetchCrmSla,
   LEAD_STATUSES,
   type LeadStatus,
   recordCrmSaving,
@@ -29,7 +30,7 @@ import {
   setCrmLeadStatus,
 } from "@/lib/crm-admin";
 import CrmCallBrief from "./CrmCallBrief";
-import { BTN_GHOST, BTN_PRIMARY, eventTint, LEAD_STATUS_META, relTime, StatusPill, when } from "./ui";
+import { BTN_GHOST, BTN_PRIMARY, eventTint, LEAD_STATUS_META, LeadAgeChip, relTime, StatusPill, when } from "./ui";
 
 const he = (n: number) => n.toLocaleString("he-IL");
 
@@ -86,6 +87,10 @@ export default function CrmLeadDrawer({
   // Clock for the timeline's relative ages — sampled when a load lands (in the
   // .then continuation), never during render (react-hooks/purity).
   const [nowMs, setNowMs] = useState(0);
+  // The server's SLA window (hours), for the age chip — same best-effort fetch
+  // as CrmLeads' list view, so a "new" lead shows the identical breach cue here
+  // that it showed in the row the rep just clicked.
+  const [slaHours, setSlaHours] = useState<number | null>(null);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
@@ -123,6 +128,12 @@ export default function CrmLeadDrawer({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void fetchCrmSla().then((r) => {
+      if (r.data) setSlaHours(r.data.sla.slaHours);
+    });
+  }, []);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -201,11 +212,14 @@ export default function CrmLeadDrawer({
 
   return (
     <div ref={rootRef} className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי ליד">
-      <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="flex-1 bg-ink/40 backdrop-blur-[1px]" />
+      <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="crm-overlay-btn flex-1 bg-ink/40 backdrop-blur-[1px]" />
       <div className="ms-auto flex h-full w-full max-w-md flex-col overflow-y-auto border-s border-border bg-background shadow-float">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
           <div className="min-w-0">
-            <h2 className="truncate font-display text-lg font-bold text-ink">{lead?.name || "פרטי ליד"}</h2>
+            <div className="flex items-center gap-1.5">
+              <h2 className="truncate font-display text-lg font-bold text-ink">{lead?.name || "פרטי ליד"}</h2>
+              {lead?.status === "new" && <LeadAgeChip createdAt={lead.createdAt} nowMs={nowMs} slaHours={slaHours} />}
+            </div>
             {lead?.phone && (
               <p className="truncate text-xs text-muted" dir="ltr">
                 {lead.phone}
@@ -383,7 +397,7 @@ export default function CrmLeadDrawer({
                 {lead.referrerCode && <Field label="קוד הפניה">{lead.referrerCode}</Field>}
               </dl>
 
-              <section className="space-y-1.5">
+              <section className="space-y-1.5 rounded-2xl border border-border bg-surface p-3">
                 <label htmlFor="crm-main-note" className="text-xs font-medium text-muted">
                   הערה ראשית
                 </label>

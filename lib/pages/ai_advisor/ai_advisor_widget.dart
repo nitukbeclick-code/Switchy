@@ -381,7 +381,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   ).animate(delay: (i.clamp(0, 6) * 30).ms).fadeIn(duration: 240.ms, curve: ffTheme.easeOut).slideY(begin: 0.1, end: 0, duration: 240.ms, curve: ffTheme.easeOut);
                 },
               ),
-            ).animate().fadeIn(duration: 500.ms),
+            ).animate().fadeIn(duration: 300.ms),
 
           // Input bar
           Container(

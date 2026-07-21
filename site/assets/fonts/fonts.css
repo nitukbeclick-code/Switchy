@@ -1,3 +1,52 @@
+/* Metric-calibrated LOCAL fallbacks — eliminate the font-swap layout shift (CLS).
+   While Rubik/Assistant load (font-display: swap), local Arial/Helvetica renders
+   with the WEBFONT's exact vertical metrics + a size-adjust tuned to its advance
+   width, so the swap re-paints without moving a single line.
+
+   Real Rubik/Assistant each subset into 5 (Rubik: 400/500/700/800/900) or 3
+   (Assistant: 400/600/700) per-weight woff2 files, split hebrew/latin by
+   unicode-range (see the "Rubik"/"Assistant" @font-face rules further down) —
+   and glyph advance width grows with weight (a 900-weight Rubik digit is ~12%
+   wider than Arial's, a 400-weight one only ~0.4% wider). One flat size-adjust
+   for the whole family — this file's first cut — can only be right for a single
+   weight; verified via Lighthouse on plans.html (dense with bold price/label
+   text): CLS stayed ~0.11-0.12 with the flat ratio, dropped to *0.006* with
+   every webfont blocked outright (i.e. the swap, not something else, was the
+   entire remaining cause), and only came down to that same ~0.006 once every
+   weight below got its own rule. So every rule below mirrors a real weight ×
+   script combination 1:1 (same unicode-range, same font-weight), each measured
+   independently with fontTools against representative glyphs for that specific
+   file (Hebrew: the 27-letter alphabet + geresh/gershayim; Latin: digits +
+   A-Za-z + the units/symbols UI copy actually uses — GB, Mbps, %, Wi-Fi, ₪…).
+   ascent/descent/line-gap are constant across weight and hebrew/latin subset
+   within a family (confirmed empirically, not assumed) — only size-adjust
+   varies, so only it is repeated per rule. Rubik: UPM 1000, ascent 93.5%,
+   descent 25%, line-gap 0%. Assistant: ascent 102.1%, descent 28.7%, line-gap
+   **20%** — not 0%; both its hebrew and latin files report a 20% typo line-gap,
+   and an earlier pass shipped 0% here. The first, unscoped pair of rules is
+   the original flat calibration (kept, not just as a memento — it's the
+   catch-all for any weight or script without a specific rule below, e.g. an
+   inherited weight the design never explicitly sets). Browsers without
+   override support simply ignore these faces' descriptors and behave as
+   before. */
+@font-face{font-family:"Rubik Fallback";src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:106.78%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%}
+@font-face{font-family:"Assistant Fallback";src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:89.13%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%}
+@font-face{font-family:"Rubik Fallback";font-weight:400;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:100.43%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Rubik Fallback";font-weight:500;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:103.66%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Rubik Fallback";font-weight:700;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:106.88%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Rubik Fallback";font-weight:800;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:109.63%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Rubik Fallback";font-weight:900;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:112.38%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Assistant Fallback";font-weight:400;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:87.82%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Assistant Fallback";font-weight:600;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:89.95%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Assistant Fallback";font-weight:700;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:92.64%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%;unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Rubik Fallback";font-weight:400;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:95.51%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Rubik Fallback";font-weight:500;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:98.21%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Rubik Fallback";font-weight:700;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:100.94%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Rubik Fallback";font-weight:800;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:103.27%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Rubik Fallback";font-weight:900;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:105.57%;ascent-override:93.5%;descent-override:25%;line-gap-override:0%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Assistant Fallback";font-weight:400;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:87.38%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Assistant Fallback";font-weight:600;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:90.06%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
+@font-face{font-family:"Assistant Fallback";font-weight:700;src:local("Arial"),local("Helvetica Neue"),local("Liberation Sans");size-adjust:93.3%;ascent-override:102.1%;descent-override:28.7%;line-gap-override:20%;unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}
 /* Self-hosted Rubik + Assistant (fontsource woff2, hebrew+latin subsets).
    No Google Fonts dependency — headings can never fall back to a serif. */
 @font-face{font-family:"Rubik";font-style:normal;font-weight:400;font-display:swap;src:url("rubik-hebrew-400-normal.woff2") format("woff2");unicode-range:U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F}

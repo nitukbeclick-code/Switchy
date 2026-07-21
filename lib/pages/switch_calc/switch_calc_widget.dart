@@ -166,8 +166,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   return Semantics(
                     button: true,
                     selected: isActive,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                       onTap: () => _selectCat(cat.$1),
                       child: Center(
                         widthFactor: 1,
@@ -262,8 +261,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   return Semantics(
                     button: true,
                     selected: active,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                       onTap: () => setState(() => _exitFee = fee.toDouble()),
                       child: _MinTapTarget(
                         child: AnimatedContainer(

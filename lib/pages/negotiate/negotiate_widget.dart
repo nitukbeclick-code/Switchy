@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../data.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/negotiation_script.dart';
 
@@ -129,7 +130,8 @@ class _NegotiateWidgetState extends State<NegotiateWidget> {
             children: _catIds.map((id) {
               final selected = _category == id;
               final cat = categoryById(id);
-              return GestureDetector(
+              return Pressable(
+                haptic: false,
                 onTap: () {
                   HapticFeedback.selectionClick();
                   setState(() => _category = id);

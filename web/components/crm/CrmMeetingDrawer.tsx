@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
+  type CrmFailure,
   type CrmMeetingDetail,
   type CrmMeetingEvent,
   fetchCrmMeetingDetail,
@@ -60,6 +61,10 @@ export default function CrmMeetingDrawer({
   const [data, setData] = useState<{ meeting: CrmMeetingDetail; events: CrmMeetingEvent[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // The typed reason of the last failed load (server message + retryability) —
+  // mirrors CrmLeadDrawer so a permission failure doesn't invite an endless
+  // "try again" on a load that can never succeed.
+  const [failure, setFailure] = useState<CrmFailure | null>(null);
   const [savingStatus, setSavingStatus] = useState<MeetingStatus | null>(null);
   // Action feedback: `ok:false` renders in the danger token so a failed write
   // can never be skimmed past as a success message.
@@ -79,10 +84,13 @@ export default function CrmMeetingDrawer({
   const load = useCallback(
     () =>
       fetchCrmMeetingDetail(meetingId).then((d) => {
-        if (d) {
-          setData(d);
+        if (d.data) {
+          setData(d.data);
           setNowMs(Date.now()); // fresh clock for the fresh timeline
-        } else setError(true);
+        } else {
+          setFailure(d.failure);
+          setError(true);
+        }
         setLoading(false);
       }),
     [meetingId],
@@ -95,6 +103,7 @@ export default function CrmMeetingDrawer({
   const reload = useCallback(async () => {
     setLoading(true);
     setError(false);
+    setFailure(null);
     await load();
   }, [load]);
 
@@ -125,7 +134,7 @@ export default function CrmMeetingDrawer({
 
   return (
     <div ref={rootRef} className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-label="פרטי פגישה">
-      <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="flex-1 bg-ink/40 backdrop-blur-[1px]" />
+      <button type="button" aria-label="סגירת הפרטים" onClick={onClose} className="crm-overlay-btn flex-1 bg-ink/40 backdrop-blur-[1px]" />
       <div className="ms-auto flex h-full w-full max-w-md flex-col overflow-y-auto border-s border-border bg-background shadow-float">
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
           <div className="min-w-0">
@@ -146,10 +155,12 @@ export default function CrmMeetingDrawer({
             <p className="text-sm text-muted">טוען…</p>
           ) : error || !meeting ? (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4 text-center shadow-soft">
-              <p className="text-sm font-medium text-danger-text">לא הצלחנו לטעון את הפגישה.</p>
-              <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
-                נסו שוב
-              </button>
+              <p className="text-sm font-medium text-danger-text">{failure?.message || "לא הצלחנו לטעון את הפגישה."}</p>
+              {(failure ? failure.retryable : true) && (
+                <button type="button" onClick={() => void reload()} className={`${BTN_GHOST} mt-3`}>
+                  נסו שוב
+                </button>
+              )}
             </div>
           ) : (
             <>

@@ -20,12 +20,15 @@ import { BTN_GHOST, BTN_PRIMARY, isUuid, NoticeCard, when } from "./ui";
 
 const ROLE_LABEL: Record<string, string> = { viewer: "צופה", rep: "נציג" };
 
+// Matches the shared Pill recipe in ui.tsx (border + tone fill, same shape as
+// StatusPill/ConversationStatusPill/etc.) rather than a bespoke one-off, since
+// this is the same "status/category chip" role reps see throughout the CRM.
 function RoleBadge({ role }: { role: string }) {
   const isRep = role === "rep";
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-        isRep ? "bg-accent/10 text-accent-text" : "bg-border/60 text-muted"
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${
+        isRep ? "border-accent/40 bg-accent/10 text-accent-text" : "border-border text-muted"
       }`}
     >
       {ROLE_LABEL[role] ?? role}
@@ -261,7 +264,7 @@ export default function CrmTeam() {
                             type="button"
                             onClick={() => setConfirmRevoke(m.uid)}
                             disabled={rowBusy}
-                            className={`${BTN_GHOST} min-h-9 border-danger/40 px-2.5 py-1 text-xs text-danger-text`}
+                            className={`${BTN_GHOST} min-h-9 border-danger/40 bg-danger/10 px-2.5 py-1 text-xs text-danger-text`}
                           >
                             {rowBusy ? "…" : "ביטול"}
                           </button>

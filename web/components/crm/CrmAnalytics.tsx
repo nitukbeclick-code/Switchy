@@ -110,7 +110,7 @@ function Bar({ label, value, max, suffix, trend }: { label: string; value: numbe
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-border bg-surface p-4 shadow-soft">
-      <h3 className="mb-3 font-display text-sm font-bold text-ink">{title}</h3>
+      <h3 className="mb-3 font-display text-lg font-bold text-ink">{title}</h3>
       {children}
     </section>
   );
@@ -124,6 +124,7 @@ export default function CrmAnalytics() {
   // The rep leaderboard is lifetime-to-date (not time-windowed), so it loads once
   // and is best-effort — a failure just hides the section, never blocks the panel.
   const [reps, setReps] = useState<{ reps: RepStat[]; capped: boolean } | null>(null);
+  const [repsError, setRepsError] = useState(false);
   const [repSort, setRepSort] = useState<{ key: RepSortKey; dir: 1 | -1 }>({ key: "totalSaving", dir: -1 });
   // Orders overlapping window loads (rapid 7/30/90 switches) so a slower, older
   // response can never overwrite a newer window's data.
@@ -166,12 +167,16 @@ export default function CrmAnalytics() {
     [days],
   );
 
-  useEffect(() => {
-    void (async () => {
-      const r = await fetchRepLeaderboard();
-      if (r) setReps({ reps: r.reps, capped: r.capped });
-    })();
+  const loadReps = useCallback(async () => {
+    setRepsError(false);
+    const r = await fetchRepLeaderboard();
+    if (r) setReps({ reps: r.reps, capped: r.capped });
+    else setRepsError(true);
   }, []);
+
+  useEffect(() => {
+    void loadReps();
+  }, [loadReps]);
 
   // Click a column header: same column flips direction, a new column starts at
   // its natural order (name ascending, numbers descending).
@@ -204,6 +209,11 @@ export default function CrmAnalytics() {
 
   return (
     <div className="space-y-6">
+      {repsError && (
+        <NoticeCard action={<button type="button" onClick={() => void loadReps()} className={BTN_GHOST}>נסו שוב</button>}>
+          לא הצלחנו לטעון את לוח המובילים.
+        </NoticeCard>
+      )}
       {reps && reps.reps.length > 0 && (
         <Section title="לוח מובילים — נציגים">
           {reps.capped && <p className="mb-2 text-xs text-muted">מוצג לפי מדגם הלידים האחרונים.</p>}
@@ -365,7 +375,7 @@ export default function CrmAnalytics() {
               )}
             </Section>
             <Section title="בריאות משימות מתוזמנות">
-              <p className="text-xs text-muted">
+              <p className={`text-xs tabular-nums ${data.cron.ok ? "text-value-text" : "text-muted"}`}>
                 {he(data.cron.known)} משימות מוכרות · {data.cron.ok ? "הכול תקין ✓" : "יש בעיות"}
               </p>
               {data.cron.failing.length > 0 && (

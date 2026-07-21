@@ -10,6 +10,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/price_text.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../services/recommendation_engine.dart';
@@ -933,8 +934,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                   return Semantics(
                     button: true,
                     selected: selected,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
+                    child: Pressable(
                       onTap: () {
                         setState(() {
                           _selectedCat = cat.id;
@@ -1059,7 +1059,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
               Semantics(
                 button: true,
                 label: 'בחירת תאריך סיום המבצע',
-                child: GestureDetector(
+                child: Pressable(
                 onTap: _pickDate,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -1089,8 +1089,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                         Semantics(
                           button: true,
                           label: 'נקה תאריך סיום מבצע',
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
+                          child: Pressable(
                             onTap: () =>
                                 setState(() => _promoEndDate = null),
                             // >=48dp hit area around the small painted X.

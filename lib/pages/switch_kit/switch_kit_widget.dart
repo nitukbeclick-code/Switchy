@@ -10,6 +10,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/skeleton.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/switch_kit.dart';
@@ -757,7 +758,8 @@ class _Chip extends StatelessWidget {
       selected: selected,
       label: label,
       excludeSemantics: true,
-      child: GestureDetector(
+      child: Pressable(
+        haptic: false,
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),

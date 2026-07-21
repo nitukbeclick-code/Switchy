@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -215,7 +216,7 @@ class _PortingWidgetState extends State<PortingWidget> {
               runSpacing: 8,
               children: _providers.map((p) {
                 final selected = _selectedProvider == p;
-                return GestureDetector(
+                return Pressable(
                   onTap: () => setState(() => _selectedProvider = p),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -283,7 +284,7 @@ class _PortingWidgetState extends State<PortingWidget> {
             const SizedBox(height: 20),
 
             // POA checkbox
-            GestureDetector(
+            Pressable(
               onTap: () =>
                   setState(() => _poaAccepted = !_poaAccepted),
               child: Row(

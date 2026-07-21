@@ -45,7 +45,9 @@ extension _ProfileSettleX on Animate {
     final reduceMotion =
         MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (reduceMotion) return this;
-    return scale(duration: 500.ms, curve: Curves.elasticOut);
+    // One confident beat, then settle (multi-wobble elasticOut reads jittery
+    // on a regular screen) — same convention as the community/meeting badges.
+    return scale(duration: 350.ms, curve: Curves.easeOutBack);
   }
 }
 
@@ -501,7 +503,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 Semantics(
                   button: appState.isLoggedIn,
                   label: appState.isLoggedIn ? 'עריכת פרופיל' : null,
-                  child: GestureDetector(
+                  child: Pressable(
                   onTap: appState.isLoggedIn ? () => _showEditProfile(context, appState, ffTheme) : null,
                   child: Stack(
                     children: [
@@ -1090,9 +1092,8 @@ class _ThemeSegmented extends StatelessWidget {
               button: true,
               selected: active,
               label: s.$2,
-              child: GestureDetector(
+              child: Pressable(
                 onTap: () => onChanged(s.$1),
-                behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: ffTheme.motionMedium,
                   curve: ffTheme.easeOut,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../services/support_ticket_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -510,7 +511,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       // a11y tree exposes exactly the issue label (no duplicate child node).
       excludeSemantics: true,
       label: issue.label,
-      child: GestureDetector(
+      child: Pressable(
         onTap: _isOpening
             ? null
             : () => setState(() => _selectedIssueId = selected ? null : issue.id),

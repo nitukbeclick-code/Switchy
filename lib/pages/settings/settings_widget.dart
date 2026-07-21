@@ -785,9 +785,9 @@ class _ThemeSegmented extends StatelessWidget {
               button: true,
               selected: active,
               label: s.$2,
-              child: GestureDetector(
+              child: Pressable(
+                haptic: false,
                 onTap: () => onChanged(s.$1),
-                behavior: HitTestBehavior.opaque,
                 child: AnimatedContainer(
                   duration: ffTheme.motionMedium,
                   curve: ffTheme.easeOut,

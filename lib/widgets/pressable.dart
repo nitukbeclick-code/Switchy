@@ -51,6 +51,10 @@ class _PressableState extends State<Pressable> {
     final t = AppTheme.of(context);
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final pressedScale = reduceMotion ? 1.0 : (widget.scale ?? t.pressScale);
+    // A Pressable with no handler (e.g. an onTap that is conditionally null)
+    // must not scale on touch — feedback without a resulting action reads as
+    // a broken button.
+    final tappable = widget.onTap != null || widget.onLongPress != null;
 
     return GestureDetector(
       behavior: widget.behavior,
@@ -61,9 +65,9 @@ class _PressableState extends State<Pressable> {
               widget.onTap!();
             },
       onLongPress: widget.onLongPress,
-      onTapDown: (_) => _set(true),
-      onTapUp: (_) => _set(false),
-      onTapCancel: () => _set(false),
+      onTapDown: tappable ? (_) => _set(true) : null,
+      onTapUp: tappable ? (_) => _set(false) : null,
+      onTapCancel: tappable ? () => _set(false) : null,
       // Press is a HIGH-FREQUENCY action (every list row, every tap), so the
       // feedback stays calm and fast: a subtle scale-down in the 100-160ms press
       // band on the way down, and a slightly longer ease-out settle on release —

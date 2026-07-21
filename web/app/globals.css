@@ -500,6 +500,27 @@ h4 {
 .press:active {
   transform: scale(0.97);
 }
+/* Blanket press for EVERY <button> (the static site does this via a delegated
+   .is-pressed hook; here plain :active covers pointer AND keyboard Space on
+   real buttons, including ones mounted later). A census found 188/231 app
+   buttons never composed .press — this closes them all at once. Buttons that
+   DO compose .press/.interactive keep their own transition; disabled buttons
+   are excluded. The reduced-motion block below neutralizes it. */
+button:not([disabled]):active {
+  transform: scale(0.97);
+}
+button {
+  transition: transform var(--duration-press) var(--ease-out);
+}
+/* The CRM drawers' full-bleed dismiss backdrop renders as a <button> (for
+   keyboard/SR access, not just a pointer-only div) so it inherits the blanket
+   press-scale above — but scaling a viewport-spanning overlay by 3% pulls its
+   edges visibly inward on every close. Opt out of just the transform; higher
+   specificity than the blanket rule (adds a class + repeats the type selector)
+   so it wins without !important. */
+button.crm-overlay-btn:not([disabled]):active {
+  transform: none;
+}
 
 /* ── Origin-aware popover / dropdown enter ────────────────────────────────────
    Per Emil's rule (7): popovers and dropdowns scale UP FROM the trigger, not from
@@ -818,7 +839,8 @@ h4 {
   .card-interactive:active,
   .hover-lift:hover,
   .sw-lift:hover,
-  .press:active {
+  .press:active,
+  button:not([disabled]):active {
     transform: none !important;
   }
   /* Reveal/stagger/blur-mask: drop the keyframe entirely so items appear at their

@@ -374,7 +374,7 @@ export default function CrmInbox() {
           ) : listError || !convs ? (
             <ErrorNotice failure={listFailure} fallback="לא הצלחנו לטעון שיחות." onRetry={reloadList} />
           ) : convs.length === 0 ? (
-            <NoticeCard>אין שיחות תואמות.</NoticeCard>
+            <NoticeCard>{filter !== "all" || search ? "אין שיחות תואמות לסינון." : "אין עדיין שיחות."}</NoticeCard>
           ) : (
             <ul className="space-y-1.5 md:max-h-[70vh] md:overflow-y-auto">
               {convs.map((c) => {
@@ -387,12 +387,12 @@ export default function CrmInbox() {
                       aria-current={active}
                       className={`w-full rounded-2xl border p-3 text-start focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
                         active
-                          ? "border-accent bg-accent/5"
+                          ? "border-accent bg-accent/10"
                           : "border-border bg-surface [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-semibold text-ink">{c.name || "ללא שם"}</span>
+                        <span className={`truncate text-sm font-semibold ${active ? "text-accent-text" : "text-ink"}`}>{c.name || "ללא שם"}</span>
                         <ConversationStatusPill status={c.status} />
                       </div>
                       {(c.leadStatus || c.intent) && (

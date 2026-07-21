@@ -211,7 +211,7 @@
     el.appendChild(close);
     host.appendChild(el);
     // Force a reflow so the entrance transition runs from the initial state.
-    requestAnimationFrame(() => el.classList.add('is-in'));
+    void el.offsetWidth; el.classList.add('is-in');
     if (timeout > 0) timer = setTimeout(dismiss, timeout);
     return el;
   };
@@ -1159,6 +1159,34 @@
     document.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') release(e); });
     // Safety net: clear any lingering pressed state when focus/window leaves.
     window.addEventListener('blur', () => document.querySelectorAll('.is-pressed').forEach((b) => b.classList.remove('is-pressed')));
+  })();
+
+  // ── Tooltip warm state ───────────────────────────────────────────────────────
+  // Once one nav tooltip has actually shown (hover held past its .25s delay),
+  // neighbouring tooltips open instantly — skip delay + skip fade — so scanning
+  // the toolbar feels fast without losing the accidental-hover guard on the
+  // first one. Leaving the tools for a moment cools the state back down.
+  // CSS: .nav[data-tips-warm] [data-tip]::after { transition: opacity 0s 0s; }
+  (() => {
+    const nav = document.querySelector('.nav');
+    if (!nav || !nav.querySelector('[data-tip]')) return;
+    let warmTimer = 0;
+    let coolTimer = 0;
+    nav.addEventListener('pointerover', (e) => {
+      const tip = e.target && e.target.closest && e.target.closest('[data-tip]');
+      if (!tip) return;
+      clearTimeout(coolTimer);
+      if (nav.hasAttribute('data-tips-warm')) return;
+      clearTimeout(warmTimer);
+      warmTimer = setTimeout(() => nav.setAttribute('data-tips-warm', ''), 400);
+    });
+    nav.addEventListener('pointerout', (e) => {
+      const tip = e.target && e.target.closest && e.target.closest('[data-tip]');
+      if (!tip) return;
+      clearTimeout(warmTimer);
+      clearTimeout(coolTimer);
+      coolTimer = setTimeout(() => nav.removeAttribute('data-tips-warm'), 600);
+    });
   })();
 
   // ── Mega-menu (.mega-menu) — open/close with click, Esc, outside-click, kbd ──
@@ -2529,6 +2557,11 @@
       onReveal(mount, () => {
         const delay = reduceMotion ? 0 : Math.min(i, 3) * 80;
         setTimeout(() => {
+                    // `width` kept deliberately (accepted perf tradeoff) — do NOT convert to
+          // scaleX: it would flatten the 999px pill cap on the 30px track, stretch
+          // the 90deg gradient mid-reveal, and need a direction-aware
+          // transform-origin in RTL; the synced tween() rewriting .barchart__val
+          // forces layout every frame anyway. One-shot occasional reveal.
           bar.style.transition = reduceMotion ? 'none' : 'width .9s var(--ease, ease-out)';
           bar.style.width = pct.toFixed(1) + '%';
           tween(0, val, 900, (v) => { out.textContent = fmtV(v); }, () => { out.textContent = fmtV(val); });
@@ -2607,6 +2640,10 @@
         else card.appendChild(meter);
         onReveal(card, () => {
           setTimeout(() => {
+                        // `width` kept deliberately (accepted tradeoff, same as the barchart bar):
+            // scaleX would squash the pill's rounded caps and stretch the amber value
+            // gradient, and the synced score tween re-layouts every frame anyway —
+            // one-shot on-reveal fill, so converting wins nothing perceptible.
             fill.style.transition = reduceMotion ? 'none' : 'width .9s var(--ease, ease-out)';
             fill.style.width = Math.max(0, Math.min(100, (score / 5) * 100)).toFixed(1) + '%';
             if (scoreEl) tween(0, score, 900, (v) => { scoreEl.textContent = v.toFixed(1); }, () => { scoreEl.textContent = score.toFixed(1); });
@@ -3729,7 +3766,7 @@
           '<p class="watch-modal__note">בלי ספאם — נכתוב רק כשיש חיסכון אמיתי במסלול הזה.</p>' +
         '</div>';
       document.body.appendChild(modal);
-      const close = () => { modal.classList.remove('pmodal--open'); modal.hidden = true; };
+      const close = () => { modal.classList.remove('pmodal--open'); if (reduceMotion) modal.hidden = true; else setTimeout(() => { modal.hidden = true; }, 220); };
       modal.addEventListener('click', (e) => { if (e.target.closest && e.target.closest('[data-watch-close]')) close(); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
       const form = modal.querySelector('#watchForm');

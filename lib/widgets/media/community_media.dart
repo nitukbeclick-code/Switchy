@@ -12,6 +12,7 @@ import 'package:video_player/video_player.dart';
 import '../../services/media_native.dart';
 import '../../services/media_service.dart';
 import '../../theme/app_theme.dart';
+import '../pressable.dart';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ class _MediaImageBubbleState extends State<MediaImageBubble> {
     return Semantics(
       button: true,
       label: 'הצג תמונה בתצוגה מלאה',
-      child: GestureDetector(
+      child: Pressable(
         onTap: () => _openFullscreen(context),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
@@ -300,7 +301,7 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
           Semantics(
             button: true,
             label: _playing ? 'השהה הודעה קולית' : 'נגן הודעה קולית',
-            child: GestureDetector(
+            child: Pressable(
               onTap: _toggle,
               child: Container(
                 width: 40,
@@ -586,7 +587,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
       return Semantics(
         button: true,
         label: 'עצור הקלטה',
-        child: GestureDetector(
+        child: Pressable(
         onTap: _stop,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

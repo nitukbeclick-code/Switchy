@@ -377,7 +377,7 @@ export default function LeadForm({
           aria-label="התקדמות הטופס"
         >
           <div
-            className="h-full rounded-full bg-accent transition-all duration-300 ease-[var(--ease-out)]"
+            className="h-full rounded-full bg-accent transition-[width] duration-300 ease-[var(--ease-out)]"
             style={{ width: `${progress}%` }}
           />
         </div>

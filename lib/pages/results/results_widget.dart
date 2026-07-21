@@ -9,6 +9,7 @@ import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../widgets/legal_disclosure.dart';
+import '../../widgets/pressable.dart';
 
 import '../../widgets/empty_state.dart';
 
@@ -277,11 +278,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     child: Semantics(
                       button: true,
                       selected: active,
-                      child: GestureDetector(
-                      // Opaque: the whole 44px-tall item (chip + the vertical
-                      // 6px insets moved in from the ListView padding) is
-                      // tappable — a full-height touch target, same visuals.
-                      behavior: HitTestBehavior.opaque,
+                      child: Pressable(
+                      haptic: false,
+                      // Opaque (Pressable's default): the whole 44px-tall item
+                      // (chip + the vertical 6px insets moved in from the
+                      // ListView padding) is tappable — a full-height touch
+                      // target, same visuals.
                       onTap: () => _switchCategory(appState, c.$1),
                       child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -983,8 +985,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         button: true,
         selected: active,
         label: semanticLabel,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
+        child: Pressable(
+          haptic: false,
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 7),

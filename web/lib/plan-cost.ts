@@ -33,6 +33,7 @@ export interface PlanTwelveMonthCost {
 }
 
 function finiteNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }

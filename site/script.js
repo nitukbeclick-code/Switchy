@@ -145,11 +145,45 @@
     reveals.forEach((el) => el.classList.add('in'));
   }
 
-  // ── Cookieless analytics events ────────────────────────────────────────────
-  // Thin wrapper over the Plausible-style queue (defined inline in <head>).
-  // Privacy-respecting: event names + coarse props only, never personal data.
+  // ── Consent-gated analytics events ─────────────────────────────────────────
+  // GA4 remains best-effort. A small first-party funnel mirror is sent to the
+  // public analytics-track Edge Function only after explicit consent. Payloads
+  // are scalar-only and never include form values, search text, phone or email.
+  const firstPartyTrack = (event, props = {}) => {
+    try {
+      if (localStorage.getItem('cookieConsent') !== 'granted') return;
+      const safe = {};
+      Object.entries(props).forEach(([key, value]) => {
+        if (typeof value === 'string') safe[key] = value.slice(0, 200);
+        else if (typeof value === 'number' && Number.isFinite(value)) safe[key] = value;
+        else if (typeof value === 'boolean') safe[key] = value;
+      });
+      let journeyId = sessionStorage.getItem('switchyJourneyId');
+      if (!journeyId) {
+        journeyId = (window.crypto && window.crypto.randomUUID
+          ? window.crypto.randomUUID() : Math.random().toString(36).slice(2));
+        sessionStorage.setItem('switchyJourneyId', journeyId);
+      }
+      safe.journey_id = journeyId;
+      safe.surface = safe.surface || 'desktop_static';
+      const configured = window.CHOSECH_SUPABASE && window.CHOSECH_SUPABASE.url;
+      const base = configured || 'https://orzitfqmlvopujsoyigr.supabase.co';
+      fetch(base.replace(/\/+$/, '') + '/functions/v1/analytics-track', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event, props: safe }), keepalive: true,
+      }).catch(() => {});
+    } catch (_) { /* analytics must never affect the experience */ }
+  };
+  const firstPartyEvent = {
+    outbound_click: 'whatsappClick',
+    generate_lead: 'leadSubmit',
+    lead_form_start: 'leadStart',
+    plan_info_open: 'planView',
+    meeting_booked: 'meetingRequest',
+  };
   const track = (name, props) => {
     try { if (typeof window.gtag === 'function') window.gtag('event', name, props || undefined); } catch (_) { /* analytics is best-effort */ }
+    if (firstPartyEvent[name]) firstPartyTrack(firstPartyEvent[name], props || {});
   };
 
   // Fire an outbound-click event whenever a WhatsApp link is clicked (lead intent),
@@ -536,6 +570,10 @@
       const mode = (sort && sort.value) || 'price-asc';
       visibleCards.sort((a, b) => {
         if (mode === 'price-desc') return Number(b.dataset.price) - Number(a.dataset.price);
+        if (mode === 'annual-asc') {
+          const annual = (card) => Number(card.querySelector('.plan__annual')?.dataset.costMax || Infinity);
+          return annual(a) - annual(b);
+        }
         if (mode === 'after-asc') {
           const aa = Number(a.dataset.after || a.dataset.price);
           const ba = Number(b.dataset.after || b.dataset.price);
@@ -570,7 +608,13 @@
       });
     });
     // Debounced: a full grid re-filter on every keystroke is wasteful; settle first.
-    if (search) search.addEventListener('input', debounce(apply, 120));
+    if (search) {
+      search.addEventListener('input', debounce(apply, 120));
+      search.addEventListener('input', debounce(() => {
+        const length = search.value.trim().length;
+        if (length) firstPartyTrack('searchQuery', { query_length: length, surface: 'desktop_plans' });
+      }, 500));
+    }
     if (sort) sort.addEventListener('change', apply);
     if (providerSel) providerSel.addEventListener('change', apply);
     if (maxPriceInput) maxPriceInput.addEventListener('input', debounce(apply, 120));
@@ -593,6 +637,7 @@
   // ── Side-by-side comparison (compare.html) ──────────────────────────────────
   const compareTable = $('compareTable');
   if (compareTable && Array.isArray(window.__PLANS__)) {
+    const planCost = window.SwitchyPlanCost;
     const escHtml = (s) => String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -627,11 +672,17 @@
       const priceCell = (p) =>
         `<span class="cmp-price" dir="ltr">₪${escHtml(p.price)}</span><small> ${per}</small>` +
         (p.after && Number(p.after) !== Number(p.price) ? `<small class="cmp-after">ואז <span dir="ltr">₪${escHtml(p.after)}</span></small>` : '');
+      const annualCell = (p) => {
+        if (!planCost || (p.priceUnit && p.priceUnit !== 'month')) return na;
+        const cost = planCost.calculateTwelveMonthCost(p);
+        return `<span class="cmp-cost"><b dir="ltr">${escHtml(planCost.formatAnnualCost(cost))}</b><small>ממוצע ${escHtml(planCost.formatMonthlyEquivalent(cost))}/חודש · שירות בלבד</small><details class="cmp-cost__details"><summary>איך חישבנו?</summary><span>${escHtml(planCost.formatSegments(cost))}</span><span>${escHtml(cost.disclosure)}</span></details></span>`;
+      };
       // No rating row: per-plan "rating" is a fabricated placeholder (0 real
       // reviews), so we never surface it as a comparison signal.
       const rows = [
         row('קטגוריה', chosen.map((p) => escHtml(catName[p.cat] || p.cat))),
         row('מחיר', chosen.map(priceCell)),
+        row('עלות שירות ל־12 חודשים', chosen.map(annualCell)),
         row('רשת', chosen.map((p) => p.net ? escHtml(p.net) : no)),
         row('5G', chosen.map((p) => p.is5G ? yes : no)),
         row('ללא התחייבות', chosen.map((p) => p.noCommit ? yes : no)),
@@ -658,6 +709,8 @@
     };
     // Initialise from URL params (?p0=id&p1=id&p2=id) so comparisons can be shared.
     const sp = new URLSearchParams(location.search);
+    let shortlistCreated = false;
+    let compareViewed = false;
     picks.forEach((s, i) => { const v = sp.get('p' + i); if (v && byId[v]) s.value = v; });
     const updateUrl = () => {
       const params = new URLSearchParams();
@@ -686,10 +739,27 @@
         } else { fail(); }
       } catch (_) { fail(); }
       track('compare_share', { source: 'copy_link' });
+      firstPartyTrack('shortlistShare', { selected: picks.filter((s) => s.value).length });
     });
-    picks.forEach((s) => s.addEventListener('change', () => { updateUrl(); render(); }));
+    picks.forEach((s) => s.addEventListener('change', () => {
+      updateUrl();
+      render();
+      const selected = picks.filter((pick) => pick.value).length;
+      if (!shortlistCreated && selected > 0) {
+        shortlistCreated = true;
+        firstPartyTrack('shortlistCreate', { selected });
+      }
+    }));
+    compareTable.addEventListener('click', (event) => {
+      const cta = event.target.closest && event.target.closest('.cmp-cta-row a');
+      if (cta) firstPartyTrack('shortlistLeadClick', { selected: picks.filter((s) => s.value).length });
+    });
     updateUrl();
     render();
+    if (!compareViewed) {
+      compareViewed = true;
+      firstPartyTrack('compareView', { selected: picks.filter((s) => s.value).length });
+    }
   }
 
   // ── חוסך AI — real Gemini-backed chat (app.html) ────────────────────────────

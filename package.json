@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "build:site": "node site/build.js"
+    "build:site": "node site/build.js",
+    "test:site": "node --test site/plan-cost.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1"

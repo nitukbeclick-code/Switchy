@@ -48,7 +48,7 @@ describe("ComparisonTable — semantics & a11y", () => {
     expect(screen.getAllByText(caption).length).toBeGreaterThanOrEqual(1);
 
     // The base columns are always present in the desktop table head.
-    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"]) {
+    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה", "עלות שירות ל־12 ח׳"]) {
       expect(
         screen.getByRole("columnheader", { name: col }),
       ).toBeInTheDocument();
@@ -253,9 +253,9 @@ describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
     expect(html).toContain("<caption");
     expect(html).toContain("<thead");
     expect(html).toContain("<tbody");
-    // The body carries a spanning placeholder row (the base columns = 4).
+    // The body carries a spanning placeholder row (the base columns = 5).
     expect(html).toContain("<td");
-    expect(html).toMatch(/colspan="4"/i);
+    expect(html).toMatch(/colspan="5"/i);
   });
 
   it("shows a branded empty-state spanning all base columns when there are no plans", () => {
@@ -277,7 +277,7 @@ describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
       .getAllByText("אין התאמות כרגע")
       .map((el) => el.closest("td"))
       .find((td) => td != null);
-    expect(cell).toHaveAttribute("colspan", "4");
+    expect(cell).toHaveAttribute("colspan", "5");
     // A useful escape hatch (back-home link) is offered.
     expect(
       screen.getAllByRole("link", { name: "חזרה לדף הבית" })[0],

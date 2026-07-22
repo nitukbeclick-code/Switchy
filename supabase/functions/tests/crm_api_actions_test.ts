@@ -673,6 +673,7 @@ Deno.test("attentionLeads queries the actual due/priority/SLA lanes and de-dupes
         slaBreaches: 1,
       });
       assertEquals(j.hasMore, false);
+      assertEquals(j.leads.every((lead: Record<string, unknown>) => lead.nextBestAction != null), true);
       assertEquals(rec.length, 3);
       assert(rec.every((call) => call.url.includes("limit=101")));
     });

@@ -26,6 +26,7 @@ import {
   LIST_LIMIT,
   MAX_REPLY_LEN,
   MEETING_STATUSES,
+  nextBestLeadAction,
   s,
   shapeContact,
   shapeLeadDetail,
@@ -177,6 +178,40 @@ Deno.test("lastMessagesLimit scales with the conversation count inside 200..1000
   assertEquals(lastMessagesLimit(50), 500); // 10 rows per conversation
   assertEquals(lastMessagesLimit(100), 1000);
   assertEquals(lastMessagesLimit(5000), 1000); // hard cap
+});
+
+Deno.test("nextBestLeadAction explains the strongest attention signal", () => {
+  const now = Date.parse("2026-07-22T12:00:00Z");
+  assertEquals(
+    nextBestLeadAction(
+      { status: "contacted", priority: "urgent", followUpAt: "2026-07-22T09:00:00Z" },
+      now,
+      4,
+    ),
+    {
+      code: "overdue_follow_up",
+      reason: "מעקב באיחור של 3 שעות",
+      action: "לחזור ללקוח עכשיו ולעדכן את הצעד הבא",
+      score: 103,
+    },
+  );
+});
+
+Deno.test("nextBestLeadAction assigns an unclaimed SLA breach before priority", () => {
+  const now = Date.parse("2026-07-22T12:00:00Z");
+  assertEquals(
+    nextBestLeadAction(
+      { status: "new", priority: "high", createdAt: "2026-07-22T05:00:00Z", claimedBy: null },
+      now,
+      4,
+    ),
+    {
+      code: "sla_breach",
+      reason: "חריגה מזמן התגובה של 4 שעות",
+      action: "לשייך לנציג ולחייג עכשיו",
+      score: 95,
+    },
+  );
 });
 
 Deno.test("THREAD_MSG_CAP pins the getThread window at 300", () => {

@@ -22,6 +22,11 @@ import { ProviderLogo } from "@/components/ProviderLogo";
 import type { PlanDisplay, PlanField } from "@/lib/plan-display";
 import type { PriceDrop } from "@/lib/price-history";
 import PriceDropBadge from "@/components/PriceDropBadge";
+import {
+  calculateTwelveMonthCost,
+  formatAnnualCost,
+  formatMonthlyEquivalent,
+} from "@/lib/plan-cost";
 
 /** What kind of editorial label, if any, a card/row carries. */
 export type FeatureLabel = "promoted" | "editor";
@@ -73,6 +78,54 @@ export function AfterLine({ after }: { after: PlanDisplay["after"] }) {
     <span className="text-muted" title="המחיר אינו עולה לאחר תום המבצע">
       {after.text}
     </span>
+  );
+}
+
+/** Transparent first-year service cost. Equipment/installation stay separate. */
+export function AnnualCostLine({ plan }: { plan: Plan }) {
+  const cost = calculateTwelveMonthCost(plan);
+  const extras = cost.recurringExtras.length + cost.oneTimeFees.length;
+  return (
+    <div
+      className="mt-3 rounded-xl border border-value/25 bg-value/[0.07] px-3 py-2.5"
+      title={cost.disclosure}
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="text-xs font-semibold text-value-text">עלות השירות ל־12 חודשים</span>
+        <strong className="font-display text-base text-ink tabular-nums">
+          {formatAnnualCost(cost)}
+        </strong>
+      </div>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+        ממוצע {formatMonthlyEquivalent(cost)} לחודש
+        {extras > 0
+          ? ` · ${extras} חיובי ציוד/התקנה מוצגים בנפרד`
+          : cost.hasUnpricedFees
+            ? " · חיוב ללא סכום מופיע בפרטים"
+            : " · לא נמצאו תוספות מספריות"}
+      </p>
+      <details className="mt-1.5 text-[11px] text-muted">
+        <summary className="interactive cursor-pointer rounded-sm font-semibold text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          איך חישבנו?
+        </summary>
+        <div className="mt-2 space-y-1 border-t border-value/20 pt-2 leading-relaxed">
+          <p>{cost.disclosure}</p>
+          <ul className="space-y-0.5">
+            {cost.segments.map((segment) => (
+              <li key={`${segment.fromMonth}-${segment.toMonth}`}>
+                חודשים {segment.fromMonth}–{segment.toMonth}: ₪{segment.monthly.toLocaleString("he-IL")} לחודש
+              </li>
+            ))}
+            {cost.recurringExtras.map((item) => (
+              <li key={`monthly-${item.label}`}>ציוד חודשי אפשרי · {item.label}: {item.raw}</li>
+            ))}
+            {cost.oneTimeFees.map((item) => (
+              <li key={`once-${item.label}`}>חיוב חד־פעמי אפשרי · {item.label}: {item.raw}</li>
+            ))}
+          </ul>
+        </div>
+      </details>
+    </div>
   );
 }
 
@@ -192,6 +245,7 @@ export default function PlanCard({
         <AfterLine after={d.after} />
       </div>
       <PriceDropCell plan={plan} {...drop} />
+      <AnnualCostLine plan={plan} />
 
       {/* Category-relevant rich fields as compact labelled chips. */}
       {d.fields.length > 0 ? (

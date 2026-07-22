@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { trackEvent } from "@/lib/tracking";
+import { fireLeadConversion, sendProductEvent, trackEvent } from "@/lib/tracking";
 
 // ────────────────────────────────────────────────────────────────────────────
 // lib/tracking.ts — trackEvent() is the generic non-conversion event helper used
@@ -16,6 +16,20 @@ afterEach(() => {
   delete (globalThis as MaybeWindow).window;
   vi.restoreAllMocks();
 });
+
+function consentedWindow() {
+  const memory = new Map<string, string>([["cookieConsent", "granted"]]);
+  return {
+    localStorage: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => memory.set(key, value),
+    },
+    sessionStorage: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => memory.set(key, value),
+    },
+  };
+}
 
 describe("trackEvent", () => {
   it("no-ops and does not throw when there is no window (server)", () => {
@@ -57,5 +71,40 @@ describe("trackEvent", () => {
   it("does nothing when gtag is absent on window (no fbq id configured)", () => {
     (globalThis as MaybeWindow).window = {};
     expect(() => trackEvent("outbound_click", { provider: "cellcom" })).not.toThrow();
+  });
+
+  it("sends mapped product events to the first-party funnel after consent", () => {
+    (globalThis as MaybeWindow).window = consentedWindow();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+
+    trackEvent("compare_shortlist_create", { selection_count: 1 });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      event: "shortlistCreate",
+      props: { surface: "web", selection_count: 1 },
+    });
+    expect(init.keepalive).toBe(true);
+  });
+
+  it("does not send first-party product analytics before consent", () => {
+    (globalThis as MaybeWindow).window = {
+      localStorage: { getItem: () => null },
+    };
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+    sendProductEvent("compareView");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("records leadSubmit only after a confirmed lead conversion", () => {
+    (globalThis as MaybeWindow).window = consentedWindow();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("{}"));
+    fireLeadConversion({ source: "home", category: "internet" });
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      event: "leadSubmit",
+      props: { source: "home", category: "internet" },
+    });
   });
 });

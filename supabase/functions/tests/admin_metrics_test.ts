@@ -160,6 +160,9 @@ Deno.test("KNOWN_EVENTS mirrors the analytics-track writer allowlist", () => {
       "quizComplete",
       "savingsViewed",
       "searchQuery",
+      "shortlistCreate",
+      "shortlistLeadClick",
+      "shortlistShare",
       "whatsappClick",
     ],
   );

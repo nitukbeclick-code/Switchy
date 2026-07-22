@@ -48,7 +48,7 @@ import { runChunked } from "@/lib/batch";
 import { buildCsv, csvFileName, downloadCsv } from "@/lib/csv";
 import { type DateRange, withinRange } from "@/lib/date-range";
 import CrmLeadDrawer from "./CrmLeadDrawer";
-import { BTN_GHOST, ErrorNotice, FollowUpChip, LEAD_PRIORITY_META, LEAD_STATUS_META, LeadAgeChip, leadNeedsAttention, mirrorUrlParams, NoticeCard, PriorityPill, StatusPill, when } from "./ui";
+import { BTN_GHOST, ErrorNotice, FollowUpChip, LEAD_PRIORITY_META, LEAD_STATUS_META, LeadAgeChip, leadNeedsAttention, mirrorUrlParams, NextBestAction, NoticeCard, PriorityPill, StatusPill, when } from "./ui";
 
 type Filter = LeadStatus | "all";
 type PriorityFilter = LeadPriority | "all";
@@ -785,10 +785,11 @@ export default function CrmLeads() {
                       </button>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="flex min-w-40 flex-col items-start gap-1">
+                      <div className="flex min-w-40 flex-col items-start gap-1">
                         <PriorityPill priority={l.priority} />
                         <FollowUpChip followUpAt={l.followUpAt} nowMs={nowMs} />
-                      </span>
+                        <NextBestAction lead={l} />
+                      </div>
                     </td>
                     <td className="px-4 py-2">
                       <span className="inline-flex flex-wrap items-center gap-1.5">
@@ -854,6 +855,7 @@ export default function CrmLeads() {
                   {l.followUpAt && <FollowUpChip followUpAt={l.followUpAt} nowMs={nowMs} />}
                   {l.createdAt && <span>{when(l.createdAt)}</span>}
                 </div>
+                <NextBestAction lead={l} />
               </li>
             ))}
           </ul>

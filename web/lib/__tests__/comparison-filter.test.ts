@@ -53,7 +53,7 @@ describe("filterAndSortPlans", () => {
     ).toEqual(["match"]);
   });
 
-  it("can sort by the real post-promo price", () => {
+  it("sorts by the conservative published 12-month cost", () => {
     const plans = [
       plan("cheap-now", { price: 20, after: 90 }),
       plan("cheap-later", { price: 40, after: 45 }),
@@ -61,5 +61,19 @@ describe("filterAndSortPlans", () => {
     expect(
       filterAndSortPlans(plans, { ...base, sort: "long-term-asc" }).map((item) => item.id),
     ).toEqual(["cheap-later", "cheap-now"]);
+  });
+
+  it("uses published month tiers for long-term sorting", () => {
+    const plans = [
+      plan("cheap-headline", {
+        price: 10,
+        after: 200,
+        fineLines: ["מדרגות מחיר: ח׳1-2: ₪10 / ח׳3-12: ₪100"],
+      }),
+      plan("steady", { price: 90 }),
+    ];
+    expect(
+      filterAndSortPlans(plans, { ...base, sort: "long-term-asc" }).map((item) => item.id),
+    ).toEqual(["cheap-headline", "steady"]);
   });
 });

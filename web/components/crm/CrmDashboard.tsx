@@ -36,6 +36,7 @@ import {
   LEAD_STATUS_META,
   LeadAgeChip,
   MeetingStatusPill,
+  NextBestAction,
   NoticeCard,
   PriorityPill,
   StatCard,
@@ -334,6 +335,7 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
                       <LeadAgeChip createdAt={lead.createdAt} nowMs={nowMs} slaHours={sla?.slaHours ?? null} />
                     ) : null}
                   </div>
+                  <NextBestAction lead={lead} />
                 </button>
               </li>
             ))}

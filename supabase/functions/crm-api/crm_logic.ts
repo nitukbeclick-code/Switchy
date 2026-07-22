@@ -129,6 +129,75 @@ export function lastMessagesLimit(convCount: number): number {
   return Math.min(1000, Math.max(200, convCount * 10));
 }
 
+export interface LeadActionRecommendation {
+  code: "overdue_follow_up" | "sla_breach" | "urgent" | "high_priority";
+  reason: string;
+  action: string;
+  score: number;
+}
+
+/**
+ * Deterministic next-best-action for the CRM attention queue. It uses only the
+ * workflow facts already visible to the rep, so the recommendation is explainable
+ * and stable — no black-box score and no external AI call.
+ */
+export function nextBestLeadAction(
+  lead: {
+    status?: string | null;
+    priority?: string | null;
+    followUpAt?: string | null;
+    createdAt?: string | null;
+    claimedBy?: string | null;
+  },
+  nowMs: number,
+  slaHours: number,
+): LeadActionRecommendation | null {
+  const followUpMs = lead.followUpAt ? Date.parse(lead.followUpAt) : Number.NaN;
+  const createdMs = lead.createdAt ? Date.parse(lead.createdAt) : Number.NaN;
+  const overdue = Number.isFinite(followUpMs) && followUpMs <= nowMs;
+  const slaBreach =
+    lead.status === "new" &&
+    Number.isFinite(createdMs) &&
+    createdMs <= nowMs - slaHours * 3_600_000;
+
+  if (overdue) {
+    const overdueHours = Math.max(0, Math.floor((nowMs - followUpMs) / 3_600_000));
+    return {
+      code: "overdue_follow_up",
+      reason: overdueHours > 0 ? `מעקב באיחור של ${overdueHours} שעות` : "מועד המעקב הגיע",
+      action: lead.status === "contacted"
+        ? "לחזור ללקוח עכשיו ולעדכן את הצעד הבא"
+        : "לחייג עכשיו לפי המעקב שנקבע",
+      score: 100 + Math.min(48, overdueHours),
+    };
+  }
+  if (slaBreach) {
+    return {
+      code: "sla_breach",
+      reason: `חריגה מזמן התגובה של ${slaHours} שעות`,
+      action: lead.claimedBy ? "לחייג עכשיו ולתעד תוצאה" : "לשייך לנציג ולחייג עכשיו",
+      score: 95,
+    };
+  }
+  if (lead.priority === "urgent") {
+    return {
+      code: "urgent",
+      reason: "ליד בעדיפות דחופה",
+      action: lead.claimedBy ? "ליצור קשר עכשיו" : "לשייך לנציג וליצור קשר עכשיו",
+      score: 90,
+    };
+  }
+  if (lead.priority === "high") {
+    return {
+      code: "high_priority",
+      reason: "ליד בעדיפות גבוהה",
+      action: lead.claimedBy ? "ליצור קשר עוד היום" : "לשייך לנציג ולטפל עוד היום",
+      score: 75,
+    };
+  }
+  return null;
+}
+
 /**
  * Build the `detail` jsonb for a Reg.13 security_audit_log row recording an admin
  * CRM control action. The verified admin uid is stamped first as `actor` (single

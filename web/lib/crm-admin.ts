@@ -70,6 +70,14 @@ export interface CrmLead {
   claimedBy: string | null;
   priority: string;
   followUpAt: string | null;
+  nextBestAction?: CrmNextBestAction | null;
+}
+
+export interface CrmNextBestAction {
+  code: "overdue_follow_up" | "sla_breach" | "urgent" | "high_priority";
+  reason: string;
+  action: string;
+  score: number;
 }
 
 export interface RepStat {

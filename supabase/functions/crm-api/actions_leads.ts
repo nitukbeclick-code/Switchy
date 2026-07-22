@@ -16,6 +16,7 @@ import {
   MAX_FOLLOW_UP_NOTE_LEN,
   MAX_LOST_REASON_LEN,
   MAX_NOTE_LEN,
+  nextBestLeadAction,
   s,
   shapeLeadDetail,
   shapeLeadEvent,
@@ -231,13 +232,20 @@ export async function actAttentionLeads(): Promise<Response> {
   const hasMore = [dueRows, priorityRows, slaRows].some(
     (rows) => rows.length > ATTENTION_LANE_LIMIT,
   );
-  const merged = new Map<string, ReturnType<typeof shapeLeadSummary>>();
+  type AttentionLead = ReturnType<typeof shapeLeadSummary> & {
+    nextBestAction: ReturnType<typeof nextBestLeadAction>;
+  };
+  const merged = new Map<string, AttentionLead>();
   for (const row of [
     ...dueRows.slice(0, ATTENTION_LANE_LIMIT),
     ...priorityRows.slice(0, ATTENTION_LANE_LIMIT),
     ...slaRows.slice(0, ATTENTION_LANE_LIMIT),
   ]) {
-    const lead = shapeLeadSummary(row);
+    const base = shapeLeadSummary(row);
+    const lead = {
+      ...base,
+      nextBestAction: nextBestLeadAction(base, nowMs, SLA_HOURS),
+    };
     if (lead.id) merged.set(lead.id, lead);
   }
 
@@ -248,6 +256,8 @@ export async function actAttentionLeads(): Promise<Response> {
     low: 1,
   };
   const leads = [...merged.values()].sort((a, b) => {
+    const actionScore = (b.nextBestAction?.score ?? 0) - (a.nextBestAction?.score ?? 0);
+    if (actionScore) return actionScore;
     const priority = (priorityRank[b.priority] ?? 0) - (priorityRank[a.priority] ?? 0);
     if (priority) return priority;
     const aDue = a.followUpAt ? Date.parse(a.followUpAt) : Number.POSITIVE_INFINITY;

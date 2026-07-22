@@ -1,5 +1,6 @@
 import { isDataOnlyPlan } from "./plan-classification";
 import type { Plan } from "./types";
+import { calculateTwelveMonthCost } from "./plan-cost";
 
 export type ComparisonSort = "price-asc" | "long-term-asc" | "provider";
 
@@ -15,12 +16,6 @@ export interface ComparisonFilters {
 
 function shownPrice(plan: Plan): number {
   return typeof plan.priceExact === "number" ? plan.priceExact : plan.price;
-}
-
-function longTermPrice(plan: Plan): number {
-  if (typeof plan.afterExact === "number") return plan.afterExact;
-  if (typeof plan.after === "number") return plan.after;
-  return shownPrice(plan);
 }
 
 export function filterAndSortPlans(
@@ -54,7 +49,10 @@ export function filterAndSortPlans(
       );
     }
     if (filters.sort === "long-term-asc") {
-      return longTermPrice(a) - longTermPrice(b) || shownPrice(a) - shownPrice(b);
+      return (
+        calculateTwelveMonthCost(a).maximum - calculateTwelveMonthCost(b).maximum ||
+        shownPrice(a) - shownPrice(b)
+      );
     }
     return shownPrice(a) - shownPrice(b);
   });

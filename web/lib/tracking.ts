@@ -4,6 +4,8 @@
 // server, when gtag/fbq are absent, or when the Meta pixel id is unset.
 // ────────────────────────────────────────────────────────────────────────────
 
+import { SUPABASE_URL } from "./supabase-public";
+
 /** GA4 Measurement ID (matches the global GA4 script in the layout). */
 export const GA4_MEASUREMENT_ID = "G-YCTGRVN7SJ";
 
@@ -27,6 +29,85 @@ declare global {
     gtag?: GtagFn;
     fbq?: FbqFn;
     dataLayer?: unknown[];
+  }
+}
+
+export type ProductFunnelEvent =
+  | "leadStart"
+  | "leadSubmit"
+  | "quizComplete"
+  | "compareView"
+  | "shortlistCreate"
+  | "shortlistShare"
+  | "shortlistLeadClick"
+  | "searchQuery"
+  | "whatsappClick"
+  | "savingsViewed";
+
+const PRODUCT_EVENT_BY_SITE_EVENT: Readonly<Record<string, ProductFunnelEvent>> = {
+  lead_form_start: "leadStart",
+  quiz_results: "quizComplete",
+  comparison_view: "compareView",
+  compare_shortlist_create: "shortlistCreate",
+  compare_shortlist_share: "shortlistShare",
+  compare_shortlist_lead: "shortlistLeadClick",
+  comparison_search: "searchQuery",
+  bill_upload_result: "savingsViewed",
+};
+
+const ANALYTICS_ENDPOINT = `${SUPABASE_URL}/functions/v1/analytics-track`;
+const CONSENT_KEY = "cookieConsent";
+const JOURNEY_KEY = "switchy:analytics-journey";
+
+function analyticsConsentGranted(): boolean {
+  try {
+    return window.localStorage.getItem(CONSENT_KEY) === "granted";
+  } catch {
+    return false;
+  }
+}
+
+function journeyId(): string {
+  try {
+    const existing = window.sessionStorage.getItem(JOURNEY_KEY);
+    if (existing) return existing;
+    const id = typeof crypto?.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    window.sessionStorage.setItem(JOURNEY_KEY, id);
+    return id;
+  } catch {
+    return "session-unavailable";
+  }
+}
+
+/** First-party, consent-gated product analytics. Scalar, non-PII props only. */
+export function sendProductEvent(
+  event: ProductFunnelEvent,
+  props: Record<string, unknown> = {},
+): void {
+  if (typeof window === "undefined" || !analyticsConsentGranted()) return;
+  const safeProps: Record<string, string | number | boolean> = {
+    surface: "web",
+    journey_id: journeyId(),
+  };
+  for (const [key, value] of Object.entries(props)) {
+    if (
+      typeof value === "string" ||
+      typeof value === "boolean" ||
+      (typeof value === "number" && Number.isFinite(value))
+    ) safeProps[key] = value;
+  }
+  try {
+    void fetch(ANALYTICS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, props: safeProps }),
+      credentials: "omit",
+      keepalive: true,
+    }).catch(() => undefined);
+  } catch {
+    /* best-effort only */
   }
 }
 
@@ -79,6 +160,11 @@ export function fireLeadConversion(details?: {
   } catch {
     /* no-op */
   }
+
+  sendProductEvent("leadSubmit", {
+    ...(details?.category ? { category: details.category } : {}),
+    ...(details?.source ? { source: details.source } : {}),
+  });
 }
 
 /**
@@ -110,5 +196,11 @@ export function trackEvent(
     }
   } catch {
     /* no-op */
+  }
+
+  const productEvent = PRODUCT_EVENT_BY_SITE_EVENT[name];
+  if (productEvent) sendProductEvent(productEvent, params);
+  else if (name === "outbound_click" && params?.dest === "whatsapp") {
+    sendProductEvent("whatsappClick", params);
   }
 }

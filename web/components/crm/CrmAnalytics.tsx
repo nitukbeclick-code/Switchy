@@ -31,6 +31,9 @@ const EVENT_LABEL: Record<string, string> = {
   leadSubmit: "שליחת ליד",
   quizComplete: "השלמת שאלון",
   compareView: "צפיות בהשוואה",
+  shortlistCreate: "יצירת רשימת השוואה",
+  shortlistShare: "שיתוף רשימת השוואה",
+  shortlistLeadClick: "מעבר מרשימה לקבלת המלצה",
   searchQuery: "חיפושים",
   whatsappClick: "קליקים לוואטסאפ",
   savingsViewed: "צפיות בחיסכון",
@@ -42,7 +45,9 @@ const EVENT_LABEL: Record<string, string> = {
 // Computed from the SAME window totals already on screen — nothing re-fetched,
 // nothing invented; a pair renders only when its "from" stage has events.
 const FUNNEL_STEPS: { from: string; to: string; label: string }[] = [
-  { from: "appOpen", to: "leadStart", label: "פתיחה ← התחלת ליד" },
+  { from: "compareView", to: "shortlistCreate", label: "השוואה ← בחירת מסלול" },
+  { from: "shortlistCreate", to: "shortlistLeadClick", label: "בחירה ← בקשת המלצה" },
+  { from: "shortlistLeadClick", to: "leadStart", label: "בקשת המלצה ← התחלת טופס" },
   { from: "leadStart", to: "leadSubmit", label: "התחלת ליד ← שליחה" },
   { from: "leadSubmit", to: "meetingRequest", label: "שליחה ← בקשת פגישה" },
 ];

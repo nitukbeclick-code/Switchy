@@ -22,6 +22,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -43,6 +44,7 @@ import {
 } from "@/lib/comparison-filter";
 import { isDataOnlyPlan } from "@/lib/plan-classification";
 import { trackEvent } from "@/lib/tracking";
+import { calculateTwelveMonthCost, formatAnnualCost } from "@/lib/plan-cost";
 import {
   COMPARISON_CHANGE_EVENT,
   MAX_COMPARE_PLANS,
@@ -102,7 +104,7 @@ export interface ComparisonTableProps {
  * computed per-plan and unioned across the visible plans so a category never
  * shows a column that is empty for every plan (mirrors the static `keep` logic).
  */
-const BASE_COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"] as const;
+const BASE_COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה", "עלות שירות ל־12 ח׳"] as const;
 
 function planSelectionLabel(plan: Plan, selected: boolean): string {
   return `${selected ? "הסרת" : "הוספת"} ${plan.plan} של ${plan.provider} ${
@@ -171,9 +173,25 @@ export default function ComparisonTable({
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">(
     "idle",
   );
+  const viewedRef = useRef(false);
 
   const selectableIds = useMemo(() => new Set(plans.map((plan) => plan.id)), [plans]);
   const selectionStorageKey = `switchy:comparison:${caption}`;
+
+  useEffect(() => {
+    if (!interactiveFilters || viewedRef.current) return;
+    viewedRef.current = true;
+    trackEvent("comparison_view", { plan_count: plans.length });
+  }, [interactiveFilters, plans.length]);
+
+  useEffect(() => {
+    const trimmed = deferredQuery.trim();
+    if (!interactiveFilters || trimmed.length < 2) return;
+    const timer = window.setTimeout(() => {
+      trackEvent("comparison_search", { query_length: trimmed.length });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [deferredQuery, interactiveFilters]);
 
   // Restore a shared URL first, then the page-scoped local shortlist. The state
   // update is queued so the effect remains a browser-sync subscription and does
@@ -255,6 +273,12 @@ export default function ComparisonTable({
       category: plan.cat,
       selection_count: next.length,
     });
+    if (!selected && next.length === 1) {
+      trackEvent("compare_shortlist_create", {
+        category: plan.cat,
+        selection_count: 1,
+      });
+    }
   }
 
   async function copyComparisonLink() {
@@ -479,6 +503,7 @@ export default function ComparisonTable({
           <div className="grid gap-px bg-border/70 sm:grid-cols-3">
             {selectedPlans.map((plan) => {
               const display = planDisplay(plan);
+              const annual = calculateTwelveMonthCost(plan);
               return (
                 <article key={plan.id} className="relative bg-surface p-4">
                   <button
@@ -507,6 +532,12 @@ export default function ComparisonTable({
                   <p className="mt-1 text-xs text-muted">
                     {display.after.text}
                   </p>
+                  <div className="mt-3 rounded-lg border border-value/25 bg-value/[0.07] px-2.5 py-2">
+                    <p className="text-[11px] font-semibold text-value-text">עלות שירות ל־12 חודשים</p>
+                    <p className="mt-0.5 font-display text-base font-bold text-ink tabular-nums">
+                      {formatAnnualCost(annual)}
+                    </p>
+                  </div>
                 </article>
               );
             })}
@@ -685,6 +716,7 @@ export default function ComparisonTable({
               const plan = d.plan;
               const label = featured?.[plan.id];
               const byLabel = new Map(d.fields.map((f) => [f.label, f.value]));
+              const annual = calculateTwelveMonthCost(plan);
               return (
                 <tr
                   key={plan.id}
@@ -770,6 +802,18 @@ export default function ComparisonTable({
                         {d.after.text}
                       </span>
                     )}
+                  </td>
+
+                  <td
+                    className="px-4 py-3 text-start whitespace-nowrap tabular-nums"
+                    title={annual.disclosure}
+                  >
+                    <span className="font-display text-sm font-bold text-value-text">
+                      {formatAnnualCost(annual)}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-muted">
+                      {annual.basis === "published-range" ? "טווח — משך המבצע חסר" : "שירות בלבד"}
+                    </span>
                   </td>
 
                   {/* Rich category fields, in the unioned column order. */}

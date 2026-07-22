@@ -173,6 +173,25 @@ export function PriorityPill({ priority }: { priority: string }) {
   return <Pill label={`עדיפות ${meta?.label ?? priority}`} tone={meta?.tone ?? "neutral"} />;
 }
 
+/** Explainable server-ranked action shown only on the purpose-built attention queue. */
+export function NextBestAction({ lead }: { lead: Pick<CrmLead, "nextBestAction"> }) {
+  const recommendation = lead.nextBestAction;
+  if (!recommendation) return null;
+  const urgent = recommendation.code === "overdue_follow_up" || recommendation.code === "sla_breach";
+  return (
+    <div className={`mt-2 rounded-lg border px-2.5 py-2 text-start ${
+      urgent ? "border-danger/25 bg-danger/[0.05]" : "border-accent/25 bg-accent/[0.05]"
+    }`}>
+      <p className={`text-[10px] font-bold uppercase tracking-wide ${urgent ? "text-danger-text" : "text-accent-text"}`}>
+        הפעולה הבאה · {recommendation.reason}
+      </p>
+      <p className="mt-0.5 text-xs font-semibold leading-relaxed text-ink">
+        {recommendation.action}
+      </p>
+    </div>
+  );
+}
+
 /** True when an open lead belongs in the rep's immediate work queue. */
 export function leadNeedsAttention(
   lead: Pick<CrmLead, "status" | "priority" | "followUpAt" | "createdAt">,

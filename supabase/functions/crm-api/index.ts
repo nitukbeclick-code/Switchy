@@ -26,6 +26,7 @@
 //   setLeadStatus       → patch leads.status + lead_events audit row
 //   setLeadWorkflow     → priority + next follow-up + disposition reason
 //   listLeads           → the lead pipeline
+//   attentionLeads      → targeted due / urgent / SLA work queue
 //   listSellableLeads   → READ-ONLY consented-sharing feed (audited; no buyer push)
 //   repLeaderboard      → per-rep performance (claimed/won/lost + booked saving)
 //   listMeetings        → Zoom-booking list · getMeeting → detail + timeline
@@ -64,6 +65,7 @@ import {
 } from "./actions_conversations.ts";
 import {
   actAddNote,
+  actAttentionLeads,
   actClaimLead,
   actGetLeadDetail,
   actListLeads,
@@ -150,6 +152,8 @@ Deno.serve(async (req: Request) => {
         return await actSetLeadWorkflow(body, access.uid);
       case "listLeads":
         return await actListLeads(body);
+      case "attentionLeads":
+        return await actAttentionLeads();
       case "getLeadDetail":
         return await actGetLeadDetail(body, access.uid);
       case "listSellableLeads":

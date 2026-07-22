@@ -15,6 +15,7 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import ComparisonTable from "@/components/ComparisonTable";
 import type { Plan } from "@/lib/types";
@@ -206,6 +207,40 @@ describe("ComparisonTable — honesty labels", () => {
     render(<ComparisonTable plans={[plan({ id: "plain" })]} caption="cap" />);
     expect(screen.queryByText("מקודם")).not.toBeInTheDocument();
     expect(screen.queryByText("בחירת העורך")).not.toBeInTheDocument();
+  });
+});
+
+describe("ComparisonTable — shareable shortlist", () => {
+  it("selects up to three plans and mirrors the choice into the URL", async () => {
+    window.history.replaceState({}, "", "/compare/cellular");
+    window.localStorage.clear();
+    const user = userEvent.setup({ delay: null });
+    render(
+      <ComparisonTable
+        plans={[
+          plan({ id: "a", plan: "מסלול א" }),
+          plan({ id: "b", provider: "פרטנר", plan: "מסלול ב" }),
+        ]}
+        caption="cap"
+        interactiveFilters
+        groupByProvider
+      />,
+    );
+
+    await user.click(
+      screen.getAllByRole("button", { name: /הוספת מסלול א של סלקום להשוואה/ })[0],
+    );
+    expect(screen.getByText("ההשוואה האישית שלכם")).toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get("plans")).toBe("a");
+
+    await user.click(
+      screen.getAllByRole("button", { name: /הוספת מסלול ב של פרטנר להשוואה/ })[0],
+    );
+    expect(new URLSearchParams(window.location.search).get("plans")).toBe("a,b");
+    expect(screen.getByRole("link", { name: "קבלת המלצה על הבחירה" })).toHaveAttribute(
+      "href",
+      "#lead",
+    );
   });
 });
 

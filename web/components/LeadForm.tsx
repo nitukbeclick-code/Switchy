@@ -11,7 +11,7 @@
 // this form enforces the checkbox client-side so a lead is never sent without it.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { CATEGORY_HE } from "@/lib/categories";
@@ -24,6 +24,12 @@ import {
   MARKETING_OPTIN_NOTE,
   marketingChannelLabel,
 } from "@/lib/legal";
+import {
+  COMPARISON_CHANGE_EVENT,
+  comparisonIntentNote,
+  selectedPlanIntent,
+  type PlanIntentOption,
+} from "@/lib/comparison-intent";
 
 /** Categories offered in the "desired service" step (in display order). */
 const SERVICE_CATEGORIES = [
@@ -74,6 +80,9 @@ export interface LeadFormProps {
    * server page — never fabricated. When omitted, no count line is shown.
    */
   trustStats?: { planCount: number; providerCount: number };
+  /** Minimal, trusted catalogue mapping used to resolve a `?plans=` shortlist
+   * into CRM provider/plan context. Omit outside comparison journeys. */
+  planOptions?: PlanIntentOption[];
 }
 
 const STEP_FIELDS: (keyof LeadFormValues)[][] = [
@@ -92,6 +101,7 @@ export default function LeadForm({
   heading = "קבלת הצעה — השוואה חינמית",
   className,
   trustStats,
+  planOptions = [],
 }: LeadFormProps) {
   const {
     register,
@@ -117,6 +127,24 @@ export default function LeadForm({
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [intentPlans, setIntentPlans] = useState<PlanIntentOption[]>([]);
+
+  useEffect(() => {
+    if (!planOptions.length) return;
+    const sync = () => {
+      const next = selectedPlanIntent(window.location.search, planOptions);
+      setIntentPlans(next);
+    };
+    // The comparison component emits this after every shortlist change. Queue
+    // the initial read to avoid a synchronous state write during effect setup.
+    queueMicrotask(sync);
+    window.addEventListener(COMPARISON_CHANGE_EVENT, sync);
+    window.addEventListener("popstate", sync);
+    return () => {
+      window.removeEventListener(COMPARISON_CHANGE_EVENT, sync);
+      window.removeEventListener("popstate", sync);
+    };
+  }, [planOptions]);
 
   // Fire "lead_form_start" at most once per mount, on the first successful
   // advance — the denominator for the form's micro-funnel / drop-off analysis.
@@ -197,6 +225,11 @@ export default function LeadForm({
       typeof window !== "undefined"
         ? referralCodeFromQuery(window.location.search)
         : null;
+    const selectedPlans =
+      typeof window !== "undefined"
+        ? selectedPlanIntent(window.location.search, planOptions)
+        : [];
+    const primaryPlan = selectedPlans[0];
     try {
       const res = await fetch("/api/lead", {
         method: "POST",
@@ -207,6 +240,9 @@ export default function LeadForm({
           city: values.city.trim(),
           category: values.category || undefined,
           source,
+          provider: primaryPlan?.provider,
+          plan_id: primaryPlan?.id,
+          notes: comparisonIntentNote(selectedPlans) || undefined,
           // Optional referral attribution (null when the visitor didn't arrive
           // via a share link). The server re-validates with isReferralCode.
           referrer_code: referrerCode || undefined,
@@ -327,6 +363,29 @@ export default function LeadForm({
           </>
         )}
       </p>
+
+      {intentPlans.length > 0 ? (
+        <div
+          className="mt-4 rounded-xl border border-accent/25 bg-accent/[0.06] p-3"
+          role="status"
+          aria-live="polite"
+        >
+          <p className="text-xs font-bold uppercase tracking-wide text-accent-text">
+            הבחירה שלכם מחוברת לבקשה
+          </p>
+          <ul className="mt-1.5 space-y-1 text-sm text-foreground">
+            {intentPlans.map((plan) => (
+              <li key={plan.id} className="flex items-start gap-1.5">
+                <span aria-hidden="true" className="text-accent-text">✓</span>
+                <span>{plan.provider} — {plan.name}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            הנציג יקבל את המסלולים שבחרתם כדי להמשיך בדיוק מאותה נקודה.
+          </p>
+        </div>
+      ) : null}
 
       {/* Progress — a glanceable "שלב X מתוך Y" line, a per-step dot strip so the
           discrete position is visible at once, and the continuous fill bar that

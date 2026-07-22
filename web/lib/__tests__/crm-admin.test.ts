@@ -18,6 +18,7 @@ vi.mock("@/lib/supabase-browser", () => ({
 
 import {
   fetchCrmContacts,
+  fetchCrmAttentionLeads,
   fetchCrmLeads,
   fetchCrmOverview,
   fetchCrmThread,
@@ -282,6 +283,21 @@ describe("crm-admin: in-flight dedupe (reads only)", () => {
 
     fetchMock.mockResolvedValue(jsonResponse(404, { error: "not found" }));
     await expect(setCrmLeadStatus("missing", "won")).resolves.toBe(false);
+  });
+
+  it("requests the dedicated attention queue with no client-side filter window", async () => {
+    withSession();
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        leads: [],
+        summary: { total: 0, overdueFollowUps: 0, highPriority: 0, slaBreaches: 0 },
+        hasMore: false,
+        asOf: "2026-07-22T10:00:00.000Z",
+      }),
+    );
+    const res = await fetchCrmAttentionLeads();
+    expect(res.data?.summary.total).toBe(0);
+    expect(JSON.parse(String(lastRequest().init.body))).toEqual({ action: "attentionLeads" });
   });
 
   it("serializes the private lead workflow fields through the CRM API", async () => {

@@ -753,6 +753,11 @@ export default async function ServiceHubPage({ params }: Params) {
           <LeadForm
             source="compare"
             defaultCategory={leadCategory(svc.categories[0])}
+            planOptions={plans.map((plan) => ({
+              id: plan.id,
+              provider: plan.provider,
+              name: plan.plan,
+            }))}
             trustStats={{
               planCount: plans.length,
               providerCount: svcProviders.length,

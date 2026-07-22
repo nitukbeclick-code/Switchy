@@ -73,6 +73,7 @@ interface LeadBody {
   city?: unknown;
   service?: unknown; // desired category (cellular/internet/...) or free text
   category?: unknown; // alias of `service` sent by <LeadForm>
+  source?: unknown; // bounded attribution label from the first-party form
   provider?: unknown;
   plan_id?: unknown;
   callback_time?: unknown;
@@ -168,9 +169,13 @@ export async function POST(req: Request) {
   // <LeadForm> sends the desired service under `category`; older callers use
   // `service`. Accept either so the city/service tag is never silently dropped.
   const service = str(body.service) || str(body.category);
-  const provider = str(body.provider) || null;
-  const planId = str(body.plan_id) || null;
-  const notes = str(body.notes);
+  const provider = str(body.provider).slice(0, 160) || null;
+  const planId = str(body.plan_id).slice(0, 180) || null;
+  const notes = str(body.notes).slice(0, 4000);
+  const sourceRaw = str(body.source).toLowerCase();
+  // Keep campaign/journey attribution useful in the CRM without accepting
+  // arbitrary prose into the source column. Unknown callers fall back to web.
+  const source = /^[a-z0-9-]{1,40}$/.test(sourceRaw) ? sourceRaw : "web";
   const consent = body.consent === true;
   // Optional referral attribution: a referee who arrived via a share link sends
   // ?ref=SW-XXXXXX as `referrer_code`. Validate (truth-only — a junk/spoofed code
@@ -244,7 +249,7 @@ export async function POST(req: Request) {
     provider,
     plan_id: planId,
     callback_time: callbackTime,
-    source: "web",
+    source,
     // Consent: non-null → trigger stamps now(); null → stays null.
     terms_accepted_at: nowIso,
     privacy_accepted_at: nowIso,

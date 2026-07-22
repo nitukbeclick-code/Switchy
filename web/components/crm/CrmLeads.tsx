@@ -31,6 +31,7 @@ import {
   claimCrmLead,
   type CrmFailure,
   type CrmLead,
+  fetchCrmAttentionLeads,
   fetchCrmLeads,
   fetchCrmSla,
   isLeadPriority,
@@ -180,8 +181,13 @@ export default function CrmLeads() {
   // (already server-sorted), so switching is instant and needs no round-trip.
   // Everything downstream — count, export, select-all — reads `shown`, not `leads`.
   const shown = useMemo(() => {
+    const normalizedSearch = search.toLowerCase();
     const filtered = (leads ?? []).filter(
       (lead) =>
+        (filter === "all" || lead.status === filter) &&
+        (!normalizedSearch ||
+          lead.name.toLowerCase().includes(normalizedSearch) ||
+          lead.phone.toLowerCase().includes(normalizedSearch)) &&
         withinRange(lead.createdAt, range, nowMs) &&
         (rep === "all" || lead.claimedBy === rep) &&
         (priority === "all" || lead.priority === priority) &&
@@ -197,7 +203,7 @@ export default function CrmLeads() {
       if (aDue !== bDue) return aDue - bDue;
       return Date.parse(a.createdAt ?? "") - Date.parse(b.createdAt ?? "");
     });
-  }, [attentionOnly, leads, nowMs, priority, range, rep, slaHours]);
+  }, [attentionOnly, filter, leads, nowMs, priority, range, rep, search, slaHours]);
 
   const clearOnFilterChange = useCallback(() => {
     setSelected(new Set()); // a narrower view invalidates a selection of hidden rows
@@ -230,6 +236,7 @@ export default function CrmLeads() {
   }, [clearOnFilterChange]);
 
   const toggleAttention = useCallback(() => {
+    beginLoad();
     setNowMs(Date.now());
     setAttentionOnly((current) => {
       const next = !current;
@@ -237,7 +244,7 @@ export default function CrmLeads() {
       return next;
     });
     clearOnFilterChange();
-  }, [clearOnFilterChange]);
+  }, [beginLoad, clearOnFilterChange]);
 
   // Fetch the current view. Loading/error resets are event-driven (`beginLoad`
   // above; the useState initializers cover the mount load) — so the load effect
@@ -245,16 +252,24 @@ export default function CrmLeads() {
   // only lands in the .then continuation.
   const load = useCallback(() => {
     const seq = ++loadSeq.current;
-    return fetchCrmLeads({
-      status: filter === "all" ? undefined : filter,
-      search: search || undefined,
-      sort,
-    }).then((res) => {
+    const request = attentionOnly
+      ? fetchCrmAttentionLeads()
+      : fetchCrmLeads({
+          status: filter === "all" ? undefined : filter,
+          search: search || undefined,
+          sort,
+        });
+    return request.then((res) => {
       if (seq !== loadSeq.current) return; // a newer load superseded this one
       if (res.data) {
         setLeads(res.data.leads);
         setHasMore(res.data.hasMore);
-        setNowMs(Date.now()); // fresh window clock for the fresh rows
+        const serverAsOf =
+          "asOf" in res.data && typeof res.data.asOf === "string"
+            ? Date.parse(res.data.asOf)
+            : Number.NaN;
+        setNowMs(Number.isFinite(serverAsOf) ? serverAsOf : Date.now());
+        // Fresh server clock for attention, browser clock for the generic list.
         // If this load dropped the currently-filtered rep from the window, fall
         // back to all (previously a separate effect over repOptions).
         const rows = res.data.leads;
@@ -265,7 +280,7 @@ export default function CrmLeads() {
       }
       setLoading(false);
     });
-  }, [filter, search, sort]);
+  }, [attentionOnly, filter, search, sort]);
 
   // Re-fetch the current view from an event (retry, bulk apply, drawer onChanged).
   const reload = useCallback(async () => {
@@ -502,23 +517,31 @@ export default function CrmLeads() {
           className="w-48 rounded-xl border border-border bg-surface px-3 py-1.5 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
         <div className="ms-auto flex items-center gap-1 text-xs text-muted">
-          <span>מיון:</span>
-          <button
-            type="button"
-            onClick={() => changeSort("recent")}
-            aria-pressed={sort === "recent"}
-            className={`rounded-full border px-2.5 py-1 font-medium ${sort === "recent" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
-          >
-            חדשים
-          </button>
-          <button
-            type="button"
-            onClick={() => changeSort("oldest")}
-            aria-pressed={sort === "oldest"}
-            className={`rounded-full border px-2.5 py-1 font-medium ${sort === "oldest" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
-          >
-            ותיקים
-          </button>
+          {attentionOnly ? (
+            <span className="rounded-full border border-danger/25 bg-danger/[0.05] px-2.5 py-1 font-medium text-danger-text">
+              מיון: דחיפות ומועד מעקב
+            </span>
+          ) : (
+            <>
+              <span>מיון:</span>
+              <button
+                type="button"
+                onClick={() => changeSort("recent")}
+                aria-pressed={sort === "recent"}
+                className={`rounded-full border px-2.5 py-1 font-medium ${sort === "recent" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
+              >
+                חדשים
+              </button>
+              <button
+                type="button"
+                onClick={() => changeSort("oldest")}
+                aria-pressed={sort === "oldest"}
+                className={`rounded-full border px-2.5 py-1 font-medium ${sort === "oldest" ? "border-accent bg-accent/10 text-accent-text" : "border-border"}`}
+              >
+                ותיקים
+              </button>
+            </>
+          )}
         </div>
         <button
           type="button"

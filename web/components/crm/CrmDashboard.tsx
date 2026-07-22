@@ -15,13 +15,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   type CrmFailure,
+  type CrmAttentionQueue,
   type CrmLead,
   type CrmMeeting,
   type CrmOverview,
   type CrmPipeline,
   type CrmSla,
   fetchCrmMeetings,
-  fetchCrmLeads,
+  fetchCrmAttentionLeads,
   fetchCrmOverview,
   fetchCrmSla,
 } from "@/lib/crm-admin";
@@ -34,7 +35,6 @@ import {
   formatMinutes,
   LEAD_STATUS_META,
   LeadAgeChip,
-  leadNeedsAttention,
   MeetingStatusPill,
   NoticeCard,
   PriorityPill,
@@ -165,6 +165,7 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
   const [todayMeetings, setTodayMeetings] = useState<CrmMeeting[] | null>(null);
   const [openMeetingId, setOpenMeetingId] = useState<string | null>(null);
   const [workQueue, setWorkQueue] = useState<CrmLead[]>([]);
+  const [attention, setAttention] = useState<CrmAttentionQueue | null>(null);
   const [nowMs, setNowMs] = useState(0);
 
   // `silent` refreshes (from the Realtime feed) skip the skeleton + keep stale data
@@ -185,7 +186,7 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
         fetchCrmOverview(),
         fetchCrmSla(),
         collectTodayMeetings(now),
-        fetchCrmLeads({ sort: "oldest" }),
+        fetchCrmAttentionLeads(),
       ]).then(([d, sm, mm, lm]) => {
         if (d.data) setData(d.data);
         else if (!silent) {
@@ -195,21 +196,9 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
         if (sm.data) setSla(sm.data.sla);
         if (mm) setTodayMeetings(mm); // already today-only
         if (lm.data) {
-          const clock = now.getTime();
-          const slaWindow = sm.data?.sla.slaHours ?? null;
-          const priorityRank: Record<string, number> = { urgent: 4, high: 3, normal: 2, low: 1 };
-          setNowMs(clock);
-          setWorkQueue(
-            lm.data.leads
-              .filter((lead) => leadNeedsAttention(lead, clock, slaWindow))
-              .sort((a, b) => {
-                const byPriority = (priorityRank[b.priority] ?? 0) - (priorityRank[a.priority] ?? 0);
-                if (byPriority) return byPriority;
-                const aDue = a.followUpAt ? Date.parse(a.followUpAt) : Number.POSITIVE_INFINITY;
-                const bDue = b.followUpAt ? Date.parse(b.followUpAt) : Number.POSITIVE_INFINITY;
-                return aDue - bDue;
-              }),
-          );
+          setAttention(lm.data);
+          setNowMs(Date.parse(lm.data.asOf) || now.getTime());
+          setWorkQueue(lm.data.leads);
         }
         if (!silent) setLoading(false);
       });
@@ -285,6 +274,36 @@ export default function CrmDashboard({ onNavigate }: { onNavigate?: (tab: Launch
             {workQueue.length > 0 ? `${he(workQueue.length)} לטיפול` : "פתיחת הלידים"}
           </button>
         </div>
+
+        {attention ? (
+          <dl className="mt-4 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-border bg-surface p-3">
+              <dt className="text-xs text-muted">מעקבים באיחור</dt>
+              <dd className="mt-1 font-display text-xl font-bold text-ink tabular-nums">
+                {he(attention.summary.overdueFollowUps)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-border bg-surface p-3">
+              <dt className="text-xs text-muted">עדיפות גבוהה</dt>
+              <dd className="mt-1 font-display text-xl font-bold text-ink tabular-nums">
+                {he(attention.summary.highPriority)}
+              </dd>
+            </div>
+            <div className="rounded-xl border border-danger/25 bg-danger/[0.04] p-3">
+              <dt className="text-xs text-muted">חריגות SLA</dt>
+              <dd className="mt-1 font-display text-xl font-bold text-danger tabular-nums">
+                {he(attention.summary.slaBreaches)}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+
+        {attention?.hasMore ? (
+          <p className="mt-3 rounded-xl border border-accent/30 bg-accent/[0.06] p-3 text-xs leading-relaxed text-foreground">
+            התור גדול מהחלון המוצג. מוצגים תחילה הלידים הדחופים והוותיקים ביותר;
+            הרשימה המלאה זמינה במסך הלידים.
+          </p>
+        ) : null}
 
         {workQueue.length === 0 ? (
           <p className="mt-4 rounded-xl border border-value/30 bg-value/10 p-3 text-sm font-medium text-value-text">

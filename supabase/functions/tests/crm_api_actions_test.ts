@@ -27,6 +27,7 @@ import { jsonResponse, withFetchStub } from "./_capture_handler.ts";
 import { MAX_NOTE_LEN, THREAD_MSG_CAP } from "../crm-api/crm_logic.ts";
 import {
   actAddNote,
+  actAttentionLeads,
   actClaimLead,
   actGetLeadDetail,
   actListLeads,
@@ -628,6 +629,52 @@ Deno.test("listLeads refuses an unknown sort with 400 and zero calls", async () 
       assertEquals(r.status, 400);
       assertEquals((await r.json()).code, "bad_request");
       assertEquals(rec.length, 0);
+    });
+  });
+});
+
+Deno.test("attentionLeads queries the actual due/priority/SLA lanes and de-dupes overlaps", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    const old = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const due = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    return withFetchStub([
+      route(
+        rec,
+        (u) => u.includes("follow_up_at=not.is.null"),
+        () => jsonResponse([
+          { id: LEAD, name: "דנה", phone: "0521", status: "contacted", priority: "urgent", follow_up_at: due, created_at: old },
+        ]),
+      ),
+      route(
+        rec,
+        (u) => u.includes("priority=in.(urgent,high)"),
+        () => jsonResponse([
+          { id: LEAD, name: "דנה", phone: "0521", status: "contacted", priority: "urgent", follow_up_at: due, created_at: old },
+          { id: MEMBER, name: "רון", phone: "0522", status: "new", priority: "high", created_at: new Date().toISOString() },
+        ]),
+      ),
+      route(
+        rec,
+        (u) => u.includes("status=eq.new") && u.includes("created_at=lte."),
+        () => jsonResponse([
+          { id: CONV, name: "יעל", phone: "0523", status: "new", priority: "normal", created_at: old },
+        ]),
+      ),
+    ], async () => {
+      const r = await actAttentionLeads();
+      assertEquals(r.status, 200);
+      const j = await r.json();
+      assertEquals(j.leads.length, 3); // LEAD appears in two lanes but only once
+      assertEquals(j.summary, {
+        total: 3,
+        overdueFollowUps: 1,
+        highPriority: 2,
+        slaBreaches: 1,
+      });
+      assertEquals(j.hasMore, false);
+      assertEquals(rec.length, 3);
+      assert(rec.every((call) => call.url.includes("limit=101")));
     });
   });
 });

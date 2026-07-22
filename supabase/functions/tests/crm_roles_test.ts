@@ -22,6 +22,7 @@ const READ_ACTIONS = [
   "getThread",
   "listContacts",
   "listLeads",
+  "attentionLeads",
   "getLeadDetail",
   "repLeaderboard",
   "listMeetings",

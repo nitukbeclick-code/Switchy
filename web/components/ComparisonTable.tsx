@@ -18,7 +18,13 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { Plan } from "@/lib/types";
 import { priceUnitLabel } from "@/lib/format";
 import { ProviderLogo } from "@/components/ProviderLogo";
@@ -36,6 +42,13 @@ import {
   type ComparisonSort,
 } from "@/lib/comparison-filter";
 import { isDataOnlyPlan } from "@/lib/plan-classification";
+import { trackEvent } from "@/lib/tracking";
+import {
+  COMPARISON_CHANGE_EVENT,
+  MAX_COMPARE_PLANS,
+  comparisonPlanIds,
+  withComparisonPlans,
+} from "@/lib/comparison-intent";
 
 export type { FeatureLabel };
 
@@ -90,6 +103,12 @@ export interface ComparisonTableProps {
  * shows a column that is empty for every plan (mirrors the static `keep` logic).
  */
 const BASE_COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"] as const;
+
+function planSelectionLabel(plan: Plan, selected: boolean): string {
+  return `${selected ? "הסרת" : "הוספת"} ${plan.plan} של ${plan.provider} ${
+    selected ? "מההשוואה" : "להשוואה"
+  }`;
+}
 
 /** A single pulsing skeleton bar — neutral `--border` fill, theme-aware. */
 function SkelBar({ className }: { className?: string }) {
@@ -148,6 +167,105 @@ export default function ComparisonTable({
   const [fiveG, setFiveG] = useState(false);
   const [fixedPrice, setFixedPrice] = useState(false);
   const [includeDataOnly, setIncludeDataOnly] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">(
+    "idle",
+  );
+
+  const selectableIds = useMemo(() => new Set(plans.map((plan) => plan.id)), [plans]);
+  const selectionStorageKey = `switchy:comparison:${caption}`;
+
+  // Restore a shared URL first, then the page-scoped local shortlist. The state
+  // update is queued so the effect remains a browser-sync subscription and does
+  // not perform a synchronous setState during its setup phase.
+  useEffect(() => {
+    if (!interactiveFilters) return;
+    let ids = comparisonPlanIds(window.location.search, selectableIds);
+    const hadUrlSelection = ids.length > 0;
+    if (!ids.length) {
+      try {
+        ids = comparisonPlanIds(
+          `?plans=${localStorage.getItem(selectionStorageKey) ?? ""}`,
+          selectableIds,
+        );
+      } catch {
+        // Storage may be unavailable in hardened/private contexts; URL state
+        // remains fully functional.
+      }
+    }
+    if (!ids.length) return;
+    if (!hadUrlSelection) {
+      const nextSearch = withComparisonPlans(window.location.search, ids);
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${nextSearch}${window.location.hash}`,
+      );
+    }
+    let active = true;
+    queueMicrotask(() => {
+      if (active) {
+        setSelectedIds(ids);
+        window.dispatchEvent(
+          new CustomEvent(COMPARISON_CHANGE_EVENT, { detail: { planIds: ids } }),
+        );
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [interactiveFilters, selectableIds, selectionStorageKey]);
+
+  const selectedPlans = useMemo(() => {
+    const byId = new Map(plans.map((plan) => [plan.id, plan]));
+    return selectedIds
+      .map((id) => byId.get(id))
+      .filter((plan): plan is Plan => plan != null);
+  }, [plans, selectedIds]);
+
+  function persistSelection(ids: string[]) {
+    const clean = ids.filter((id) => selectableIds.has(id)).slice(0, MAX_COMPARE_PLANS);
+    setSelectedIds(clean);
+    setShareStatus("idle");
+    const nextSearch = withComparisonPlans(window.location.search, clean);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${window.location.pathname}${nextSearch}${window.location.hash}`,
+    );
+    try {
+      if (clean.length) localStorage.setItem(selectionStorageKey, clean.join(","));
+      else localStorage.removeItem(selectionStorageKey);
+    } catch {
+      // Non-essential persistence only.
+    }
+    window.dispatchEvent(
+      new CustomEvent(COMPARISON_CHANGE_EVENT, { detail: { planIds: clean } }),
+    );
+  }
+
+  function togglePlan(plan: Plan) {
+    const selected = selectedIds.includes(plan.id);
+    if (!selected && selectedIds.length >= MAX_COMPARE_PLANS) return;
+    const next = selected
+      ? selectedIds.filter((id) => id !== plan.id)
+      : [...selectedIds, plan.id];
+    persistSelection(next);
+    trackEvent(selected ? "compare_plan_remove" : "compare_plan_add", {
+      category: plan.cat,
+      selection_count: next.length,
+    });
+  }
+
+  async function copyComparisonLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareStatus("copied");
+      trackEvent("compare_shortlist_share", { selection_count: selectedIds.length });
+    } catch {
+      setShareStatus("error");
+    }
+  }
 
   const providers = useMemo(
     () => [...new Set(plans.map((plan) => plan.provider))].sort((a, b) =>
@@ -219,7 +337,9 @@ export default function ComparisonTable({
     }
   }
   const hasPerksColumn = displays.some((d) => d.perks.length > 0);
+  const selectionEnabled = interactiveFilters && plans.length > 1;
   const desktopColumns = [
+    ...(selectionEnabled ? ["להשוואה"] : []),
     ...BASE_COLUMNS,
     ...richColumns,
     ...(hasPerksColumn ? ["מידע נוסף"] : []),
@@ -229,7 +349,8 @@ export default function ComparisonTable({
   const sharedDropProps = { priceDrops, autoPriceDrops, priceDropSparkline };
   // Grouped carousels only when explicitly enabled AND there's real data to group
   // (skeleton/empty keep the flat path, which renders those states).
-  const useCarousels = groupByProvider && !showSkeleton && !isEmpty;
+  const useCarousels =
+    groupByProvider && !selectionEnabled && !showSkeleton && !isEmpty;
 
   return (
     <div
@@ -327,6 +448,109 @@ export default function ComparisonTable({
         </div>
       ) : null}
 
+      {selectionEnabled && selectedPlans.length > 0 ? (
+        <aside
+          aria-label="המסלולים שבחרתם להשוואה"
+          className="mb-5 overflow-hidden rounded-2xl border border-accent/30 bg-accent/[0.05] shadow-soft"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-accent/20 px-4 py-3.5 sm:px-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-accent-text">
+                ההשוואה האישית שלכם
+              </p>
+              <h3 className="mt-1 font-display text-lg font-bold text-ink">
+                {selectedPlans.length} מתוך {MAX_COMPARE_PLANS} מסלולים נבחרו
+              </h3>
+              <p className="mt-0.5 text-sm text-muted">
+                {selectedPlans.length === 1
+                  ? "בחרו עוד מסלול כדי לראות את ההבדלים זה מול זה."
+                  : "הבחירה נשמרת בקישור ותעבור לנציג יחד עם הבקשה."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => persistSelection([])}
+              className="interactive min-h-11 rounded-lg px-3 text-sm font-semibold text-muted underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              ניקוי הבחירה
+            </button>
+          </div>
+
+          <div className="grid gap-px bg-border/70 sm:grid-cols-3">
+            {selectedPlans.map((plan) => {
+              const display = planDisplay(plan);
+              return (
+                <article key={plan.id} className="relative bg-surface p-4">
+                  <button
+                    type="button"
+                    onClick={() => togglePlan(plan)}
+                    aria-label={planSelectionLabel(plan, true)}
+                    className="interactive absolute end-2 top-2 flex h-11 w-11 items-center justify-center rounded-full text-lg text-muted hover:bg-danger/10 hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                  <div className="flex items-center gap-2 pe-10">
+                    <ProviderLogo provider={plan.provider} size={28} />
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {plan.provider}
+                    </p>
+                  </div>
+                  <p className="mt-2 line-clamp-2 min-h-10 font-display text-sm font-bold text-ink">
+                    {plan.plan}
+                  </p>
+                  <p className="mt-2 font-display text-xl font-bold text-value-text tabular-nums">
+                    ₪{display.price}
+                    <span className="ms-1 text-xs font-normal text-muted">
+                      {priceUnitLabel(plan)}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-muted">
+                    {display.after.text}
+                  </p>
+                </article>
+              );
+            })}
+            {Array.from({ length: MAX_COMPARE_PLANS - selectedPlans.length }).map(
+              (_, index) => (
+                <div
+                  key={`empty-selection-${index}`}
+                  aria-hidden="true"
+                  className="hidden min-h-36 items-center justify-center bg-background/70 p-4 text-center text-sm text-muted sm:flex"
+                >
+                  + הוספת מסלול
+                </div>
+              ),
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3.5 sm:px-5">
+            <a
+              href="#lead"
+              onClick={() =>
+                trackEvent("compare_shortlist_lead", {
+                  selection_count: selectedPlans.length,
+                })
+              }
+              className="interactive press inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 text-sm font-bold text-accent-contrast shadow-soft hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              קבלת המלצה על הבחירה
+            </a>
+            <button
+              type="button"
+              onClick={() => void copyComparisonLink()}
+              className="interactive min-h-11 rounded-xl border border-border bg-surface px-4 text-sm font-semibold text-foreground hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              {shareStatus === "copied" ? "הקישור הועתק ✓" : "העתקת קישור להשוואה"}
+            </button>
+            {shareStatus === "error" ? (
+              <span role="status" className="text-xs text-danger">
+                לא הצלחנו להעתיק. אפשר להעתיק משורת הכתובת.
+              </span>
+            ) : null}
+          </div>
+        </aside>
+      ) : null}
+
       {/* Visible + accessible caption, shared by both views. */}
       <p className="mb-3 text-start text-sm font-normal text-muted lg:sr-only">
         {caption}
@@ -377,6 +601,36 @@ export default function ComparisonTable({
                 label={featured?.[d.plan.id]}
                 {...sharedDropProps}
               />
+              {selectionEnabled ? (
+                <button
+                  type="button"
+                  aria-pressed={selectedIds.includes(d.plan.id)}
+                  aria-label={planSelectionLabel(
+                    d.plan,
+                    selectedIds.includes(d.plan.id),
+                  )}
+                  disabled={
+                    !selectedIds.includes(d.plan.id) &&
+                    selectedIds.length >= MAX_COMPARE_PLANS
+                  }
+                  onClick={() => togglePlan(d.plan)}
+                  className={[
+                    "interactive mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-45",
+                    selectedIds.includes(d.plan.id)
+                      ? "border-accent bg-accent text-accent-contrast"
+                      : "border-border bg-surface text-foreground hover:border-accent/50",
+                  ].join(" ")}
+                >
+                  <span aria-hidden="true">
+                    {selectedIds.includes(d.plan.id) ? "✓" : "+"}
+                  </span>
+                  {selectedIds.includes(d.plan.id)
+                    ? "נבחר להשוואה"
+                    : selectedIds.length >= MAX_COMPARE_PLANS
+                      ? "ניתן לבחור עד 3"
+                      : "הוספה להשוואה"}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -436,13 +690,42 @@ export default function ComparisonTable({
                   key={plan.id}
                   className={[
                     "border-b border-border/70 last:border-b-0 align-top transition-colors duration-150 ease-[var(--ease-out)]",
-                    label
+                    selectedIds.includes(plan.id)
+                      ? "bg-accent/[0.08] ring-1 ring-inset ring-accent/25"
+                      : label
                       ? "bg-accent/[0.12] ring-1 ring-inset ring-accent/25 border-s-2 border-s-accent"
                       : "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/[0.03]",
                   ]
                     .join(" ")
                     .trim()}
                 >
+                  {selectionEnabled ? (
+                    <td className="px-3 py-2 text-center align-middle">
+                      <button
+                        type="button"
+                        aria-pressed={selectedIds.includes(plan.id)}
+                        aria-label={planSelectionLabel(
+                          plan,
+                          selectedIds.includes(plan.id),
+                        )}
+                        disabled={
+                          !selectedIds.includes(plan.id) &&
+                          selectedIds.length >= MAX_COMPARE_PLANS
+                        }
+                        onClick={() => togglePlan(plan)}
+                        className={[
+                          "interactive inline-flex h-11 w-11 items-center justify-center rounded-xl border text-lg font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-40",
+                          selectedIds.includes(plan.id)
+                            ? "border-accent bg-accent text-accent-contrast"
+                            : "border-border bg-background text-accent-text hover:border-accent/50",
+                        ].join(" ")}
+                      >
+                        <span aria-hidden="true">
+                          {selectedIds.includes(plan.id) ? "✓" : "+"}
+                        </span>
+                      </button>
+                    </td>
+                  ) : null}
                   {/* ספק — row header for a11y, brand-colored avatar anchor. */}
                   <th
                     scope="row"

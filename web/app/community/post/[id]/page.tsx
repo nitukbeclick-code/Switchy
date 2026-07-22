@@ -21,7 +21,11 @@ import { createClient } from "@supabase/supabase-js";
 import JsonLd from "@/components/JsonLd";
 import { pageMetadata } from "@/lib/seo";
 import { breadcrumbSchema } from "@/lib/schema";
-import { orderByAccepted, toReplyTree, type CommunityReply } from "@/lib/community";
+import {
+  orderByAccepted,
+  toReplyTree,
+  type CommunityReply,
+} from "@/lib/community";
 import { buildQaSchema, permalinkRobots } from "@/lib/community-schema";
 import { clip, heDate, renderBody } from "@/lib/community-render";
 import ShareBar from "@/components/community/ShareBar";
@@ -118,26 +122,53 @@ async function fetchSimilar(post: PostRow, limit = 4): Promise<SimilarRow[]> {
 // linkClassName so the served DOM stays byte-identical to the old local copy.
 const BODY_RENDER_OPTS = {
   linkProviders: true,
-  linkClassName: "font-medium text-accent-text underline-offset-2 hover:underline",
+  linkClassName:
+    "font-medium text-accent-text underline-offset-2 hover:underline",
 } as const;
 
-function Media({ type, url }: { type: PostRow["media_type"]; url: string | null }) {
+function Media({
+  type,
+  url,
+}: {
+  type: PostRow["media_type"];
+  url: string | null;
+}) {
   if (!url) return null;
   if (type === "image") {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="תמונה שצורפה לדיון בקהילה" loading="lazy" decoding="async" className="mt-3 max-h-96 w-full rounded-xl border border-border object-cover" />;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt="תמונה שצורפה לדיון בקהילה"
+        loading="lazy"
+        decoding="async"
+        className="mt-3 max-h-96 w-full rounded-xl border border-border object-cover"
+      />
+    );
   }
   if (type === "audio") {
     return <audio controls src={url} className="mt-3 w-full" />;
   }
   if (type === "video") {
-    return <video controls src={url} className="mt-3 max-h-96 w-full rounded-xl border border-border" />;
+    return (
+      <video
+        controls
+        src={url}
+        className="mt-3 max-h-96 w-full rounded-xl border border-border"
+      />
+    );
   }
   return null;
 }
 
 /** One reply card (top-level or nested child — same markup as the old flat list). */
-function ReplyCard({ reply, isAccepted }: { reply: ReplyRow; isAccepted: boolean }) {
+function ReplyCard({
+  reply,
+  isAccepted,
+}: {
+  reply: ReplyRow;
+  isAccepted: boolean;
+}) {
   return (
     <div
       className={`rounded-2xl border p-4 shadow-float ${
@@ -203,8 +234,13 @@ export default async function CommunityPostPage({ params }: Params) {
   const { id } = await params;
   const post = await fetchPost(id);
   if (!post) notFound();
-  const [replies, similar] = await Promise.all([fetchReplies(id), fetchSimilar(post)]);
-  const prov = post.provider_slug ? providerBySlug(post.provider_slug) : undefined;
+  const [replies, similar] = await Promise.all([
+    fetchReplies(id),
+    fetchSimilar(post),
+  ]);
+  const prov = post.provider_slug
+    ? providerBySlug(post.provider_slug)
+    : undefined;
 
   // The author's chosen answer (badge), resolved on the FLAT list — the accepted
   // reply may be a nested child. Only an ACTUAL author choice gets the badge.
@@ -215,10 +251,13 @@ export default async function CommunityPostPage({ params }: Params) {
   // orphan-safe, DB caps depth at 1), with the accepted ROOT floated to the top
   // (same ordering as the interactive thread). The cast is safe: toReplyTree only
   // reads id/parent_reply_id, and it returns the same objects it was given.
-  const tree = toReplyTree(replies as unknown as CommunityReply[]) as unknown as Array<
-    ReplyRow & { children: ReplyRow[] }
-  >;
-  const { ordered: displayTree } = orderByAccepted(tree, post.accepted_reply_id);
+  const tree = toReplyTree(
+    replies as unknown as CommunityReply[],
+  ) as unknown as Array<ReplyRow & { children: ReplyRow[] }>;
+  const { ordered: displayTree } = orderByAccepted(
+    tree,
+    post.accepted_reply_id,
+  );
 
   // Truthful QAPage JSON-LD — real question + real answers only (the ANSWERS stay
   // FLAT: every visible reply is an Answer regardless of display indentation).
@@ -226,7 +265,10 @@ export default async function CommunityPostPage({ params }: Params) {
   const crumbTitle = clip(post.body, 60) || `דיון בערוץ ${post.channel}`;
 
   return (
-    <main id="main" className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-10">
+    <main
+      id="main"
+      className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10"
+    >
       <JsonLd data={qaSchema} />
       <JsonLd
         data={breadcrumbSchema([
@@ -237,7 +279,10 @@ export default async function CommunityPostPage({ params }: Params) {
       />
 
       <nav className="mb-4 text-sm text-muted">
-        <Link href="/community/questions" className="hover:text-ink hover:underline">
+        <Link
+          href="/community/questions"
+          className="hover:text-ink hover:underline"
+        >
           שאלות ותשובות
         </Link>{" "}
         · <span>{post.channel}</span>
@@ -298,7 +343,9 @@ export default async function CommunityPostPage({ params }: Params) {
                     <li key={c.id}>
                       <ReplyCard
                         reply={c}
-                        isAccepted={hasChosenAnswer && c.id === post.accepted_reply_id}
+                        isAccepted={
+                          hasChosenAnswer && c.id === post.accepted_reply_id
+                        }
                       />
                     </li>
                   ))}
@@ -311,7 +358,9 @@ export default async function CommunityPostPage({ params }: Params) {
 
       {similar.length > 0 && (
         <section aria-label="שאלות דומות בקהילה" className="mt-8">
-          <h2 className="mb-3 text-sm font-semibold text-ink">שאלות דומות בקהילה</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink">
+            שאלות דומות בקהילה
+          </h2>
           <ul className="flex list-none flex-col gap-2 p-0">
             {similar.map((q) => (
               <li key={q.id}>

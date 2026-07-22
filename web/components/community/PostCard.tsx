@@ -27,6 +27,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   deletePost,
   editPost,
@@ -55,8 +56,23 @@ import ConfirmDanger from "./ConfirmDanger";
 import MediaGallery from "./MediaGallery";
 import MediaView from "./MediaView";
 import ReactionBar from "./ReactionBar";
-import Replies from "./Replies";
 import ShareBar from "./ShareBar";
+
+const Replies = dynamic(() => import("./Replies"), {
+  loading: () => (
+    <div className="mt-3 space-y-2" aria-label="טוען תגובות" aria-busy="true">
+      {[0, 1].map((item) => (
+        <div
+          key={item}
+          className="flex gap-3 rounded-2xl border border-border bg-background p-3"
+        >
+          <span className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-border/70" />
+          <span className="mt-2 h-3 flex-1 animate-pulse rounded bg-border/60" />
+        </div>
+      ))}
+    </div>
+  ),
+});
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
 
@@ -141,7 +157,9 @@ function OverflowMenu({
   useEffect(() => {
     if (!open) return;
     const t = window.setTimeout(() => {
-      menuRef.current?.querySelector<HTMLElement>("button:not([disabled])")?.focus();
+      menuRef.current
+        ?.querySelector<HTMLElement>("button:not([disabled])")
+        ?.focus();
     }, 20);
     return () => window.clearTimeout(t);
   }, [open]);
@@ -184,7 +202,11 @@ function OverflowMenu({
               disabled={pinning}
               className={itemClass}
             >
-              {pinning ? "מעדכן…" : isPinned ? "ביטול הצמדה" : "הצמדה לראש הפיד"}
+              {pinning
+                ? "מעדכן…"
+                : isPinned
+                  ? "ביטול הצמדה"
+                  : "הצמדה לראש הפיד"}
             </button>
           )}
           <button
@@ -275,7 +297,9 @@ export default function PostCard({
   // Report-with-reason: the inline form (Hebrew preset + optional free text). A
   // second report on the same post in this session is blocked up-front.
   const [reportOpen, setReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState<ReportReason>(REPORT_REASONS[0]);
+  const [reportReason, setReportReason] = useState<ReportReason>(
+    REPORT_REASONS[0],
+  );
   const [reportText, setReportText] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
 
@@ -295,7 +319,8 @@ export default function PostCard({
   if (prevPost !== post) {
     setPrevPost(post);
     if (prevPost.like_count !== post.like_count) setLikeCount(post.like_count);
-    if (prevPost.reply_count !== post.reply_count) setReplyCount(post.reply_count);
+    if (prevPost.reply_count !== post.reply_count)
+      setReplyCount(post.reply_count);
     if (prevPost.body !== post.body) {
       setBody(post.body);
       setDraft(post.body);
@@ -305,7 +330,9 @@ export default function PostCard({
   }
 
   // Signed out (or account switch to signed-out): no like/bookmark state.
-  const [prevViewerId, setPrevViewerId] = useState<string | null>(user?.id ?? null);
+  const [prevViewerId, setPrevViewerId] = useState<string | null>(
+    user?.id ?? null,
+  );
   if ((user?.id ?? null) !== prevViewerId) {
     setPrevViewerId(user?.id ?? null);
     if (!user) {
@@ -318,7 +345,8 @@ export default function PostCard({
   // once per entry identity. The feed keeps each post's entry referentially
   // stable across map merges, so this runs once per resolved entry and never
   // clobbers a later optimistic like/bookmark flip.
-  const [appliedHydration, setAppliedHydration] = useState<PostHydration | null>(null);
+  const [appliedHydration, setAppliedHydration] =
+    useState<PostHydration | null>(null);
   if (hydration && hydration !== appliedHydration) {
     setAppliedHydration(hydration);
     setLiked(hydration.liked);
@@ -545,13 +573,22 @@ export default function PostCard({
     <article className="rounded-2xl border border-border bg-surface p-4 shadow-card">
       {/* Header: avatar + author + meta + overflow menu */}
       <div className="flex items-start gap-3">
-        <Avatar src={post.avatar} name={post.author} />
+        <Link
+          href={`/community/profile/${post.user_id}`}
+          aria-label={`מעבר לפרופיל של ${post.author}`}
+          className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <Avatar src={post.avatar} name={post.author} />
+        </Link>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="truncate text-sm font-semibold text-ink">
+            <Link
+              href={`/community/profile/${post.user_id}`}
+              className="truncate rounded-sm text-sm font-semibold text-ink underline-offset-4 hover:text-accent-text hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
               {post.author}
-            </span>
+            </Link>
 
             {pinned && (
               <span
@@ -581,11 +618,7 @@ export default function PostCard({
               {relativeTime(post.created_at)}
             </time>
             {editedAt && (
-              <span
-                aria-label="נערך"
-                title={editedAt}
-                className="text-muted"
-              >
+              <span aria-label="נערך" title={editedAt} className="text-muted">
                 · נערך
               </span>
             )}
@@ -598,7 +631,11 @@ export default function PostCard({
               קישור
             </Link>
             <span aria-hidden="true">·</span>
-            <ShareBar path={`/community/post/${post.id}`} body={post.body} showCopy={false} />
+            <ShareBar
+              path={`/community/post/${post.id}`}
+              body={post.body}
+              showCopy={false}
+            />
           </div>
         </div>
 
@@ -671,7 +708,9 @@ export default function PostCard({
 
       {/* Provider tag → catalogue page (when this post is about a known provider) */}
       {(() => {
-        const prov = post.provider_slug ? providerBySlug(post.provider_slug) : undefined;
+        const prov = post.provider_slug
+          ? providerBySlug(post.provider_slug)
+          : undefined;
         if (!prov) return null;
         return (
           <Link

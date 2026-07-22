@@ -83,6 +83,17 @@ describe("calculateTwelveMonthCost", () => {
     expect(cost.minimum).toBeCloseTo(478.8);
   });
 
+  it("falls back to published prices when exact fields are null", () => {
+    const cost = calculateTwelveMonthCost(plan({
+      price: 12,
+      priceExact: null,
+      after: 18,
+      afterExact: null,
+    }));
+    expect(cost.minimum).toBe(144);
+    expect(cost.maximum).toBe(210);
+  });
+
   it("produces a finite, ordered result for every live catalogue plan", () => {
     // JSON inference produces a giant union of every concrete catalogue row;
     // the runtime contract is the shared Plan shape exercised below.
@@ -92,6 +103,7 @@ describe("calculateTwelveMonthCost", () => {
       expect(Number.isFinite(cost.maximum), item.id).toBe(true);
       expect(cost.minimum, item.id).toBeGreaterThanOrEqual(0);
       expect(cost.maximum, item.id).toBeGreaterThanOrEqual(cost.minimum);
+      if (item.price > 0) expect(cost.minimum, item.id).toBeGreaterThan(0);
       expect(cost.segments[0]?.fromMonth, item.id).toBe(1);
       expect(cost.segments.at(-1)?.toMonth, item.id).toBe(12);
     }

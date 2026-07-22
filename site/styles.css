@@ -1540,6 +1540,16 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .plan__price b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -.5px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
+.plan__annual {
+  margin-top: 12px; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--value) 30%, var(--line));
+  border-radius: 12px; background: var(--value-t); display: grid; gap: 3px;
+}
+.plan__annual-label { color: var(--value-ink); font-size: 11px; font-weight: 800; }
+.plan__annual-total { color: var(--ink); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 19px; font-variant-numeric: tabular-nums; }
+.plan__annual small { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.plan__annual-details { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.plan__annual-details summary { color: var(--value-ink); font-weight: 700; cursor: pointer; width: max-content; }
+.plan__annual-details p { margin: 5px 0 0; }
 .plan--hasjump .plan__after { color: var(--value-ink); font-weight: 600; }
 .plan--hasjump .plan__after::before { content: '⚠ '; }
 /* Tappable after-price chip — opens the plan modal with the full jump story. */
@@ -1695,6 +1705,12 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .cmp-table tbody tr:last-child th, .cmp-table tbody tr:last-child td { border-bottom: none; }
 .cmp-price { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 18px; color: var(--green-d); }
 .cmp-after { display: block; font-size: 11px; color: var(--muted); }
+.cmp-cost { display: grid; gap: 4px; min-width: 150px; }
+.cmp-cost > b { color: var(--value-ink); font-size: 17px; font-variant-numeric: tabular-nums; }
+.cmp-cost > small { display: block; color: var(--muted); font-size: 10.5px; line-height: 1.4; }
+.cmp-cost__details { color: var(--muted); font-size: 10.5px; line-height: 1.45; text-align: start; }
+.cmp-cost__details summary { color: var(--value-ink); font-weight: 700; cursor: pointer; text-align: center; }
+.cmp-cost__details span { display: block; margin-top: 4px; }
 .cmp-yes { color: var(--green); font-weight: 900; }
 /* "Absent" mark — must stay VISIBLE (it carries meaning: feature not included).
    --line was near-invisible on both white (1.2:1) and dark cards; --muted reads
@@ -2910,6 +2926,12 @@ a.chip:active { transform: translateY(0) scale(.97); }
 /* "קבוע" is DATA, not an action — neutral ink (green stays reserved for accent). */
 .cmp__fixed { color: var(--ink-600); font-weight: 600; }
 .cmp__info { display: inline-block; max-width: 280px; white-space: normal; color: var(--muted); font-size: .84rem; line-height: 1.4; }
+.cmp__annual { display: grid; gap: 3px; min-width: 145px; white-space: normal; }
+.cmp__annual > b { color: var(--value-ink); font-size: 1rem; font-variant-numeric: tabular-nums; }
+.cmp__annual > small { color: var(--muted); font-size: .72rem; }
+.cmp__cost-details { color: var(--muted); font-size: .72rem; line-height: 1.45; text-align: start; }
+.cmp__cost-details summary { color: var(--value-ink); font-weight: 700; cursor: pointer; text-align: center; }
+.cmp__cost-details span { display: block; margin-top: 4px; }
 /* VAT-inclusive + "accurate as of <date>, verify with provider" caveat under the
    comparison table — consumer-protection price honesty next to the figures. */
 .cmp__caveat { margin: 12px 2px 0; font-size: .82rem; line-height: 1.55; color: var(--muted); }

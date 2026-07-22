@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('node:crypto');
 const vm = require('node:vm'); // parse-only syntax gate for the minified JS (nothing is executed)
+const staticPlanCost = require('./plan-cost.js');
 
 const SITE = 'https://switchy-ai.com';
 
@@ -229,6 +230,25 @@ function buildMinifiedAsset(srcFile, minFile, kind) {
   return minFile;
 }
 
+// Keep the cost engine independently testable while shipping one cache-busted
+// browser script. It is concatenated first so window.SwitchyPlanCost exists
+// before the main interaction IIFE executes.
+function buildMinifiedJsBundle(srcFiles, minFile) {
+  const src = srcFiles.map((file) => fs.readFileSync(path.join(__dirname, file), 'utf8')).join('\n');
+  let min;
+  try {
+    min = minifyJs(src);
+    new vm.Script(min, { filename: minFile });
+  } catch (e) {
+    console.warn(`minify: ${srcFiles.join(' + ')} FAILED (${(e && e.message) || e}) — shipping bundled source as ${minFile}`);
+    min = src;
+  }
+  writeIfChanged(minFile, min);
+  const from = Buffer.byteLength(src), to = Buffer.byteLength(min);
+  console.log(`minify: ${srcFiles.join(' + ')} ${from.toLocaleString('en-US')} B → ${minFile} ${to.toLocaleString('en-US')} B (−${Math.round((1 - to / from) * 100)}%)`);
+  return minFile;
+}
+
 // Cache-busting fingerprints: the deploy configs (netlify.toml / vercel.json)
 // serve *.css/*.js with `Cache-Control: immutable` for a year, so every
 // reference carries a content-hash query (?v=<hash>) — a changed file gets a
@@ -240,7 +260,7 @@ function buildMinifiedAsset(srcFile, minFile, kind) {
 const assetHash = (file) =>
   crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, file))).digest('hex').slice(0, 8);
 const CSS_FILE = buildMinifiedAsset('styles.css', 'styles.min.css', 'css');
-const JS_FILE = buildMinifiedAsset('script.js', 'script.min.js', 'js');
+const JS_FILE = buildMinifiedJsBundle(['plan-cost.js', 'script.js'], 'script.min.js');
 const CSS_V = assetHash(CSS_FILE);
 const JS_V = assetHash(JS_FILE);
 const CSS_HREF = `${CSS_FILE}?v=${CSS_V}`;
@@ -1090,13 +1110,21 @@ function planCardHtml(p, best) {
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
   const compareHref = p.id ? `compare.html?p0=${encodeURIComponent(p.id)}` : 'compare.html';
+  const isMonthly = !p.priceUnit || p.priceUnit === 'month';
+  const annualCost = isMonthly ? staticPlanCost.calculateTwelveMonthCost(p) : null;
+  const annual = annualCost ? `<div class="plan__annual" data-cost-max="${annualCost.maximum}" aria-label="עלות השירות ל־12 חודשים">
+          <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
+          <b class="plan__annual-total" dir="ltr">${esc(staticPlanCost.formatAnnualCost(annualCost))}</b>
+          <small>ממוצע ${esc(staticPlanCost.formatMonthlyEquivalent(annualCost))} לחודש · שירות בלבד</small>
+          <details class="plan__annual-details"><summary>איך חישבנו?</summary><p>${esc(staticPlanCost.formatSegments(annualCost))}</p><p>${esc(annualCost.disclosure)}</p></details>
+        </div>` : '';
   return `<article class="plan${isBest ? ' plan--best' : ''}${variant}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}" data-provider="${providerSlug(p.provider)}" data-id="${esc(p.id || '')}">
 ${isBest ? '        <span class="plan__badge">המחיר הנמוך ביותר</span>\n' : ''}        <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span>${scoreBadge}</div>
         <div class="plan__name">${esc(p.plan)} <span class="plan__net">${esc(p.net)}</span></div>
         ${specs ? `<div class="plan__specs">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
-        <div class="plan__actions">
+${annual ? `        ${annual}\n` : ''}        <div class="plan__actions">
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת בוואטסאפ — ${p.provider} ${p.plan}`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
           <a class="plan__compare" role="button" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
           <button type="button" class="plan__watch" data-watch="${esc(p.id || '')}" data-watch-name="${esc(`${p.provider} ${p.plan}`)}" title="עקבו אחרי המסלול — עדכון במייל כשהמחיר יורד" aria-label="${esc(`קבלו עדכון במייל כשהמחיר של ${p.provider} ${p.plan} יורד`)}" aria-pressed="false">${svgIcon('bell')}</button>
@@ -1863,23 +1891,27 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead
   const name = (p) => `<button type="button" class="cmp__name cmp__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" title="${esc('כל הפרטים — ' + p.plan)}">${esc(p.plan)}</button>`;
   // Money runs are bidi-isolated LTR so ₪ + digits render identically in RTL context.
   const price = (p) => `<b dir="ltr">₪${priceText(p)}</b>`;
+  const annualCell = (p) => {
+    const cost = staticPlanCost.calculateTwelveMonthCost(p);
+    return `<span class="cmp__annual"><b dir="ltr">${esc(staticPlanCost.formatAnnualCost(cost))}</b><small>ממוצע ${esc(staticPlanCost.formatMonthlyEquivalent(cost))}/חודש</small><details class="cmp__cost-details"><summary>פירוט</summary><span>${esc(staticPlanCost.formatSegments(cost))}</span><span>${esc(cost.disclosure)}</span></details></span>`;
+  };
   let head, row;
   if (catSlug === 'internet') {
-    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'מהירות', 'נתב', 'מגדיל טווח', 'התקנה', 'מידע נוסף'];
-    row = (p) => [prov(p), name(p), price(p), afterCell(p), spec(p, 'מהירות', 'גלישה') || '—', fee(p, 'נתב', 'ראוטר') || '—', fee(p, 'מגדיל טווח', 'מרחיב טווח') || '—', fee(p, 'התקנה', 'חיבור') || '—', info(p)];
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'עלות שירות ל־12 ח׳', 'מהירות', 'נתב', 'מגדיל טווח', 'התקנה', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), afterCell(p), annualCell(p), spec(p, 'מהירות', 'גלישה') || '—', fee(p, 'נתב', 'ראוטר') || '—', fee(p, 'מגדיל טווח', 'מרחיב טווח') || '—', fee(p, 'התקנה', 'חיבור') || '—', info(p)];
   } else if (catSlug === 'tv' || catSlug === 'triple') {
-    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'ממיר', 'נתב', 'התקנה', 'מידע נוסף'];
-    row = (p) => [prov(p), name(p), price(p), afterCell(p), fee(p, 'ממיר', 'ממירים') || '—', fee(p, 'נתב', 'ראוטר') || '—', fee(p, 'התקנה', 'חיבור') || '—', info(p)];
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'עלות שירות ל־12 ח׳', 'ממיר', 'נתב', 'התקנה', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), afterCell(p), annualCell(p), fee(p, 'ממיר', 'ממירים') || '—', fee(p, 'נתב', 'ראוטר') || '—', fee(p, 'התקנה', 'חיבור') || '—', info(p)];
   } else if (catSlug === 'abroad') {
     head = ['ספק', 'חבילה', 'מחיר', 'נפח', 'תוקף', 'מידע נוסף'];
     row = (p) => [prov(p), name(p), price(p), spec(p, 'נתונים', 'נפח') || '—', spec(p, 'תוקף', 'ימים') || '—', info(p)];
   } else { // cellular (default)
-    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'דמי חיבור', 'נפח', 'דקות/SMS', 'חו״ל', 'מידע נוסף'];
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'עלות שירות ל־12 ח׳', 'דמי חיבור', 'נפח', 'דקות/SMS', 'חו״ל', 'מידע נוסף'];
     row = (p) => {
       const sms = spec(p, 'SMS');
       const mins = [spec(p, 'דקות'), sms ? sms + ' SMS' : ''].filter(Boolean).join(' · ') || '—';
       const abroad = p.hasAbroad ? (spec(p, 'חו״ל', 'חו"ל') || '✓') : '—';
-      return [prov(p), name(p), price(p), afterCell(p), fee(p, 'דמי חיבור') || 'אין', spec(p, 'נתונים', 'נפח') || '—', mins, abroad, info(p)];
+      return [prov(p), name(p), price(p), afterCell(p), annualCell(p), fee(p, 'דמי חיבור') || 'אין', spec(p, 'נתונים', 'נפח') || '—', mins, abroad, info(p)];
     };
   }
   // Highlight the cheapest *regular* plan (plans are price-sorted, so that's the
@@ -1892,10 +1924,10 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead
   // are always kept; the table auto-grows columns once their data lands.
   const rowData = plans.map(row);
   const keep = head.map((_, ci) => ci < 3 || rowData.some((r) => r[ci] && r[ci] !== '—'));
-  const ths = head.map((h, i) => keep[i] ? `<th${i === 2 || i === 3 ? ' class="cmp__num"' : ''}>${esc(h)}</th>` : '').join('') + '<th class="cmp__cta" scope="col"><span class="sr-only">פנייה</span></th>';
+  const ths = head.map((h, i) => keep[i] ? `<th${i >= 2 && i <= 4 ? ' class="cmp__num"' : ''}>${esc(h)}</th>` : '').join('') + '<th class="cmp__cta" scope="col"><span class="sr-only">פנייה</span></th>';
   const trs = plans.map((p, i) => {
     // Cheapest row carries a small green "הכי זול" pill on its provider cell.
-    const cells = rowData[i].map((cell, ci) => keep[ci] ? `<td data-th="${esc(head[ci])}"${ci === 2 || ci === 3 ? ' class="cmp__num"' : ''}>${cell}${ci === 0 && i === bestIdx ? '<span class="cmp__best-pill">הכי זול</span>' : ''}</td>` : '').join('');
+    const cells = rowData[i].map((cell, ci) => keep[ci] ? `<td data-th="${esc(head[ci])}"${ci >= 2 && ci <= 4 ? ' class="cmp__num"' : ''}>${cell}${ci === 0 && i === bestIdx ? '<span class="cmp__best-pill">הכי זול</span>' : ''}</td>` : '').join('');
     // Row CTA — a compact labelled button (green tint + green label/icon), same WhatsApp behaviour.
     const cta = `<td class="cmp__cta"><a href="${waHref(p)}" target="_blank" rel="noopener" aria-label="${esc('מעוניין/ת ב' + p.provider + ' ' + p.plan + ' בוואטסאפ')}" title="פנייה בוואטסאפ">${svgIcon('chat')}<span>מעוניין/ת</span></a></td>`;
     return `              <tr${i === bestIdx ? ' class="cmp__best"' : ''}>${cells}${cta}</tr>`;
@@ -3434,6 +3466,7 @@ ${nav}
           <select id="planSort" class="filter-search" style="flex:0 0 auto;max-width:210px" aria-label="מיון חבילות">
             <option value="price-asc" selected>מהזול ליקר</option>
             <option value="price-desc">מהיקר לזול</option>
+            <option value="annual-asc">עלות ל־12 חודשים (הנמוכה תחילה)</option>
             <option value="after-asc">מחיר אחרי מבצע (זול ליקר)</option>
           </select>
           <select id="planProvider" class="filter-search" style="flex:0 0 auto;max-width:180px" aria-label="סינון לפי ספק">
@@ -3817,9 +3850,10 @@ ${items}
 function comparePage() {
   const url = `${SITE}/compare.html`;
   const data = catalogue.plans.map((p) => ({
-    id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price, priceExact: p.priceExact,
-    after: p.after, net: p.net, is5G: p.is5G, noCommit: p.noCommit, hasAbroad: p.hasAbroad,
-    specs: p.specs, equipment: p.equipment, setupFee: p.setupFee, rangeExtender: p.rangeExtender,
+    id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price, priceExact: p.priceExact, priceUnit: p.priceUnit,
+    after: p.after, afterExact: p.afterExact, net: p.net, is5G: p.is5G, noCommit: p.noCommit, hasAbroad: p.hasAbroad,
+    specs: p.specs, fees: p.fees, fineLines: p.fineLines, terms: p.terms, notes: p.notes,
+    equipment: p.equipment, setupFee: p.setupFee, rangeExtender: p.rangeExtender,
   }));
   const optionsFor = (preId) => categories.map((c) => {
     const opts = (plansByCat[c.slug] || []).map((p) =>

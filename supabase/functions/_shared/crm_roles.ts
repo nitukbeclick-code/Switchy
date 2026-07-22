@@ -42,6 +42,7 @@ export const ACTION_CAP: Readonly<Record<string, CrmCapability>> = {
   getThread: "read",
   listContacts: "read",
   listLeads: "read",
+  attentionLeads: "read",
   getLeadDetail: "read",
   repLeaderboard: "read",
   listMeetings: "read",

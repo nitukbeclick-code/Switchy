@@ -199,3 +199,33 @@ describe("POST /api/lead — validation still gates the lead", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 });
+
+describe("POST /api/lead — CRM journey context", () => {
+  it("persists the bounded source and selected plan context", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(
+      postReq(
+        validLead({
+          source: "compare",
+          provider: "סלקום",
+          plan_id: "cellcom-family-5g",
+          notes: "מסלולים שנבחרו להשוואה: סלקום — משפחתי",
+        }),
+      ),
+    );
+    expect(res.status).toBe(200);
+    expect(insertedRows[0]).toMatchObject({
+      source: "compare",
+      provider: "סלקום",
+      plan_id: "cellcom-family-5g",
+      notes: "מסלולים שנבחרו להשוואה: סלקום — משפחתי",
+    });
+  });
+
+  it("falls back to web for an unsafe source label", async () => {
+    const { POST } = await loadRoute();
+    const res = await POST(postReq(validLead({ source: "compare / injected" })));
+    expect(res.status).toBe(200);
+    expect(insertedRows[0].source).toBe("web");
+  });
+});

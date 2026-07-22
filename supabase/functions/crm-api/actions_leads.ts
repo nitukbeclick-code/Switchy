@@ -27,6 +27,7 @@ import {
 import { isSellable, SELLABLE_STATUSES } from "../lead-export/lib.ts";
 import type { Lead } from "../_shared/types.ts";
 import { actorName, err, json, logAudit, q, type Row } from "./helpers.ts";
+import { SLA_HOURS } from "../lead-digest/lib.ts";
 
 // setLeadStatus {leadId, status} → patch leads.status + lead_events audit row.
 // The row is read first (old_status for the trail + a clean 404) and the PATCH
@@ -176,6 +177,103 @@ export async function actListLeads(b: Row): Promise<Response> {
     );
   }
   return json({ leads, hasMore });
+}
+
+// attentionLeads → a complete, purpose-built work queue. The generic listLeads
+// endpoint exposes a bounded chronological window, so filtering that window in
+// the browser can miss a newly-created urgent lead or an older due follow-up.
+// These three targeted, indexed reads start from the actual attention signals,
+// then merge/de-dupe overlaps. Each lane keeps the 100 oldest/most overdue rows;
+// `hasMore` is explicit if a lane is larger, so the UI never presents a capped
+// queue as complete.
+const ATTENTION_LANE_LIMIT = 100;
+const LEAD_LIST_SELECT =
+  "id,name,phone,provider,source,status,created_at,claimed_by,priority,follow_up_at";
+
+function shapeLeadSummary(r: Row) {
+  return {
+    id: s(r.id),
+    name: s(r.name),
+    phone: s(r.phone),
+    provider: s(r.provider) || null,
+    source: s(r.source) || null,
+    status: s(r.status),
+    createdAt: s(r.created_at) || null,
+    claimedBy: s(r.claimed_by) || null,
+    priority: s(r.priority) || "normal",
+    followUpAt: s(r.follow_up_at) || null,
+  };
+}
+
+export async function actAttentionLeads(): Promise<Response> {
+  const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
+  const slaCutoffIso = new Date(nowMs - SLA_HOURS * 3_600_000).toISOString();
+  const probe = ATTENTION_LANE_LIMIT + 1;
+  const [dueRows, priorityRows, slaRows] = await Promise.all([
+    fetchRows<Row>(
+      `/rest/v1/leads?status=in.(new,contacted)&follow_up_at=not.is.null&follow_up_at=lte.${q(nowIso)}` +
+        `&order=follow_up_at.asc&limit=${probe}&select=${LEAD_LIST_SELECT}`,
+    ),
+    fetchRows<Row>(
+      `/rest/v1/leads?status=in.(new,contacted)&priority=in.(urgent,high)` +
+        `&order=created_at.asc&limit=${probe}&select=${LEAD_LIST_SELECT}`,
+    ),
+    fetchRows<Row>(
+      `/rest/v1/leads?status=eq.new&created_at=lte.${q(slaCutoffIso)}` +
+        `&order=created_at.asc&limit=${probe}&select=${LEAD_LIST_SELECT}`,
+    ),
+  ]);
+  if (dueRows === null || priorityRows === null || slaRows === null) {
+    return err("שגיאה בטעינת מרכז העבודה", 502, "db_error");
+  }
+
+  const hasMore = [dueRows, priorityRows, slaRows].some(
+    (rows) => rows.length > ATTENTION_LANE_LIMIT,
+  );
+  const merged = new Map<string, ReturnType<typeof shapeLeadSummary>>();
+  for (const row of [
+    ...dueRows.slice(0, ATTENTION_LANE_LIMIT),
+    ...priorityRows.slice(0, ATTENTION_LANE_LIMIT),
+    ...slaRows.slice(0, ATTENTION_LANE_LIMIT),
+  ]) {
+    const lead = shapeLeadSummary(row);
+    if (lead.id) merged.set(lead.id, lead);
+  }
+
+  const priorityRank: Record<string, number> = {
+    urgent: 4,
+    high: 3,
+    normal: 2,
+    low: 1,
+  };
+  const leads = [...merged.values()].sort((a, b) => {
+    const priority = (priorityRank[b.priority] ?? 0) - (priorityRank[a.priority] ?? 0);
+    if (priority) return priority;
+    const aDue = a.followUpAt ? Date.parse(a.followUpAt) : Number.POSITIVE_INFINITY;
+    const bDue = b.followUpAt ? Date.parse(b.followUpAt) : Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) return aDue - bDue;
+    const aCreated = Date.parse(a.createdAt ?? "");
+    const bCreated = Date.parse(b.createdAt ?? "");
+    return (Number.isFinite(aCreated) ? aCreated : Number.POSITIVE_INFINITY) -
+      (Number.isFinite(bCreated) ? bCreated : Number.POSITIVE_INFINITY);
+  });
+  const summary = {
+    total: leads.length,
+    overdueFollowUps: leads.filter(
+      (lead) => lead.followUpAt && Date.parse(lead.followUpAt) <= nowMs,
+    ).length,
+    highPriority: leads.filter(
+      (lead) => lead.priority === "urgent" || lead.priority === "high",
+    ).length,
+    slaBreaches: leads.filter(
+      (lead) =>
+        lead.status === "new" &&
+        lead.createdAt != null &&
+        Date.parse(lead.createdAt) <= Date.parse(slaCutoffIso),
+    ).length,
+  };
+  return json({ leads, summary, hasMore, asOf: nowIso });
 }
 
 // getLeadDetail {leadId} → one lead's CRM-relevant fields + its lead_events

@@ -219,6 +219,7 @@ const DEDUPED_READS = new Set([
   "overview",
   "slaMetrics",
   "listLeads",
+  "attentionLeads",
   "getLeadDetail",
   "listMeetings",
   "getMeeting",
@@ -295,6 +296,31 @@ export function fetchCrmLeads(
       ...(opts?.sort === "oldest" ? { sort: "oldest" } : {}),
     },
     (j) => hasArray(j, "leads"),
+  );
+}
+
+export interface CrmAttentionSummary {
+  total: number;
+  overdueFollowUps: number;
+  highPriority: number;
+  slaBreaches: number;
+}
+
+export interface CrmAttentionQueue {
+  leads: CrmLead[];
+  summary: CrmAttentionSummary;
+  hasMore: boolean;
+  asOf: string;
+}
+
+/** Targeted due / urgent / SLA queue. Unlike listLeads, this is assembled from
+ * the attention predicates on the server and cannot miss rows outside a generic
+ * 200-lead chronological window. */
+export function fetchCrmAttentionLeads(): Promise<CrmFetch<CrmAttentionQueue>> {
+  return crmRead<CrmAttentionQueue>(
+    "attentionLeads",
+    {},
+    (j) => hasArray(j, "leads") && hasObject(j, "summary"),
   );
 }
 

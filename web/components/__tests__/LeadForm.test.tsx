@@ -161,6 +161,42 @@ describe("LeadForm — mandatory consent gate", () => {
     expect(await screen.findByText("הפרטים התקבלו, תודה!")).toBeInTheDocument();
   });
 
+  it("carries the selected comparison plan into the CRM payload", async () => {
+    window.history.replaceState({}, "", "/compare/cellular?plans=p2,p1");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup({ delay: null });
+    render(
+      <LeadForm
+        source="compare"
+        planOptions={[
+          { id: "p1", provider: "סלקום", name: "מסלול ראשון" },
+          { id: "p2", provider: "פרטנר", name: "מסלול שני" },
+        ]}
+      />,
+    );
+
+    expect(await screen.findByText("הבחירה שלכם מחוברת לבקשה")).toBeInTheDocument();
+    await advanceToFinalStep(user);
+    await user.selectOptions(
+      screen.getByLabelText("איזה שירות מעניין אתכם?"),
+      "cellular",
+    );
+    await user.click(getConsentCheckbox());
+    await user.click(screen.getByRole("button", { name: "קבלת הצעה חינם" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const body = JSON.parse(
+      (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+    );
+    expect(body.provider).toBe("פרטנר");
+    expect(body.plan_id).toBe("p2");
+    expect(body.notes).toContain("פרטנר — מסלול שני (p2)");
+    expect(body.notes).toContain("סלקום — מסלול ראשון (p1)");
+  });
+
   it("shows a server error and does NOT fire the conversion when /api/lead fails", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,

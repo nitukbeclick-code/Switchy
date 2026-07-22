@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   fetchCrmOverview: vi.fn(),
   fetchCrmSla: vi.fn(),
   fetchCrmMeetings: vi.fn(),
+  fetchCrmAttentionLeads: vi.fn(),
 }));
 
 vi.mock("@/lib/crm-admin", async (importOriginal) => {
@@ -22,6 +23,7 @@ vi.mock("@/lib/crm-admin", async (importOriginal) => {
     fetchCrmOverview: mocks.fetchCrmOverview,
     fetchCrmSla: mocks.fetchCrmSla,
     fetchCrmMeetings: mocks.fetchCrmMeetings,
+    fetchCrmAttentionLeads: mocks.fetchCrmAttentionLeads,
   };
 });
 
@@ -87,6 +89,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.fetchCrmOverview.mockResolvedValue(overview);
   mocks.fetchCrmSla.mockResolvedValue(sla);
+  mocks.fetchCrmAttentionLeads.mockResolvedValue({
+    data: {
+      leads: [],
+      summary: { total: 0, overdueFollowUps: 0, highPriority: 0, slaBreaches: 0 },
+      hasMore: false,
+      asOf: new Date().toISOString(),
+    },
+    failure: null,
+  });
 });
 
 describe("CrmDashboard פגישות היום strip", () => {

@@ -11,6 +11,7 @@ import type { CrmFetch, CrmLead } from "@/lib/crm-admin";
 
 const mocks = vi.hoisted(() => ({
   fetchCrmLeads: vi.fn(),
+  fetchCrmAttentionLeads: vi.fn(),
   fetchCrmSla: vi.fn(),
   setCrmLeadStatus: vi.fn(),
   claimCrmLead: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("@/lib/crm-admin", async (importOriginal) => {
   return {
     ...actual,
     fetchCrmLeads: mocks.fetchCrmLeads,
+    fetchCrmAttentionLeads: mocks.fetchCrmAttentionLeads,
     fetchCrmSla: mocks.fetchCrmSla,
     setCrmLeadStatus: mocks.setCrmLeadStatus,
     claimCrmLead: mocks.claimCrmLead,
@@ -78,6 +80,15 @@ beforeEach(() => {
         medianResponseMinutes: null,
         responseSampleSize: 0,
       },
+    },
+    failure: null,
+  });
+  mocks.fetchCrmAttentionLeads.mockResolvedValue({
+    data: {
+      leads: [],
+      summary: { total: 0, overdueFollowUps: 0, highPriority: 0, slaBreaches: 0 },
+      hasMore: false,
+      asOf: new Date().toISOString(),
     },
     failure: null,
   });
@@ -241,6 +252,27 @@ describe("CrmLeads failures", () => {
     await screen.findByText("הבקשה נכשלה: db down");
     fireEvent.click(screen.getByRole("button", { name: "נסו שוב" }));
     await screen.findAllByText("ליד a");
+  });
+});
+
+describe("CrmLeads attention queue", () => {
+  it("switches to the dedicated server queue instead of filtering the 200-row list", async () => {
+    mocks.fetchCrmLeads.mockResolvedValue(ok([lead("ordinary")]));
+    mocks.fetchCrmAttentionLeads.mockResolvedValue({
+      data: {
+        leads: [lead("urgent", { priority: "urgent" })],
+        summary: { total: 1, overdueFollowUps: 0, highPriority: 1, slaBreaches: 1 },
+        hasMore: false,
+        asOf: new Date().toISOString(),
+      },
+      failure: null,
+    });
+    render(<CrmLeads />);
+    await screen.findAllByText("ליד ordinary");
+
+    fireEvent.click(screen.getByRole("button", { name: "לטיפול עכשיו" }));
+    expect((await screen.findAllByText("ליד urgent")).length).toBeGreaterThan(0);
+    expect(mocks.fetchCrmAttentionLeads).toHaveBeenCalledTimes(1);
   });
 });
 

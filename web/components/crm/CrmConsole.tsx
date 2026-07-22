@@ -19,16 +19,45 @@
 
 import { type KeyboardEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth-context";
-import CrmAnalytics from "./CrmAnalytics";
-import CrmContacts from "./CrmContacts";
 import CrmDashboard from "./CrmDashboard";
-import CrmInbox from "./CrmInbox";
-import CrmLeads from "./CrmLeads";
-import CrmMeetings from "./CrmMeetings";
-import CrmSellableLeads from "./CrmSellableLeads";
-import CrmTeam from "./CrmTeam";
 import { NoticeCard } from "./ui";
+
+function CrmTabLoading() {
+  return (
+    <div className="space-y-3" aria-live="polite" aria-busy="true">
+      <p className="text-sm text-muted">טוען את סביבת העבודה…</p>
+      <div className="h-28 animate-pulse rounded-2xl border border-border bg-surface motion-reduce:animate-none" />
+      <div className="h-56 animate-pulse rounded-2xl border border-border bg-surface motion-reduce:animate-none" />
+    </div>
+  );
+}
+
+// The dashboard is the initial route and stays eagerly available. Every other
+// workspace is a separate on-demand client chunk, so opening the CRM no longer
+// downloads leads, inbox, meetings, contacts, team and analytics all at once.
+const CrmAnalytics = dynamic(() => import("./CrmAnalytics"), {
+  loading: () => <CrmTabLoading />,
+});
+const CrmContacts = dynamic(() => import("./CrmContacts"), {
+  loading: () => <CrmTabLoading />,
+});
+const CrmInbox = dynamic(() => import("./CrmInbox"), {
+  loading: () => <CrmTabLoading />,
+});
+const CrmLeads = dynamic(() => import("./CrmLeads"), {
+  loading: () => <CrmTabLoading />,
+});
+const CrmMeetings = dynamic(() => import("./CrmMeetings"), {
+  loading: () => <CrmTabLoading />,
+});
+const CrmSellableLeads = dynamic(() => import("./CrmSellableLeads"), {
+  loading: () => <CrmTabLoading />,
+});
+const CrmTeam = dynamic(() => import("./CrmTeam"), {
+  loading: () => <CrmTabLoading />,
+});
 
 type TabKey =
   | "dashboard"

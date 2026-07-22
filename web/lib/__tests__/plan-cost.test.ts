@@ -84,7 +84,9 @@ describe("calculateTwelveMonthCost", () => {
   });
 
   it("produces a finite, ordered result for every live catalogue plan", () => {
-    for (const item of catalogue.plans as Plan[]) {
+    // JSON inference produces a giant union of every concrete catalogue row;
+    // the runtime contract is the shared Plan shape exercised below.
+    for (const item of catalogue.plans as unknown as Plan[]) {
       const cost = calculateTwelveMonthCost(item);
       expect(Number.isFinite(cost.minimum), item.id).toBe(true);
       expect(Number.isFinite(cost.maximum), item.id).toBe(true);

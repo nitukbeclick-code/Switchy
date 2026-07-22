@@ -210,7 +210,10 @@ function readDraft(): { body: string; channel?: string } | null {
     const j = JSON.parse(raw) as { body?: unknown; channel?: unknown };
     const body = typeof j.body === "string" ? j.body : "";
     if (!body.trim()) return null;
-    return { body, channel: typeof j.channel === "string" ? j.channel : undefined };
+    return {
+      body,
+      channel: typeof j.channel === "string" ? j.channel : undefined,
+    };
   } catch {
     return null;
   }
@@ -242,7 +245,11 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostComposerProps) {
+export default function PostComposer({
+  onPosted,
+  onRequireAuth,
+  prefill,
+}: PostComposerProps) {
   const { user, profile } = useAuth();
 
   const [channel, setChannel] = useState<Channel>(CHANNELS[0]);
@@ -278,7 +285,9 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
         const uploaded = await uploadMedia(user.id, blob, durationMs);
         setMedia(uploaded);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "העלאת ההקלטה נכשלה. נסו שוב.");
+        setError(
+          err instanceof Error ? err.message : "העלאת ההקלטה נכשלה. נסו שוב.",
+        );
       } finally {
         setUploading(false);
         setBusy(false);
@@ -311,7 +320,10 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
     seededRef.current = true;
     const raf = requestAnimationFrame(() => {
       if (prefill) {
-        if (prefill.channel && (CHANNELS as readonly string[]).includes(prefill.channel)) {
+        if (
+          prefill.channel &&
+          (CHANNELS as readonly string[]).includes(prefill.channel)
+        ) {
           setChannel(prefill.channel);
         }
         setBody((prefill.draft ?? "").slice(0, MAX_BODY));
@@ -322,7 +334,10 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
       const draft = readDraft();
       if (draft) {
         setBody(draft.body.slice(0, MAX_BODY));
-        if (draft.channel && (CHANNELS as readonly string[]).includes(draft.channel)) {
+        if (
+          draft.channel &&
+          (CHANNELS as readonly string[]).includes(draft.channel)
+        ) {
           setChannel(draft.channel as Channel);
         }
       }
@@ -334,8 +349,9 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
   if (!user) {
     return (
       <section
+        id="community-composer"
         aria-label="פרסום בקהילה"
-        className="bento p-6 text-center"
+        className="bento scroll-mt-24 p-6 text-center"
       >
         <p className="text-sm text-foreground">
           רוצים לשתף חוויה, לשאול שאלה או להמליץ על ספק?
@@ -404,7 +420,9 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "העלאת המדיה נכשלה. נסו שוב.");
+      setError(
+        err instanceof Error ? err.message : "העלאת המדיה נכשלה. נסו שוב.",
+      );
     } finally {
       setUploading(false);
       setBusy(false);
@@ -490,7 +508,11 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
   }
 
   return (
-    <section aria-label="פרסום בקהילה" className="bento p-4 sm:p-6">
+    <section
+      id="community-composer"
+      aria-label="פרסום בקהילה"
+      className="bento scroll-mt-24 p-4 sm:p-6"
+    >
       <form onSubmit={onSubmit} noValidate>
         <div className="flex items-start gap-3">
           <Avatar name={authorName} url={authorAvatar} />
@@ -614,14 +636,24 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
                 />
                 {/* Only the static state is a live region; the ticking timer is
                     hidden from AT so it is not re-announced on every update. */}
-                <span className="text-sm text-foreground" role="status" aria-live="polite">
+                <span
+                  className="text-sm text-foreground"
+                  role="status"
+                  aria-live="polite"
+                >
                   מקליט…
                 </span>
-                <span className="text-xs text-muted" dir="ltr" aria-hidden="true">
+                <span
+                  className="text-xs text-muted"
+                  dir="ltr"
+                  aria-hidden="true"
+                >
                   {formatElapsed(elapsed)}
                 </span>
                 {elapsed >= MAX_VOICE_MS - VOICE_WARN_MS && (
-                  <span className="text-xs text-muted">מתקרב למגבלת ההקלטה</span>
+                  <span className="text-xs text-muted">
+                    מתקרב למגבלת ההקלטה
+                  </span>
                 )}
                 <div className="ms-auto flex items-center gap-2">
                   <button
@@ -651,7 +683,11 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
 
             {/* Non-blocking notice (e.g. partial gallery attach on a successful post) */}
             {notice && (
-              <p role="status" aria-live="polite" className="mt-3 text-sm text-danger-text">
+              <p
+                role="status"
+                aria-live="polite"
+                className="mt-3 text-sm text-danger-text"
+              >
                 {notice}
               </p>
             )}
@@ -696,7 +732,11 @@ export default function PostComposer({ onPosted, onRequireAuth, prefill }: PostC
               )}
 
               {uploading && (
-                <span className="text-xs text-muted" role="status" aria-live="polite">
+                <span
+                  className="text-xs text-muted"
+                  role="status"
+                  aria-live="polite"
+                >
                   מעלה מדיה…
                 </span>
               )}

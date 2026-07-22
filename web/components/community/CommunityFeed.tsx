@@ -62,7 +62,10 @@ import { trackEvent } from "@/lib/tracking";
 import AuthModal from "@/components/auth/AuthModal";
 import PostComposer from "./PostComposer";
 import PostCard from "./PostCard";
-import { ReactionHydrationContext, type ReactionHydration } from "./ReactionBar";
+import {
+  ReactionHydrationContext,
+  type ReactionHydration,
+} from "./ReactionBar";
 
 const INTRO_DISMISSED_KEY = "switchy_community_intro_dismissed";
 
@@ -188,7 +191,9 @@ export default function CommunityFeed() {
 
   // ── Truthful trending strip ("מה חם בקהילה") ──────────────────────────────────
   // Empty arrays when there's no real 7-day activity → the strip renders nothing.
-  const [highlights, setHighlights] = useState<CommunityHighlights | null>(null);
+  const [highlights, setHighlights] = useState<CommunityHighlights | null>(
+    null,
+  );
 
   // ── Batched per-post hydration (likes / bookmarks / gallery / reactions) ──────
   // ONE fetchMyLikes + fetchMyBookmarks + fetchPostMedia + fetchReactions +
@@ -198,10 +203,12 @@ export default function CommunityFeed() {
   // never clobbered by a new page landing. Likes/bookmarks/gallery flow down as
   // the <PostCard hydration> prop; reactions flow through ReactionHydrationContext
   // (each <ReactionBar> sits inside <PostCard>, which doesn't know about them).
-  const [hydration, setHydration] = useState<Map<string, PostHydration>>(new Map());
-  const [reactionHydration, setReactionHydration] = useState<Map<string, ReactionHydration>>(
+  const [hydration, setHydration] = useState<Map<string, PostHydration>>(
     new Map(),
   );
+  const [reactionHydration, setReactionHydration] = useState<
+    Map<string, ReactionHydration>
+  >(new Map());
   // Ids already fetched (or in flight) — only NEW posts (older pages, flushed
   // live inserts, search results) trigger another batch.
   const hydratedIds = useRef<Set<string>>(new Set());
@@ -362,9 +369,9 @@ export default function CommunityFeed() {
   // not-ready until the fetch lands) is adjusted during render; the effect only
   // runs the fetch, with state landing in its .then continuation.
   const blocksViewer = ready ? (user?.id ?? null) : undefined; // undefined = auth pending
-  const [prevBlocksViewer, setPrevBlocksViewer] = useState<string | null | undefined>(
-    undefined,
-  );
+  const [prevBlocksViewer, setPrevBlocksViewer] = useState<
+    string | null | undefined
+  >(undefined);
   if (blocksViewer !== prevBlocksViewer) {
     setPrevBlocksViewer(blocksViewer);
     if (blocksViewer !== undefined) {
@@ -394,7 +401,14 @@ export default function CommunityFeed() {
   // the fetch — every state write lands in the .then continuation.
   const feedQueryKey =
     ready && blocksReady
-      ? JSON.stringify([tab, sort, unanswered, user?.id ?? null, blocked, reloadKey])
+      ? JSON.stringify([
+          tab,
+          sort,
+          unanswered,
+          user?.id ?? null,
+          blocked,
+          reloadKey,
+        ])
       : null;
   const [prevFeedQueryKey, setPrevFeedQueryKey] = useState<string | null>(null);
   if (feedQueryKey !== null && feedQueryKey !== prevFeedQueryKey) {
@@ -421,7 +435,17 @@ export default function CommunityFeed() {
     return () => {
       active = false;
     };
-  }, [ready, blocksReady, tab, sort, unanswered, user?.id, blocked, sortPosts, reloadKey]);
+  }, [
+    ready,
+    blocksReady,
+    tab,
+    sort,
+    unanswered,
+    user?.id,
+    blocked,
+    sortPosts,
+    reloadKey,
+  ]);
 
   // ── Debounced community search (on `search` + `tab`) ──────────────────────────
   // An empty query restores the feed (results = null). A non-empty query runs
@@ -536,7 +560,8 @@ export default function CommunityFeed() {
 
           // Announce availability to screen readers once per burst (not per insert).
           if (buffered) {
-            if (liveAnnounceTimer.current) clearTimeout(liveAnnounceTimer.current);
+            if (liveAnnounceTimer.current)
+              clearTimeout(liveAnnounceTimer.current);
             liveAnnounceTimer.current = setTimeout(() => {
               setStatusMsg("פוסטים חדשים זמינים בראש הפיד");
             }, 300);
@@ -609,7 +634,11 @@ export default function CommunityFeed() {
       // composer with the (now-published) draft. Only touch the URL if it actually
       // carries one of them.
       const params = new URLSearchParams(searchParamsKey);
-      if (params.has("channel") || params.has("provider") || params.has("draft")) {
+      if (
+        params.has("channel") ||
+        params.has("provider") ||
+        params.has("draft")
+      ) {
         router.replace("/community", { scroll: false });
       }
     },
@@ -622,13 +651,17 @@ export default function CommunityFeed() {
     setPosts((prev) => {
       const seen = new Set(prev.map((p) => p.id));
       const fresh = pendingNew.filter((p) => !seen.has(p.id));
-      return fresh.length ? sortPosts([...fresh, ...prev], sortRef.current) : prev;
+      return fresh.length
+        ? sortPosts([...fresh, ...prev], sortRef.current)
+        : prev;
     });
     setPendingNew([]);
     setStatusMsg("הפוסטים החדשים נטענו.");
     // Bring the reader back to the top to see them (motion-safe).
     if (typeof window !== "undefined") {
-      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      const reduce = window.matchMedia?.(
+        "(prefers-reduced-motion: reduce)",
+      )?.matches;
       window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
     }
   }, [pendingNew, sortPosts]);
@@ -696,7 +729,17 @@ export default function CommunityFeed() {
     }
     lastOlderCursor.current = oldest;
     setLoadingMore(false);
-  }, [loadingMore, reachedEnd, posts, tab, user?.id, blocked, sort, unanswered, sortPosts]);
+  }, [
+    loadingMore,
+    reachedEnd,
+    posts,
+    tab,
+    user?.id,
+    blocked,
+    sort,
+    unanswered,
+    sortPosts,
+  ]);
 
   // ── Infinite scroll: observe a sentinel at the end of the list ────────────────
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -726,369 +769,414 @@ export default function CommunityFeed() {
   const hasHighlights =
     !!highlights &&
     (highlights.channels.length > 0 || highlights.active_posts.length > 0);
+  const feedTitle = unanswered
+    ? "שאלות שמחכות לתשובה"
+    : tab === ALL_CHANNEL
+      ? sort === "recent"
+        ? "השיחות האחרונות"
+        : "השיחות הבולטות"
+      : `שיחות בערוץ ${tab}`;
 
   return (
     // Provider (no DOM) for the page-batched post reactions — reaches every post
     // <ReactionBar> (feed + search results) without threading through <PostCard>.
     <ReactionHydrationContext.Provider value={reactionHydration}>
-    <div className="flex flex-col gap-4">
-      <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
+      <div className="flex flex-col gap-4">
+        <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
 
-      {/* First-visit onboarding banner (client-only, dismissible, no DB) */}
-      {introVisible && (
-        <section
-          role="region"
-          aria-label="ברוכים הבאים לקהילת חוסך"
-          className="bento motion-safe:reveal relative p-5 sm:p-6"
-        >
-          <h2 className="text-base font-semibold text-ink">
-            ברוכים הבאים לקהילת חוסך
-          </h2>
-          <ul className="mt-3 flex list-none flex-col gap-2 p-0 text-sm text-muted">
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-1 text-accent-text">•</span>
-              <span>שיתוף חוויות מעבר אמיתיות בין ספקים</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-1 text-accent-text">•</span>
-              <span>שאלות לקהילה וקבלת תשובות מחברים אחרים</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span aria-hidden="true" className="mt-1 text-accent-text">•</span>
-              <span>המלצה על ספקים שנתנו לכם שירות טוב</span>
-            </li>
-          </ul>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Link
-              href="/community-guidelines"
-              className="text-sm font-medium text-accent-text underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              כללי הקהילה
-            </Link>
-            <button
-              type="button"
-              onClick={dismissIntro}
-              aria-label="הבנתי, הסתירו את הודעת הפתיחה"
-              className="interactive press ms-auto inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              הבנתי
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* Composer */}
-      <PostComposer
-        onPosted={prepend}
-        onRequireAuth={onRequireAuth}
-        prefill={prefill}
-      />
-
-      {/* Community search */}
-      <div className="relative">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-muted"
-        >
-          🔍
-        </span>
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="חיפוש בקהילה"
-          placeholder="חיפוש בקהילה…"
-          className="min-h-[44px] w-full rounded-xl border border-border bg-surface ps-10 pe-10 py-2.5 text-sm text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
-        />
-        {search.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setSearch("")}
-            aria-label="ניקוי החיפוש"
-            className="interactive press absolute inset-y-0 end-1.5 my-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        {/* First-visit onboarding banner (client-only, dismissible, no DB) */}
+        {introVisible && (
+          <section
+            role="region"
+            aria-label="ברוכים הבאים לקהילת חוסך"
+            className="bento motion-safe:reveal relative p-5 sm:p-6"
           >
-            <span aria-hidden="true">✕</span>
-          </button>
-        )}
-      </div>
-
-      {/* Channel tabs */}
-      <div
-        role="group"
-        aria-label="ערוצי הקהילה"
-        className="flex gap-2 overflow-x-auto pb-1"
-      >
-        {TABS.map((t) => {
-          const active = t === tab;
-          return (
-            <button
-              key={t}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setTab(t)}
-              className={`${tabBtn} ${
-                active
-                  ? "border-accent bg-accent text-accent-contrast shadow-soft"
-                  : "border-border bg-surface text-muted hover:text-ink [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
-              }`}
-            >
-              {t}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Filter + sort controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* "Help answer these" filter — surfaces questions with no replies yet. */}
-        <button
-          type="button"
-          onClick={() => setUnanswered((v) => !v)}
-          aria-pressed={unanswered}
-          className={`${sortBtn} ${
-            unanswered ? "bg-accent/10 text-accent-text" : "text-muted hover:text-ink"
-          }`}
-        >
-          ללא מענה
-        </button>
-        <div className="flex items-center gap-1" role="group" aria-label="מיון הפוסטים">
-          <button
-            type="button"
-            onClick={() => setSort("recent")}
-            aria-pressed={sort === "recent"}
-            className={`${sortBtn} ${
-              sort === "recent"
-                ? "bg-accent/10 text-accent-text"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            החדשים ביותר
-          </button>
-          <button
-            type="button"
-            onClick={() => setSort("popular")}
-            aria-pressed={sort === "popular"}
-            className={`${sortBtn} ${
-              sort === "popular"
-                ? "bg-accent/10 text-accent-text"
-                : "text-muted hover:text-ink"
-            }`}
-          >
-            הפופולריים
-          </button>
-        </div>
-      </div>
-
-      {/* Trending — truthful 7-day highlights. Real counts only; renders nothing
-          when there's no activity, and hides while searching. */}
-      {!searchMode && hasHighlights && highlights && (
-        <section
-          aria-label="מה חם בקהילה"
-          className="bento flex flex-col gap-3 p-4"
-        >
-          <h2 className="text-sm font-semibold text-ink">מה חם בקהילה</h2>
-
-          {highlights.channels.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {highlights.channels.map((c) => (
-                <button
-                  key={c.channel}
-                  type="button"
-                  onClick={() => setTab(c.channel as Tab)}
-                  aria-label={`עבור לערוץ ${c.channel} · ${c.posts} פוסטים`}
-                  className="interactive press inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  <span>{c.channel}</span>
-                  <span aria-hidden="true" className="text-muted">·</span>
-                  <span className="tabular-nums text-muted">{c.posts}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {highlights.active_posts.length > 0 && (
-            <ul className="flex list-none flex-col gap-2 p-0">
-              {highlights.active_posts.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                    {p.body}
-                  </span>
-                  <span className="shrink-0 whitespace-nowrap text-xs text-muted">
-                    <span className="tabular-nums">{p.reply_count}</span> תגובות
-                  </span>
-                </li>
-              ))}
+            <h2 className="text-base font-semibold text-ink">
+              ברוכים הבאים לקהילת חוסך
+            </h2>
+            <ul className="mt-3 flex list-none flex-col gap-2 p-0 text-sm text-muted">
+              <li className="flex items-start gap-2">
+                <span aria-hidden="true" className="mt-1 text-accent-text">
+                  •
+                </span>
+                <span>שיתוף חוויות מעבר אמיתיות בין ספקים</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span aria-hidden="true" className="mt-1 text-accent-text">
+                  •
+                </span>
+                <span>שאלות לקהילה וקבלת תשובות מחברים אחרים</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span aria-hidden="true" className="mt-1 text-accent-text">
+                  •
+                </span>
+                <span>המלצה על ספקים שנתנו לכם שירות טוב</span>
+              </li>
             </ul>
-          )}
-        </section>
-      )}
-
-      {/* A small polite live region announces feed changes — the list itself is
-          NOT a live region (that re-announces every post on each insert). */}
-      <p className="sr-only" role="status" aria-live="polite">
-        {statusMsg}
-      </p>
-
-      {/* Search results — same <PostCard> list as the feed, shown instead of it
-          while a query is active. */}
-      {searchMode && results && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-sm font-semibold text-ink">תוצאות חיפוש</h2>
-            <span className="text-xs text-muted">
-              <span className="tabular-nums">{results.length}</span>
-            </span>
-          </div>
-          {searching ? (
-            <div className="flex flex-col gap-4">
-              <PostSkeleton />
-              <PostSkeleton />
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Link
+                href="/community-guidelines"
+                className="text-sm font-medium text-accent-text underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                כללי הקהילה
+              </Link>
+              <button
+                type="button"
+                onClick={dismissIntro}
+                aria-label="הבנתי, הסתירו את הודעת הפתיחה"
+                className="interactive press ms-auto inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                הבנתי
+              </button>
             </div>
-          ) : results.length === 0 ? (
-            <div className="bento p-8 text-center">
-              <p className="text-base font-semibold text-ink">
-                לא נמצאו תוצאות לחיפוש
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                נסו מונח חיפוש אחר, או נקו את החיפוש כדי לחזור לפיד.
-              </p>
+          </section>
+        )}
+
+        {/* Composer */}
+        <PostComposer
+          onPosted={prepend}
+          onRequireAuth={onRequireAuth}
+          prefill={prefill}
+        />
+
+        {/* Search, channels and sorting are one coherent control surface. */}
+        <section aria-label="חיפוש וסינון בקהילה" className="bento p-3 sm:p-4">
+          <div className="relative">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-muted"
+            >
+              🔍
+            </span>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="חיפוש בקהילה"
+              placeholder="חיפוש בקהילה…"
+              className="min-h-[44px] w-full rounded-xl border border-border bg-surface ps-10 pe-10 py-2.5 text-sm text-foreground placeholder:text-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+            />
+            {search.length > 0 && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                aria-label="ניקוי החיפוש"
+                className="interactive press absolute inset-y-0 end-1.5 my-auto flex h-8 w-8 items-center justify-center rounded-lg text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
-                ניקוי החיפוש
-              </button>
-            </div>
-          ) : (
-            <ul className="stagger flex list-none flex-col gap-4 p-0">
-              {results.map((post) => (
-                <li key={post.id}>
-                  <PostCard
-                    post={post}
-                    onRequireAuth={onRequireAuth}
-                    onDeleted={handleDeleted}
-                    hydration={hydration.get(post.id) ?? null}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {/* Feed */}
-      {!searchMode && (
-      <div className="flex flex-col gap-4">
-        {/* "New posts" pill — buffered live inserts, loaded on click (never jumps
-            the feed mid-read). Sticky so it stays reachable while scrolling. */}
-        {!loading && pendingNew.length > 0 && (
-          <div className="sticky top-2 z-10 flex justify-center">
-            <button
-              type="button"
-              onClick={showPending}
-              aria-label="טעינת הפוסטים החדשים לראש הפיד"
-              className="press inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-float transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              <span aria-hidden="true">↑</span>
-              {pendingNew.length === 1
-                ? "פוסט חדש"
-                : `${pendingNew.length.toLocaleString("he-IL")} פוסטים חדשים`}
-            </button>
-          </div>
-        )}
-        {loading ? (
-          <div className="flex flex-col gap-4">
-            <PostSkeleton />
-            <PostSkeleton />
-            <PostSkeleton />
-          </div>
-        ) : feedError ? (
-          /* An honest failure card — a failed load must never masquerade as an
-             empty feed. */
-          <div className="bento p-8 text-center" role="alert">
-            <p className="text-base font-semibold text-ink">
-              לא הצלחנו לטעון את הפיד
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              בדקו את החיבור לאינטרנט ונסו שוב.
-            </p>
-            <button
-              type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
-              className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              ניסיון חוזר
-            </button>
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="bento p-8 text-center">
-            <p className="text-base font-semibold text-ink">
-              {unanswered ? "אין כרגע שאלות ללא מענה" : "עדיין אין פוסטים כאן"}
-            </p>
-            <p className="mt-1 text-sm text-muted">
-              {unanswered
-                ? "כל השאלות פה כבר קיבלו תגובה 🙌 אפשר לכבות את הסינון ולראות הכול."
-                : tab === ALL_CHANNEL
-                  ? "היו הראשונים לשתף חוויה, לשאול שאלה או להמליץ על ספק."
-                  : `אין עדיין פוסטים בערוץ "${tab}". פתחו את השיחה.`}
-            </p>
-            {(unanswered || tab !== ALL_CHANNEL) && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (unanswered) setUnanswered(false);
-                  else setTab(ALL_CHANNEL);
-                }}
-                className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-              >
-                {unanswered ? "הצגת כל הפוסטים" : "חזרה לכל הערוצים"}
+                <span aria-hidden="true">✕</span>
               </button>
             )}
           </div>
-        ) : (
-          <ul className="stagger flex list-none flex-col gap-4 p-0">
-            {posts.map((post) => (
-              <li key={post.id}>
-                <PostCard
-                  post={post}
-                  onRequireAuth={onRequireAuth}
-                  onDeleted={handleDeleted}
-                  hydration={hydration.get(post.id) ?? null}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
 
-        {/* Pager: infinite-scroll sentinel + an explicit fallback button */}
-        {!loading && posts.length > 0 && !reachedEnd && (
-          <>
-            <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />
-            <div className="flex justify-center">
+          {/* Channel tabs */}
+          <div
+            role="group"
+            aria-label="ערוצי הקהילה"
+            className="mt-3 flex gap-2 overflow-x-auto pb-1"
+          >
+            {TABS.map((t) => {
+              const active = t === tab;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setTab(t)}
+                  className={`${tabBtn} ${
+                    active
+                      ? "border-accent bg-accent text-accent-contrast shadow-soft"
+                      : "border-border bg-surface text-muted hover:text-ink [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40"
+                  }`}
+                >
+                  {t}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Filter + sort controls */}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            {/* "Help answer these" filter — surfaces questions with no replies yet. */}
+            <button
+              type="button"
+              onClick={() => setUnanswered((v) => !v)}
+              aria-pressed={unanswered}
+              className={`${sortBtn} ${
+                unanswered
+                  ? "bg-accent/10 text-accent-text"
+                  : "text-muted hover:text-ink"
+              }`}
+            >
+              ללא מענה
+            </button>
+            <div
+              className="flex items-center gap-1"
+              role="group"
+              aria-label="מיון הפוסטים"
+            >
               <button
                 type="button"
-                onClick={() => void loadOlder()}
-                disabled={loadingMore}
-                className="interactive press inline-flex items-center justify-center rounded-xl border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+                onClick={() => setSort("recent")}
+                aria-pressed={sort === "recent"}
+                className={`${sortBtn} ${
+                  sort === "recent"
+                    ? "bg-accent/10 text-accent-text"
+                    : "text-muted hover:text-ink"
+                }`}
               >
-                {loadingMore ? "טוען…" : "טעינת פוסטים ישנים יותר"}
+                החדשים ביותר
+              </button>
+              <button
+                type="button"
+                onClick={() => setSort("popular")}
+                aria-pressed={sort === "popular"}
+                className={`${sortBtn} ${
+                  sort === "popular"
+                    ? "bg-accent/10 text-accent-text"
+                    : "text-muted hover:text-ink"
+                }`}
+              >
+                הפופולריים
               </button>
             </div>
-          </>
+          </div>
+        </section>
+
+        {/* Trending — truthful 7-day highlights. Real counts only; renders nothing
+          when there's no activity, and hides while searching. */}
+        {!searchMode && hasHighlights && highlights && (
+          <section
+            aria-label="מה חם בקהילה"
+            className="bento flex flex-col gap-3 p-4"
+          >
+            <h2 className="text-sm font-semibold text-ink">מה חם בקהילה</h2>
+
+            {highlights.channels.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {highlights.channels.map((c) => (
+                  <button
+                    key={c.channel}
+                    type="button"
+                    onClick={() => setTab(c.channel as Tab)}
+                    aria-label={`עבור לערוץ ${c.channel} · ${c.posts} פוסטים`}
+                    className="interactive press inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    <span>{c.channel}</span>
+                    <span aria-hidden="true" className="text-muted">
+                      ·
+                    </span>
+                    <span className="tabular-nums text-muted">{c.posts}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {highlights.active_posts.length > 0 && (
+              <ul className="flex list-none flex-col gap-2 p-0">
+                {highlights.active_posts.map((p) => (
+                  <li key={p.id}>
+                    <Link
+                      href={`/community/post/${p.id}`}
+                      className="group flex min-h-11 items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2 transition-colors hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground group-hover:text-ink">
+                        {p.body}
+                      </span>
+                      <span className="shrink-0 whitespace-nowrap text-xs text-muted">
+                        <span className="tabular-nums">{p.reply_count}</span>{" "}
+                        תגובות
+                      </span>
+                      <span aria-hidden="true" className="text-accent-text">
+                        ←
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         )}
 
-        {!loading && posts.length > 0 && reachedEnd && (
-          <p className="py-2 text-center text-xs text-muted">
-            הגעתם לסוף הפיד.
-          </p>
+        {/* A small polite live region announces feed changes — the list itself is
+          NOT a live region (that re-announces every post on each insert). */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {statusMsg}
+        </p>
+
+        {/* Search results — same <PostCard> list as the feed, shown instead of it
+          while a query is active. */}
+        {searchMode && results && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-baseline gap-2">
+              <h2 className="text-sm font-semibold text-ink">תוצאות חיפוש</h2>
+              <span className="text-xs text-muted">
+                <span className="tabular-nums">{results.length}</span>
+              </span>
+            </div>
+            {searching ? (
+              <div className="flex flex-col gap-4">
+                <PostSkeleton />
+                <PostSkeleton />
+              </div>
+            ) : results.length === 0 ? (
+              <div className="bento p-8 text-center">
+                <p className="text-base font-semibold text-ink">
+                  לא נמצאו תוצאות לחיפוש
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  נסו מונח חיפוש אחר, או נקו את החיפוש כדי לחזור לפיד.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  ניקוי החיפוש
+                </button>
+              </div>
+            ) : (
+              <ul className="stagger flex list-none flex-col gap-4 p-0">
+                {results.map((post) => (
+                  <li key={post.id}>
+                    <PostCard
+                      post={post}
+                      onRequireAuth={onRequireAuth}
+                      onDeleted={handleDeleted}
+                      hydration={hydration.get(post.id) ?? null}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Feed */}
+        {!searchMode && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+                {feedTitle}
+              </h2>
+              {!loading && posts.length > 0 && (
+                <span className="shrink-0 text-xs tabular-nums text-muted">
+                  {posts.length.toLocaleString("he-IL")} שיחות נטענו
+                </span>
+              )}
+            </div>
+            {/* "New posts" pill — buffered live inserts, loaded on click (never jumps
+            the feed mid-read). Sticky so it stays reachable while scrolling. */}
+            {!loading && pendingNew.length > 0 && (
+              <div className="sticky top-2 z-10 flex justify-center">
+                <button
+                  type="button"
+                  onClick={showPending}
+                  aria-label="טעינת הפוסטים החדשים לראש הפיד"
+                  className="press inline-flex items-center gap-1.5 rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-accent-contrast shadow-float transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  <span aria-hidden="true">↑</span>
+                  {pendingNew.length === 1
+                    ? "פוסט חדש"
+                    : `${pendingNew.length.toLocaleString("he-IL")} פוסטים חדשים`}
+                </button>
+              </div>
+            )}
+            {loading ? (
+              <div className="flex flex-col gap-4">
+                <PostSkeleton />
+                <PostSkeleton />
+                <PostSkeleton />
+              </div>
+            ) : feedError ? (
+              /* An honest failure card — a failed load must never masquerade as an
+             empty feed. */
+              <div className="bento p-8 text-center" role="alert">
+                <p className="text-base font-semibold text-ink">
+                  לא הצלחנו לטעון את הפיד
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  בדקו את החיבור לאינטרנט ונסו שוב.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((k) => k + 1)}
+                  className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  ניסיון חוזר
+                </button>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="bento p-8 text-center">
+                <p className="text-base font-semibold text-ink">
+                  {unanswered
+                    ? "אין כרגע שאלות ללא מענה"
+                    : "עדיין אין פוסטים כאן"}
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  {unanswered
+                    ? "כל השאלות פה כבר קיבלו תגובה 🙌 אפשר לכבות את הסינון ולראות הכול."
+                    : tab === ALL_CHANNEL
+                      ? "היו הראשונים לשתף חוויה, לשאול שאלה או להמליץ על ספק."
+                      : `אין עדיין פוסטים בערוץ "${tab}". פתחו את השיחה.`}
+                </p>
+                {(unanswered || tab !== ALL_CHANNEL) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (unanswered) setUnanswered(false);
+                      else setTab(ALL_CHANNEL);
+                    }}
+                    className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {unanswered ? "הצגת כל הפוסטים" : "חזרה לכל הערוצים"}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <ul className="stagger flex list-none flex-col gap-4 p-0">
+                {posts.map((post) => (
+                  <li key={post.id}>
+                    <PostCard
+                      post={post}
+                      onRequireAuth={onRequireAuth}
+                      onDeleted={handleDeleted}
+                      hydration={hydration.get(post.id) ?? null}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Pager: infinite-scroll sentinel + an explicit fallback button */}
+            {!loading && posts.length > 0 && !reachedEnd && (
+              <>
+                <div
+                  ref={sentinelRef}
+                  aria-hidden="true"
+                  className="h-px w-full"
+                />
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => void loadOlder()}
+                    disabled={loadingMore}
+                    className="interactive press inline-flex items-center justify-center rounded-xl border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+                  >
+                    {loadingMore ? "טוען…" : "טעינת פוסטים ישנים יותר"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!loading && posts.length > 0 && reachedEnd && (
+              <p className="py-2 text-center text-xs text-muted">
+                הגעתם לסוף הפיד.
+              </p>
+            )}
+          </div>
         )}
       </div>
-      )}
-    </div>
     </ReactionHydrationContext.Provider>
   );
 }

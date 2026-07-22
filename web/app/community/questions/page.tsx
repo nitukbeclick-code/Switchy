@@ -17,6 +17,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import { pageMetadata } from "@/lib/seo";
 import { linkItemListSchema } from "@/lib/schema";
 import { clip, heDate } from "@/lib/community-render";
@@ -47,7 +48,10 @@ interface QRow {
 // The hub's public gate — answered (reply_count>=1) + non-flagged ONLY; the same
 // invariant the sitemap and the permalink index gate enforce. Optional channel
 // filter + created_at before-cursor for "load older" pages.
-async function fetchAnswered(opts: { channel?: string; before?: string }): Promise<QRow[]> {
+async function fetchAnswered(opts: {
+  channel?: string;
+  before?: string;
+}): Promise<QRow[]> {
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -77,7 +81,9 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function CommunityQuestionsPage({ searchParams }: PageProps) {
+export default async function CommunityQuestionsPage({
+  searchParams,
+}: PageProps) {
   const sp = await searchParams;
   // Validate: channel must be one of the real community channels; before must be
   // a parseable timestamp. Anything else falls back to the bare hub.
@@ -109,22 +115,49 @@ export default async function CommunityQuestionsPage({ searchParams }: PageProps
     }`;
 
   return (
-    <main id="main" className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-10">
+    <main
+      id="main"
+      className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8"
+    >
       {itemList && <JsonLd data={itemList} />}
 
-      <header className="mb-6 text-center">
-        <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
+      <header className="bento relative mb-6 overflow-hidden px-5 py-7 text-center sm:px-8 sm:py-10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -end-16 -top-24 h-56 w-56 rounded-full bg-accent/10 blur-3xl"
+        />
+        <p className="relative mx-auto inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
+          <Icon name="check" size={15} />
+          תשובות שכבר נכתבו ונבדקו בשיחה
+        </p>
+        <h1 className="relative mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           שאלות ותשובות — קהילת חוסך
         </h1>
-        <p className="mt-2 text-sm text-muted">
-          שאלות, חוויות ותשובות אמיתיות של הקהילה על מסלולי תקשורת.{" "}
-          <Link href="/community" className="font-medium text-accent-text underline">
-            למעבר לקהילה
-          </Link>
+        <p className="relative mx-auto mt-3 max-w-2xl text-sm leading-7 text-muted sm:text-base">
+          שאלות, חוויות ותשובות אמיתיות של הקהילה על מסלולי תקשורת — מסודרות לפי
+          נושא ופתוחות לקריאה גם בלי התחברות.
         </p>
+        <div className="relative mt-5 flex flex-wrap justify-center gap-3">
+          <Link
+            href="/community#community-composer"
+            className="press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            פתיחת שאלה חדשה
+            <Icon name="arrow" size={16} />
+          </Link>
+          <Link
+            href="/community"
+            className="press inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-semibold text-ink hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          >
+            מעבר לפיד הקהילה
+          </Link>
+        </div>
       </header>
 
-      <nav aria-label="סינון לפי ערוץ" className="mb-5 flex flex-wrap justify-center gap-2">
+      <nav
+        aria-label="סינון לפי ערוץ"
+        className="mb-5 flex gap-2 overflow-x-auto rounded-2xl border border-border bg-surface p-3 shadow-soft sm:flex-wrap sm:justify-center"
+      >
         <Link
           href={hubHref()}
           className={chipCls(!channel)}
@@ -147,9 +180,13 @@ export default async function CommunityQuestionsPage({ searchParams }: PageProps
       {items.length === 0 ? (
         <div className="rounded-2xl border border-border bg-surface p-8 text-center shadow-soft">
           <p className="text-base font-semibold text-ink">
-            {channel || before ? "אין כאן שאלות ותשובות נוספות" : "עדיין אין שאלות ותשובות"}
+            {channel || before
+              ? "אין כאן שאלות ותשובות נוספות"
+              : "עדיין אין שאלות ותשובות"}
           </p>
-          <p className="mt-1 text-sm text-muted">היו הראשונים לשאול או לשתף חוויה.</p>
+          <p className="mt-1 text-sm text-muted">
+            היו הראשונים לשאול או לשתף חוויה.
+          </p>
           <Link
             href="/community"
             className="press mt-4 inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -159,24 +196,27 @@ export default async function CommunityQuestionsPage({ searchParams }: PageProps
         </div>
       ) : (
         <>
-          <ul className="flex list-none flex-col gap-3 p-0">
+          <ul className="grid list-none gap-3 p-0 md:grid-cols-2">
             {items.map((q) => (
               <li key={q.id}>
                 <Link
                   href={`/community/post/${q.id}`}
-                  className="block rounded-2xl border border-border bg-surface p-4 shadow-card transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="group flex h-full min-h-40 flex-col rounded-2xl border border-border bg-surface p-5 shadow-card transition-[border-color,transform,box-shadow] [@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-0.5 [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-float focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  <p className="line-clamp-2 text-sm font-medium leading-relaxed text-foreground">
+                  <p className="line-clamp-3 font-display text-base font-semibold leading-7 text-ink group-hover:text-accent-text">
                     {clip(q.body, 140)}
                   </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+                  <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-2 pt-4 text-xs text-muted">
                     <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 font-medium">
                       {q.channel}
                     </span>
-                    <span className="nums-tabular tabular-nums">
+                    <span className="nums-tabular inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 font-medium tabular-nums text-accent-text">
+                      <Icon name="chat" size={14} />
                       {q.reply_count.toLocaleString("he-IL")} תגובות
                     </span>
-                    <time dateTime={q.created_at}>{heDate(q.created_at)}</time>
+                    <time dateTime={q.created_at} className="ms-auto">
+                      {heDate(q.created_at)}
+                    </time>
                   </div>
                 </Link>
               </li>

@@ -86,6 +86,23 @@ beforeEach(() => {
   mocks.reportContent.mockResolvedValue(true);
 });
 
+describe("PostCard identity", () => {
+  it("links both the avatar and author name to the public member profile", async () => {
+    render(<PostCard post={post()} onRequireAuth={() => {}} hydration={null} />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: "מעבר לפרופיל של דנה" })).toHaveAttribute(
+        "href",
+        "/community/profile/author-1",
+      ),
+    );
+    expect(screen.getByRole("link", { name: "דנה" })).toHaveAttribute(
+      "href",
+      "/community/profile/author-1",
+    );
+  });
+});
+
 describe("PostCard like", () => {
   it("a GUEST tapping like is routed to onRequireAuth — no write ever fires", async () => {
     const user = userEvent.setup();

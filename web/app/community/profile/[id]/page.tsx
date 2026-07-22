@@ -32,7 +32,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function CommunityProfilePage({ params }: Params) {
   const { id } = await params;
   return (
-    <main id="main" className="mx-auto w-full max-w-2xl px-4 py-6 sm:py-10">
+    <main
+      id="main"
+      className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10"
+    >
       <ProfileView userId={id} />
     </main>
   );

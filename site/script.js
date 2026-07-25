@@ -423,6 +423,17 @@
       const now = new Date().toISOString();
       const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
       const priceAlert = $('consentPriceAlert') && $('consentPriceAlert').checked;
+      // Rep context for the CRM card: the page's own `data-lead-context` (what
+      // the visitor was reading when they converted — e.g. the guide title +
+      // category, stamped by build.js) plus any opt-in flag, joined into the
+      // single free-text `notes` column. PAGE context only — never PII and never
+      // anything the visitor typed, so the rep opens the call already knowing
+      // the subject instead of starting cold.
+      const leadCtx = (form.getAttribute('data-lead-context') || '').trim();
+      const noteParts = [];
+      if (leadCtx) noteParts.push(leadCtx);
+      if (priceAlert) noteParts.push('מעוניין/ת בהתראת ירידת מחיר');
+      const leadNotes = noteParts.length ? noteParts.join(' · ') : null;
       const btn = form.querySelector('button[type="submit"]');
       // Disabled "שולח…" state: keep the original label so we can restore it,
       // and prevent a double-submit while the request is in flight.
@@ -438,7 +449,7 @@
           terms_accepted_at: now,
           privacy_accepted_at: now,
           marketing_accepted_at: marketingAt,
-          notes: priceAlert ? 'מעוניין/ת בהתראת ירידת מחיר' : null,
+          notes: leadNotes,
         });
       } catch (err) {
         sent = false;

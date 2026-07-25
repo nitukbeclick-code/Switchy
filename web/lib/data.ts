@@ -183,6 +183,19 @@ export function getProvider(slug: string): Provider | undefined {
   return PROVIDER_BY_SLUG.get(slug);
 }
 
+/**
+ * REAL catalogue-wide totals for the lead form's trust line ("משווים X מסלולים
+ * מ-Y ספקים"). Both figures are counted from the bundled catalogue — never
+ * fabricated, never rounded up. One helper so every surface quotes the same
+ * pair and they cannot drift apart page to page.
+ */
+export function catalogueTrustStats(): {
+  planCount: number;
+  providerCount: number;
+} {
+  return { planCount: PLANS.length, providerCount: PROVIDERS.length };
+}
+
 /** Plans offered by a provider, identified by slug. */
 export function plansByProvider(slug: string): Plan[] {
   const provider = PROVIDER_BY_SLUG.get(slug);

@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -148,6 +148,7 @@ export default async function CellularWithAbroadPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="מסלולי סלולר שכוללים גלישה או שיחות בחו״ל כחלק מהחבילה — כך אתם נוסעים בלי לקנות חבילת רומינג נפרדת בכל פעם. הטבלה מציגה רק מסלולים שמסומנים בקטלוג ככוללים שימוש בחו״ל, ממוינים מהזול ליקר. בדקו את היעדים והנפח הנכללים מול הספק לפני הנסיעה."

@@ -17,7 +17,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -149,6 +149,7 @@ export default async function CellularBudgetPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="מסלולי הסלולר הזולים ביותר במקום אחד — עד ₪40 לחודש, ממוינים מהזול ליקר. כל המסלולים בטבלה נמשכים ישירות מהקטלוג ועומדים בתקרת המחיר הזו. שימו לב גם למחיר אחרי תקופת המבצע — לעיתים מסלול זול עולה בהמשך."

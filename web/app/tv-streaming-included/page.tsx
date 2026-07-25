@@ -19,7 +19,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -150,6 +150,7 @@ export default async function TvStreamingIncludedPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="למה לשלם בנפרד על Netflix או HBO Max? הטבלה מציגה רק חבילות טלוויזיה שמסומנות בקטלוג ככוללות שירות סטרימינג בחבילה, ממוינות מהזול ליקר. בדקו אילו שירותים בדיוק כלולים ובאיזו רמת מנוי מול הספק — לעיתים מדובר במנוי בסיסי או לתקופה מוגבלת."

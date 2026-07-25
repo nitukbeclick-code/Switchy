@@ -20,11 +20,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import ComparisonTable from "@/components/ComparisonTable";
+import LeadFormLazy from "@/components/LeadFormLazy";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -167,6 +169,35 @@ export default async function PlansNoCommitmentPage() {
           />
           {hasPlans ? <PriceCaveat className="mt-3" /> : null}
         </div>
+
+        {/* ── Lead capture ──────────────────────────────────────────────────
+            Right under the prices, where intent peaks — this page mirrors
+            <CategoryLanding> for a cross-category slice, so it mirrors its ask
+            too. No `defaultCategory`: the page spans cellular AND internet, so
+            pre-selecting one would guess wrong half the time; the visitor picks.
+            Counts are the real catalogue totals. ─────────────────────────── */}
+        <section
+          id="lead"
+          aria-labelledby="no-commit-lead-h"
+          className="mt-12 scroll-mt-6"
+        >
+          <h2
+            id="no-commit-lead-h"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
+          >
+            רוצים שנמצא לכם את המסלול המשתלם ביותר — בלי התחייבות?
+          </h2>
+          <p className="mt-2 text-foreground">
+            השאירו פרטים ונחזור אליכם עם השוואה אישית וההמלצה שמתאימה לשימוש שלכם —
+            חינם, בלי התחייבות.
+          </p>
+          <div className="mt-5 max-w-xl">
+            <LeadFormLazy source="category" trustStats={catalogueTrustStats()} />
+          </div>
+        </section>
+
+        {/* Mobile-only bar back to the form above — long, scrollable page. */}
+        <StickyLeadCta source="category" />
 
         {/* Primary hand-off to the multi-category compare hub. */}
         <div className="mt-6">

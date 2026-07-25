@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -159,6 +159,7 @@ export default async function CellularEsimPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="מסלולי סלולר ישראליים התומכים ב-eSIM — כרטיס SIM דיגיטלי ללא רכיב פיזי, שמתאים לאייפון ולמכשירי אנדרואיד תואמי eSIM. הטבלה כוללת רק מסלולים שבהם תמיכת ה-eSIM מצוינת במפורש בפרטי המסלול בקטלוג, ממוינים מהזול ליקר. כדאי לוודא תאימות והנפקה מול הספק לפני מעבר."

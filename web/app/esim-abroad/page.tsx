@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -151,6 +151,7 @@ export default async function EsimAbroadPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="eSIM זול בהרבה מרומינג רגיל ומותקן עוד לפני שיוצאים מהבית — נוחתים ומחוברים. הטבלה מציגה רק חבילות חו״ל שמסומנות בקטלוג כ-eSIM, ממוינות מהזול ליקר. ודאו שהמכשיר שלכם תומך ב-eSIM, ובדקו את היעדים ונפח הגלישה הנכללים מול הספק לפני הנסיעה."

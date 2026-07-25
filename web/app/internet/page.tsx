@@ -20,7 +20,7 @@ import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
 import { priceText } from "@/lib/plan-display";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -230,6 +230,7 @@ export default async function InternetLandingPage() {
           the page <h1> live above, so this starts at the disclosure/table. ──── */}
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           hideHero

@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.min.css?v=fe9d1bcc" />
+  <link rel="stylesheet" href="styles.min.css?v=683cb090" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -123,11 +123,11 @@
           <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-sun"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-moon"/></svg></span>
         </button>
       </div>
-      <a class="btn btn--primary nav__cta" href="index.html#cta">השוו עכשיו</a>
+      <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
-      <a class="btn btn--primary" href="index.html#cta">השוו עכשיו</a>
+      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
       <p class="nav__mobile-label">ניווט</p>
       <a href="plans.html">כל החבילות</a>
       <a href="compare.html">השוואה</a>
@@ -240,6 +240,7 @@
             <h3>רוצים לראות כמה תחסכו בפועל?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
             <a class="btn btn--inverse btn--lg" href="tv.html">השוו מסלולי טלוויזיה<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
+            <a class="article-cta__alt" href="#cta">או השאירו פרטים ונחזור אליכם עם ההמלצה<span class="btn__chev btn__chev--sm" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
           </div>
         </div>
       </section>
@@ -347,6 +348,65 @@
         </div>
       </section>
     </article>
+    <section class="section trust-block" aria-label="למה אפשר לסמוך עלינו">
+      <div class="container">
+        <div class="trust-block__inner reveal">
+          <header class="trust-block__head">
+            <span class="eyebrow">שקיפות מלאה</span>
+            <h2>למה אפשר לסמוך על ההשוואה</h2>
+          </header>
+          <dl class="trust-stats" aria-label="היקף הקטלוג">
+            <div class="trust-stat"><dt>מסלולים בהשוואה</dt><dd><span data-count-to="120">120</span></dd></div>
+            <div class="trust-stat"><dt>חברות תקשורת</dt><dd><span data-count-to="18">18</span></dd></div>
+            <div class="trust-stat"><dt>קטגוריות</dt><dd><span data-count-to="5">5</span></dd></div>
+          </dl>
+          <ul class="trust-points">
+            <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg><span><b>מתודולוגיה שקופה.</b> אנחנו משווים את כל 18 החברות ומדרגים לפי ערך — מחיר, גמישות והמחיר שאחרי המבצע — עם הסבר לכל המלצה. <a href="about.html">המתודולוגיה המלאה ←</a></span></li>
+            <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-shield"/></svg><span><b>גילוי נאות.</b> השירות חינמי לכם. אנחנו מקבלים עמלת תיווך מחברות התקשורת כשעוברים דרכנו — העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על הדירוג.</span></li>
+            <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-info"/></svg><span><b>מחירים אמיתיים.</b> המחירים כוללים מע״מ ונכונים למועד עדכון האתר (25 ביולי 2026). מחירים ותנאים עשויים להשתנות — תמיד כדאי לאמת מול הספק לפני התקשרות.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>מוכנים לחסוך על טלוויזיה?</h2>
+        <p>קראתם את המדריך — עכשיו נעשה את זה עליכם. השאירו שם וטלפון, ונחזור עם השוואה אישית לטלוויזיה והמסלול המשתלם ביותר עבורכם — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate data-lead-context="מתוך המדריך: HOT TV לעומת YES — מה ההבדל האמיתי ואיך בוחרים? · טלוויזיה">
+          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;opacity:0" />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
+          <div class="consent">
+            <label class="consent__row" for="consentTerms">
+              <input type="checkbox" id="consentTerms" name="consentTerms" required />
+              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+            </label>
+            <label class="consent__row" for="consentPrivacy">
+              <input type="checkbox" id="consentPrivacy" name="consentPrivacy" required />
+              <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
+            </label>
+            <label class="consent__row" for="consentMarketing">
+              <input type="checkbox" id="consentMarketing" name="consentMarketing" />
+              <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
+            </label>
+            <label class="consent__row" for="consentPriceAlert">
+              <input type="checkbox" id="consentPriceAlert" name="consentPriceAlert" />
+              <span>התריעו לי כשיורד מחיר על מסלול שמתאים לי</span>
+            </label>
+          </div>
+          <button class="btn btn--primary btn--lg" type="submit">קבלו המלצה אישית תוך 2 דקות ←</button>
+          <ul class="cta__objections" aria-label="למה אפשר להירשם בראש שקט">
+          <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-shield"/></svg><span>חינם לכם — הספק משלם, לא אתם</span></li>
+          <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-scale"/></svg><span>המלצה מוסברת — לפי ההתאמה, לא לפי מי שמשלם</span></li>
+          <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-check"/></svg><span>בלי התחייבות · המספר שלכם נשמר בניוד</span></li>
+          <li><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-lock"/></svg><span>לא נשתף את המספר עם ספקים · נתונים מוצפנים</span></li>
+        </ul>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#ico-chat"/></svg>מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
   </main>
   <footer class="footer">
     <div class="container footer__inner">
@@ -431,6 +491,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.min.js?v=1e72a611" defer></script>
-  <script src="script.min.js?v=117fc590" defer></script>
+  <script src="script.min.js?v=bf2086ee" defer></script>
 </body>
 </html>

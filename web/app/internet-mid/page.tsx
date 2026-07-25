@@ -17,7 +17,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -158,6 +158,7 @@ export default async function InternetMidPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="טווח ₪80–₪120 מציע בדרך כלל מהירות גבוהה ויציבה לבית עם כמה משתמשים. הטבלה מציגה רק מסלולי אינטרנט שמחירם בקטלוג נופל בטווח הזה, ממוינים מהזול ליקר. בדקו גם את המחיר אחרי תקופת המבצע ואת עלות הנתב/התשתית, שלעיתים מתווספת בנפרד."

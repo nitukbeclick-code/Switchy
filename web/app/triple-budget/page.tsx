@@ -17,7 +17,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -155,6 +155,7 @@ export default async function TripleBudgetPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="חבילה משולבת זולה לא חייבת לגרוע מהשירות. הטבלה מציגה את כל החבילות המשולבות (אינטרנט + טלוויזיה + סלולר) שעולות עד ₪160 לחודש, ממוינות מהזול ליקר — כולן נמשכות ישירות מהקטלוג. בדקו מה בדיוק כלול בכל חבילה ואת המחיר אחרי תקופת המבצע מול הספק."

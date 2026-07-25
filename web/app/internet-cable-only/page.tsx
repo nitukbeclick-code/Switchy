@@ -19,7 +19,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -164,6 +164,7 @@ export default async function InternetCableOnlyPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="מסלולי אינטרנט ביתי על תשתית הכבל והנחושת (HFC) — חלופה זמינה ונפוצה כמעט בכל הארץ, במיוחד היכן שעדיין אין פריסת סיב. הטבלה מציגה רק מסלולים שמסומנים בקטלוג כתשתית כבל/נחושת, ממוינים מהזול ליקר. אם יש סיב אופטי בכתובת שלכם — לרוב כדאי להעדיף אותו לטובת מהירות ויציבות גבוהות יותר."

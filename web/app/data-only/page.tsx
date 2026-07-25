@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -148,6 +148,7 @@ export default async function DataOnlyPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="צריכים גלישה בלי קו טלפון — לטאבלט, לראוטר נייד או כקו נתונים משני? הטבלה מציגה רק מסלולי SIM שמסומנים בקטלוג כ&quot;גלישה בלבד&quot;, ממוינים מהזול ליקר. אין בהם דקות שיחה, אלא נתח גלישה בלבד — בדקו את נפח הנתונים מול הספק לפי השימוש שלכם."

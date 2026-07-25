@@ -1467,6 +1467,11 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .article-cta > * { position: relative; }
 .article-cta h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 22px; margin-bottom: 6px; }
 .article-cta p { opacity: .9; margin-bottom: 16px; }
+/* Secondary action inside the article CTA: the reader who does NOT want to go
+   browse a catalogue can hand over the job instead. Deliberately quieter than
+   the primary button — a second option, not a second shout. */
+.article-cta__alt { display: inline-block; margin-top: 14px; color: #fff; opacity: .92; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.article-cta__alt:hover, .article-cta__alt:focus-visible { opacity: 1; }
 .guide-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .guide-card { background: rgba(255,255,255,.66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.6); border-radius: var(--radius); padding: 24px; box-shadow: 0 3px 10px rgba(15,27,34,.03); transition: transform .2s var(--ease), box-shadow .2s; display: flex; flex-direction: column; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .guide-card { background: #fff; } }

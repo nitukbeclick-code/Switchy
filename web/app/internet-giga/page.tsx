@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -158,6 +158,7 @@ export default async function InternetGigaPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="מסלולי אינטרנט במהירות גיגה — 1000Mb ומעלה — ממוינים מהזול ליקר. מתאים לבתים עם כמה משתמשים כבדים במקביל, הורדות גדולות וזרימת וידאו ב-4K. הטבלה מציגה רק מסלולים שמהירות ההורדה המוצהרת שלהם בקטלוג היא לפחות 1000Mb. המהירות היא &quot;עד&quot; כפי שמציין הספק — בפועל היא תלויה בתשתית ובכתובת."

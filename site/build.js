@@ -1361,7 +1361,12 @@ ${a11yWidget}
 // script.js; the marketing consent is OPTIONAL and unchecked by default (real
 // opt-in, never pre-ticked). Pass the page's own submit-button label.
 // NOTE: index.html is hand-written — keep its form's consent block in sync.
-const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" novalidate>
+// `leadContext` (optional) is a short, TRUE description of what the visitor was
+// reading when they submitted — e.g. the guide title, the provider, the plan.
+// script.js folds it into the lead's `notes` column, so the rep opens the call
+// already knowing what the person was researching instead of starting cold.
+// It is page context only: never anything the visitor typed, and never PII.
+const leadFormHtml = (submitLabel, leadContext) => `<form class="cta__form" id="leadForm" novalidate${leadContext ? ` data-lead-context="${esc(leadContext)}"` : ''}>
           <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
@@ -2297,10 +2302,11 @@ if (fs.existsSync(extraGuidesDir)) {
 
 // Header markup — evaluated AFTER `guides` is fully populated (incl. the
 // content/guides/*.json extras), because the Guides mega-menu lists real
-// articles. Pages that render their own lead-form keep the in-page #cta anchor;
-// article/guide/static/404/providers-index pages have no #cta, so their header
-// CTA points at the homepage's — otherwise it's a dead button exactly where
-// organic-SEO visitors land.
+// articles. Pages that render their own lead-form keep the in-page #cta anchor
+// (guides included — they close on-page since the guide-CTA wave); the remaining
+// static/404/providers-index pages have no #cta, so their header CTA points at
+// the homepage's — otherwise it's a dead button exactly where organic-SEO
+// visitors land.
 const nav = navHtml('#cta');
 const navNoCta = navHtml('index.html#cta');
 
@@ -2529,7 +2535,7 @@ ${g.faq.map(([q, a]) => `            <details><summary>${esc(q)}</summary><p>${e
 <html lang="he" dir="rtl">
 ${head(g.title, g.desc, url, articleJsonLd(g))}
 <body id="top">
-${navNoCta}
+${nav}
   <main id="main">
     <article>
       <section class="article-hero article-hero--hued"${catHueStyle(catSlug)}>
@@ -2555,6 +2561,7 @@ ${toc}${body}
               const label = catSlug ? `השוו מסלולי ${g.cat}` : 'ראו את כל המסלולים';
               return `<a class="btn btn--inverse btn--lg" href="${href}">${esc(label)}${chev()}</a>`;
             })()}
+            <a class="article-cta__alt" href="#cta">או השאירו פרטים ונחזור אליכם עם ההמלצה${chev(true)}</a>
           </div>
         </div>
       </section>
@@ -2584,6 +2591,16 @@ ${relatedCards}
         </div>
       </section>
     </article>
+${trustBlock()}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>${catSlug ? `מוכנים לחסוך על ${esc(g.cat)}?` : 'מוכנים להפסיק לשלם יותר מדי?'}</h2>
+        <p>קראתם את המדריך — עכשיו נעשה את זה עליכם. השאירו שם וטלפון, ונחזור עם השוואה אישית${catSlug ? ` ל${esc(g.cat)}` : ''} והמסלול המשתלם ביותר עבורכם — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←', `מתוך המדריך: ${g.h1}${g.cat ? ` · ${g.cat}` : ''}`)}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
   </main>
 ${footer}
   ${leadsConfigTag()}

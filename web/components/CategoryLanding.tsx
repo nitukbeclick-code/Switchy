@@ -31,8 +31,10 @@ import PriceCaveat from "@/components/PriceCaveat";
 import RelatedLinks from "@/components/RelatedLinks";
 import JsonLd from "@/components/JsonLd";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
+import LeadFormLazy from "@/components/LeadFormLazy";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import Icon from "@/components/Icon";
-import { priceUnitLabel } from "@/lib/format";
+import { leadCategory, priceUnitLabel } from "@/lib/format";
 import { priceText } from "@/lib/plan-display";
 import {
   buildCategoryRelatedGroups,
@@ -71,6 +73,12 @@ export interface CategoryLandingProps {
    * of its own and wants this component to supply the single ink hero.
    */
   hideHero?: boolean;
+  /**
+   * Optional REAL catalogue-wide counts for the lead form's trust line. Passed
+   * by the host page (which already reads the catalogue) so this component stays
+   * fetch-free; omitted → the form simply shows no count line. Never fabricate.
+   */
+  trustStats?: { planCount: number; providerCount: number };
   /** Optional extra classes on the outer section. */
   className?: string;
 }
@@ -88,6 +96,7 @@ export default function CategoryLanding({
   plans,
   subcats,
   hideHero = true,
+  trustStats,
   className,
 }: CategoryLandingProps) {
   const comparePath = `/compare/${category}`;
@@ -232,6 +241,41 @@ export default function CategoryLanding({
           <Icon name="chevron" size={16} aria-hidden="true" />
         </Link>
       </div>
+
+      {/* ── Lead capture ──────────────────────────────────────────────────────
+          Directly under the prices, where intent peaks: the visitor has just
+          read real figures and is deciding. Before this, a category landing's
+          only exits were "go to the compare hub" or "read a guide" — every one
+          of them a link away from the sale. Category is pre-selected from this
+          landing's own bucket, so the form opens already knowing the subject.
+          `trustStats` is rendered only when the host page supplied real counts —
+          this component stays fetch-free and never invents a number. ───────── */}
+      <section
+        id="lead"
+        aria-labelledby={`${headingId}-lead`}
+        className="section scroll-mt-6"
+      >
+        <h2
+          id={`${headingId}-lead`}
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          רוצים שנמצא לכם את המסלול המשתלם ביותר?
+        </h2>
+        <p className="mt-2 text-foreground">
+          {`ראיתם את המחירים — עכשיו נעשה את העבודה עליכם. השאירו פרטים ונחזור אליכם עם השוואה אישית ב${titleHe} וההמלצה שמתאימה לשימוש שלכם — חינם, בלי התחייבות.`}
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy
+            source="category"
+            defaultCategory={leadCategory(category)}
+            trustStats={trustStats}
+          />
+        </div>
+      </section>
+
+      {/* Mobile-only bar back to the form above — these are long, scrollable
+          pages, and without it the ask scrolls away and never returns. */}
+      <StickyLeadCta source="category" />
 
       {/* ── Onward links — subcategories + guides (no dead-ends) ────────────────
           A standalone band with symmetric breathing room (.section). Both link

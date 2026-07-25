@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -148,6 +148,7 @@ export default async function KosherPlansPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="מסלולי סלולר כשרים — קווים בפיקוח עם חסימת תכנים, ללא גישה לאינטרנט פתוח, באישור ועדת הרבנים לענייני תקשורת. הטבלה מציגה רק מסלולים שמסומנים כ&quot;כשר&quot; בקטלוג, ממוינים מהזול ליקר. רמת הפיקוח והחסימות המדויקת משתנה בין הספקים — כדאי לוודא את התנאים מול הספק לפני מעבר."

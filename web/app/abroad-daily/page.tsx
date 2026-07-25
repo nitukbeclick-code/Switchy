@@ -18,7 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -151,6 +151,7 @@ export default async function AbroadDailyPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="נוסעים לכמה ימים? חבילה יומית יכולה להיות זולה יותר מחבילה שבועית או חודשית. הטבלה מציגה רק חבילות חו״ל שמתומחרות לפי יום בקטלוג (או שמסומנות כיומיות), ממוינות מהזול ליקר. שימו לב שהמחיר המוצג הוא ליום — בדקו את העלות הכוללת לכל ימי הנסיעה ואת היעדים הנכללים מול הספק."

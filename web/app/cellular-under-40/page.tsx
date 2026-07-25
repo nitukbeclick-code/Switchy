@@ -17,7 +17,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -155,6 +155,7 @@ export default async function CellularUnder40Page() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="חוסכים בסלולר? הטבלה מציגה את כל מסלולי הסלולר שעולים עד ₪40 לחודש, ממוינים מהזול ליקר — כולם נמשכים ישירות מהקטלוג ועומדים בתקרת המחיר הזו. לרוב כוללים שיחות ו-SMS ללא הגבלה. שימו לב גם למחיר אחרי תקופת המבצע — לעיתים מסלול זול עולה בהמשך."

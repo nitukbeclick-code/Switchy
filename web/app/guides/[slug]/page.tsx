@@ -37,6 +37,10 @@ import {
   speakableSchema,
 } from "@/lib/schema";
 import { getLivePlans } from "@/lib/live-catalogue";
+import { getPlans, getProviders } from "@/lib/data";
+import { leadCategory } from "@/lib/format";
+import LeadFormLazy from "@/components/LeadFormLazy";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import { directAnswerFor, lastDataDate } from "@/lib/aeo";
 import { pageMetadata } from "@/lib/seo";
 
@@ -497,6 +501,15 @@ export default async function GuidePage({ params }: Params) {
               className="transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:-translate-x-0.5"
             />
           </Link>
+          {/* Second path for the reader who would rather hand the job over than
+              go browse a catalogue themselves. Quieter than the primary button —
+              an alternative, not a competing shout. */}
+          <a
+            href="#lead"
+            className="mt-4 block text-sm font-semibold text-accent-text underline underline-offset-4 hover:text-accent"
+          >
+            או השאירו פרטים ונחזור אליכם עם ההמלצה
+          </a>
         </div>
 
         {/* ── FAQ (visible — mirrors the FAQPage JSON-LD) ──────────────────── */}
@@ -547,6 +560,45 @@ export default async function GuidePage({ params }: Params) {
         />
       </article>
       </div>
+
+      {/* ── Lead capture ────────────────────────────────────────────────────
+          Placed the moment the article ends — the reader who just spent five
+          minutes on this subject is at peak intent, and until now the guide's
+          only exits were "go browse a catalogue" or "read another guide". The
+          ask comes BEFORE those browse-away blocks for exactly that reason.
+          Category is pre-selected from the guide's own category when it maps to
+          a real one; trustStats are real catalogue counts, never invented. ── */}
+      <section
+        id="lead"
+        aria-labelledby="lead-h"
+        className="mx-auto mt-14 max-w-3xl scroll-mt-6 border-t border-border/40 pt-10"
+      >
+        <h2
+          id="lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          רוצים שנמצא לכם את המסלול המשתלם ביותר?
+        </h2>
+        <p className="mt-2 text-foreground">
+          {aeoCategory
+            ? `קראתם את המדריך — עכשיו נעשה את העבודה עליכם. השאירו פרטים ונחזור אליכם עם השוואה אישית בקטגוריית ${guide.cat} וההמלצה שמתאימה לכם — חינם, בלי התחייבות.`
+            : "קראתם את המדריך — עכשיו נעשה את העבודה עליכם. השאירו פרטים ונחזור אליכם עם השוואה אישית וההמלצה שמתאימה לכם — חינם, בלי התחייבות."}
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy
+            source="guide"
+            defaultCategory={leadCategory(aeoCategory ?? undefined)}
+            trustStats={{
+              planCount: getPlans().length,
+              providerCount: getProviders().length,
+            }}
+          />
+        </div>
+      </section>
+
+      {/* Mobile-only bar back to the form above — a guide is a long read, and
+          without it the ask scrolls away and never returns. */}
+      <StickyLeadCta source="guide" />
 
       {/* ── Internal links → real compare/providers pages ───────────────────── */}
       <RelatedAuthorityPages

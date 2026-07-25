@@ -20,7 +20,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -174,6 +174,7 @@ export default async function FiveGvsFourGPage() {
         </h2>
         <div className="mt-4">
           <CategoryLanding
+            trustStats={catalogueTrustStats()}
             category={CATEGORY}
             titleHe="מסלולי 5G"
             intro="מסלולי הסלולר ב-5G, ממוינים מהזול ליקר. הטבלה מציגה רק מסלולים שמסומנים בקטלוג כ-5G. המהירות בפועל תלויה בכיסוי, בתשתית ובכתובת."

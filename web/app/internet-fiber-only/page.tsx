@@ -19,7 +19,7 @@ import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { plansByCategory, CATEGORY_HE } from "@/lib/data";
+import { catalogueTrustStats, plansByCategory, CATEGORY_HE } from "@/lib/data";
 import {
   collectionPageSchema,
   categoryAggregateOfferSchema,
@@ -169,6 +169,7 @@ export default async function InternetFiberOnlyPage() {
 
       <div className="mt-4">
         <CategoryLanding
+          trustStats={catalogueTrustStats()}
           category={CATEGORY}
           titleHe={TITLE_HE}
           intro="כל מסלולי אינטרנט הסיב האופטי (FTTH/Fiber) בישראל במקום אחד, ממוינים מהזול ליקר. סיב אופטי מספק את המהירות והיציבות הגבוהות ביותר — כולל מהירות העלאה (Upload) משמעותית. הטבלה כוללת מסלולי סיב בלבד (ללא תשתית נחושת/כבל). זמינות הסיב תלויה בכתובת — כדאי לבדוק מול הספק לפני הזמנה."

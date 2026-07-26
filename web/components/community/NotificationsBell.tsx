@@ -417,7 +417,10 @@ export default function NotificationsBell() {
             // Descends BELOW the sticky header, pinned to the inline-END (RTL:
             // left) gutter of the centered header (max-w-5xl = 64rem) so on wide
             // screens it drops from the bell, not the far edge; 1rem on phones.
-            "fixed top-16 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
+            // top-4.5rem, not top-16 (4rem): the masthead measures 69px, so at
+            // 64px the panel's top edge tucked UNDER the z-50 header and clipped
+            // its own header row. Same figure as html{scroll-padding-top:4.5rem}.
+            "fixed top-[4.5rem] z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
             "max-h-[min(32rem,calc(100dvh-6rem))] overflow-hidden rounded-2xl",
             "border border-border bg-surface text-foreground shadow-float",
           ].join(" ")}

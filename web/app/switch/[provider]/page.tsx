@@ -24,6 +24,7 @@ import AuthorityReasoning from "@/components/AuthorityReasoning";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedOutboundLink from "@/components/TrackedOutboundLink";
 import LeadForm from "@/components/LeadForm";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import {
   getProviders,
   getProvider,
@@ -435,6 +436,12 @@ export default async function SwitchProviderPage({ params }: Params) {
           />
         </div>
       </section>
+
+      {/* Mobile-only bar back to the form above. Someone reading a disconnection
+          guide has already decided to leave their provider; on a phone the ask is
+          many screens down. The verified `#lead` anchor is right above, so the bar
+          resolves its target on mount and hides once the form is on screen. */}
+      <StickyLeadCta source="switch" />
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

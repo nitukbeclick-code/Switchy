@@ -35,6 +35,7 @@ import LeadForm from "@/components/LeadForm";
 import PriceCaveat from "@/components/PriceCaveat";
 import BillForensics from "@/components/BillForensics";
 import SavingsReveal from "@/components/SavingsReveal";
+import SocialProof from "@/components/SocialProof";
 import Icon from "@/components/Icon";
 
 // Compression budget: cap the longest edge and re-encode as JPEG. A bill is text-
@@ -142,6 +143,21 @@ function askSwitchyAboutBill(result: AnalyzeResult): void {
   trackEvent("bill_ask_ai", { source: "bills", category });
 }
 
+/** The shared in-page anchor for the hand-off form (also <StickyLeadCta>'s default). */
+const LEAD_ANCHOR_ID = "lead";
+
+/**
+ * Scroll to the hand-off lead form. Mirrors <StickyLeadCta>'s behaviour exactly
+ * (same `#lead` target, same prefers-reduced-motion check) so the two entry points
+ * into the form cannot drift apart. Fail-soft: no target ⇒ nothing happens.
+ */
+function scrollToLead(): void {
+  const target = document.getElementById(LEAD_ANCHOR_ID);
+  if (!target) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+}
+
 export interface BillUploaderProps {
   /**
    * A slim, serializable projection of the REAL catalogue (cat/provider/plan/
@@ -151,9 +167,19 @@ export interface BillUploaderProps {
    * runs on the bill-level overpay vs the surfaced suggestions.
    */
   promoPlans?: ForensicsPlan[];
+  /**
+   * Optional REAL catalogue counts for the hand-off form's trust line ("משווים X
+   * מסלולים מ-Y ספקים"). Server-only (`catalogueTrustStats()` reads the bundled
+   * catalogue through node:fs), so the /bills page must pass it down — this
+   * component cannot derive it. Omitted ⇒ LeadForm shows no count line.
+   */
+  trustStats?: { planCount: number; providerCount: number };
 }
 
-export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
+export default function BillUploader({
+  promoPlans = [],
+  trustStats,
+}: BillUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -249,6 +275,30 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
   // read gave us a usable category.
   const handoffCategory: LeadCategory | undefined = result
     ? leadCategory(result.category)
+    : undefined;
+
+  // A factual note for the rep, assembled ONLY from figures already rendered on
+  // this screen: what the bill says they pay, the real annual gap the analyzer
+  // returned, and the top REAL suggestion. Each clause is dropped when the read
+  // didn't produce it — an absent fact is omitted, never guessed.
+  const topSuggestion = readable ? result?.suggestions?.[0] : undefined;
+  const handoffContextNote = readable
+    ? [
+        result?.provider ? `ספק נוכחי: ${result.provider}` : null,
+        result?.currentSpend
+          ? `תשלום היום: ${ils(result.currentSpend)} לחודש`
+          : null,
+        result && result.annualSaving > 0
+          ? `חיסכון שנתי מוערך: ${ils(result.annualSaving)}`
+          : null,
+        topSuggestion
+          ? `מסלול מוצע: ${topSuggestion.provider} — ${topSuggestion.name} (${ils(
+              topSuggestion.price,
+            )})`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || undefined
     : undefined;
 
   return (
@@ -386,6 +436,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
           <div className="mt-6 border-t border-border pt-6">
             <LeadForm
               source="bill-analyzer"
+              trustStats={trustStats}
               heading="לא נורא — נעזור לכם ידנית. השאירו פרטים ונשווה עבורכם, חינם ובלי התחייבות"
             />
           </div>
@@ -451,6 +502,21 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
             <SavingsReveal
               currentSpend={result.currentSpend}
               annualSaving={result.annualSaving}
+              // The scrubber is the moment the gap is FELT — and the real form is
+              // three sections and ~2.5 screens further down, past content that
+              // answers the question and removes the reason to call. Give that
+              // moment the ask directly. The scroll is <StickyLeadCta>'s exact
+              // behaviour (shared #lead target, reduced-motion aware).
+              cta={
+                <button
+                  type="button"
+                  onClick={scrollToLead}
+                  className="interactive press inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+                >
+                  רוצים שנסגור לכם את הפער?
+                  <Icon name="arrow" size={18} aria-hidden="true" />
+                </button>
+              }
             />
           )}
 
@@ -523,11 +589,27 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
             </div>
           )}
 
-          {/* Hand-off to the lead form — the primary next action. */}
-          <div className="bento p-6 sm:p-8">
+          {/* Honest aggregate directly above the ask. With fallback="none" it
+              emits NO DOM at all unless there is a real published figure, so it
+              can never fabricate proof next to a real saving. */}
+          <SocialProof fallback="none" />
+
+          {/* Hand-off to the lead form — the primary next action.
+              `id="lead"` is the shared in-page anchor: the scrubber's CTA above
+              and <StickyLeadCta> both scroll here, and neither has to know where
+              "here" is. scroll-mt-6 keeps the sticky header off the form's top.
+              `contextNote` is the read that is ALREADY on screen — provider, what
+              they pay today, the real annual gap and the plan we surfaced — so the
+              rep opens the call knowing the ask. Nothing here is computed anew.
+              No `bento` on the wrapper: <LeadForm> already renders its own card,
+              and the old wrapper nested one inside the other — the same plain
+              wrapper the ~30 category landings use is the right single card. */}
+          <div id={LEAD_ANCHOR_ID} className="scroll-mt-6">
             <LeadForm
               source="bill-analyzer"
               defaultCategory={handoffCategory}
+              trustStats={trustStats}
+              contextNote={handoffContextNote}
               heading="רוצים שנעזור לעבור? השאירו פרטים — חינם ובלי התחייבות"
             />
           </div>

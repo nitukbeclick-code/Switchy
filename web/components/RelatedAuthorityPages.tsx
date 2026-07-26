@@ -66,7 +66,10 @@ export default function RelatedAuthorityPages({
       aria-label={ariaLabel ?? heading}
       data-related-pages
       className={[
-        "bento p-6 sm:p-7",
+        // FORM: `card`, matching <RelatedLinks> — both are "where to go next"
+        // navs, so they should be the same shape. The large-radius `bento` tile
+        // is reserved for the genuine widgets (reviews, the timer).
+        "card p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
@@ -74,12 +77,8 @@ export default function RelatedAuthorityPages({
     >
       <h2
         id={headingId}
-        className="mb-4 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
+        className="mb-4 h-section text-ink"
       >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
         {heading}
       </h2>
 

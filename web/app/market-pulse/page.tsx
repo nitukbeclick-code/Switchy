@@ -9,6 +9,7 @@ import MarketPulseCharts, {
 // Lazy wrapper (ssr:false + CLS-safe skeleton) — the calculator is below the
 // fold here just like on the home page, so it must not add hydration cost.
 import SmartTimer from "@/components/SmartTimerLazy";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
 import { priceStats, CATEGORY_HE, getPlans, getProviders } from "@/lib/data";
@@ -338,6 +339,35 @@ export default function MarketPulsePage() {
           מחשבון סיום התחייבות
         </h2>
         <SmartTimer heading="מתי כדאי לי לעבור? מחשבון סיום התחייבות" />
+      </section>
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          This page tells a visitor exactly what the market pays right now; until
+          now it answered the obvious follow-up ("so am I overpaying?") with a link
+          list. Same compact, consent-gated ask the category landings use. The
+          counts are the REAL figures already rendered in the trust line above — no
+          `defaultCategory`, since the page covers every category at once. ────── */}
+      <section
+        id="lead"
+        aria-labelledby="pulse-lead-h"
+        className="mt-16 scroll-mt-6"
+      >
+        <h2
+          id="pulse-lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          משלמים יותר מהמחירים האלה?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם ההצעה המשתלמת ביותר בקטלוג — חינם, בלי
+          התחייבות, והמספר נשאר שלכם.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy
+            source="market-pulse"
+            trustStats={{ planCount, providerCount: providers.length }}
+          />
+        </div>
       </section>
 
       {/* ── Onward links — no dead-ends. ──────────────────────────────────── */}

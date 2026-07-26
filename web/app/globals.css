@@ -1,12 +1,35 @@
 @import "tailwindcss";
 
+/* Tailwind v4 ships `dark:` as `@media (prefers-color-scheme: dark)`, which is NOT
+   how this app switches themes: the no-flash guard in layout.tsx and <ThemeToggle>
+   write `data-theme` onto <html>. So a `dark:` utility silently did nothing for a
+   visitor who toggled dark on a light-preference OS, and fired on a light page for
+   a dark-preference OS. Re-point the variant at the real toggle so `dark:` and the
+   `:root[data-theme="dark"]` blocks below can never disagree. */
+@custom-variant dark (&:where(:root[data-theme="dark"], :root[data-theme="dark"] *));
+
 /* ════════════════════════════════════════════════════════════════════════════
-   Brand tokens — "white glass + ink" base + ONE green accent (mono-green brand).
-     • green  #16A34A = ACTION + VALUE (CTAs, links, active nav, focus, savings
-       figures / "best value" win states — the --value tier aliases to green)
-     • ink    #111827 = text / structure / borders
-     • glass  #F5F7F8 = page background
-   Per-provider brand colors are NOT defined here (never recolored to the theme).
+   Brand tokens — warm editorial fintech (ivory canvas, paper surfaces, forest
+   ink, warm hairlines) on a STRICT TWO-ACCENT SYSTEM. There is no third accent.
+
+   THE RULE. Read this, not the drift:
+     • EMERALD  --accent / --accent-text (#087A5B) = ACTION, and only action.
+       Primary CTAs, links, active nav, focus rings. If the visitor cannot DO it,
+       it is not emerald.
+     • AMBER    --value / --value-text (#D39A24) = VALUE, and only value. Every ₪
+       figure, every savings / difference number, every "best value" state. Money
+       is amber. Money is never emerald, and nothing that isn't money is amber.
+     • ink   #14211D = text / structure / borders.
+     • glass #F6F2E9 = page background.
+     • Per-provider CARRIER colours (Cellcom blue, Partner teal…) are NEITHER, and
+       are not defined here — they are the carriers' identity, never repainted.
+
+   A previous revision of this block declared a "mono-green brand" in which
+   savings used the green system and amber was banned. The values below were
+   never green, so the comment described nothing that shipped — it just taught
+   every author to reach for `-accent`. The census when this was corrected:
+   ~1,580 `-accent` utility usages against ~130 `-value`, on a site whose entire
+   proposition is a number in shekels. Amber is the money colour. Use it.
    ════════════════════════════════════════════════════════════════════════════ */
 :root {
   /* Native UI (form controls, scrollbars) follow the light scheme by default. */
@@ -40,14 +63,19 @@
      4.44:1. #0e7034 clears AA on the tint (~5.1:1), on the value tint (~5.2:1),
      and on plain white (~6.2:1). */
   --accent-text: #075b46; /* emerald text/links on ivory */
-  /* VALUE tier — mono-green brand: savings/win states use the SAME green system
-     (fill #16A34A / AA text), never amber/orange. Token names kept so every
-     existing bg-value/text-value-text usage repaints without edits. */
-  --value: #d39a24; /* VALUE — restrained amber savings/win states */
-  --value-contrast: #ffffff; /* text on the green fill */
-  /* #15803d measured 4.21:1 on the bg-value/10 tint (wallet pill); the shared
-     deep green clears AA there too (~5.2:1). */
-  --value-text: #8a570d; /* AA amber value text on ivory */
+  /* VALUE tier — restrained amber. This is the MONEY colour: every ₪ figure,
+     every savings / difference number, every "best value" state, and nothing
+     else. Never a CTA, never a link, never a carrier.
+     Split fill vs text exactly like the accents above:
+       • #d39a24 is a FILL/border/chart shade (3:1 non-text threshold).
+       • #8a570d is the TEXT shade — 5.45:1 on the ivory canvas, 5.94:1 on paper,
+         5.48:1 on the bg-value/10 tint (the wallet pill). AA everywhere it lands.
+     --value-contrast was #ffffff, which measured 2.49:1 on the amber fill and so
+     failed AA at every size — the dark theme already used dark-on-amber. It is
+     now the structural ink (6.65:1 on the fill), matching that. */
+  --value: #d39a24; /* VALUE — amber money fills / best-value borders */
+  --value-contrast: #14211d; /* ink on the amber fill (6.65:1) */
+  --value-text: #8a570d; /* AA amber money text on ivory / paper / tint */
 
   /* Danger / error — the one state color outside the two-accent system. Split
      fill vs text like the accents: -text is AA (≥4.5:1) for small error copy on
@@ -74,8 +102,9 @@
   --shadow-float: 0 8px 20px rgba(20, 33, 29, 0.09),
     0 34px 86px rgba(20, 33, 29, 0.17);
 
-  /* Subtle accent glow — green action energy, kept faint (decorative, non-text).
-     Mono-green: the value glow is the same green (slightly warmer weight). */
+  /* Subtle glows — kept faint (decorative, non-text). One per accent, and they
+     obey the same rule as the accents: the accent glow is emerald (it haloes an
+     ACTION), the value glow is amber (it haloes MONEY). */
   --glow-accent: 0 0 0 1px rgba(8, 122, 91, 0.14),
     0 12px 30px rgba(8, 122, 91, 0.22);
   --glow-value: 0 0 0 1px rgba(211, 154, 36, 0.16),
@@ -107,12 +136,13 @@
 
    We re-skin the SAME token NAMES so every utility / component inherits dark mode
    with no per-rule overrides: surfaces become dark ink, body text lifts to light,
-   and the ONE green accent keeps its meaning (ACTION + VALUE, mono-green) but is
-   NUDGED BRIGHTER so it clears WCAG AA on the dark glass:
-     • green  #16A34A → #4ADE80 (fill) / #22C55E (hover)
-   On the dark surfaces the lifted green already exceeds 4.5:1 as small text, so
-   the `-text` tiers alias to the brighter fill (green text stays bright, never
-   the dark light-mode text shade that would vanish on dark glass).
+   and BOTH accents keep their meanings (emerald = ACTION, amber = VALUE) while
+   being NUDGED BRIGHTER so they clear WCAG AA on the dark glass:
+     • emerald #087A5B → #5DD6AB (fill) / #36B98B (hover)
+     • amber   #D39A24 → #F2C66D (fill; ink #2C1F08 rides on it)
+   On the dark surfaces the lifted shades already exceed 4.5:1 as small text, so
+   the `-text` tiers alias to the brighter fill (accent/value text stays bright,
+   never the deep light-mode text shade that would vanish on dark glass).
    Per-provider/carrier brand colors are NOT defined here — never re-skinned.
    ════════════════════════════════════════════════════════════════════════════ */
 :root[data-theme="dark"] {
@@ -128,7 +158,7 @@
   --border-strong: #45574f;
   --muted: #b8c0ba;
 
-  /* Accents — lifted for legibility on dark glass (mono-green: action = value). */
+  /* Accents — lifted for legibility on dark glass. Two accents, same meanings. */
   --accent: #5dd6ab;
   --accent-hover: #36b98b;
   --accent-contrast: #09231a;
@@ -146,11 +176,14 @@
   --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 38px rgba(0, 0, 0, 0.55);
   --shadow-float: 0 6px 16px rgba(0, 0, 0, 0.5), 0 30px 70px rgba(0, 0, 0, 0.6);
 
-  /* Accent glow — re-tinted to the lifted green so it reads on dark. */
+  /* Glows — tinted to read on dark. The value glow was still emerald here, a
+     leftover from the "mono-green" era: an amber ₪ figure haloed in green is
+     exactly the confusion the two-accent rule exists to prevent, so it now
+     tracks the dark amber fill (#F2C66D). */
   --glow-accent: 0 0 0 1px rgba(74, 222, 128, 0.18),
     0 8px 28px rgba(74, 222, 128, 0.22);
-  --glow-value: 0 0 0 1px rgba(74, 222, 128, 0.2),
-    0 8px 28px rgba(74, 222, 128, 0.24);
+  --glow-value: 0 0 0 1px rgba(242, 198, 109, 0.2),
+    0 8px 28px rgba(242, 198, 109, 0.24);
 }
 
 /* The .glass / .glass-strong surfaces use `var(--surface)` via color-mix, so they
@@ -301,6 +334,47 @@ h4 {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   BOTTOM-OF-VIEWPORT STACKING CONTRACT
+   ────────────────────────────────────────────────────────────────────────────
+   Four independent surfaces want the bottom edge of a phone screen: the sticky
+   lead CTA (z-40, opaque, sm:hidden), the cookie banner (z-50), the push opt-in
+   toast, and the "מתעדכן…" freshness pill. Left to themselves they stacked, and
+   two of the collisions were outright defects — so the ordering lives HERE, once,
+   as a flag-driven contract, instead of being re-negotiated per page.
+
+   (1) RESERVE. <StickyLeadCta> is `position: fixed` with an OPAQUE surface, so it
+       covers whatever the page's last ~7rem is. On every route that mounts it
+       that was <SiteFooter>'s legal row — including the נגישות link, which under
+       ת"י 5568 must be reachable. The component sets `data-sticky-lead` on <html>
+       once it confirms its scroll target exists; we pay for the bar with real
+       page padding so the document can actually scroll clear of it. Reserved
+       unconditionally (not only while the bar is on screen) so the page height
+       never twitches as the bar slides in and out. The bar is sm:hidden, so the
+       reservation ends at the same breakpoint.
+
+   (2) ONE DECISION AT A TIME. <ConsentBanner> (z-50) sat directly on top of the
+       CTA (z-40): on a first visit the only conversion action on the page was
+       hidden behind a cookie question. While a choice is pending the banner sets
+       `data-consent-open` and the CTA parks itself off-screen; the instant the
+       visitor picks, the flag drops and the CTA slides back up on its own drawer
+       transition. Tailwind's translate utilities compile to the `translate`
+       property, so this `transform` composes with them rather than fighting them
+       — either way the bar ends up below the fold. Unlayered, so it beats the
+       utility layers without !important.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root[data-sticky-lead] body {
+  padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  :root[data-sticky-lead] body {
+    padding-bottom: 0;
+  }
+}
+:root[data-consent-open] [data-sticky-lead-cta] {
+  transform: translateY(100%);
 }
 
 /* Horizontal scroll-shadow affordance (used on the comparison-table wrapper).
@@ -644,6 +718,98 @@ button.crm-overlay-btn:not([disabled]):active {
 .nums-tabular,
 .nums-tabular * {
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Display tiers: the money tier + the two heading tiers ────────────────────
+   The site's whole proposition is a number in shekels, and until now every ₪
+   figure was set byte-for-byte like the ~80 section headings around it — same
+   face, same weight, same size — so nothing on the page read as money. These are
+   the tiers that fix that. They are CLASS NAMES on purpose: components apply
+   `.price-display`, not a pile of arbitrary-value utilities, so the remaining
+   call sites can be converted by find-and-replace and the scale can be tuned in
+   one place afterwards.
+
+   THE MONEY TIER (.price-display + .price-sign + .price-unit) is reserved for ₪
+   figures and savings numbers, and NOTHING else on the site is allowed to use
+   it — that exclusivity is the whole point. Pair it with `text-value-text` (the
+   AA amber) so the figure is both the loudest and the only amber thing in view.
+   Composition, RTL-safe (₪ is a sibling span, never a pseudo-element, so bidi
+   orders it correctly and screen readers still read the currency):
+
+     <p class="price-display text-value-text">
+       <span class="price-sign">₪</span>79
+     </p>
+     <p class="price-unit">לחודש</p>
+
+   Rubik is loaded as the full variable axis (layout.tsx, no `weight` array), so
+   weight 800 costs zero extra bytes over the 400/600 already in use.
+
+   THE HEADING TIERS (.h-pillar / .h-section) replace the flat single 24px rank
+   the page had: one pillar per section band, .h-section for everything under it.
+   Two tiers is a hierarchy; one tier is a list. Both inherit the tighter optical
+   tracking the h1–h4 rules above set, stated explicitly so the class works on a
+   <p> or a <div> too. .eyebrow is the small caps label that sits above a pillar. */
+.price-display {
+  font-family: var(--font-rubik), system-ui, sans-serif;
+  font-size: 2.5rem;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+/* The currency mark is a SIBLING of the digits, demoted so the number itself
+   carries the weight — a full-size ₪ steals about a fifth of the figure's
+   optical mass for a glyph nobody needs to read. */
+.price-sign {
+  font-size: 0.5em;
+  font-weight: 700;
+  vertical-align: super;
+}
+/* The unit ("לחודש", "לשנה") is a micro-label BELOW the figure, never inline at
+   the same size — spaced caps so it reads as an annotation, not as more money. */
+.price-unit {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.h-pillar {
+  font-family: var(--font-rubik), system-ui, sans-serif;
+  font-size: 1.875rem; /* text-3xl */
+  line-height: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+@media (min-width: 640px) {
+  .h-pillar {
+    font-size: 2.25rem; /* text-4xl */
+    line-height: 2.5rem;
+  }
+}
+.h-section {
+  font-family: var(--font-rubik), system-ui, sans-serif;
+  font-size: 1.25rem; /* text-xl */
+  line-height: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+/* The three muted defaults live in @layer components, NOT unlayered like the
+   metrics above: an unlayered rule beats every Tailwind utility layer, so a
+   `text-ink` / `text-value-text` on an .eyebrow or a .price-unit would silently
+   lose (the same trap the h1–h6 and `a` rules further up were rescued from). The
+   TYPE metrics stay unlayered on purpose — they have to out-rank the unlayered
+   h1–h4 tracking rules so `<h2 class="h-pillar">` gets the pillar tracking. */
+@layer components {
+  .price-sign,
+  .price-unit,
+  .eyebrow {
+    color: var(--muted);
+  }
 }
 
 /* ── Layout helpers ───────────────────────────────────────────────────────────

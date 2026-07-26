@@ -19,14 +19,11 @@ import type { Plan } from "@/lib/types";
 import { priceUnitLabel } from "@/lib/format";
 import Icon from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
 import type { PlanDisplay, PlanField } from "@/lib/plan-display";
 import type { PriceDrop } from "@/lib/price-history";
 import PriceDropBadge from "@/components/PriceDropBadge";
-import {
-  calculateTwelveMonthCost,
-  formatAnnualCost,
-  formatMonthlyEquivalent,
-} from "@/lib/plan-cost";
+import { calculateTwelveMonthCost, formatAnnualCost } from "@/lib/plan-cost";
 
 /** What kind of editorial label, if any, a card/row carries. */
 export type FeatureLabel = "promoted" | "editor";
@@ -81,50 +78,37 @@ export function AfterLine({ after }: { after: PlanDisplay["after"] }) {
   );
 }
 
-/** Transparent first-year service cost. Equipment/installation stay separate. */
+/**
+ * Transparent first-year service cost, as a FOOTNOTE — one borderless hairline
+ * row under the headline price. It used to be a tinted, bordered amber panel
+ * carrying its own bold figure and a nested "איך חישבנו?" disclosure, which put
+ * a second money block in the same card as the price and out-shouted the very
+ * number it annotates. A card can only have one loudest thing; amber survives
+ * here on the FIGURE alone, at footnote size.
+ *
+ * Equipment/installation stay separate (they are not service cost), and the
+ * qualifier says so on the same line rather than in a paragraph of its own —
+ * the full sentence remains available as the row's title/tooltip.
+ */
 export function AnnualCostLine({ plan }: { plan: Plan }) {
   const cost = calculateTwelveMonthCost(plan);
   const extras = cost.recurringExtras.length + cost.oneTimeFees.length;
   return (
     <div
-      className="mt-3 rounded-xl border border-value/25 bg-value/[0.07] px-3 py-2.5"
+      className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-border/60 pt-2.5"
       title={cost.disclosure}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <span className="text-xs font-semibold text-value-text">עלות השירות ל־12 חודשים</span>
-        <strong className="font-display text-base text-ink tabular-nums">
-          {formatAnnualCost(cost)}
-        </strong>
-      </div>
-      <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
-        ממוצע {formatMonthlyEquivalent(cost)} לחודש
+      <span className="text-[12px] text-muted">
+        עלות השירות ל־12 חודשים
         {extras > 0
-          ? ` · ${extras} חיובי ציוד/התקנה מוצגים בנפרד`
+          ? ` · ${extras} חיובי ציוד/התקנה בנפרד`
           : cost.hasUnpricedFees
             ? " · חיוב ללא סכום מופיע בפרטים"
-            : " · לא נמצאו תוספות מספריות"}
-      </p>
-      <details className="mt-1.5 text-[11px] text-muted">
-        <summary className="interactive cursor-pointer rounded-sm font-semibold text-accent-text underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-          איך חישבנו?
-        </summary>
-        <div className="mt-2 space-y-1 border-t border-value/20 pt-2 leading-relaxed">
-          <p>{cost.disclosure}</p>
-          <ul className="space-y-0.5">
-            {cost.segments.map((segment) => (
-              <li key={`${segment.fromMonth}-${segment.toMonth}`}>
-                חודשים {segment.fromMonth}–{segment.toMonth}: ₪{segment.monthly.toLocaleString("he-IL")} לחודש
-              </li>
-            ))}
-            {cost.recurringExtras.map((item) => (
-              <li key={`monthly-${item.label}`}>ציוד חודשי אפשרי · {item.label}: {item.raw}</li>
-            ))}
-            {cost.oneTimeFees.map((item) => (
-              <li key={`once-${item.label}`}>חיוב חד־פעמי אפשרי · {item.label}: {item.raw}</li>
-            ))}
-          </ul>
-        </div>
-      </details>
+            : ""}
+      </span>
+      <strong className="text-[13px] font-semibold text-value-text tabular-nums">
+        {formatAnnualCost(cost)}
+      </strong>
     </div>
   );
 }
@@ -234,14 +218,22 @@ export default function PlanCard({
         </Link>
       </p>
 
-      {/* Price big + unit, then the honest post-promo line. tabular-nums aligns ₪. */}
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="font-display text-2xl font-bold tracking-tight text-ink tabular-nums">
-          ₪{d.price}
-        </span>
-        <span className="text-sm text-muted">{priceUnitLabel(plan)}</span>
-      </div>
-      <div className="mt-0.5 text-[13px] tabular-nums">
+      {/* THE MONEY TIER. The price used to be set byte-for-byte like every
+          section H2 on the site (font-display text-2xl font-bold text-ink) and
+          coloured with the ACTION green — so on a page of headings, nothing read
+          as money. `.price-display` (globals.css) is the one type tier reserved
+          for ₪ figures, `text-value-text` the one amber that means VALUE, the ₪
+          is a demoted sibling span so the digits carry the optical mass, and the
+          unit drops BELOW as a spaced micro-label so the number stays one solid
+          block. `d.price` is a pre-formatted STRING from planDisplay (exact-aware:
+          "69.90" vs "69"), so it is rendered as-is — <Money> takes a number and
+          would re-round it. */}
+      <p className="price-display mt-2.5 text-value-text">
+        <span className="price-sign">₪</span>
+        {d.price}
+      </p>
+      <p className="price-unit mt-1">{priceUnitLabel(plan)}</p>
+      <div className="mt-1.5 text-[13px] tabular-nums">
         <AfterLine after={d.after} />
       </div>
       <PriceDropCell plan={plan} {...drop} />
@@ -286,18 +278,38 @@ export default function PlanCard({
         </details>
       ) : null}
 
-      {/* Always-present navigation to the plan's full detail page — pinned to the
-          card bottom (mt-auto) so cards in a carousel row share a tidy baseline.
-          min-h-11 grows the ~32px link to the 44px mobile tap-target guideline
-          (matching the אותיות קטנות summary above) without changing the text. */}
-      <Link
-        href={`/plans/${plan.id}`}
-        aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
-        className="interactive press mt-auto inline-flex min-h-11 items-center gap-1 self-start rounded-lg pt-3 text-[13px] font-semibold text-accent-text underline underline-offset-4 transition-colors hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
-        פרטים מלאים
-        <Icon name="chevron" size={14} aria-hidden="true" />
-      </Link>
+      {/* Card foot — pinned to the bottom (mt-auto) so cards in a carousel row
+          share a tidy baseline. TWO distinct affordances: both used to point at
+          the very same /plans/[id] route, which left the most-repeated unit in a
+          lead-generation product with no path to a lead at all. "פרטים מלאים" is
+          the READ path; the pill beside it is the REVENUE path, deep-linking to
+          the plan page's always-rendered #lead section so the request arrives
+          already attached to this plan. It is BORDERED, never filled — the page
+          keeps exactly one primary green action, and this is not it.
+          min-h-11 on both grows the ~32px text lines to the 44px mobile
+          tap-target guideline (matching the אותיות קטנות summary above). */}
+      <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-3">
+        <Link
+          href={`/plans/${plan.id}`}
+          aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
+          className="interactive press inline-flex min-h-11 items-center gap-1 rounded-lg text-[13px] font-semibold text-accent-text underline underline-offset-4 transition-colors hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          פרטים מלאים
+          <Icon name="chevron" size={14} aria-hidden="true" />
+        </Link>
+        {/* TrackedCtaLink is the existing "use client" next/link wrapper, so this
+            server-rendered card can measure per-card lead intent without becoming
+            a client component itself. */}
+        <TrackedCtaLink
+          href={`/plans/${plan.id}#lead`}
+          location="plan_card"
+          label="lead"
+          aria-label={`בקשת חזרה טלפונית בנוגע ל${plan.plan} מ${plan.provider}`}
+          className="interactive press inline-flex min-h-11 items-center rounded-xl border border-accent/40 px-3.5 text-[13px] font-semibold text-accent-text transition-colors hover:border-accent hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          שנחזור אליכם על המסלול הזה
+        </TrackedCtaLink>
+      </div>
     </article>
   );
 }

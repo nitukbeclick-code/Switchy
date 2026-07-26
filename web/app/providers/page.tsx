@@ -18,8 +18,10 @@ import EmptyState from "@/components/EmptyState";
 import ScrollReveal from "@/components/ScrollReveal";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
+  catalogueTrustStats,
   getCategories,
   buildProviderRankings,
   plansByCategory,
@@ -291,6 +293,32 @@ export default function ProvidersIndexPage() {
             ))}
           </ul>
         )}
+      </section>
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          The provider index is a browse surface that ended in links only. Someone
+          who scrolled the whole roster is choosing between carriers right now, and
+          the honest answer to "which one" is a neutral human comparison — which is
+          exactly what this form books. No `defaultCategory`: the hub spans every
+          service, so pre-selecting one would guess wrong most of the time. ────── */}
+      <section
+        id="lead"
+        aria-labelledby="providers-lead-h"
+        className="mt-16 scroll-mt-6"
+      >
+        <h2
+          id="providers-lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          לא בטוחים איזה ספק מתאים לכם?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם השוואה אישית בין הספקים — חינם, בלי
+          התחייבות, וללא העדפת ספק.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy source="providers" trustStats={catalogueTrustStats()} />
+        </div>
       </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}

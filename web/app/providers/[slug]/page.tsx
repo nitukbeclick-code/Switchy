@@ -11,6 +11,7 @@ import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import ComparisonTable from "@/components/ComparisonTable";
 import LeadForm from "@/components/LeadForm";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import TalkInCommunity from "@/components/community/TalkInCommunity";
 import { channelForCategory } from "@/lib/community";
 import {
@@ -570,6 +571,12 @@ export default async function ProviderPage({ params }: Params) {
           />
         </div>
       </section>
+
+      {/* Mobile-only bar back to the form above — this is a long provider page,
+          and on a phone the ask sits far below the plan tables. The verified
+          `#lead` anchor is right above, so the bar resolves its target on mount
+          and auto-hides the moment the form is on screen. */}
+      <StickyLeadCta source="provider" />
 
       {/* ── Talk about this provider in the community ──────────────────────── */}
       <section className="mt-12 rounded-2xl border border-border bg-surface p-5 text-center shadow-soft sm:p-6">

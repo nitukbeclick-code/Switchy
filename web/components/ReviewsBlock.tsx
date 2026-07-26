@@ -240,12 +240,8 @@ export default function ReviewsBlock({
 
       <h2
         id={headingId}
-        className="mb-3 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
+        className="mb-3 h-section text-ink"
       >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
         {heading}
       </h2>
 

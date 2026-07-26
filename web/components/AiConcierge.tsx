@@ -485,8 +485,9 @@ export default function AiConcierge() {
         className={[
           // Inline HEADER button (moved out of the bottom-corner FAB, per owner —
           // grouped with the theme toggle + a11y + Zoom triggers so it no longer
-          // overlaps page content). A compact 40px round brand-green launcher.
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+          // overlaps page content). A 44px round brand-green launcher — the
+          // cluster's minimum tap square (WCAG 2.5.5 / ת"י 5568).
+          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
           "bg-accent text-accent-contrast shadow-sm",
           "interactive press hover:bg-accent-hover",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
@@ -537,7 +538,10 @@ export default function AiConcierge() {
             // corner UNDER the trigger. The inline-end tracks the centered header's
             // gutter (max-w-5xl = 64rem) so on wide screens the panel descends from
             // the button, not the far viewport edge; folds to 1rem on phones.
-            "fixed top-16 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
+            // top-4.5rem, not top-16 (4rem): the masthead measures 69px, so at
+            // 64px the panel's top edge tucked UNDER the z-50 header and clipped
+            // its own title row. Same figure as html{scroll-padding-top:4.5rem}.
+            "fixed top-[4.5rem] z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
             "max-h-[min(34rem,calc(100dvh-6rem))] overflow-hidden rounded-2xl",
             "border border-border bg-surface shadow-float",
           ].join(" ")}

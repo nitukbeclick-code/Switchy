@@ -20,6 +20,7 @@ import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
 import {
+  catalogueTrustStats,
   getPlans,
   getProviders,
   getCategories,
@@ -249,7 +250,13 @@ export default function QuizPage() {
         <h2 id="quiz-h" className="sr-only">
           שאלון ההתאמה
         </h2>
-        <QuizWizard />
+        {/* REAL catalogue totals for the hand-off form's trust line — the wizard
+            is a client component and cannot read the catalogue itself. */}
+        {/* The mobile-only <StickyLeadCta source="quiz"> is mounted INSIDE the
+            wizard, not here: it resolves its `#lead` target once, in a mount
+            effect, and on this route that target only exists after the results
+            render. Mounted here it would be a permanent no-op. */}
+        <QuizWizard trustStats={catalogueTrustStats()} />
       </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}

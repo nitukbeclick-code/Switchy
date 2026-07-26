@@ -520,9 +520,14 @@ export default async function ServiceHubPage({ params }: Params) {
         </dl>
       </header>
 
-      {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
+      {/* ── AEO zero-click direct answer (right below the H1) ────────────────
+          Now a LEDE, not a panel: <AeoAnswerBlock> renders as indented editorial
+          text so it reads as the opening line of the page rather than as the
+          first of four stacked prose cards. Its markup — the [data-direct-answer]
+          node, the id the speakable schema targets, the JSON-LD emitted above —
+          is byte-identical; only the shell changed. */}
       {directAnswer && (
-        <div className="mt-6">
+        <div className="mt-5">
           <AeoAnswerBlock
             answer={directAnswer}
             dateModified={asOf}
@@ -531,33 +536,24 @@ export default async function ServiceHubPage({ params }: Params) {
         </div>
       )}
 
-      {/* ── Commission disclosure (Consumer Protection §7b) — at the top of the
-          service hub, NOT buried. ────────────────────────────────────────── */}
+      {/* ── Commission disclosure (Consumer Protection §7b) — immediately ABOVE
+          the prices it discloses. The reorder below TIGHTENS this adjacency: the
+          banner and the first ₪ are now one scroll apart instead of three. ── */}
       <div className="mt-6">
         <CommissionDisclosure variant="banner" />
       </div>
 
-      {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
-        <SgeSummary>{summary}</SgeSummary>
-      </div>
-
-      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
-      <div className="mt-8">
-        <AuthorityBlock
-          heading={`השורה התחתונה: ${svc.label}`}
-          answer={authority.answer}
-          rows={authority.rows}
-          reviewedAt={REVIEWED_AT}
-        />
-      </div>
-
       {/* ── Comparison table ────────────────────────────────────────────────
-          The core product. A visible section heading + a one-line intent caption
-          frame the table (it was an sr-only h2 before, leaving the table to
-          dead-start). When the live read yields no plans we render the shared
-          EmptyState (honest "no data yet") instead of an empty table. */}
-      <section aria-labelledby="table-h" className="mt-12">
+          The core product, and now the FIRST thing under the disclosure. It used
+          to sit below the SGE summary and the authority block — roughly three
+          phone screens of prose before a single ₪ on the page a buyer actually
+          lands on. Those two blocks are unchanged and still on the page; they
+          have simply moved under the table (see below), where a reader who wants
+          the reasoning will look for it. A visible section heading + a one-line
+          intent caption frame the table (it was an sr-only h2 before, leaving the
+          table to dead-start). When the live read yields no plans we render the
+          shared EmptyState (honest "no data yet") instead of an empty table. */}
+      <section aria-labelledby="table-h" className="mt-8">
         <h2
           id="table-h"
           className="font-display text-2xl font-bold tracking-tight text-ink"
@@ -588,6 +584,23 @@ export default async function ServiceHubPage({ params }: Params) {
           </>
         )}
       </section>
+
+      {/* ── SGE summary ─────────────────────────────────────────────────────
+          Directly after the price caveat: the reader has seen the numbers, so
+          this is where the 40–50 word conclusion earns its place. */}
+      <div className="mt-10">
+        <SgeSummary>{summary}</SgeSummary>
+      </div>
+
+      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
+      <div className="mt-10">
+        <AuthorityBlock
+          heading={`השורה התחתונה: ${svc.label}`}
+          answer={authority.answer}
+          rows={authority.rows}
+          reviewedAt={REVIEWED_AT}
+        />
+      </div>
 
       {/* ── AEO conversational Q&A (data-derived; mirrors the FAQPage JSON-LD) ─ */}
       {questions.length > 0 && (

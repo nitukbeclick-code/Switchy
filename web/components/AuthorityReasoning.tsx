@@ -88,14 +88,7 @@ export default function AuthorityReasoning({
     >
       <details open={defaultOpen} className="group">
         <summary className="-m-1 flex cursor-pointer list-none items-center gap-2.5 rounded-lg p-1 transition-colors marker:hidden hover:text-accent-text">
-          <span
-            aria-hidden="true"
-            className="inline-block h-5 w-1.5 rounded-full bg-accent"
-          />
-          <h2
-            id={headingId}
-            className="font-display text-base font-semibold tracking-tight text-ink"
-          >
+          <h2 id={headingId} className="h-section text-ink">
             {resolvedTitle}
           </h2>
           <span

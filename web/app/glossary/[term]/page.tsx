@@ -2,8 +2,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { getGlossary, getGlossaryTerm, CATEGORY_HE } from "@/lib/data";
+import {
+  catalogueTrustStats,
+  getGlossary,
+  getGlossaryTerm,
+  CATEGORY_HE,
+} from "@/lib/data";
 import {
   definedTermSchema,
   breadcrumbSchema,
@@ -106,6 +112,31 @@ export default async function GlossaryTermPage({ params }: Params) {
           </p>
         </div>
       </article>
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          A term page is one paragraph long and, until now, ended in a link list —
+          no form, no bar, no /book. Someone who just looked up "ניוד מספר" or
+          "התחייבות" is mid-decision. Same compact, consent-gated ask the category
+          landings use; no `defaultCategory` because a term is not a service. ──── */}
+      <section
+        id="lead"
+        aria-labelledby="term-lead-h"
+        className="mt-16 scroll-mt-6"
+      >
+        <h2
+          id="term-lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          רוצים לדעת איך {entry.term} משפיע על החשבון שלכם?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם השוואה אישית בשפה פשוטה — חינם, בלי
+          התחייבות, והמספר נשאר שלכם.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy source="glossary" trustStats={catalogueTrustStats()} />
+        </div>
+      </section>
 
       {/* ── Related — keep the entity web connected ───────────────────────── */}
       <RelatedAuthorityPages

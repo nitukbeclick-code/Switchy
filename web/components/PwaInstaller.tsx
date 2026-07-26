@@ -339,7 +339,14 @@ export default function PwaInstaller() {
         }
       }}
       className={[
-        "fixed bottom-4 end-4 z-30 w-[min(20rem,calc(100vw-2rem))]",
+        // Sits ABOVE the sticky lead CTA, not behind it. At `bottom-4 z-30` this
+        // toast's two buttons were rendered underneath the opaque z-40 CTA bar on
+        // a phone — an opt-in dialog whose only controls could not be tapped. It
+        // now clears the bar's reserved 7rem (matching the body padding in
+        // globals.css) and shares its z-40 layer, falling back to the plain
+        // corner at sm+ where the CTA bar is hidden.
+        "fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] end-4 z-40 sm:bottom-4",
+        "w-[min(20rem,calc(100vw-2rem))]",
         "rounded-2xl border border-border bg-surface p-4 shadow-float",
         // Toast-style slide: GPU-only (transform+opacity), drawer easing. Interruptible
         // CSS transition off `mounted` — not a keyframe — so the SAME curve reverses on
@@ -352,7 +359,9 @@ export default function PwaInstaller() {
         mounted && !isExiting
           ? "translate-y-0 opacity-100"
           : "translate-y-3 opacity-0",
-        "mb-[env(safe-area-inset-bottom)]",
+        // Below sm the safe-area inset is already inside the `bottom` calc above;
+        // only the sm+ corner placement still needs it added as margin.
+        "sm:mb-[env(safe-area-inset-bottom)]",
       ].join(" ")}
     >
       <div className="flex items-start gap-3">

@@ -298,9 +298,11 @@ export default function AccessibilityWidget() {
         className={[
           // Inline HEADER button (moved out of the bottom-corner FAB, per owner —
           // grouped with the theme toggle so it no longer overlaps page content).
-          // A compact 40px round carrying the self-contained ISA graphic (blue disk
-          // + white ring + white wheelchair — see the glyph), so no bg token.
-          "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm",
+          // A 44px round carrying the self-contained ISA graphic (blue disk +
+          // white ring + white wheelchair — see the glyph), so no bg token. 44px
+          // is the floor, not a preference: this is the 5568 control itself, and
+          // it cannot be the hardest thing on the page to hit.
+          "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm",
           "interactive press",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         ].join(" ")}
@@ -322,7 +324,10 @@ export default function AccessibilityWidget() {
             // corner UNDER the trigger. The inline-end tracks the centered header's
             // gutter (max-w-5xl = 64rem) so on wide screens it descends from the
             // button, not the far viewport edge; folds to 1rem on phones.
-            "fixed top-16 z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
+            // top-4.5rem, not top-16 (4rem): the masthead measures 69px, so at
+            // 64px the panel's top edge tucked UNDER the z-50 header and clipped
+            // its own heading. Same figure as html{scroll-padding-top:4.5rem}.
+            "fixed top-[4.5rem] z-40 flex w-[min(20rem,calc(100vw-2rem))] flex-col end-[calc(max(0px,(100vw-64rem)/2)+1rem)]",
             "max-h-[min(34rem,calc(100dvh-6rem))] overflow-y-auto rounded-2xl",
             "border border-border bg-surface text-foreground shadow-float",
           ].join(" ")}

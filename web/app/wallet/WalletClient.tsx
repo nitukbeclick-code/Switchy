@@ -14,9 +14,13 @@
 //     labeled as such, never a guaranteed promise.
 //   • We never invent a current bill or a "you saved ₪X" — if the user hasn't
 //     entered a bill for a category, that category shows no saving figure.
-//   • The user's inputs are persisted ONLY in their own browser (localStorage),
-//     never sent anywhere from here. The lead hand-off remains the explicit,
-//     consent-gated path (a link to /quiz / the category compare page).
+//   • The user's inputs are persisted ONLY in their own browser (localStorage).
+//     Nothing is sent anywhere until the user fills the explicit, consent-gated
+//     <LeadForm> that now sits directly under the total — the moment the ₪ figure
+//     exists is the moment the ask is worth making, and shipping the visitor off
+//     to /quiz to re-answer everything threw that intent away. The figures they
+//     typed ride along as a factual `contextNote` so the rep opens the call
+//     already knowing the ask; nothing is computed or invented for it.
 //
 // Design: premium-2026 bento cards. Amber = VALUE (saving figures, --value-text);
 // green = ACTION (the CTA link). Dark-mode safe (CSS-variable colors) + RTL.
@@ -27,6 +31,10 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Icon from "@/components/Icon";
+// The lazy wrapper, aliased to the component's real name (the QuizWizard idiom):
+// react-hook-form should not ride along in the first chunk of a calculator.
+import LeadForm from "@/components/LeadFormLazy";
+import { leadCategory } from "@/lib/format";
 import { ilsStat } from "@/lib/wallet-stats";
 
 /** A real, catalogue-derived cheapest option for one category (from the server). */
@@ -159,7 +167,31 @@ export default function WalletClient({ categories }: WalletClientProps) {
 
   // Total potential annual saving across the categories the user actually filled.
   const totalSaving = rows.reduce((sum, r) => sum + r.saving, 0);
-  const filledCount = rows.filter((r) => r.bill > 0).length;
+  const filled = rows.filter((r) => r.bill > 0);
+  const filledCount = filled.length;
+
+  // The category carrying the biggest real gap — used ONLY to pre-select the lead
+  // form's service field. When nothing was entered there is no biggest gap, so we
+  // pass nothing rather than guess on the visitor's behalf.
+  const topRow = rows.reduce<(typeof rows)[number] | undefined>(
+    (best, r) => (r.saving > 0 && (!best || r.saving > best.saving) ? r : best),
+    undefined,
+  );
+
+  // A factual note for the rep, assembled from what is ALREADY on screen: the
+  // bills the visitor typed and the arithmetic above. Nothing new is computed and
+  // nothing is invented — an empty calculator produces no note at all.
+  const contextNote =
+    filledCount > 0
+      ? [
+          `ארנק התקשורת — חשבונות שהוזנו: ${filled
+            .map((r) => `${r.label} ${ilsStat(r.bill)}`)
+            .join(", ")}`,
+          totalSaving > 0
+            ? `חיסכון שנתי מוערך מול הזול בקטלוג: ${ilsStat(totalSaving)}`
+            : "לא נמצא פער מול המסלול הזול בקטלוג",
+        ].join(" · ")
+      : undefined;
 
   return (
     <div>
@@ -287,20 +319,62 @@ export default function WalletClient({ categories }: WalletClientProps) {
         })}
       </ul>
 
-      {/* Consent-gated hand-off — the only path to contact is explicit. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* ── The ask, where the intent already is ─────────────────────────────
+          The consent-gated form itself, not a link to a page that asks the same
+          questions again. The lead-in names the visitor's OWN computed figure when
+          one exists and stays claim-free when it doesn't; `defaultCategory` is the
+          category with the real biggest gap, and `contextNote` carries the typed
+          bills so the rep starts the call informed. Truth-only: every value here
+          was already rendered above. ────────────────────────────────────────── */}
+      <section
+        id="lead"
+        aria-labelledby="wallet-lead-h"
+        className="mt-10 scroll-mt-6"
+      >
+        {/* h3: the host page's <section> is already labelled by an h2, and the
+            per-category rows above are h3 — this keeps one flat, correct level. */}
+        <h3
+          id="wallet-lead-h"
+          className="font-display text-xl font-bold tracking-tight text-ink"
+        >
+          {totalSaving > 0
+            ? "רוצים שנממש את החיסכון הזה בשבילכם?"
+            : "רוצים שנבדוק את זה בשבילכם?"}
+        </h3>
+        <p className="mt-2 text-foreground">
+          {totalSaving > 0
+            ? `השאירו פרטים ונחזור אליכם עם המסלולים שסוגרים את הפער של ${ilsStat(
+                totalSaving,
+              )} בשנה — חינם, בלי התחייבות, והמספר נשאר שלכם.`
+            : "השאירו פרטים ונחזור אליכם עם השוואה אישית — חינם, בלי התחייבות, והמספר נשאר שלכם."}
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadForm
+            source="wallet"
+            defaultCategory={leadCategory(topRow?.cat)}
+            contextNote={contextNote}
+          />
+        </div>
+      </section>
+
+      {/* Onward — kept so the page never dead-ends, but DEMOTED to quiet text
+          links so exactly one action (the form above) reads as primary.
+          `-mx-2 px-2 min-h-11` keeps a real ≥44px tap target without padding the
+          links back out into buttons. */}
+      <div className="mt-6 flex flex-wrap items-center gap-x-5">
         <Link
           href="/quiz"
-          className="interactive press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
-          קבלו התאמה אישית והשאירו פרטים
-          <Icon name="arrow" size={18} aria-hidden />
+          התאמה אישית ב-5 שאלות
+          <Icon name="arrow" size={15} aria-hidden />
         </Link>
         <Link
           href="/bills"
-          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
           צלמו חשבון לניתוח מדויק
+          <Icon name="arrow" size={15} aria-hidden />
         </Link>
       </div>
     </div>

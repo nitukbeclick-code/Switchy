@@ -147,7 +147,12 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             theme toggle and never overlap page content; the header is sticky, so
             they stay reachable on scroll. Their panels open as fixed overlays
             just below the header. */}
-        <div className="ms-auto flex items-center gap-1 sm:gap-1.5">
+        {/* Tap targets: every control in this cluster is a 44px minimum square
+            (ת"י 5568 / WCAG 2.5.5) with 6px of separation — it sits in the
+            hardest-to-reach corner of a one-handed phone grip, so the row cannot
+            also be the tightest. gap-1.5 is applied at every breakpoint rather
+            than only sm+, because the phone is where the mis-taps happen. */}
+        <div className="ms-auto flex items-center gap-1.5">
           {/* Language switcher (globe) — opens the site-translation menu. Placed
               first in the cluster so it's the most discoverable control for
               non-Hebrew visitors. Powered by the shared /translate-runtime.js. */}
@@ -157,19 +162,22 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           {/* Persistent accessibility menu (ISA wheelchair button). */}
           <AccessibilityWidget />
           {/* Zoom shortcut — one-tap to the Zoom consultation scheduler (/book).
-              Same route + header/consult analytics as the labeled CTA below; the
-              Zoom mark signals the meeting is a Zoom video call. */}
+              DESKTOP ONLY. On a phone this was the one control in the cluster
+              whose mis-tap NAVIGATES THE VISITOR AWAY mid-comparison, and it was
+              the least necessary of the six: the identical /book route already
+              has its own labelled row inside the mobile <details> menu below, so
+              hiding the glyph costs nothing and removes the trap. */}
           <TrackedCtaLink
             href="/book"
             location="header"
             label="consult"
             aria-label="קביעת שיחת ייעוץ בזום"
-            className="interactive press flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="interactive press hidden h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:flex"
           >
             <ZoomGlyph />
           </TrackedCtaLink>
-          {/* Light/dark toggle. 40px tap target (compact — 5 controls share the row). */}
-          <ThemeToggle className="min-h-10 min-w-10" />
+          {/* Light/dark toggle. */}
+          <ThemeToggle className="min-h-11 min-w-11" />
           {/* Community account — login button / avatar menu. Desktop only (lg+) so
               it never crowds the tight mobile/tablet cluster; below lg the community
               page carries its own login prompts. */}
@@ -204,7 +212,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         >
           <summary
             aria-label="תפריט ניווט"
-            className="flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
+            className="flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-xl border border-border/60 p-2 text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden"
           >
             {/* Hamburger — the universal "menu" mark, so the nav trigger reads as
                 navigation and not as one more disclosure chevron among the other
@@ -287,8 +295,8 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
 // Hamburger "menu" glyph for the mobile nav trigger. Local to the header (the
 // shared <Icon> set has no `menu` name) but drawn to its exact contract: 24×24
 // viewBox, 1.75px currentColor strokes, round caps, decorative (aria-hidden) —
-// the owning <summary>'s aria-label carries the meaning. Same 20px render size
-// as the chevron it replaced, so the 40px hit target is unchanged.
+// the owning <summary>'s aria-label carries the meaning. The glyph renders at
+// 20px inside the summary's 44px minimum tap square.
 function MenuGlyph({ className }: { className?: string }) {
   return (
     <svg

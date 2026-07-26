@@ -26,6 +26,7 @@ import ComparisonTable from "@/components/ComparisonTable";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import AeoAnswerBlock from "@/components/AeoAnswerBlock";
 import AeoQA from "@/components/AeoQA";
 import DataMethodology from "@/components/DataMethodology";
@@ -674,6 +675,12 @@ export default async function VsPage({ params }: Params) {
           />
         </div>
       </section>
+
+      {/* Mobile-only bar back to the form above — a head-to-head is a long read,
+          and on a phone the ask lands well past the comparison tables. The
+          verified `#lead` anchor is right above, so the bar resolves its target on
+          mount and auto-hides once the form is on screen. */}
+      <StickyLeadCta source="compare" />
 
       {/* ── Sources & methodology — show your work (E-E-A-T) ──────────────── */}
       <DataMethodology

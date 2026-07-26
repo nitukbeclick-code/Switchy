@@ -200,12 +200,8 @@ export default function GuidesHubPage() {
               <div className="flex items-baseline justify-between gap-3 border-b border-border/50 pb-3">
                 <h2
                   id={`cat-h-${encodeURIComponent(c.cat)}`}
-                  className="flex items-center gap-2.5 font-display text-xl font-bold tracking-tight text-ink"
+                  className="h-section text-ink"
                 >
-                  <span
-                    aria-hidden="true"
-                    className="inline-block h-5 w-1.5 rounded-full bg-accent"
-                  />
                   {c.cat}
                 </h2>
                 <span className="text-sm text-muted">{c.count} מדריכים</span>

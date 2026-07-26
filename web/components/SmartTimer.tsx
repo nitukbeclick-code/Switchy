@@ -59,12 +59,20 @@ export interface SmartTimerProps {
   /** DOM id (anchor-/deep-link-able). Defaults to "smart-timer". */
   id?: string;
   /**
-   * Where the "commitment ended" CTA points. Defaults to the plan-comparison
-   * landing so the user can act at the moment of peak intent (no dead-end).
+   * Where BOTH CTAs point. Defaults to the plan-comparison landing so the user
+   * can act at the moment of peak intent (no dead-end). When passed, it wins on
+   * both branches and the ended-branch deep-link below is not used.
    */
   ctaHref?: string;
   /** Label for that CTA. */
   ctaLabel?: string;
+  /**
+   * Service slug (see lib/data SERVICES) the ended-commitment CTA deep-links
+   * into: /compare/{service}#lead — a real section that /compare/[service]
+   * always renders. Defaults to the largest catalogue axis. Ignored when an
+   * explicit `ctaHref` is given.
+   */
+  service?: string;
 }
 
 export default function SmartTimer({
@@ -72,8 +80,9 @@ export default function SmartTimer({
   defaultMonths = 12,
   className,
   id = "smart-timer",
-  ctaHref = "/compare",
-  ctaLabel = "השוואת מסלולים וחיסכון",
+  ctaHref,
+  ctaLabel,
+  service = "cellular",
 }: SmartTimerProps) {
   const fieldId = useId();
   const startId = `${fieldId}-start`;
@@ -98,6 +107,19 @@ export default function SmartTimer({
 
   const headingId = `${id}-heading`;
 
+  // The two result branches are NOT the same moment, so they no longer share one
+  // CTA that differs only in button fill. "ההתחייבות הסתיימה" is the strongest
+  // intent signal this app can observe — the user is free to switch TODAY — so it
+  // deep-links straight into the lead section of a real comparison page rather
+  // than dropping them at the top of /compare to go find it. Under commitment the
+  // ask stays soft and honest: the penalty-free switch is at the END, so it is a
+  // plain compare link with no "switch now" implication. An explicit ctaHref /
+  // ctaLabel from the caller still overrides both.
+  const endedHref = ctaHref ?? `/compare/${service}#lead`;
+  const endedLabel = ctaLabel ?? "ההתחייבות הסתיימה — שנמצא לכם מסלול זול יותר?";
+  const activeHref = ctaHref ?? "/compare";
+  const activeLabel = ctaLabel ?? "השוואת מסלולים וחיסכון";
+
   return (
     <section
       id={id}
@@ -111,12 +133,8 @@ export default function SmartTimer({
     >
       <h2
         id={headingId}
-        className="mb-1 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
+        className="mb-1 h-section text-ink"
       >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
         {heading}
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -199,28 +217,40 @@ export default function SmartTimer({
                   ללא קנס יציאה. השוו מסלולים ובדקו כמה אפשר לחסוך.
                 </p>
                 {/* Peak-intent CTA: the commitment is over, so surface the next
-                    action instead of dead-ending on the message. */}
+                    action instead of dead-ending on the message — and land the
+                    user ON the request form, not at the top of a comparison. */}
                 <Link
-                  href={ctaHref}
-                  className="press mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  href={endedHref}
+                  className="press mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  {ctaLabel}
+                  {endedLabel}
                   <span aria-hidden="true">←</span>
                 </Link>
               </div>
             ) : (
               <div className="mt-4">
+                {/* The derived date is repeated here, in the sentence that tells
+                    the user what to do with it — the <dl> above states the fact,
+                    this states the plan. Both come from the same computation, so
+                    they can never disagree. */}
                 <p className="text-sm text-muted">
-                  כשתסתיים ההתחייבות תוכלו לעבור ספק ללא קנס יציאה. אפשר כבר עכשיו
-                  להשוות מסלולים ולדעת לאן עוברים — ולחזור לבדוק סמוך לתאריך.
+                  ב־
+                  <time
+                    dateTime={computed.endDate.toISOString().slice(0, 10)}
+                    className="font-semibold text-foreground"
+                  >
+                    {formatDate(computed.endDate)}
+                  </time>{" "}
+                  תוכלו לעבור ספק ללא קנס יציאה. אפשר כבר עכשיו להשוות מסלולים
+                  ולדעת לאן עוברים — ולחזור לבדוק סמוך לתאריך.
                 </p>
                 {/* Not a dead end: even under commitment the user can compare now
                     and be ready. Secondary style (the switch isn't penalty-free yet). */}
                 <Link
-                  href={ctaHref}
-                  className="press mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-5 py-2.5 text-sm font-semibold text-accent-text transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  href={activeHref}
+                  className="press mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-5 py-2.5 text-sm font-semibold text-accent-text transition-transform active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  {ctaLabel}
+                  {activeLabel}
                   <span aria-hidden="true">←</span>
                 </Link>
               </div>

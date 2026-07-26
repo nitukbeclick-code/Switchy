@@ -18,9 +18,11 @@ import JsonLd from "@/components/JsonLd";
 import Icon from "@/components/Icon";
 import SgeSummary from "@/components/SgeSummary";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import { FaqAccordion, type FaqItem } from "@/components/FaqAccordion";
+import { catalogueTrustStats } from "@/lib/data";
 import { GENERAL_FAQ, faqForCategory } from "@/lib/faq";
 import { CATEGORY_HE } from "@/lib/categories";
 import {
@@ -277,6 +279,30 @@ export default function FaqPage() {
           )}
         </section>
       ))}
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          310 lines of purchase-intent questions ("כמה זה עולה", "איך עוברים",
+          "האם זה באמת בחינם") and, until now, one /book link at the end — the
+          answers removed every objection and then offered nowhere to act. The same
+          consent-gated form the category landings carry closes that. No
+          `defaultCategory`: this page spans every service, so pre-selecting one
+          would guess wrong most of the time. Counts are the real catalogue totals
+          and LeadForm's own gate suppresses the line if they are ever zero. ──── */}
+      <section id="lead" aria-labelledby="faq-lead-h" className="mt-16 scroll-mt-6">
+        <h2
+          id="faq-lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          נשארה שאלה? נענה עליה בטלפון
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם השוואה אישית ותשובה לשאלה שלכם — חינם, בלי
+          התחייבות, והמספר נשאר שלכם.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy source="faq" trustStats={catalogueTrustStats()} />
+        </div>
+      </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

@@ -19,7 +19,10 @@
 //     משפטי" disclaimer + the "you review + send the letter yourself, we never
 //     auto-send" framing are shown prominently.
 //   • No PII leaves the browser beyond the (optional) fields the user types to
-//     personalise the letter. There is NO lead capture here.
+//     personalise the letter. The one place anything is SENT is the same
+//     consent-gated <LeadForm> used everywhere else, rendered inline under the
+//     finished packet — the visitor has just decided to switch, and handing them a
+//     link to a browse page instead threw that decision away.
 //
 // Design: premium-2026 bento/card surfaces. Green = ACTION (the build CTA + onward
 // links); amber = VALUE (the saving figure). Dark-mode safe (CSS-variable colors)
@@ -32,8 +35,13 @@ import { useCallback, useId, useMemo, useState, useSyncExternalStore } from "rea
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import SkeletonCard from "@/components/SkeletonCard";
+// The lazy wrapper, aliased to the component's real name (the QuizWizard idiom):
+// this ask lives behind a network round-trip, so react-hook-form should not ride
+// along in the first chunk of a page whose job is to build a letter.
+import LeadForm from "@/components/LeadFormLazy";
+import SocialProof from "@/components/SocialProof";
 import { CATEGORY_HE } from "@/lib/categories";
-import { priceUnitLabel } from "@/lib/format";
+import { leadCategory, priceUnitLabel } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 import {
   SWITCH_KIT_CATEGORIES,
@@ -619,21 +627,58 @@ function KitResult({ kit }: { kit: SwitchKit }) {
         בידיכם.
       </p>
 
-      {/* Onward — no dead-ends (screen only) */}
-      <div className="switchkit-screen-only mt-6 flex flex-wrap items-center gap-3">
+      {/* ── The ask, where the intent already is (screen only) ────────────────
+          Someone who just generated a cancellation letter has decided to move.
+          Until now this screen answered that with a link to a browse page — on a
+          phone, a fresh page load and the funnel restarted. The same consent-gated
+          <LeadForm> renders here instead, carrying the REAL target the kit was
+          built for (category + provider + catalogue plan id) so the rep opens the
+          call on the exact plan on screen. Print-hidden: the packet the visitor
+          takes to the provider is a letter, not a form. <SocialProof
+          fallback="none"> emits NO DOM unless a real aggregate is published. ──── */}
+      <section
+        id="lead"
+        aria-labelledby="kit-lead-h"
+        className="switchkit-screen-only mt-10 scroll-mt-6"
+      >
+        <h3
+          id="kit-lead-h"
+          className="font-display text-xl font-bold tracking-tight text-ink"
+        >
+          רוצים שנעשה את זה במקומכם?
+        </h3>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונלווה אתכם למעבר ל{kit.toProvider} — חינם, בלי התחייבות,
+          והמספר נשאר שלכם.
+        </p>
+        <SocialProof fallback="none" className="mt-5" />
+        <div className="mt-5 max-w-xl">
+          <LeadForm
+            source="switch-kit"
+            defaultCategory={leadCategory(kit.category)}
+            provider={kit.toProvider}
+            planId={kit.toPlanId}
+          />
+        </div>
+      </section>
+
+      {/* Onward — kept so the packet never dead-ends, but DEMOTED to quiet text
+          links so exactly one action (the form above) reads as primary.
+          `-mx-2 px-2 min-h-11` keeps a real ≥44px tap target. (screen only) */}
+      <div className="switchkit-screen-only mt-6 flex flex-wrap items-center gap-x-5">
         <Link
           href={`/compare/${kit.category}`}
-          className="interactive press inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-colors hover:bg-accent-hover hover:shadow-float focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
           להשוואת כל מסלולי {kit.categoryHe}
-          <Icon name="arrow" size={18} aria-hidden />
+          <Icon name="arrow" size={15} aria-hidden />
         </Link>
         <Link
           href={switchGuideHref(kit.fromProvider)}
-          className="interactive press inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
           מדריך הניתוק המלא
-          <Icon name="arrow" size={18} aria-hidden />
+          <Icon name="arrow" size={15} aria-hidden />
         </Link>
       </div>
     </section>

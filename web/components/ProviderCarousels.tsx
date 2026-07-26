@@ -16,6 +16,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { Plan } from "@/lib/types";
 import { providerSlug } from "@/lib/provider-slug";
 import { planDisplay } from "@/lib/plan-display";
@@ -29,6 +30,13 @@ export interface ProviderCarouselsProps extends DropProps {
   plans: Plan[];
   /** Optional per-plan editorial label (honesty badge), keyed by plan id. */
   featured?: Record<string, FeatureLabel>;
+  /**
+   * Optional extra control rendered inside each carousel item, directly UNDER
+   * its <PlanCard>. <ComparisonTable> passes its shortlist "הוספה להשוואה"
+   * toggle through here so grouping by provider never costs the user the
+   * shortlist — the flat list and the carousels offer the identical affordance.
+   */
+  renderPlanFooter?: (plan: Plan) => ReactNode;
   /** Extra classes on the outer wrapper (e.g. `lg:hidden`). */
   className?: string;
 }
@@ -86,6 +94,7 @@ function groupByProvider(plans: Plan[]): Group[] {
 export default function ProviderCarousels({
   plans,
   featured,
+  renderPlanFooter,
   className,
   ...drop
 }: ProviderCarouselsProps) {
@@ -153,6 +162,7 @@ export default function ProviderCarousels({
                   label={featured?.[p.id]}
                   {...drop}
                 />
+                {renderPlanFooter?.(p)}
               </li>
             ))}
           </CarouselShell>

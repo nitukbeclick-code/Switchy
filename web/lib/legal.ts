@@ -75,3 +75,32 @@ export const MARKETING_OPTIN_NOTE =
 export function marketingChannelLabel(label: string): string {
   return `אני מאשר/ת קבלת דיוור שיווקי ב-${label}`;
 }
+
+// ── Objection-handling microcopy (shared with the desktop build) ──────────────
+// The four reassurance lines that sit directly above a lead CTA, exactly where
+// hesitation peaks — the two objections that actually stop people are "why is
+// this free" and "who gets my number", and both are answered here. Ported
+// VERBATIM from the static desktop build's CTA_OBJECTIONS (site/build.js) and
+// kept in ONE place so the promise can never drift between the two surfaces.
+//
+// Every line is an already-true, owner-confirmed fact: free because the provider
+// pays the referral fee (§7b), the ranking is explained and not pay-to-win, no
+// commitment and the number is kept on porting, and the number is not handed to
+// providers. Nothing here may be sharpened into a claim we cannot back.
+
+/**
+ * `icon` names a glyph from the app's <Icon> set (web/components/Icon.tsx). The
+ * desktop build keys the same lines to its own svgIcon() set (shield/scale/
+ * check/lock); the app set has no shield/scale, so each line uses the nearest
+ * semantic app glyph. Declared `as const` so the literal union type-checks
+ * against IconName at the call site without lib/ depending on components/.
+ */
+export const CTA_OBJECTIONS = [
+  { icon: "check", text: "חינם לכם — הספק משלם, לא אתם" },
+  { icon: "info", text: "המלצה מוסברת — לפי ההתאמה, לא לפי מי שמשלם" },
+  { icon: "cellular", text: "בלי התחייבות · המספר שלכם נשמר בניוד" },
+  { icon: "lock", text: "לא נשתף את המספר עם ספקים · נתונים מוצפנים" },
+] as const;
+
+/** Accessible name for the objections list (mirrors the desktop aria-label). */
+export const CTA_OBJECTIONS_LABEL = "למה אפשר להירשם בראש שקט";

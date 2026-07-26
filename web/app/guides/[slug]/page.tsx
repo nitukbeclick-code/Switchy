@@ -615,12 +615,8 @@ export default async function GuidePage({ params }: Params) {
         >
           <h2
             id="more-guides"
-            className="mb-6 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
+            className="mb-6 h-section text-ink"
           >
-            <span
-              aria-hidden="true"
-              className="inline-block h-5 w-1.5 rounded-full bg-accent"
-            />
             מדריכים נוספים
           </h2>
           <div className="bento-grid">

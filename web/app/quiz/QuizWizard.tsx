@@ -26,6 +26,8 @@
 import { useId, useRef, useState } from "react";
 import Link from "next/link";
 import LeadForm from "@/components/LeadFormLazy";
+import SocialProof from "@/components/SocialProof";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import SwitchyMascot from "@/components/SwitchyMascot";
@@ -118,7 +120,23 @@ const STEP_TITLES = [
  *  a tie-break seed input, never to fabricate a fit. */
 const TOTAL_STEPS = 5;
 
-export default function QuizWizard() {
+/** REAL catalogue counts for the hand-off form's honest trust line. */
+export interface TrustStats {
+  planCount: number;
+  providerCount: number;
+}
+
+export interface QuizWizardProps {
+  /**
+   * REAL catalogue totals for the lead form's trust line ("משווים X מסלולים מ-Y
+   * ספקים"). Server-only to derive (`catalogueTrustStats()` reads the bundled
+   * catalogue through node:fs), so the /quiz page passes it down. Omitted ⇒
+   * LeadForm's own gate suppresses the line.
+   */
+  trustStats?: TrustStats;
+}
+
+export default function QuizWizard({ trustStats }: QuizWizardProps) {
   const [answers, setAnswers] = useState<Answers>(INITIAL);
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<Phase>("quiz");
@@ -243,6 +261,7 @@ export default function QuizWizard() {
         matches={matches}
         hasBill={hasBill}
         category={answers.category as QuizCategory}
+        trustStats={trustStats}
         onRestart={restart}
       />
     );
@@ -623,15 +642,32 @@ function Results({
   matches,
   hasBill,
   category,
+  trustStats,
   onRestart,
 }: {
   matches: RecommendMatch[];
   hasBill: boolean;
   category: QuizCategory;
+  trustStats?: TrustStats;
   onRestart: () => void;
 }) {
   const catHe = CATEGORY_HE[category] ?? category;
   const best = matches[0];
+
+  // A factual note for the rep, built ONLY from what the #1 card already shows:
+  // the real catalogue plan and — only when the visitor supplied a real bill —
+  // the annual saving the shared ranking formula computed against it. No bill ⇒
+  // no saving clause, never a ₪0 stand-in.
+  const contextNote = best
+    ? [
+        `התאמה מובילה בשאלון: ${best.provider} — ${best.plan} (₪${best.priceText} ${best.priceUnit})`,
+        hasBill && best.annualSaving > 0
+          ? `חיסכון שנתי מוערך מול החשבון שהוזן: ${ils(best.annualSaving)}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : undefined;
 
   return (
     <div className="space-y-8">
@@ -700,14 +736,28 @@ function Results({
       <PriceCaveat />
 
       {/* Hand-off to the EXISTING lead flow, pre-selecting the chosen category +
-          the best-match provider/plan so the rep starts from the right place. */}
-      <section id="quiz-lead" aria-labelledby="quiz-lead-h" className="scroll-mt-6">
+          the best-match provider/plan so the rep starts from the right place.
+          `id="lead"` is the site-wide anchor <StickyLeadCta> scrolls to — the
+          quiz is a long scroll on a phone, and the bar is the only persistent
+          path back to this block once the results push it off screen.
+          The heading NAMES the best match, so `provider`/`planId` transmit that
+          exact catalogue row to the CRM instead of leaving the rep to guess; the
+          `contextNote` adds the same figures the card above already shows. All
+          real — nothing here is computed anew or invented. */}
+      <section id="lead" aria-labelledby="quiz-lead-h" className="scroll-mt-6">
         <h3 id="quiz-lead-h" className="sr-only">
           קבלת ההצעה
         </h3>
+        {/* Honest aggregate above the ask: fallback="none" emits NO DOM at all
+            unless there is a real published figure to publish. */}
+        <SocialProof fallback="none" className="mb-5" />
         <LeadForm
           source="advisor"
           defaultCategory={category}
+          trustStats={trustStats}
+          provider={best?.provider}
+          planId={best?.id}
+          contextNote={contextNote}
           heading={
             best
               ? `רוצים את ${best.plan} מ${best.provider}? נסגור לכם`
@@ -715,6 +765,14 @@ function Results({
           }
         />
       </section>
+
+      {/* Mobile-only bar back to the ask above. It is mounted HERE — inside the
+          results — rather than on the page: it resolves `#lead` once in a mount
+          effect, and on this route that anchor exists only after the matches
+          render. Mounted on the page it would be a permanent no-op (and would
+          never set the body-padding flag either). It auto-hides once the form
+          scrolls into view, so it can never compete with it. */}
+      <StickyLeadCta source="quiz" />
     </div>
   );
 }

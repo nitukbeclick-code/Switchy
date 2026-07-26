@@ -15,7 +15,11 @@
 //     (held for review) and we say so plainly — we never claim it "counted" when it
 //     didn't.
 //   • The report is ANONYMOUS: only the category, provider, and the ₪ figure are
-//     sent. No PII, no contact info (the form has none). The microcopy says so.
+//     sent. No PII, no contact info (the report form has none). The microcopy says
+//     so. The separate, clearly-labelled <LeadForm> below it is the ONLY place any
+//     contact detail is asked for, and it is consent-gated like everywhere else —
+//     it appears once a real ₪ figure is on screen (a published median, or the
+//     figure the visitor just reported), which is exactly when the ask is honest.
 //
 // Design: premium-2026 bento/card surfaces. Amber = VALUE (the price figures);
 // green = ACTION (the submit CTA + onward links). Dark-mode safe (CSS-variable
@@ -26,7 +30,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { CATEGORY_HE } from "@/lib/categories";
+import Icon from "@/components/Icon";
 import StreetPriceChart from "@/components/StreetPriceChart";
+// The lazy wrapper, aliased to the component's real name (the QuizWizard idiom):
+// react-hook-form should not ride along in the first chunk of a chart page.
+import LeadForm from "@/components/LeadFormLazy";
+import SocialProof from "@/components/SocialProof";
 import {
   STREET_PRICE_CATEGORIES,
   type StreetPriceAggregate,
@@ -176,6 +185,11 @@ export default function StreetPricesClient({
       setSubmitErr("שגיאת רשת. בדקו את החיבור ונסו שוב.");
     }
   }
+
+  // True only when at least one category cleared the publish threshold — i.e. a
+  // REAL ₪ median is rendered on this screen. Mirrors the chart's own gate so the
+  // two can never disagree about whether there is a number to act on.
+  const hasPublished = aggregates.some((a) => a.published);
 
   return (
     <div>
@@ -327,19 +341,56 @@ export default function StreetPricesClient({
         </form>
       </section>
 
-      {/* ── Onward — no dead-ends ──────────────────────────────────────────── */}
-      <div className="mt-10 flex flex-wrap items-center gap-3">
+      {/* ── The ask, where the intent already is ─────────────────────────────
+          Gated on a REAL ₪ figure being on screen: either the chart published at
+          least one category's median, or the visitor just told us what they pay.
+          Below that bar there is no number to act on, so there is no ask — the
+          honesty gate and the conversion gate are the same gate here. The category
+          the visitor selected in the report form pre-selects the service field (a
+          pre-fill, still editable), and the ANONYMOUS report above stays entirely
+          separate from this consent-gated form. ─────────────────────────────── */}
+      {hasPublished || submitStatus === "done" ? (
+        <section
+          id="lead"
+          aria-labelledby="street-lead-h"
+          className="mt-12 border-t border-border pt-10 scroll-mt-6"
+        >
+          <h2
+            id="street-lead-h"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
+          >
+            משלמים יותר מהמחיר ברחוב?
+          </h2>
+          <p className="mt-2 text-foreground">
+            השאירו פרטים ונחזור אליכם עם ההצעה המשתלמת ביותר בקטלוג — חינם, בלי
+            התחייבות, והמספר נשאר שלכם.
+          </p>
+          <SocialProof fallback="none" className="mt-5" />
+          <div className="mt-5 max-w-xl">
+            <LeadForm source="street-prices" defaultCategory={category} />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Onward — kept so the page never dead-ends, but DEMOTED to quiet text
+          links so exactly one action (the form above) reads as primary.
+          `-mx-2 px-2 min-h-11` keeps a real ≥44px tap target. */}
+      <div className="mt-8 flex flex-wrap items-center gap-x-5">
         <Link
           href="/compare"
-          className="interactive press inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
-          השוו את כל מחירי הקטלוג ←
+          השוו את כל מחירי הקטלוג
+          {/* Direction-aware chevron instead of the old hardcoded "←" glyph: the
+              page is dir="rtl" and <Icon> mirrors correctly. */}
+          <Icon name="chevron" size={15} aria-hidden />
         </Link>
         <Link
           href="/negotiate"
-          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
           בנו תסריט מיקוח מול הספק
+          <Icon name="chevron" size={15} aria-hidden />
         </Link>
       </div>
     </div>

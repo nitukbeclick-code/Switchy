@@ -11,11 +11,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import DataMethodology from "@/components/DataMethodology";
 import LlmDataFeed from "@/components/LlmDataFeed";
 import EmptyState from "@/components/EmptyState";
 import Icon from "@/components/Icon";
+import { catalogueTrustStats } from "@/lib/data";
 import { getVsPairs } from "@/lib/vs";
 import type { VsPair } from "@/lib/vs";
 import { getLivePlans } from "@/lib/live-catalogue";
@@ -315,6 +317,27 @@ export default async function VsIndexPage() {
         planCount={live.plans.length}
         className="mt-14"
       />
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          A head-to-head index is a "help me choose" surface, and it ended in links
+          only. The neutral human comparison this form books IS the answer to the
+          question the page poses. No `defaultCategory`: the index spans every
+          category, so pre-selecting one would guess wrong most of the time. ───── */}
+      <section id="lead" aria-labelledby="vs-lead-h" className="mt-16 scroll-mt-6">
+        <h2
+          id="vs-lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          לא מצליחים להכריע?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם השוואה אישית בין הספקים — חינם, בלי
+          התחייבות, וללא העדפת ספק.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy source="vs" trustStats={catalogueTrustStats()} />
+        </div>
+      </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

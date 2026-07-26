@@ -20,6 +20,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ComparisonTable from "@/components/ComparisonTable";
 import type { Plan } from "@/lib/types";
 
+/**
+ * A matcher for one MONEY-TIER price block. The tier splits the figure across a
+ * demoted `.price-sign` span and the digits, so a plain "₪109" string matcher no
+ * longer sees a single text node. Matching the `.price-display` element by its
+ * full textContent both fixes that and pins the contract: the ₪ stays a real,
+ * screen-reader-readable sibling inside the block, never a pseudo-element.
+ */
+function priceBlock(value: string) {
+  return (_content: string, element: Element | null) =>
+    element?.classList.contains("price-display") === true &&
+    element.textContent === value;
+}
+
 function plan(overrides: Partial<Plan> = {}): Plan {
   return {
     id: "p1",
@@ -126,10 +139,26 @@ describe("ComparisonTable — price + honest post-promo rendering", () => {
         caption="cap"
       />,
     );
-    // Price appears in both views.
-    expect(screen.getAllByText("₪109").length).toBeGreaterThanOrEqual(1);
+    // Price appears in both views, in the money tier.
+    expect(screen.getAllByText(priceBlock("₪109")).length).toBeGreaterThanOrEqual(1);
     // The jump price + suffix is shown (desktop table cell + mobile line).
     expect(screen.getAllByText("₪196/ח׳").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("sets the price in the reserved money tier, with the unit as a label below", () => {
+    const { container } = render(
+      <ComparisonTable plans={[plan({ price: 50 })]} caption="cap" />,
+    );
+    // The tier is class-driven (globals.css), so both views opt in the same way.
+    const blocks = screen.getAllByText(priceBlock("₪50"));
+    expect(blocks.length).toBeGreaterThanOrEqual(1);
+    // The ₪ is a demoted sibling, not part of the digits run…
+    expect(
+      within(blocks[0] as HTMLElement).getByText("₪"),
+    ).toHaveClass("price-sign");
+    // …and the unit is a separate micro-label, never inline at price size.
+    expect(container.querySelectorAll(".price-unit").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("לחודש").length).toBeGreaterThanOrEqual(1);
   });
 
   it('shows "מחיר קבוע" (NOT a bare dash) when there is no after-promo jump', () => {
@@ -142,7 +171,7 @@ describe("ComparisonTable — price + honest post-promo rendering", () => {
     render(
       <ComparisonTable plans={[plan({ price: 70, priceExact: 69.9 })]} caption="cap" />,
     );
-    expect(screen.getAllByText("₪69.90").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(priceBlock("₪69.90")).length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -241,6 +270,77 @@ describe("ComparisonTable — shareable shortlist", () => {
       "href",
       "#lead",
     );
+  });
+});
+
+describe("ComparisonTable — grouped mobile carousels", () => {
+  it("groups by provider EVEN WITH interactiveFilters on (the compare-hub combo)", () => {
+    window.history.replaceState({}, "", "/compare/cellular");
+    window.localStorage.clear();
+    render(
+      <ComparisonTable
+        plans={[
+          plan({ id: "a", plan: "מסלול א" }),
+          plan({ id: "b", provider: "פרטנר", plan: "מסלול ב" }),
+        ]}
+        caption="cap"
+        groupByProvider
+        interactiveFilters
+      />,
+    );
+    // /compare/[service] passes BOTH flags; grouping used to switch itself off in
+    // exactly that case, so the page the carousels exist for never got them.
+    // Each provider becomes its own labelled group.
+    expect(screen.getByRole("heading", { name: "סלקום", level: 3 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "פרטנר", level: 3 })).toBeInTheDocument();
+  });
+
+  it("keeps the shortlist toggle on every carousel card", async () => {
+    window.history.replaceState({}, "", "/compare/cellular");
+    window.localStorage.clear();
+    const user = userEvent.setup({ delay: null });
+    render(
+      <ComparisonTable
+        plans={[
+          plan({ id: "a", plan: "מסלול א" }),
+          plan({ id: "b", provider: "פרטנר", plan: "מסלול ב" }),
+        ]}
+        caption="cap"
+        groupByProvider
+        interactiveFilters
+      />,
+    );
+    // Grouping must not cost the user an affordance the flat list has.
+    const toggle = screen.getAllByRole("button", {
+      name: /הוספת מסלול א של סלקום להשוואה/,
+    })[0];
+    await user.click(toggle);
+    expect(screen.getByText("ההשוואה האישית שלכם")).toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).get("plans")).toBe("a");
+  });
+});
+
+describe("ComparisonTable — the mobile filter panel", () => {
+  it("collapses behind a 'סינון ומיון' disclosure and keeps the results row visible", () => {
+    // Start from a clean shortlist: a leftover URL/localStorage selection would
+    // restore asynchronously (queueMicrotask) and update state outside act().
+    window.history.replaceState({}, "", "/compare/cellular");
+    window.localStorage.clear();
+    render(
+      <ComparisonTable
+        plans={[plan({ id: "a" }), plan({ id: "b", provider: "פרטנר" })]}
+        caption="cap"
+        interactiveFilters
+      />,
+    );
+    // matchMedia is stubbed to `matches: false` in vitest.setup → the mobile
+    // (collapsed) branch, which is the state SSR emits.
+    const summary = screen.getByText("סינון ומיון").closest("summary");
+    expect(summary).not.toBeNull();
+    expect(summary?.closest("details")).not.toHaveAttribute("open");
+    // The results feedback + reset escape hatch are NEVER inside the disclosure.
+    const results = screen.getByText(/מציגים/);
+    expect(results.closest("details")).toBeNull();
   });
 });
 

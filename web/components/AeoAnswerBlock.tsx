@@ -78,23 +78,30 @@ export default function AeoAnswerBlock({
       id={id}
       aria-labelledby={headingId}
       data-aeo-answer-block
-      className={["bento glow-accent p-6 sm:p-7", className ?? ""].join(" ").trim()}
+      className={[
+        // FORM: editorial LEDE, not a card. This block sits directly under the
+        // page H1, and a glowing bento there pushed the first ₪ a full screen
+        // down while looking exactly like the seven other panels below it. An
+        // indented run of text behind a start-side rule reads as the article's
+        // opening line — which is what it is — and costs ~200px less height.
+        // RTL-safe: border-s/ps follow the writing direction.
+        "border-s-2 border-border/70 ps-4 sm:ps-5",
+        className ?? "",
+      ]
+        .join(" ")
+        .trim()}
     >
-      <h2
-        id={headingId}
-        className="mb-2.5 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
-      >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
+      {/* The label is a quiet eyebrow, not a panel title: the ANSWER is the
+          headline here. It stays a real <h2> so aria-labelledby and the document
+          outline are unchanged. */}
+      <h2 id={headingId} className="eyebrow">
         {heading}
       </h2>
 
       {/* The block engines lift. Stable id-able node for speakable schema. */}
       <p
         data-direct-answer
-        className="text-[15px] font-medium leading-relaxed text-foreground sm:text-base"
+        className="mt-2 text-[15px] font-medium leading-relaxed text-foreground sm:text-base"
       >
         {answer}
       </p>
@@ -107,7 +114,7 @@ export default function AeoAnswerBlock({
       )}
 
       {/* Verification line + visible dateModified. */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <FactCheckBadge dateModified={dateModified} inline />
         {date && (
           <p className="text-xs text-muted">

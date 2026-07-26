@@ -553,9 +553,12 @@ export default async function ServiceCityPage({ params }: Params) {
         </dl>
       </header>
 
-      {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
+      {/* ── AEO zero-click direct answer (right below the H1) ────────────────
+          A LEDE, not a panel — <AeoAnswerBlock> renders as indented editorial
+          text now. Its markup (the [data-direct-answer] node, the speakable id,
+          the JSON-LD above) is byte-identical; only the shell changed. */}
       {directAnswer && (
-        <div className="mt-6">
+        <div className="mt-5">
           <AeoAnswerBlock
             answer={directAnswer}
             dateModified={asOf}
@@ -564,27 +567,23 @@ export default async function ServiceCityPage({ params }: Params) {
         </div>
       )}
 
-      {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
-        <SgeSummary>{summary}</SgeSummary>
-      </div>
-
-      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
-      <div className="mt-8">
-        <AuthorityBlock
-          heading={`השורה התחתונה: ${svc.label} ב${c.name}`}
-          answer={authority.answer}
-          rows={authority.rows}
-          reviewedAt={REVIEWED_AT}
-        />
+      {/* ── Commission disclosure (Consumer Protection §7b) — immediately ABOVE
+          the prices. The geo variant previously carried it only in the lead
+          section far below the table, i.e. AFTER the first ₪; with the table
+          moving up, the disclosure moves up with it and leads. ───────────── */}
+      <div className="mt-6">
+        <CommissionDisclosure variant="banner" />
       </div>
 
       {/* ── Comparison table ────────────────────────────────────────────────
-          The core product, localized. A visible heading + intent caption frame
-          the table (was an sr-only h2). The caption restates the honest national
-          framing (same prices everywhere). Empty live read → shared EmptyState
-          rather than an empty table. */}
-      <section aria-labelledby="table-h" className="mt-12">
+          The core product, localized, and now the first thing under the
+          disclosure instead of the fourth prose panel down. The summary and the
+          authority block are unchanged and still on the page — they have moved
+          below the table (see after <PriceCaveat>). A visible heading + intent
+          caption frame the table (was an sr-only h2). The caption restates the
+          honest national framing (same prices everywhere). Empty live read →
+          shared EmptyState rather than an empty table. */}
+      <section aria-labelledby="table-h" className="mt-8">
         <h2
           id="table-h"
           className="font-display text-2xl font-bold tracking-tight text-ink"
@@ -605,14 +604,35 @@ export default async function ServiceCityPage({ params }: Params) {
           />
         ) : (
           <>
+            {/* groupByProvider: the geo variant lists the SAME national plan set
+                as the hub — up to 59 cards — so it gets the same per-provider
+                swipe strips rather than a 32,000px column on a phone. */}
             <ComparisonTable
               plans={plans}
               caption={`השוואת ${svc.label} ב${c.name} — מחירים בשקלים (אחידים ארצית), כולל מחיר אחרי המבצע`}
+              groupByProvider
             />
             <PriceCaveat className="mt-3" />
           </>
         )}
       </section>
+
+      {/* ── SGE summary ─────────────────────────────────────────────────────
+          Directly after the price caveat: the reader has the numbers, so this is
+          where the 40–50 word conclusion earns its place. */}
+      <div className="mt-10">
+        <SgeSummary>{summary}</SgeSummary>
+      </div>
+
+      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
+      <div className="mt-10">
+        <AuthorityBlock
+          heading={`השורה התחתונה: ${svc.label} ב${c.name}`}
+          answer={authority.answer}
+          rows={authority.rows}
+          reviewedAt={REVIEWED_AT}
+        />
+      </div>
 
       {/* ── AEO conversational Q&A (data-derived; part of the page's FAQPage) ── */}
       {questions.length > 0 && (
@@ -628,14 +648,7 @@ export default async function ServiceCityPage({ params }: Params) {
         aria-labelledby="local-note-h"
         className="bento mt-10 p-6 sm:p-7"
       >
-        <h2
-          id="local-note-h"
-          className="flex items-center gap-2 font-display text-base font-semibold tracking-tight text-ink"
-        >
-          <span
-            aria-hidden="true"
-            className="inline-block h-4 w-1 rounded-full bg-accent"
-          />
+        <h2 id="local-note-h" className="h-section text-ink">
           מה כדאי לדעת על {c.name}
         </h2>
         {/* Honest national-availability line — the visible counterpart of the

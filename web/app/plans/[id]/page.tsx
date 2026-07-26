@@ -34,6 +34,9 @@ import FreshnessBadge from "@/components/FreshnessBadge";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import LeadForm from "@/components/LeadForm";
+import StickyLeadCta from "@/components/StickyLeadCta";
+import PriceDropBadge from "@/components/PriceDropBadge";
+import SocialProof from "@/components/SocialProof";
 import RelatedLinks from "@/components/RelatedLinks";
 import { getPlans, providerSlug, CATEGORY_HE } from "@/lib/data";
 import { getLivePlans } from "@/lib/live-catalogue";
@@ -399,12 +402,21 @@ export default async function PlanDetailPage({ params }: Params) {
         aria-labelledby="cta-h"
         className="mt-12 scroll-mt-6 rounded-2xl border border-border/60 bg-surface p-5 elevate-card sm:p-6"
       >
-        <h2
-          id="cta-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
-          רוצים לעבור ל{plan.provider} או להשוות?
-        </h2>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h2
+            id="cta-h"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
+          >
+            רוצים לעבור ל{plan.provider} או להשוות?
+          </h2>
+          {/* The strongest NON-fabricated reason-to-act this product can produce:
+              a dated, catalogue-derived week-over-week drop from
+              plan_price_history. The badge owns the threshold + the honesty gate
+              (it fetches /api/price-history and renders NOTHING when there is no
+              qualifying drop, no history, or the fetch fails), so this line can
+              never carry an invented urgency. */}
+          <PriceDropBadge planId={plan.id} />
+        </div>
         <p className="mt-2 text-sm leading-relaxed text-foreground">
           השאירו פרטים ונחזור אליכם — חינם, וללא התחייבות. או קבעו שיחת ייעוץ
           קצרה ונעבור על {plan.plan} יחד.
@@ -418,16 +430,30 @@ export default async function PlanDetailPage({ params }: Params) {
             <span aria-hidden="true">←</span>
           </Link>
         </div>
+        {/* Honest aggregate directly above the ask: fallback="none" emits NO DOM
+            at all unless there is a real published figure to show. */}
+        <SocialProof fallback="none" className="mt-6" />
         <div className="mt-6">
           <LeadForm
             source="plan"
             heading={`קבלת הצעה — ${plan.plan}`}
             defaultCategory={leadCategory(plan.cat)}
+            // The plan this page IS — transmitted so the rep opens the call on the
+            // exact catalogue row the visitor was reading.
+            provider={plan.provider}
+            planId={plan.id}
           />
         </div>
         {/* The §7b disclosure, compact, right by the hand-off CTA. */}
         <CommissionDisclosure variant="inline" className="mt-4" />
       </section>
+
+      {/* Mobile-only bar back to the form above. A plan page is the highest-intent
+          read on the site and on a phone the ask sits below the full spec grid,
+          the fees breakdown and the small print. The verified `#lead` anchor is
+          right above, so the bar resolves its target on mount and auto-hides the
+          moment the form is on screen. */}
+      <StickyLeadCta source="plan" />
 
       {/* ── Similar plans ("מסלולים דומים") — nearest by price, same category ── */}
       {similar.length > 0 ? (

@@ -16,6 +16,7 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
 import EmptyState from "@/components/EmptyState";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getServices,
@@ -337,6 +338,35 @@ export default function CompareIndexPage() {
       <div className="mt-8">
         <SgeSummary heading="השורה התחתונה: השוואה">{summary}</SgeSummary>
       </div>
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          The comparison hub itself — the page whose entire promise is "we'll show
+          you what things cost" — carried no form at all. The counts below are the
+          same REAL catalogue totals already rendered in <TrustSignals> above; no
+          `defaultCategory`, because choosing the service IS what this hub is for
+          and the picker above already owns that choice. ─────────────────────── */}
+      <section
+        id="lead"
+        aria-labelledby="compare-lead-h"
+        className="mt-16 scroll-mt-6"
+      >
+        <h2
+          id="compare-lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          שנעשה את ההשוואה בשבילכם?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם ההצעה המשתלמת ביותר לשימוש שלכם — חינם, בלי
+          התחייבות, והמספר נשאר שלכם.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy
+            source="compare"
+            trustStats={{ planCount, providerCount }}
+          />
+        </div>
+      </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

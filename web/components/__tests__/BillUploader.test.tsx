@@ -26,14 +26,36 @@ vi.mock("@/lib/tracking", () => ({
 }));
 
 // Stub LeadForm to a marker so we can assert the hand-off renders + carries the
-// pre-selected category, without pulling in LeadForm's multi-step internals.
+// pre-selected category, the real catalogue counts and the factual context note,
+// without pulling in LeadForm's multi-step internals.
 vi.mock("@/components/LeadForm", () => ({
-  default: ({ source, defaultCategory }: { source: string; defaultCategory?: string }) => (
-    <div data-testid="lead-form" data-source={source} data-category={defaultCategory ?? ""}>
+  default: ({
+    source,
+    defaultCategory,
+    trustStats,
+    contextNote,
+  }: {
+    source: string;
+    defaultCategory?: string;
+    trustStats?: { planCount: number; providerCount: number };
+    contextNote?: string;
+  }) => (
+    <div
+      data-testid="lead-form"
+      data-source={source}
+      data-category={defaultCategory ?? ""}
+      data-plan-count={trustStats?.planCount ?? ""}
+      data-context-note={contextNote ?? ""}
+    >
       lead form stub
     </div>
   ),
 }));
+
+// <SocialProof> fetches /api/wallet-stats on mount; the uploader's tests stub a
+// single global fetch for /api/analyze-bill, so stub the component out and let its
+// own test own the honesty gate.
+vi.mock("@/components/SocialProof", () => ({ default: () => null }));
 
 /** Build a fake image File. */
 function imageFile(name = "bill.jpg", type = "image/jpeg"): File {
@@ -150,6 +172,80 @@ describe("BillUploader — readable result", () => {
     const lead = screen.getByTestId("lead-form");
     expect(lead).toHaveAttribute("data-source", "bill-analyzer");
     expect(lead).toHaveAttribute("data-category", "cellular");
+
+    // The CRM note carries ONLY figures already on screen — the read provider,
+    // what they pay today, the real annual gap and the surfaced plan.
+    const note = lead.getAttribute("data-context-note") ?? "";
+    expect(note).toContain("סלקום");
+    expect(note).toContain("₪120");
+    expect(note).toContain("₪852");
+    expect(note).toContain("מסלול חוסך");
+
+    // The hand-off is the shared #lead anchor: the scrubber CTA and StickyLeadCta
+    // both scroll here, so losing the id silently breaks both.
+    expect(document.getElementById("lead")).toContainElement(lead);
+  });
+
+  it("scrolls the scrubber's CTA to the lead form, honouring reduced-motion", async () => {
+    mockFetchJson({
+      provider: "סלקום",
+      currentSpend: 120,
+      category: "cellular",
+      confidence: 0.9,
+      warnings: [],
+      annualSaving: 852,
+      suggestions: [
+        { id: "a", name: "מסלול חוסך", provider: "פרטנר", price: 49, annualSaving: 852 },
+      ],
+    });
+    // jsdom implements neither scrollIntoView nor a real matchMedia result.
+    // Restore the prototype by hand — vi.restoreAllMocks() does not undo a direct
+    // prototype assignment, and leaking it would poison later tests in this file.
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({ matches: true }) as unknown as typeof matchMedia,
+    );
+
+    const user = userEvent.setup();
+    render(<BillUploader />);
+    await user.upload(document.getElementById("bill-file") as HTMLInputElement, imageFile());
+
+    const cta = await screen.findByRole("button", {
+      name: /רוצים שנסגור לכם את הפער/,
+    });
+    await user.click(cta);
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    // prefers-reduced-motion: reduce ⇒ jump, never a smooth travel.
+    expect(scrollIntoView.mock.calls[0][0]).toMatchObject({ behavior: "auto" });
+
+    Element.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
+  it("passes the REAL catalogue counts through to the hand-off form", async () => {
+    mockFetchJson({
+      provider: "סלקום",
+      currentSpend: 120,
+      category: "cellular",
+      confidence: 0.9,
+      warnings: [],
+      annualSaving: 852,
+      suggestions: [
+        { id: "a", name: "מסלול חוסך", provider: "פרטנר", price: 49, annualSaving: 852 },
+      ],
+    });
+
+    const user = userEvent.setup();
+    render(<BillUploader trustStats={{ planCount: 240, providerCount: 17 }} />);
+    await user.upload(document.getElementById("bill-file") as HTMLInputElement, imageFile());
+
+    expect(await screen.findByTestId("lead-form")).toHaveAttribute(
+      "data-plan-count",
+      "240",
+    );
   });
 
   it("shows an honest 'no cheaper plan' note when there are no suggestions", async () => {

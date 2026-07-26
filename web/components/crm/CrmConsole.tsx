@@ -29,7 +29,7 @@
 import { type KeyboardEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { type CrmAccess, fetchCrmAccess } from "@/lib/crm-admin";
+import { type CrmAccess, type CrmFailure, fetchCrmAccess } from "@/lib/crm-admin";
 import CrmDashboard from "./CrmDashboard";
 import { NoticeCard } from "./ui";
 
@@ -116,21 +116,27 @@ export default function CrmConsole() {
 
 function CrmConsoleInner() {
   // The caller's effective CRM role, resolved by the SAME server gate the
-  // mutations go through. null while loading; `denied` once we know they hold no
-  // role at all (crm-api answered 401/403).
+  // mutations go through.
+  //
+  // A failure is NOT automatically a denial. 401/403 means they genuinely hold no
+  // role; anything else (network blip, 5xx) must offer a retry rather than tell a
+  // legitimate admin they've lost access — the old is_admin gate read a locally
+  // cached profile and could never do that, so this path has to be careful.
   const [access, setAccess] = useState<CrmAccess | null>(null);
-  const [denied, setDenied] = useState(false);
+  const [failure, setFailure] = useState<CrmFailure | null>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let live = true;
     fetchCrmAccess().then((r) => {
       if (!live) return;
-      if (r.data) setAccess(r.data);
-      else setDenied(true);
+      setAccess(r.data);
+      setFailure(r.failure);
     });
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
+  const denied = !!failure && (failure.status === 401 || failure.status === 403);
   const visibleTabs = tabsFor(access);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -188,6 +194,21 @@ function CrmConsoleInner() {
     return (
       <main id="main" className="mx-auto w-full max-w-md px-4 py-16">
         <NoticeCard>אין לך הרשאת גישה לקונסולה. פנו למנהל המערכת כדי לקבל תפקיד.</NoticeCard>
+      </main>
+    );
+  }
+  if (failure) {
+    // Couldn't resolve the role — say so and offer a retry. Never "no access".
+    return (
+      <main id="main" className="mx-auto w-full max-w-md px-4 py-16">
+        <NoticeCard>{failure.message}</NoticeCard>
+        <button
+          type="button"
+          onClick={() => setAttempt((n) => n + 1)}
+          className="interactive mt-4 rounded-xl border border-border px-4 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          נסו שוב
+        </button>
       </main>
     );
   }

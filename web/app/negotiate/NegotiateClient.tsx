@@ -400,6 +400,15 @@ function ScriptResult({
         </p>
         <SocialProof fallback="none" className="mt-5" />
         <div className="mt-5 max-w-xl">
+          {/* NO contextNote on purpose — unlike /switch-kit, which attaches the
+              catalogue row it built the packet from. Everything a rep would want
+              off this screen is the visitor's own input or gives it straight back:
+              script.provider is the current provider they typed, and every
+              annualSavingUpTo is (typed bill − catalogue price) × 12, so storing a
+              saving stores the bill. The builder's privacy line — "מה שתזינו בכלי
+              הזה משמש לחישוב התסריט בלבד ואינו נשמר אצלנו" — sits ~200px up the
+              page and is out of sight by here, which makes a silent hand-off worse,
+              not safer. The category still travels as a visible, editable field. */}
           <LeadForm source="negotiate" defaultCategory={script.category} />
         </div>
       </section>

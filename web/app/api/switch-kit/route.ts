@@ -32,6 +32,15 @@
 //     `persisted:false` and still return the full kit (the page's tracker persists
 //     locally via localStorage regardless). Persistence is an enhancement, never
 //     load-bearing — mirrors /api/referral's posture.
+//   • COPY DEPENDENCY, read before wiring the mirror up: the persisted row stores
+//     `from_provider` — a field the visitor TYPED. That is survivable today only
+//     because the path is unreachable: nothing posts `steps` (the page's tracker
+//     is localStorage-only), so persistProgress never runs and no typed field is
+//     ever written. The moment a caller starts sending `steps`, the builder's
+//     promise on /switch-kit that the typed details are "לא נשמרים אצלנו" becomes
+//     false for signed-in users, and SwitchKitClient's copy must be rescoped in
+//     the SAME commit — the way /negotiate's blanket "לא נשמרים פרטים" was
+//     narrowed the moment a LeadForm appeared below it.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { createClient } from "@supabase/supabase-js";

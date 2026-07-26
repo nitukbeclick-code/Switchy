@@ -1000,8 +1000,24 @@ export async function bookCallback(
 
 // ── escalate_to_human ─────────────────────────────────────────────────────────
 // Hands the conversation to a human. NO consent needed (it's a service action,
-// not marketing). Flips the bot-silent gate via ctx.escalate (e.g. the webhook
-// creates a lead + sets status). Always reassures the customer.
+// not marketing). Raises a real human via ctx.escalate (e.g. the WhatsApp webhook
+// creates a lead → Telegram rep card; the Telegram bot starts a team takeover).
+//
+// TRUTH GATE (this is the whole point of the two branches below): we may ONLY tell
+// the customer "a rep will get back to you" when a rep was ACTUALLY summoned.
+//   • ctx.escalate MISSING  → nobody was notified. That is a FAILURE, not a
+//     success. It used to default to `true`, so a site visitor who asked for a
+//     human was promised a callback while no lead, no phone number and no
+//     notification existed anywhere — an unrecoverable conversation.
+//   • ctx.escalate RETURNS FALSE → the write was blocked (per-phone lead cap,
+//     the hourly circuit breaker, a missing contact, any PostgREST error). Same
+//     thing: no card reached the team.
+// In both cases we do NOT promise a callback. We ask for a name + phone instead,
+// so the model's next move is create_lead and the customer stays reachable.
+//
+// Note this NEVER silences the bot on its own — the sinks own that decision, and
+// the WhatsApp one deliberately keeps the assistant answering until a human
+// actually takes the conversation over (see createHandoffLead).
 export async function escalateToHuman(
   ctx: ToolContext,
   args: { reason?: unknown },
@@ -1009,7 +1025,7 @@ export async function escalateToHuman(
   const reason = clipStr(args.reason, 200) || "המשתמש ביקש לדבר עם נציג";
   let ok = false;
   try {
-    ok = ctx.escalate ? !!(await ctx.escalate(reason)) : true;
+    ok = ctx.escalate ? !!(await ctx.escalate(reason)) : false;
   } catch (e) {
     await ctx.logSecurityEvent?.("agent_escalation_error", { channel: ctx.channel, error: String(e) });
   }
@@ -1018,11 +1034,23 @@ export async function escalateToHuman(
     channel: ctx.channel,
     reason: reason.slice(0, 120),
     conversation_id: ctx.conversationId ?? null,
+    escalated: ok,
   });
+  if (ok) {
+    return {
+      ok: true,
+      data: { escalated: true },
+      note: `${COMMISSION_DISCLOSURE} מעולה 🙌 חיברתי אותך לנציג אנושי שיחזור אליך בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
+    };
+  }
+  // No human was raised. ok:false + a machine reason so the model treats this as
+  // unfinished business; the note is what the customer actually reads, so it must
+  // not claim a connection we didn't make.
   return {
-    ok: true, // never fail the customer — we always acknowledge
-    data: { escalated: ok },
-    note: `${COMMISSION_DISCLOSURE} מעולה 🙌 חיברתי אותך לנציג אנושי שיחזור אליך בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
+    ok: false,
+    reason: "handoff_unavailable",
+    data: { escalated: false },
+    note: `${COMMISSION_DISCLOSURE} אני רוצה לחבר אתכם לנציג אנושי — בשביל זה אני צריך שם ומספר טלפון כדי לפתוח פנייה. תכתבו לי אותם כאן ואעביר לצוות. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
   };
 }
 

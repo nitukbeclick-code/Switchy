@@ -251,7 +251,11 @@ Deno.test("book_callback inherits the consent gate", async () => {
   assert(ok.ok);
 });
 
-// ── escalate_to_human: no consent needed; always reassures ────────────────────
+// ── escalate_to_human: no consent needed; promises a human ONLY when one was
+//    actually raised (truth gate) ───────────────────────────────────────────────
+
+// The exact promise. It may appear ONLY when the escalate sink returned true.
+const HUMAN_PROMISE = "חיברתי אותך לנציג אנושי";
 
 Deno.test("escalate_to_human never fails the customer and flips the gate", async () => {
   let escalated = false;
@@ -259,6 +263,7 @@ Deno.test("escalate_to_human never fails the customer and flips the gate", async
   const r = await escalateToHuman(ctx, { reason: "המשתמש מתעקש" });
   assert(r.ok);
   assertEquals(escalated, true);
+  assert(r.note!.includes(HUMAN_PROMISE), "a landed escalation promises the callback");
   assert(ctx.sec.some((e) => e.event === "agent_escalation"));
 });
 
@@ -267,12 +272,40 @@ Deno.test("escalate_to_human surfaces the §7b commission disclosure (escalation
   const r = await escalateToHuman(ctx, { reason: "המשתמש ביקש נציג" });
   assert(r.ok);
   assert(r.note!.includes(COMMISSION_DISCLOSURE.slice(0, 20)), "§7b commission disclosure surfaced on hand-off");
-  // Even if the escalate sink throws, the customer is still acknowledged WITH the disclosure (fail-soft).
+  // The sink throwing is still fail-soft (no exception escapes) and the disclosure
+  // still lands — but see the truth-gate tests below: a throw means nobody was
+  // raised, so it must NOT promise a callback.
   const ctxThrow = fakeCtx({ escalate: () => { throw new Error("boom"); } });
   const r2 = await escalateToHuman(ctxThrow, { reason: "x" });
-  assert(r2.ok);
   assert(r2.note!.includes(COMMISSION_DISCLOSURE.slice(0, 20)), "§7b disclosure present even on escalate failure");
 });
+
+// TRUTH GATE — the defect this pins: escalate_to_human used to default `ok = true`
+// when no escalate sink was wired, so a site visitor asking for a human was told
+// "I connected you to a rep" while NO lead, NO phone number and NO notification
+// existed anywhere. The conversation was unrecoverable. Every no-human path must
+// now ask for a name + phone instead of promising a callback.
+for (
+  const [label, opts] of [
+    ["no escalate sink wired (site / any channel without one)", {}],
+    ["sink returned false (lead cap / circuit breaker / no contact)", { escalate: () => false }],
+    ["sink threw", { escalate: () => { throw new Error("boom"); } }],
+  ] as const
+) {
+  Deno.test(`escalate_to_human does NOT promise a human when none was raised — ${label}`, async () => {
+    const ctx = fakeCtx(opts as Partial<ToolContext>);
+    const r = await escalateToHuman(ctx, { reason: "אני רוצה נציג" });
+    assertEquals(r.ok, false, "an escalation that raised nobody is not a success");
+    assertEquals(r.reason, "handoff_unavailable");
+    assertEquals((r.data as { escalated?: boolean }).escalated, false);
+    assert(!r.note!.includes(HUMAN_PROMISE), "must not claim a connection it did not make");
+    // Recoverable: the customer is asked for the details a lead needs.
+    assert(r.note!.includes("טלפון"), "asks for a phone number so the lead is still capturable");
+    assert(r.note!.includes(COMMISSION_DISCLOSURE.slice(0, 20)), "§7b disclosure still surfaced");
+    // Still audited either way — the escalation attempt is never invisible.
+    assert(ctx.sec.some((e) => e.event === "agent_escalation" && e.detail.escalated === false));
+  });
+}
 
 // ── runAgent: graceful degradation to the template fallback ───────────────────
 

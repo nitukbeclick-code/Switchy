@@ -650,6 +650,13 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
         // Consent-gated lead capture — the SAME honest gate the site/app/WhatsApp
         // paths use. Refuses unless the agent collected consent===true.
         captureLead: (input) => captureAiLead(input as AiLeadInput),
+        // Human escalation — routes into the SAME startHandoff the deterministic
+        // wantsHuman path uses (one contract for "raise a human" on this channel),
+        // so a customer whose phrasing misses that regex still reaches the team
+        // instead of being told a rep is coming when none was told. startHandoff
+        // returns false when no team chat is configured; escalateToHuman then asks
+        // for a name + phone rather than promising a callback it can't deliver.
+        escalate: (reason) => startHandoff(sessionKey, chatId, firstName, reason || text),
       },
       knowledgeContext,
       activeLead,

@@ -42,7 +42,7 @@ import {
   type Plan as CataloguePlan,
 } from "./catalogue.ts";
 import { fetchRows } from "./db.ts";
-import { buildAiLeadRow } from "./leads.ts";
+import { buildAiLeadRow, parseCallbackSlot } from "./leads.ts";
 import { makeReferralCode } from "./referrals.ts";
 import { buildSwitchKit, type SwitchProfile } from "./switch.ts";
 
@@ -69,6 +69,15 @@ export type ToolContext = {
   // Best-effort audit sinks (no-op in tests). preview is PII-light + clipped.
   logCrmEvent?: (ev: { actor: string; event: string; preview?: string }) => Promise<void> | void;
   logSecurityEvent?: (event: string, detail: Record<string, unknown>) => Promise<void> | void;
+  // Deeper per-tool-run audit → public.agent_tool_calls. Complements logCrmEvent
+  // (the CRM activity feed) with a longer-retention analytics table.
+  //
+  // Until this sink existed the table had ZERO writers while admin-metrics
+  // (toolCallsRollup) read it every request — the tool success-rate dashboard was
+  // reporting on a permanently empty table. Same fail-soft contract as the others.
+  logToolCall?: (
+    row: { channel: string; conversation_id: string | null; tool: string; ok: boolean; preview: string | null },
+  ) => Promise<void> | void;
   // Consent-gated lead capture. Returns "captured" | "incomplete" | "error".
   // In production this is _shared/leads.ts captureAiLead; tests inject a fake.
   captureLead?: (input: Record<string, unknown>) => Promise<"captured" | "incomplete" | "error">;
@@ -145,8 +154,22 @@ function planView(p: ScorablePlan): Record<string, unknown> {
 }
 
 async function audit(ctx: ToolContext, tool: string, ok: boolean, preview?: string): Promise<void> {
+  const note = preview ?? (ok ? "ok" : "fail");
   try {
-    await ctx.logCrmEvent?.({ actor: "agent", event: `tool:${tool}`, preview: preview ?? (ok ? "ok" : "fail") });
+    await ctx.logCrmEvent?.({ actor: "agent", event: `tool:${tool}`, preview: note });
+  } catch { /* never blocks */ }
+  // Second, independent sink: the analytics table admin-metrics rolls up. Kept in
+  // its own try so a failure here can't cost us the activity-feed row (or vice
+  // versa) — every tool run should appear in both, but neither may block a tool.
+  try {
+    await ctx.logToolCall?.({
+      channel: ctx.channel,
+      conversation_id: ctx.conversationId ?? null,
+      tool,
+      ok,
+      // The table's CHECK bounds preview at 120; 80 matches the crm_events feed.
+      preview: note.trim().replace(/\s+/g, " ").slice(0, 80) || null,
+    });
   } catch { /* never blocks */ }
 }
 
@@ -740,10 +763,13 @@ export async function createLead(
     phone?: unknown;
     consent?: unknown;
     consent_share?: unknown;
-    channel?: unknown;
     notes?: unknown;
     provider?: unknown;
     category?: unknown;
+    // INTERNAL — not in the tool declaration, so the model can't set it. Passed by
+    // bookCallback after it maps the customer's spoken slot onto the four windows
+    // followup.ts pings on.
+    callback_time?: unknown;
   },
 ): Promise<ToolResult> {
   const consent = args.consent === true || args.consent === "true";
@@ -765,16 +791,25 @@ export async function createLead(
     await audit(ctx, "create_lead", false, "incomplete");
     return { ok: false, reason: "incomplete", note: "צריך שם וטלפון תקין כדי שנחזור אליך." };
   }
-  // Pre-validate the row honestly (also catches bad phone shape) before the write.
-  const dryRow = buildAiLeadRow({
+  // The lead row's channel is OURS, never the model's: ctx.channel is set by the
+  // runtime that owns the conversation. A WhatsApp lead mislabelled "advisor" is
+  // not just wrong bookkeeping — it costs the rep the 🤝 live-takeover buttons
+  // (leadKeyboard gates them on isWhatsappLead). A caller that knows better than
+  // the coarse AgentChannel (the Telegram bot runs as channel "app") overrides it
+  // in its own captureLead wrapper.
+  const leadInput = {
     name,
     phone,
     consent: true,
     consent_share: consentShare,
+    channel: ctx.channel,
     provider: clipStr(args.provider, 120) || undefined,
     category: clipStr(args.category, 40) || undefined,
     notes: clipStr(args.notes, 600) || undefined,
-  });
+    callback_time: args.callback_time,
+  };
+  // Pre-validate the row honestly (also catches bad phone shape) before the write.
+  const dryRow = buildAiLeadRow(leadInput);
   if (!dryRow) {
     await audit(ctx, "create_lead", false, "invalid");
     return { ok: false, reason: "invalid", note: "מספר הטלפון לא נראה תקין — אפשר לבדוק שוב?" };
@@ -784,15 +819,7 @@ export async function createLead(
   let result: "captured" | "incomplete" | "error" = "error";
   if (capture) {
     try {
-      result = await capture({
-        name,
-        phone,
-        consent: true,
-        consent_share: consentShare,
-        provider: clipStr(args.provider, 120) || undefined,
-        category: clipStr(args.category, 40) || undefined,
-        notes: clipStr(args.notes, 600) || undefined,
-      });
+      result = await capture(leadInput);
     } catch (e) {
       result = "error";
       await ctx.logSecurityEvent?.("agent_lead_capture_error", { channel: ctx.channel, error: String(e) });
@@ -981,13 +1008,21 @@ export async function bookCallback(
     slot ? `מועד מועדף: ${slot}` : "",
     isVideo ? "בקשת פגישת וידאו (זום)" : "",
   ].filter(Boolean).join(" | ");
-  // Delegate to the same consent-gated lead path (source/notes carry the slot).
+  // Map the spoken slot onto the leads.callback_time vocabulary. Until now the
+  // slot lived ONLY in the free-text notes, so followup.ts callbackDue() — which
+  // switches on the COLUMN — hit its default:false and the ⏰ callback ping (the
+  // highest-converting nudge, ranked above the SLA ladder) never fired for the
+  // very customers who named a time. The phrase stays in notes either way; an
+  // unrecognisable one just yields no window rather than a guessed one.
+  const callbackTime = parseCallbackSlot(slot);
+  // Delegate to the same consent-gated lead path (notes carry the spoken phrase).
   const res = await createLead(ctx, {
     name: args.name,
     phone: args.phone,
     consent: args.consent,
     notes: notes || "בקשת התקשרות",
     category: undefined,
+    callback_time: callbackTime,
     // Video path: record which (verified-supported) provider the meeting is about.
     provider: isVideo ? videoProvider : undefined,
   });
@@ -1000,8 +1035,24 @@ export async function bookCallback(
 
 // ── escalate_to_human ─────────────────────────────────────────────────────────
 // Hands the conversation to a human. NO consent needed (it's a service action,
-// not marketing). Flips the bot-silent gate via ctx.escalate (e.g. the webhook
-// creates a lead + sets status). Always reassures the customer.
+// not marketing). Raises a real human via ctx.escalate (e.g. the WhatsApp webhook
+// creates a lead → Telegram rep card; the Telegram bot starts a team takeover).
+//
+// TRUTH GATE (this is the whole point of the two branches below): we may ONLY tell
+// the customer "a rep will get back to you" when a rep was ACTUALLY summoned.
+//   • ctx.escalate MISSING  → nobody was notified. That is a FAILURE, not a
+//     success. It used to default to `true`, so a site visitor who asked for a
+//     human was promised a callback while no lead, no phone number and no
+//     notification existed anywhere — an unrecoverable conversation.
+//   • ctx.escalate RETURNS FALSE → the write was blocked (per-phone lead cap,
+//     the hourly circuit breaker, a missing contact, any PostgREST error). Same
+//     thing: no card reached the team.
+// In both cases we do NOT promise a callback. We ask for a name + phone instead,
+// so the model's next move is create_lead and the customer stays reachable.
+//
+// Note this NEVER silences the bot on its own — the sinks own that decision, and
+// the WhatsApp one deliberately keeps the assistant answering until a human
+// actually takes the conversation over (see createHandoffLead).
 export async function escalateToHuman(
   ctx: ToolContext,
   args: { reason?: unknown },
@@ -1009,7 +1060,7 @@ export async function escalateToHuman(
   const reason = clipStr(args.reason, 200) || "המשתמש ביקש לדבר עם נציג";
   let ok = false;
   try {
-    ok = ctx.escalate ? !!(await ctx.escalate(reason)) : true;
+    ok = ctx.escalate ? !!(await ctx.escalate(reason)) : false;
   } catch (e) {
     await ctx.logSecurityEvent?.("agent_escalation_error", { channel: ctx.channel, error: String(e) });
   }
@@ -1018,11 +1069,23 @@ export async function escalateToHuman(
     channel: ctx.channel,
     reason: reason.slice(0, 120),
     conversation_id: ctx.conversationId ?? null,
+    escalated: ok,
   });
+  if (ok) {
+    return {
+      ok: true,
+      data: { escalated: true },
+      note: `${COMMISSION_DISCLOSURE} מעולה 🙌 חיברתי אותך לנציג אנושי שיחזור אליך בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
+    };
+  }
+  // No human was raised. ok:false + a machine reason so the model treats this as
+  // unfinished business; the note is what the customer actually reads, so it must
+  // not claim a connection we didn't make.
   return {
-    ok: true, // never fail the customer — we always acknowledge
-    data: { escalated: ok },
-    note: `${COMMISSION_DISCLOSURE} מעולה 🙌 חיברתי אותך לנציג אנושי שיחזור אליך בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
+    ok: false,
+    reason: "handoff_unavailable",
+    data: { escalated: false },
+    note: `${COMMISSION_DISCLOSURE} אני רוצה לחבר אתכם לנציג אנושי — בשביל זה אני צריך שם ומספר טלפון כדי לפתוח פנייה. תכתבו לי אותם כאן ואעביר לצוות. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
   };
 }
 
@@ -1539,7 +1602,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "book_callback",
     description:
-      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר בהערות והנציג חוזר. פגישת וידאו (זום): אם המשתמש מבקש פגישת וידאו/זום — העבר meeting_type=\"video\" ואת שם הספק ב-provider; הכלי בודק מראש אם הספק תומך בפגישות וידאו (לא כל הספקים תומכים). אם אינו תומך — הכלי יסרב בנימוס ותציע במקומה שיחה טלפונית רגילה או פנייה לנציג; לעולם אל תבטיח פגישת וידאו לפני שהכלי אישר. שיחה טלפונית רגילה אינה תלויה בספק ואינה נבדקת.",
+      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר על הפנייה (עכשיו/צהריים/ערב/מחר) וגם בהערות, והנציג חוזר בחלון הזה. פגישת וידאו (זום): אם המשתמש מבקש פגישת וידאו/זום — העבר meeting_type=\"video\" ואת שם הספק ב-provider; הכלי בודק מראש אם הספק תומך בפגישות וידאו (לא כל הספקים תומכים). אם אינו תומך — הכלי יסרב בנימוס ותציע במקומה שיחה טלפונית רגילה או פנייה לנציג; לעולם אל תבטיח פגישת וידאו לפני שהכלי אישר. שיחה טלפונית רגילה אינה תלויה בספק ואינה נבדקת.",
     parameters: {
       type: "object",
       properties: {

@@ -647,9 +647,25 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
         logSecurityEvent: (event, detail) => {
           insertRow("security_audit_log", { event, detail }).catch(() => {});
         },
+        // Deeper per-tool-run audit — the table admin-metrics' tool success-rate
+        // rollup reads. Fire-and-forget; a failed insert never affects the reply.
+        logToolCall: (row) => {
+          insertRow("agent_tool_calls", row).catch(() => {});
+        },
         // Consent-gated lead capture — the SAME honest gate the site/app/WhatsApp
         // paths use. Refuses unless the agent collected consent===true.
-        captureLead: (input) => captureAiLead(input as AiLeadInput),
+        // The channel is overridden here because this bot runs the shared brain as
+        // AgentChannel "app" (the coarse union has no telegram member), but the
+        // conversation really happened on Telegram — and the rep's card + the
+        // source funnel must say so.
+        captureLead: (input) => captureAiLead({ ...input, channel: "telegram" } as AiLeadInput),
+        // Human escalation — routes into the SAME startHandoff the deterministic
+        // wantsHuman path uses (one contract for "raise a human" on this channel),
+        // so a customer whose phrasing misses that regex still reaches the team
+        // instead of being told a rep is coming when none was told. startHandoff
+        // returns false when no team chat is configured; escalateToHuman then asks
+        // for a name + phone rather than promising a callback it can't deliver.
+        escalate: (reason) => startHandoff(sessionKey, chatId, firstName, reason || text),
       },
       knowledgeContext,
       activeLead,

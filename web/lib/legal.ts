@@ -33,10 +33,29 @@ export const CONTACT_WHATSAPP_INTL = "972505037537";
 export const COMMISSION_DISCLOSURE_LEAD =
   "השירות חינמי עבורכם.";
 
-/** The full honest commission disclosure sentence (plain text, no markup). */
-export const COMMISSION_DISCLOSURE_BODY =
+/**
+ * The §7b fact ITSELF, as one sentence: the providers pay us a referral fee when
+ * a user switches through us, and it does not change the price the user pays.
+ *
+ * Split out of COMMISSION_DISCLOSURE_BODY — which is still the same two
+ * sentences, joined below, byte for byte — so a COMPACT placement can carry the
+ * disclosure without dragging the methodology sentence along. <LeadForm> renders
+ * exactly this at its submit button (§7b at the point of commercial commitment,
+ * owned by the form so no host page can omit it); on the pages that already show
+ * the full banner above their prices, the short form reads as the button's fine
+ * print instead of stuttering the banner back at the reader. Composition only —
+ * no wording was added, removed or rephrased.
+ */
+export const COMMISSION_DISCLOSURE_FEE_SENTENCE =
   "אנו מקבלים דמי תיווך/הפניה מהספקים כאשר אתם עוברים דרכנו — וזה אינו משפיע " +
-  "על המחיר שתשלמו. ההשוואה נעשית לפי המתודולוגיה השקופה שלנו.";
+  "על המחיר שתשלמו.";
+
+/** The methodology sentence closing the full disclosure (carries the link anchor). */
+export const COMMISSION_DISCLOSURE_METHODOLOGY_SENTENCE =
+  "ההשוואה נעשית לפי המתודולוגיה השקופה שלנו.";
+
+/** The full honest commission disclosure sentence (plain text, no markup). */
+export const COMMISSION_DISCLOSURE_BODY = `${COMMISSION_DISCLOSURE_FEE_SENTENCE} ${COMMISSION_DISCLOSURE_METHODOLOGY_SENTENCE}`;
 
 /** Anchor text for the methodology link that accompanies the disclosure. */
 export const COMMISSION_DISCLOSURE_LINK_TEXT = "המתודולוגיה השקופה שלנו";

@@ -1175,6 +1175,14 @@ abstract interface class Backend {
   /// CRM entry point in the UI; the edge function re-checks authoritatively.
   Future<bool> fetchIsAdmin();
 
+  /// Whether the signed-in user may open the CRM console at all.
+  ///
+  /// BROADER than [fetchIsAdmin]: crm-api grades access (is_admin is the
+  /// superset; a crm_members row grants `viewer` or `rep`). Gating the console on
+  /// is_admin alone made that graded layer unreachable. Fail-soft — any error
+  /// answers false, so a hiccup never exposes the console.
+  Future<bool> fetchHasCrmAccess();
+
   /// Pipeline counts + the most-recent conversations for the CRM home tab.
   Future<CrmOverview> crmOverview();
 

@@ -221,8 +221,11 @@ async function runSweep(cfg: Cfg) {
 
 async function runFollowUp(cfg: Cfg) {
   const now = new Date();
+  // 'contacted' rows are pulled in too, but ONLY so planFollowUps can push a
+  // reminder the rep scheduled for themselves (follow_up_at). The SLA ladder and
+  // the callback ping stay 'new'-only — see planFollowUps' status scope.
   const openLeads = await fetchRows<Lead>(
-    "/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=50",
+    "/rest/v1/leads?select=*&status=in.(new,contacted)&order=created_at.asc&limit=50",
   );
   if (openLeads === null) return { ok: false, error: "follow-up query failed" };
   const plan = planFollowUps(openLeads, now.getTime(), israelHourOf(now));
@@ -232,6 +235,12 @@ async function runFollowUp(cfg: Cfg) {
     if (!lead.id) continue;
     const header = f.kind === "callback"
       ? `⏰ <b>הגיע הזמן:</b> ${esc(lead.name)} ביקש שיחה ${CALLBACK_HE[String(lead.callback_time ?? "")] ?? ""} — עכשיו החלון.`
+      : f.kind === "followup"
+      // A reminder the rep set for THEMSELVES in the console — quote their own
+      // note back so the card is actionable without opening the CRM.
+      ? `📌 <b>תזכורת שקבעת:</b> ${esc(lead.name)}` +
+        (lead.follow_up_note ? ` — ${esc(String(lead.follow_up_note).slice(0, 200))}` : "") +
+        (lead.claimed_by ? ` (${esc(lead.claimed_by)})` : "")
       : `${f.urgency} <b>ליד ממתין ${Math.floor(f.ageHours)} שעות בלי מענה</b>` +
         (lead.claimed_by ? ` (בטיפול אצל ${esc(lead.claimed_by)})` : "");
     const r = await sendTelegram(cfg, header + NL + NL + buildText(lead), leadKeyboard(lead));

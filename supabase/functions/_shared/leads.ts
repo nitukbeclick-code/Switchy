@@ -4,6 +4,7 @@
 import type { Lead, TgInlineKeyboard, TriageResult } from "./types.ts";
 import { esc, NL, waDraftLink, waLink } from "./telegram.ts";
 import { insertRow } from "./db.ts";
+import { scoreLead } from "./lead_quality.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI-chat lead capture (Track 2E) — when the site "Switchy AI" chat detects a
@@ -52,14 +53,74 @@ export type AiLeadInput = {
   consent_marketing_sms?: unknown;
   consent_marketing_email?: unknown;
   consent_marketing_whatsapp?: unknown;
+  // WHERE the conversation happened. Drives `source` + the notes prefix. Absent or
+  // unrecognised ⇒ "advisor" (the site AI), which is the pre-existing behaviour.
+  // Truth matters here beyond bookkeeping: leadKeyboard only offers the rep the
+  // 🤝 live-takeover buttons when source === "whatsapp" (isWhatsappLead), so a
+  // WhatsApp lead mislabelled "advisor" silently loses that control.
+  channel?: unknown;
+  // The customer's preferred callback window, in the vocabulary followup.ts's
+  // callbackDue() switches on. Anything else is dropped (it stays in `notes`),
+  // because an unrecognised value would render as a phantom window on the card.
+  callback_time?: unknown;
 };
+
+/** Conversation channels that map to a distinct lead source. */
+const CHANNEL_SOURCE: Readonly<Record<string, string>> = {
+  whatsapp: "whatsapp",
+  telegram: "telegram",
+  site: "advisor",
+  app: "advisor",
+};
+
+/** Hebrew notes prefix per source — the rep reads this first, so it must not
+ *  claim the conversation happened somewhere it didn't. */
+const SOURCE_NOTES_PREFIX: Readonly<Record<string, string>> = {
+  whatsapp: "נוצר משיחת Switchy AI בוואטסאפ",
+  telegram: "נוצר משיחת Switchy AI בטלגרם",
+  advisor: "נוצר משיחת Switchy AI באתר",
+};
+
+/** channel → leads.source. Unknown/absent ⇒ "advisor" (unchanged default). */
+export function leadSourceForChannel(channel: unknown): string {
+  const key = String(channel ?? "").trim().toLowerCase();
+  return CHANNEL_SOURCE[key] ?? "advisor";
+}
+
+/** The four windows public.leads.callback_time accepts; anything else ⇒ null.
+ *  Kept in lockstep with followup.ts callbackDue() — a value it can't switch on
+ *  would show the rep a callback window that never pings. */
+export function normalizeCallbackTime(v: unknown): string | null {
+  const t = String(v ?? "").trim().toLowerCase();
+  return t === "now" || t === "noon" || t === "evening" || t === "tomorrow" ? t : null;
+}
+
+/** Map a FREE-TEXT slot the customer spoke ("בערב", "מחר בבוקר", "asap") onto the
+ *  same four windows. Returns null when we can't tell — the phrase then stays in
+ *  `notes` and the lead simply has no window, which is the honest outcome: a
+ *  guessed window would ping the rep at a time nobody asked for.
+ *
+ *  ORDER MATTERS: "מחר בערב" is TOMORROW, not this evening — the day constraint is
+ *  the stronger promise, so it is tested first. */
+export function parseCallbackSlot(v: unknown): string | null {
+  const t = String(v ?? "").trim().toLowerCase();
+  if (!t) return null;
+  const exact = normalizeCallbackTime(t);
+  if (exact) return exact;
+  if (/מחר|tomorrow/.test(t)) return "tomorrow";
+  if (/ערב|evening|tonight/.test(t)) return "evening";
+  if (/צהר|noon|midday|afternoon/.test(t)) return "noon";
+  if (/עכשיו|מיד|כרגע|now|asap|immediately/.test(t)) return "now";
+  return null;
+}
 
 export type AiLeadRow = {
   name: string;
   phone: string;
   email: null;
   provider: string | null;
-  source: "advisor";
+  source: string; // leadSourceForChannel(input.channel) — "advisor" by default
+  callback_time: string | null; // normalizeCallbackTime(input.callback_time)
   notes: string | null;
   terms_accepted_at: string;
   privacy_accepted_at: string;
@@ -98,8 +159,10 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
   // explicit true — never inferred from the §30A service consent or marketing flags.
   const shareConsented = input.consent_share === true;
 
+  // WHERE this happened drives both the source and the line the rep reads first.
+  const source = leadSourceForChannel(input.channel);
   const category = clip(input.category, 40);
-  const notesParts: string[] = ["נוצר משיחת Switchy AI באתר"];
+  const notesParts: string[] = [SOURCE_NOTES_PREFIX[source] ?? SOURCE_NOTES_PREFIX.advisor];
   if (category) notesParts.push(`שירות מבוקש: ${category}`);
   const extra = clip(input.notes, 600);
   if (extra) notesParts.push(extra);
@@ -110,7 +173,11 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
     phone,
     email: null,
     provider: clip(input.provider, 120) || null,
-    source: "advisor",
+    source,
+    // A named window makes followup.ts fire the ⏰ callback ping (which outranks
+    // the SLA ladder). Without it the customer who said "call me this evening"
+    // falls back to the generic nudge and the card reads "—".
+    callback_time: normalizeCallbackTime(input.callback_time),
     notes: notes || null,
     // Non-null sentinels → the BEFORE INSERT trigger overwrites with now();
     // null marketing → stays null (no marketing consent).
@@ -188,7 +255,7 @@ export function detectSwitchIntent(text: string): boolean {
 }
 
 export const CALLBACK_HE: Record<string, string> = { now: "עכשיו", noon: "בצהריים", evening: "בערב", tomorrow: "מחר" };
-export const SOURCE_HE: Record<string, string> = { form: "טופס", plan: "דף מסלול", compare: "השוואה", advisor: "יועץ AI", callback: "בקשת התקשרות", porting: "ניוד", renewal: "חידוש", whatsapp: "וואטסאפ" };
+export const SOURCE_HE: Record<string, string> = { form: "טופס", plan: "דף מסלול", compare: "השוואה", advisor: "יועץ AI", callback: "בקשת התקשרות", porting: "ניוד", renewal: "חידוש", whatsapp: "וואטסאפ", telegram: "טלגרם" };
 export const STATUS_HE: Record<string, string> = { new: "חדש", contacted: "דיברתי", won: "נסגר", lost: "לא רלוונטי" };
 export const STATUS_EMOJI: Record<string, string> = { new: "🆕", contacted: "📞", won: "🏆", lost: "❌" };
 
@@ -261,6 +328,13 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
     lead.notes ? `📋 <b>הקשר:</b> ${esc(String(lead.notes).slice(0, 700))}` : null,
     triage?.line ? "" : null,
     triage?.line ? `🤖 <i>${esc(triage.line)}</i>${triage.score > 0 ? ` (כוונה: ${triage.score}/5)` : ""}` : null,
+    // DETERMINISTIC completeness (lead_quality.scoreLead), distinct from the 🔥
+    // intent guess above. It was computed for the Sheets/CSV exports only, while
+    // the rep saw a triage line from an LLM call that fail-softs to score 0 on any
+    // error — so the reliable signal went to a spreadsheet and the flaky one to
+    // the person making the call. This says how much the rep has to work with;
+    // it is NOT a purchase-intent claim.
+    `📊 <b>שלמות הפנייה:</b> ${scoreLead(lead)}/100`,
     "",
     REP_COMPLIANCE_LINE,
   ];

@@ -17,7 +17,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LeadForm, { callbackConfirmation } from "@/components/LeadForm";
-import { CTA_OBJECTIONS, CTA_OBJECTIONS_LABEL } from "@/lib/legal";
+import {
+  COMMISSION_DISCLOSURE_FEE_SENTENCE,
+  CTA_OBJECTIONS,
+  CTA_OBJECTIONS_LABEL,
+  PRICE_ACCURACY_CAVEAT,
+} from "@/lib/legal";
 
 // Mock tracking so no GA4 / Meta Pixel side effects fire during the test.
 const fireLeadConversion = vi.fn();
@@ -319,6 +324,58 @@ describe("LeadForm — the ask: objections, callback window, escape hatches", ()
     expect(
       screen.getByRole("list", { name: CTA_OBJECTIONS_LABEL }),
     ).toBeInTheDocument();
+  });
+
+  // ── §7b / §17 are the FORM's job, not the host page's ────────────────────
+  // <CommissionDisclosure> and <PriceCaveat> are siblings a page has to remember
+  // to render, so an omission is invisible — and six lead-capturing routes
+  // shipped missing one or both. The form now carries both itself, which is only
+  // true as long as these pass: they render a BARE <LeadForm> with no page around
+  // it, so nothing but the component can be supplying the copy.
+  it("renders the §7b commission disclosure and the §17 price caveat itself, with no host page", async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<LeadForm source="test" />);
+    await advanceToFinalStep(user);
+
+    // Read from lib/legal, so a reworded constant is caught here too.
+    const disclosure = screen.getByText(
+      `${COMMISSION_DISCLOSURE_FEE_SENTENCE} ${PRICE_ACCURACY_CAVEAT}`,
+    );
+
+    // …and asserted as the load-bearing CLAIMS, so the guard survives a
+    // reformatting of the constants but not the loss of a required fact.
+    // §7b — a fee is taken from the providers, and it does not move the price.
+    expect(disclosure).toHaveTextContent("דמי תיווך/הפניה מהספקים");
+    expect(disclosure).toHaveTextContent("אינו משפיע על המחיר שתשלמו");
+    // §17 — VAT-inclusive, as of the update date, verify before signing.
+    expect(disclosure).toHaveTextContent("המחירים כוללים מע״מ");
+    expect(disclosure).toHaveTextContent("יש לאמת מול הספק לפני התקשרות");
+  });
+
+  it("places the disclosure at the point of commitment: final step, above the submit", async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<LeadForm source="test" />);
+
+    // The contact step asks for a name and a phone, not for a decision — the
+    // disclosure belongs where the lead is actually sent.
+    expect(
+      screen.queryByText(
+        `${COMMISSION_DISCLOSURE_FEE_SENTENCE} ${PRICE_ACCURACY_CAVEAT}`,
+      ),
+    ).not.toBeInTheDocument();
+
+    await advanceToFinalStep(user);
+
+    const disclosure = screen.getByText(
+      `${COMMISSION_DISCLOSURE_FEE_SENTENCE} ${PRICE_ACCURACY_CAVEAT}`,
+    );
+    const submit = screen.getByRole("button", { name: "קבלת הצעה חינם" });
+    // Node.DOCUMENT_POSITION_FOLLOWING — the submit button comes AFTER the
+    // disclosure in document order, i.e. nobody reaches the button first.
+    expect(
+      disclosure.compareDocumentPosition(submit) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("sends the chosen callback window and promises it back verbatim on success", async () => {

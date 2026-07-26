@@ -16,6 +16,16 @@
 //   • NO PROMISE POINTING BACKWARDS — the picked callback window is resolved
 //     through callbackConfirmation() against the clock, so a window that has
 //     already passed today is never confirmed as "היום".
+//   • THE DISCLOSURES TRAVEL WITH THE FORM — the §7b commission line and the §17
+//     price caveat are rendered by THIS component, unconditionally, on the final
+//     step at the submit button. They used to be sibling components (<Commission-
+//     Disclosure> / <PriceCaveat>) that every lead-capturing page had to remember
+//     to place, so an omission was invisible and six live routes shipped missing
+//     one or both. A host page can no longer drop them: wherever a phone number
+//     is handed over, the disclosure is on screen. The page-level banners (§7b
+//     above the prices, §17 under them) are a DIFFERENT, still-required
+//     placement and stay exactly where they are — see the render block for why
+//     the form's copy is the short form and does not stutter against them.
 //
 // WHY TWO STEPS: name and phone share one step because a phone's keychain fills
 // both in a SINGLE autofill invocation — splitting them forced the user to invoke
@@ -39,12 +49,14 @@ import { fireLeadConversion, trackEvent } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
 import { referralCodeFromQuery } from "@/lib/referral";
 import {
+  COMMISSION_DISCLOSURE_FEE_SENTENCE,
   CONTACT_WHATSAPP_INTL,
   CTA_OBJECTIONS,
   CTA_OBJECTIONS_LABEL,
   MARKETING_CHANNELS,
   MARKETING_OPTIN_HEADING,
   MARKETING_OPTIN_NOTE,
+  PRICE_ACCURACY_CAVEAT,
   marketingChannelLabel,
 } from "@/lib/legal";
 import {
@@ -1103,6 +1115,27 @@ export default function LeadForm({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* §7b + §17, AT THE POINT OF COMMERCIAL COMMITMENT — owned by the form.
+          These two disclosures used to live only in sibling components each host
+          page had to remember to render, which made an omission invisible: six
+          lead-capturing routes shipped without one or both. Rendering them here,
+          unconditionally, means the last thing above the button that hands over a
+          phone number is always the commission disclosure and the price caveat.
+
+          DELIBERATELY THE FINE PRINT, NOT A SECOND BANNER: no border, no surface,
+          no icon — the same 11px muted register as the objections strip above, so
+          on the pages that DO carry the page-level banners (§7b above the prices,
+          §17 under them — that placement is required and unchanged) this reads as
+          the button's footnote rather than as a repeat. It is also the SHORT form
+          of §7b (COMMISSION_DISCLOSURE_FEE_SENTENCE — the fee fact alone, without
+          the methodology sentence the banner already carries and links), so the
+          two never say the same sentence twice on one screen. */}
+      {step === lastStep && (
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+          {COMMISSION_DISCLOSURE_FEE_SENTENCE} {PRICE_ACCURACY_CAVEAT}
+        </p>
       )}
 
       {/* Navigation. All three controls are ≥48px: the most important button on

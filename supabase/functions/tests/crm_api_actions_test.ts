@@ -22,7 +22,7 @@
 // crm_api_gate_test.ts). Env is set inside each test and restored — test files
 // share the process. Run from supabase/functions/:  deno task test
 
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 import { jsonResponse, withFetchStub } from "./_capture_handler.ts";
 import { MAX_NOTE_LEN, THREAD_MSG_CAP } from "../crm-api/crm_logic.ts";
 import {
@@ -305,6 +305,10 @@ Deno.test("setLeadNote / claimLead on a missing lead → 404, no phantom trail",
     const rec: Call[] = [];
     return withFetchStub([
       route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i), () => jsonResponse([])),
+      // claimLead's guarded PATCH matches zero rows for BOTH "no such lead" and
+      // "already claimed", so it re-reads to answer honestly. Here the lead
+      // genuinely doesn't exist → empty read → 404.
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i), () => jsonResponse([])),
       profileRoute(rec),
       ...sinkRoutes(rec),
     ], async () => {
@@ -314,6 +318,59 @@ Deno.test("setLeadNote / claimLead on a missing lead → 404, no phantom trail",
       assertEquals(claim.status, 404);
       assertEquals(of(rec, "/rest/v1/lead_events").length, 0);
       assertEquals(of(rec, "/rest/v1/security_audit_log").length, 0);
+    });
+  });
+});
+
+// The claim must be ATOMIC, like the Telegram one (notify-lead/callbacks.ts):
+// without the `claimed_by IS NULL` predicate two reps working the console
+// silently overwrote each other and each believed the lead was theirs.
+Deno.test("claimLead is atomic — the guard is in the query and a taken lead is a 409", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      // The guarded PATCH matches nothing: someone already owns this lead.
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i), () => jsonResponse([])),
+      route(
+        rec,
+        (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i),
+        () => jsonResponse([{ claimed_by: "דנה" }]),
+      ),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const claim = await actClaimLead({ leadId: LEAD, rep: "רון" }, ACTOR);
+      assertEquals(claim.status, 409, "a taken lead is a conflict, not a silent overwrite");
+      const body = await claim.json();
+      assertEquals(body.code, "already_claimed");
+      assertStringIncludes(body.error, "דנה", "the rep is told who actually owns it");
+      // The PATCH itself must carry the guard — a post-hoc check would still race.
+      const patches = rec.filter((c) => c.url.includes("/rest/v1/leads?id=eq.") && c.method === "PATCH");
+      assertEquals(patches.length, 1);
+      assertStringIncludes(patches[0].url, "claimed_by=is.null");
+      // Nothing is written for a claim that didn't happen.
+      assertEquals(of(rec, "/rest/v1/lead_events").length, 0);
+    });
+  });
+});
+
+Deno.test("claimLead still succeeds normally on an unclaimed lead", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(
+        rec,
+        (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i),
+        () => jsonResponse([{ id: LEAD }]),
+      ),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const claim = await actClaimLead({ leadId: LEAD, rep: "רון" }, ACTOR);
+      assertEquals(claim.status, 200);
+      // No re-read is needed on the happy path.
+      assertEquals(rec.filter((c) => c.url.includes("/rest/v1/leads?id=eq.") && c.method === "GET").length, 0);
+      assertEquals(of(rec, "/rest/v1/lead_events").length, 1);
     });
   });
 });

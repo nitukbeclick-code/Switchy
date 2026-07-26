@@ -143,6 +143,42 @@ jobs:
       - name: Build debug APK
         run: flutter build apk --debug
 
+  static-site:
+    name: Static site build & link gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "20"
+
+      # site/build.js regenerates every server-rendered page and ends with an
+      # internal-link integrity gate: any <a href> in a generated page that
+      # resolves to nothing sets exit code 1. Until this job existed that gate
+      # only ran in rebuild-static.yml (cron, every 30 min), where a failure
+      # silently skips the "Commit & push" step — so a PR that breaks a page
+      # generator, drops a page, or leaves a dead internal link merged GREEN and
+      # then froze ALL price/deal/sitemap updates with no alerting. Run it here
+      # so the PR is what turns red.
+      #
+      # Same setup as rebuild-static.yml: node 20, no `npm ci` (build.js is
+      # dependency-free and has no package.json) and NO secrets — the live
+      # catalogue read uses the PUBLIC anon key baked into build.js, and any
+      # failed/empty read falls back to the committed site/data/plans.json
+      # snapshot without failing the build. So this job works on forks too.
+      - name: Build the static site (runs the internal-link gate)
+        run: node site/build.js
+
+      # DELIBERATELY no commit/diff check. The build rewrites site/*.html and
+      # the fingerprinted *.min.css by design, so the working tree is expected
+      # to be dirty afterwards; regenerated output belongs to the
+      # rebuild-static cron, not to CI. All this job asserts is that the build
+      # SUCCEEDS and the link gate passes.
+
   data-consistency:
     name: Data consistency
     runs-on: ubuntu-latest

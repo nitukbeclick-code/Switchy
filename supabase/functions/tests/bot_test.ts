@@ -307,8 +307,60 @@ Deno.test("planFollowUps caps the batch and puts callbacks first", () => {
   assertEquals(plan[0].kind, "callback");
 });
 
-Deno.test("planFollowUps ignores non-new leads", () => {
+Deno.test("planFollowUps ignores non-new leads (SLA ladder + callback ping stay 'new'-only)", () => {
   assertEquals(planFollowUps([lead({ status: "contacted", created_at: hoursAgo(10) })], NOW, 19).length, 0);
+  // Even a due callback window doesn't reopen the ladder on a worked lead.
+  assertEquals(
+    planFollowUps([lead({ status: "contacted", callback_time: "evening", created_at: hoursAgo(5) })], NOW, 19).length,
+    0,
+  );
+  assertEquals(planFollowUps([lead({ status: "won", created_at: hoursAgo(30) })], NOW, 19).length, 0);
+});
+
+// ── rep-scheduled follow-ups ─────────────────────────────────────────────────
+// THE GAP THIS CLOSES: every nudge above applies only to status='new', so the
+// instant a rep marked a lead 'contacted' — the instant it became a live
+// opportunity — all automated pressure stopped permanently. crm-api WRITES
+// follow_up_at and READS it back (attentionLeads), so the signal existed but was
+// PULL-ONLY: it surfaced if a human opened that view, and pushed nothing.
+
+Deno.test("planFollowUps pushes a rep-scheduled follow-up once it comes due", () => {
+  const due = lead({ status: "contacted", follow_up_at: hoursAgo(1), follow_up_note: "לבדוק אם קיבל הצעה" });
+  const plan = planFollowUps([due], NOW, 19);
+  assertEquals(plan.length, 1);
+  assertEquals(plan[0].kind, "followup");
+  assertEquals(plan[0].urgency, "📌");
+});
+
+Deno.test("planFollowUps does not fire a follow-up before its time, or without one", () => {
+  const future = lead({ status: "contacted", follow_up_at: new Date(NOW + 3_600_000).toISOString() });
+  assertEquals(planFollowUps([future], NOW, 19).length, 0);
+  // No follow_up_at at all ⇒ a contacted lead stays silent, exactly as before.
+  assertEquals(planFollowUps([lead({ status: "contacted", created_at: hoursAgo(30) })], NOW, 19).length, 0);
+});
+
+Deno.test("planFollowUps fires a scheduled follow-up ONCE (nudged_at is the guard)", () => {
+  const due = lead({ status: "contacted", follow_up_at: hoursAgo(3) });
+  // Already nudged after the due time → quiet until the rep schedules a new one.
+  assertEquals(planFollowUps([{ ...due, nudged_at: hoursAgo(1) }], NOW, 19).length, 0);
+  // Nudged BEFORE the due time → that was a different reminder; this one still fires.
+  assertEquals(planFollowUps([{ ...due, nudged_at: hoursAgo(5) }], NOW, 19).length, 1);
+});
+
+Deno.test("planFollowUps: a scheduled follow-up respects quiet hours like every team nudge", () => {
+  const due = lead({ status: "contacted", follow_up_at: hoursAgo(1) });
+  assertEquals(planFollowUps([due], NOW, 23).length, 0);
+  assertEquals(planFollowUps([due], NOW, 7).length, 0);
+  assertEquals(planFollowUps([due], NOW, 9).length, 1);
+});
+
+Deno.test("planFollowUps orders callbacks > scheduled follow-ups > the SLA ladder", () => {
+  const plan = planFollowUps([
+    lead({ id: "s".repeat(36), created_at: hoursAgo(30) }), // SLA, oldest
+    lead({ id: "f".repeat(36), status: "contacted", follow_up_at: hoursAgo(2) }),
+    lead({ id: "c".repeat(36), callback_time: "evening", created_at: hoursAgo(5) }),
+  ], NOW, 19);
+  assertEquals(plan.map((f) => f.kind), ["callback", "followup", "sla"]);
 });
 
 Deno.test("planFollowUps suppresses SLA nudges during quiet hours", () => {

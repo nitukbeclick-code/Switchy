@@ -20,6 +20,11 @@ export type Lead = {
   nudged_at?: string | null;
   callback_pinged_at?: string | null;
   actual_saving?: number | null;
+  // CRM-set next action. Written by crm-api setLeadWorkflow/setLeadNote and read
+  // by its attentionLeads view; ALSO pushed by the follow-up planner (see
+  // followup.ts) so a rep-scheduled reminder actually reaches them.
+  follow_up_at?: string | null;
+  follow_up_note?: string | null;
   created_at?: string;
 };
 

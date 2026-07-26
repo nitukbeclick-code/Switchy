@@ -294,6 +294,12 @@ async function handle(req: Request): Promise<Response> {
   const logSecurityEvent = (event: string, detail: Record<string, unknown>) => {
     insertRow("security_audit_log", { event, detail }).catch(() => {});
   };
+  // Deeper per-tool-run audit — the table admin-metrics' tool success-rate rollup
+  // reads. Fire-and-forget like the two sinks above; a failed insert never
+  // affects the reply.
+  const logToolCall = (row: Record<string, unknown>) => {
+    insertRow("agent_tool_calls", row).catch(() => {});
+  };
 
   // ── Generate via the shared agent (grounded, tool-using, graceful) ─────────
   const keys: AiKeys = { gemini: geminiKey, groq: groqKey, cerebras: cerebrasKey, openrouter: openrouterKey };
@@ -369,6 +375,7 @@ async function handle(req: Request): Promise<Response> {
         contactId: null,
         logCrmEvent,
         logSecurityEvent,
+        logToolCall,
         // Consent-gated capture — the same honest gate the client path uses.
         captureLead: (input) => captureAiLead(input as AiLeadInput),
       },

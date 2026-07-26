@@ -50,10 +50,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { requireCrmAccess } from "../_shared/admin.ts";
-import { canDo } from "../_shared/crm_roles.ts";
+import { canDo, roleHasCapability } from "../_shared/crm_roles.ts";
 import { jlog } from "../_shared/log.ts";
 import { s } from "./crm_logic.ts";
-import { cors, err, type Row } from "./helpers.ts";
+import { cors, err, json, type Row } from "./helpers.ts";
 import {
   actGetThread,
   actHandBack,
@@ -128,6 +128,23 @@ Deno.serve(async (req: Request) => {
 
   try {
     switch (action) {
+      // The caller's own effective role. The console gates its shell + tab list on
+      // this instead of profiles.is_admin: crm_roles.ts models viewer/rep/admin and
+      // this endpoint enforces it per action, but BOTH front doors (the web console
+      // and the Flutter router) used to demand is_admin — so a granted rep could
+      // never open the surface their role was designed for.
+      case "whoami":
+        return json({
+          ok: true,
+          role: access.role,
+          isAdmin: access.isAdmin,
+          can: {
+            read: roleHasCapability(access.role, "read"),
+            writeLeads: roleHasCapability(access.role, "write_leads"),
+            converse: roleHasCapability(access.role, "converse"),
+            adminOnly: roleHasCapability(access.role, "admin_only"),
+          },
+        });
       case "overview":
         return await actOverview();
       case "slaMetrics":

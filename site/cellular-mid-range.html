@@ -49,7 +49,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.min.css?v=683cb090" />
+  <link rel="stylesheet" href="styles.min.css?v=9b7880d2" />
   <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
@@ -172,7 +172,7 @@
         <ul class="stat-band" aria-label="נתוני הקטלוג — מהקטלוג">
             <li><b data-count-to="18">18</b> מסלולים</li>
             <li><b data-count-to="9">9</b> ספקים</li>
-            <li>החל מ-<b dir="ltr">₪30</b> לחודש</li>
+            <li>החל מ-<b class="price-stat" dir="ltr">₪30</b> לחודש</li>
           </ul>
         <div class="hero__cta">
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו<span class="btn__chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span></a>
@@ -198,7 +198,7 @@
         <div class="plan__name">מבצע זוגות 250GB <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="360" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪360</b>
@@ -217,7 +217,7 @@
         <div class="plan__name">זוג קווים 250GB <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">250GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="360" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪360</b>
@@ -236,7 +236,7 @@
         <div class="plan__name">WallaBasic 300GB <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">שיחות חו&quot;ל כלולות</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">300GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪30.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="370.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪370.8</b>
@@ -255,7 +255,7 @@
         <div class="plan__name">Big Time 200GB <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">200 דק׳ למבחר מדינות</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">200GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪31.80</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪31.80</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="381.6" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪381.6</b>
@@ -274,7 +274,7 @@
         <div class="plan__name">Basic 150GB <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">3,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">3,000</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">150GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪32.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪32.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="394.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪394.8</b>
@@ -293,7 +293,7 @@
         <div class="plan__name">Prince 400GB <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">3,500</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">200 דק׳ ל-42 יעדים</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">200 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">400GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪34.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪34.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="418.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪418.8</b>
@@ -312,7 +312,7 @@
         <div class="plan__name">300GB מתגלגלת <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">יש</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">240 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">300GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪34.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪34.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="418.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪418.8</b>
@@ -331,7 +331,7 @@
         <div class="plan__name">Forever Plus 5G <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">1GB חו&quot;ל</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪34.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪34.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="418.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪418.8</b>
@@ -350,7 +350,7 @@
         <div class="plan__name">600GB טריפל <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">600GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="420" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪420</b>
@@ -369,7 +369,7 @@
         <div class="plan__name">זוג קווים 500GB <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="420" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪420</b>
@@ -388,7 +388,7 @@
         <div class="plan__name">300GB Xtreme <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">2,500</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">ללא הגבלה</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">300GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="420" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪420</b>
@@ -407,7 +407,7 @@
         <div class="plan__name">Free 5G <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">3,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">גלישה חופשית (5G)</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪35</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="420" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪420</b>
@@ -426,7 +426,7 @@
         <div class="plan__name">400GB חו&quot;ל כלול <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">1GB חו&quot;ל לחודש</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">100 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">400GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="468" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪468</b>
@@ -445,7 +445,7 @@
         <div class="plan__name">5G 800GB <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">500 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">800GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span><button type="button" class="plan__after plan__after--btn" data-plan-more="cel_cellcom_5g800" aria-haspopup="dialog" aria-label="ואז ₪59.9 — מה קורה אחרי המבצע בסלקום 5G 800GB">ואז <span dir="ltr">₪59.9</span></button></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span class="price-unit">לחודש</span><button type="button" class="plan__after plan__after--btn" data-plan-more="cel_cellcom_5g800" aria-haspopup="dialog" aria-label="ואז ₪59.9 — מה קורה אחרי המבצע בסלקום 5G 800GB">ואז <span dir="ltr">₪59.9</span></button></div></div>
         <div class="plan__annual" data-cost-max="678.7999999999998" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪678.8</b>
@@ -464,7 +464,7 @@
         <div class="plan__name">Queen 5G 500GB <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">400 דק׳ ל-42 יעדים</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">400 דק׳</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">500GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span><button type="button" class="plan__after plan__after--btn" data-plan-more="cel_partner_queen5g500" aria-haspopup="dialog" aria-label="ואז ₪49.9 — מה קורה אחרי המבצע בפרטנר Queen 5G 500GB">ואז <span dir="ltr">₪49.9</span></button></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span class="price-unit">לחודש</span><button type="button" class="plan__after plan__after--btn" data-plan-more="cel_partner_queen5g500" aria-haspopup="dialog" aria-label="ואז ₪49.9 — מה קורה אחרי המבצע בפרטנר Queen 5G 500GB">ואז <span dir="ltr">₪49.9</span></button></div></div>
         <div class="plan__annual" data-cost-max="568.7999999999998" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪568.8</b>
@@ -483,7 +483,7 @@
         <div class="plan__name">5G 1000GB <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">מסלול Travel</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">1000GB</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span><button type="button" class="plan__after plan__after--btn" data-plan-more="cel_pelephone_5g1000" aria-haspopup="dialog" aria-label="ואז ₪49.9 — מה קורה אחרי המבצע בפלאפון 5G 1000GB">ואז <span dir="ltr">₪49.9</span></button></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span class="price-unit">לחודש</span><button type="button" class="plan__after plan__after--btn" data-plan-more="cel_pelephone_5g1000" aria-haspopup="dialog" aria-label="ואז ₪49.9 — מה קורה אחרי המבצע בפלאפון 5G 1000GB">ואז <span dir="ltr">₪49.9</span></button></div></div>
         <div class="plan__annual" data-cost-max="578.7999999999998" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪578.8</b>
@@ -502,7 +502,7 @@
         <div class="plan__name">משתלמת דור 4 400GB <span class="plan__net">4G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">3,500</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">מסלול Travel</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">400GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="478.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪478.8</b>
@@ -521,7 +521,7 @@
         <div class="plan__name">צוברים 750GB 5G <span class="plan__net">5G</span></div>
         <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">SMS</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">חו&quot;ל</span><span class="plan__spec-v">1GB צבירה חו&quot;ל</span></div><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">5,000</span></div><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">750GB (5G, צבירה)</span></div></div>
         <div class="plan__flags"><span class="pflag pflag--5g">5G</span><span class="pflag">ללא התחייבות</span><span class="pflag">כולל חו״ל</span></div>
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span>לחודש</span></div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪39.90</b> <span class="price-unit">לחודש</span></div></div>
         <div class="plan__annual" data-cost-max="478.79999999999995" aria-label="עלות השירות ל־12 חודשים">
           <span class="plan__annual-label">עלות שירות ל־12 חודשים</span>
           <b class="plan__annual-total" dir="ltr">₪478.8</b>
@@ -702,6 +702,6 @@
   </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <script src="translate-runtime.min.js?v=1e72a611" defer></script>
-  <script src="script.min.js?v=bf2086ee" defer></script>
+  <script src="script.min.js?v=8a7fce46" defer></script>
 </body>
 </html>

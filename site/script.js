@@ -383,6 +383,20 @@
       if (($('leadCompany') && $('leadCompany').value || '').trim()) {
         form.reset();
         if (note) { note.classList.remove('cta__note--err'); note.textContent = 'תודה! נחזור אליך בהקדם ✦'; }
+        // This branch shows the REAL success copy and sends nothing — correct for
+        // a bot, catastrophic for a human. #leadCompany is off-screen but present
+        // and focusable, and `company`/organization is first-class autofill
+        // vocabulary that Chrome fills regardless of autocomplete="off"; some
+        // password managers fill every text input in a form. A visitor who picks
+        // a saved profile could land here and walk away believing they were
+        // contacted.
+        //
+        // Whether that actually happens is measurable, and until now it was the
+        // ONLY submit branch with no telemetry at all — invisible by
+        // construction. Counting it changes nothing a bot can observe. If this
+        // fires at a rate real traffic cannot explain, the field needs renaming
+        // out of the autofill vocabulary (an owner call: it changes what bots see).
+        track('lead_form_blocked', { source: location.pathname, reason: 'honeypot' });
         return;
       }
       const nameEl = $('leadName');
@@ -459,6 +473,20 @@
           terms_accepted_at: now,
           privacy_accepted_at: now,
           marketing_accepted_at: marketingAt,
+          // The timestamp alone is NOT what anyone downstream reads. rep-brief
+          // builds its §30A compliance line from these booleans
+          // (rep_brief.ts) and the CRM card is shaped from them
+          // (crm_logic.ts); they default to false. So a visitor who ticked
+          // "אני מעוניין/ת לקבל דיוור שיווקי" arrived as a row that said both
+          // "consented at T" and "no channel consented", and the rep was told
+          // "הלקוח לא אישר דיוור שיווקי" — consent lawfully obtained, then
+          // discarded. The AI-chat lead in this same file always sent them.
+          //
+          // No _email: this form collects name + phone only. Claiming an email
+          // consent we never asked for would be the same class of error in the
+          // opposite direction.
+          consent_marketing_sms: !!marketingAt,
+          consent_marketing_whatsapp: !!marketingAt,
           notes: leadNotes,
         });
       } catch (err) {

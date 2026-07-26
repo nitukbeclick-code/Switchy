@@ -72,8 +72,19 @@ surfaces for the same funnel step.
 | `lead_form_view` | ✓ both | `source` | The form was actually **on screen** — the funnel's denominator (start-per-view, lead-per-view). Fires once per page load / mount from an **`IntersectionObserver` at 50 % visibility**, deliberately *not* on load: on most pages the form sits below the fold, and counting a form nobody scrolled to inflates every downstream rate. Do not "simplify" this to a load-time fire. |
 | `lead_form_start` | ✓ both | `source` | First engagement with the lead form (first focus). Static renamed from `form_start`. |
 | `lead_form_step` | web | `source`, `step`, `step_name`? | Per-step advance in the multi-step web lead form. No static equivalent (static form is single-step). |
-| `lead_form_blocked` | ✓ both | `source`, `reason` (failing field **group**) | Submit was pressed and **client-side validation refused it, so no POST happened** — the pre-submit twin of `lead_form_error`. Without it a consent-box reject is indistinguishable from a silent abandon. Static: `"name"` \| `"phone"` \| `"name_phone"` \| `"consent"`. Web: the failing subset of a **fixed** order (`name`, `phone`, `city`, `category`, `consent`) joined with `_` (e.g. `"city_consent"`), else `"unknown"`. |
+| `lead_form_blocked` | ✓ both | `source`, `reason` (failing field **group**) | Submit was pressed and **client-side validation refused it, so no POST happened** — the pre-submit twin of `lead_form_error`. Without it a consent-box reject is indistinguishable from a silent abandon. Static: `"name"` \| `"phone"` \| `"name_phone"` \| `"consent"` \| `"honeypot"`. Web: the failing subset of a **fixed** order (`name`, `phone`, `city`, `category`, `consent`) joined with `_` (e.g. `"city_consent"`), else `"unknown"`. |
 | `lead_form_error` | ✓ both | `source`, `reason` (`"server"` \| `"network"` \| `"rate_limited"` \| `"server_error"`) | Submit failed (distinguishes "failed" from "never submitted"). Static renamed from `lead_submit_error`. |
+
+> **`reason:"honeypot"`.** The hidden `#leadCompany` trap shows the visitor the
+> REAL success message and sends nothing — correct for a bot, catastrophic for a
+> human. The field is off-screen but focusable, and `company`/organization is
+> first-class autofill vocabulary that Chrome fills regardless of
+> `autocomplete="off"`. This was the only submit branch with no telemetry at all,
+> so a legitimate visitor lost to autofill was invisible by construction.
+> Counting it changes nothing a bot can observe. Read it against real traffic: a
+> rate that organic bot volume cannot explain means the field needs renaming out
+> of the autofill vocabulary — which changes what bots see, so it is an owner
+> call, not a silent edit.
 
 > **`lead_form_blocked` vs `lead_form_error` — keep these apart.** *Blocked* =
 > never reached `/api/lead`; *error* = reached it and failed. Do **not** fold

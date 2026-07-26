@@ -4,17 +4,24 @@
 אחת שנסגרת ב-**PR אחד + אימות מלא + פריסה** (אם נגעה ב-edge). סימון מצב:
 🟢 = אני (Claude) מבצע לבד · 🟡 = דורש פעולה קטנה מהבעלים · 🔴 = חסום/דורש אישור מוצר או אבטחה.
 
-עודכן: 2026-07-10 · בסיס (PRs 116–121) + Backlog גל A מלא (A.1–A.5) + גל B (B.1/B.2/B.3/B.5)
-נסגרו (PRs 123–131). קונסולה בת 6 טאבים: סקירה (עם SLA), לידים (חיפוש·מיון·ייצוא·bulk·quick-views·נציג),
-פגישות, שיחות (Realtime), אנשי קשר, אנליטיקס (עם לוח מובילים). נותרו: B.4 (🟡) + גל C (🔴).
+עודכן: 2026-07-26 · בסיס (PRs 116–121) + Backlog גל A מלא (A.1–A.5) + גל B (B.1/B.2/B.3/B.5)
+נסגרו (PRs 123–131). קונסולה בת 8 טאבים (`TABS` ב-`CrmConsole.tsx`): סקירה (עם SLA),
+לידים (חיפוש·מיון·ייצוא·bulk·quick-views·נציג), פגישות, שיחות (Realtime), אנשי קשר,
+לידים לשיתוף (admin-only), צוות והרשאות (admin-only), אנליטיקס (עם לוח מובילים) —
+שני ה-admin-only מוסתרים מתפקיד מדורג. נותרו: C.2 (rollout ע"י הבעלים) + C.3 (🔴).
 
 ---
 
 ## 0. עקרונות ברזל (must-follow בכל פרוסה)
 
-1. **Admin-only.** כל קריאה/כתיבה עוברת דרך פונקציית edge שמאמתת `requireAdmin` →
-   `profiles.is_admin` (`_shared/admin.ts`). ה-gate ב-UI (`useAuth().profile.is_admin`)
-   הוא ל-UX בלבד — השרת מאמת שוב, fail-closed.
+1. **גישה מדורגת, fail-closed.** כל קריאה/כתיבה ל-`crm-api` עוברת `requireCrmAccess`
+   (`_shared/admin.ts`): `profiles.is_admin === true` → התפקיד האפקטיבי `admin`
+   (superset); אחרת שורת `crm_members` מעניקה `viewer`/`rep`; מי שאין לו אף אחד —
+   נדחה. אחריו שער פר-action לפי `canDo` (`_shared/crm_roles.ts`), ו-action ללא
+   מיפוי הוא admin-only. ה-gate ב-UI (`CrmConsole` קורא ל-action `whoami` דרך
+   `fetchCrmAccess` ומרנדר רק את מה שהתפקיד באמת מחזיק) הוא ל-UX בלבד — השרת
+   מאמת שוב, fail-closed, וקריאה ישירה ל-action חסום מחזירה 403 גם אם הכפתור הוסתר.
+   `admin-metrics` ו-`rep-brief` עדיין `requireAdmin` (is_admin בלבד).
 2. **הדפדפן לא נוגע ב-PII ישירות.** לעולם לא `select` על `leads` / `whatsapp_*` /
    `lead_events` מהלקוח (ה-lockdown של PR #107 מסתיר את כל עמודות ה-PII ממפתחות
    anon/authenticated). הכול דרך `crm-api` (service_role).
@@ -46,13 +53,17 @@
 | Web (types) | `cd web && npx tsc --noEmit` → נקי |
 | Web (build) | `npm run build` → ✓ Compiled successfully |
 | Web (tests) | `npx vitest run <touched files>` → ירוק |
-| Edge (types) | `cd supabase/functions && deno check --import-map=/tmp/importmap.json crm-api/index.ts` |
-| Edge (tests) | `deno test --allow-env --allow-net --allow-read --import-map=/tmp/importmap-tests.json tests/crm_api_test.ts` |
+| Edge (types) | `cd supabase/functions && deno check --config <shim>/deno.offline.json crm-api/index.ts` |
+| Edge (tests) | `cd supabase/functions && deno test --config <shim>/deno.offline.json --allow-env --allow-net --allow-read --allow-import tests/` |
 | Deploy edge | Actions → "Deploy edge functions" → `function: crm-api` → אמת `get_logs` |
 
-> **הערה:** `ci.yml` בונה/בודק **Flutter + deno בלבד** — הוא לא בונה את אפליקציית ה-Next
-> (`web/`). לכן web-only מאומת ע"י `next build` מקומי + תצוגת Vercel. (מכסת deploy
-> יומית של free-tier ב-Vercel עלולה לחסום תצוגות — זו מגבלת חשבון, לא הקוד.)
+> **הערה:** `ci.yml` מריץ job נפרד לכל שכבה: `test` (`flutter analyze --fatal-infos`
+> + `flutter test`), `edge-functions` (`deno task check` + `deno task test`),
+> `next-web` (`npm ci` → `npm run lint` → `npx tsc --noEmit` → `npm test` →
+> `npm run build`), `build-web` ו-`build-apk` (Flutter, תלויים ב-`test`),
+> `static-site` ו-`data-consistency`. כלומר אפליקציית ה-Next **כן** נבנית ונבדקת
+> ב-CI — אבל את השערים שבטבלה עדיין מריצים מקומית לפני ה-PR. (מכסת deploy יומית
+> של free-tier ב-Vercel עלולה לחסום תצוגות — זו מגבלת חשבון, לא הקוד.)
 
 ## 3. מפת קבצים
 
@@ -115,7 +126,7 @@
 | # | פריט | מצב | פירוט |
 |---|------|-----|--------|
 | C.1 | ✅ **תצוגת לידים לשיתוף (קריאה-בלבד)** | בוצע 2026-07-10 (PR #140, באישור בעלים) | טאב "לידים לשיתוף": action `listSellableLeads` — **רק** לידים עם `consent_share_at` (מגן כפול: query `not.is.null` + `isSellable` מ-`lead-export/lib.ts`), allowlist DTO `shapeSellableLead` (ללא source_ip/notes — נבדק), **audit** לכל צפייה (`crm_lead_export`). **קריאה-בלבד** — לא דוחף לרוכש; ה-cron ה-secret-gated נשאר הנתיב היחיד לרוכש. הערה משפטית ב-UI (§7b/DPA באחריות הבעלים). |
-| C.2 | 🟡 **הרשאות ברמת נציג** | **בסיס נבנה** — [`docs/CRM_C2_ROLES_PLAN.md`](./CRM_C2_ROLES_PLAN.md); אימות פרוד §6 עבר (2026-07-10) | טבלת `crm_members` ייעודית (option B: RLS-on, ללא policies ל-anon/authenticated, grants מבוטלים) + `requireCrmAccess` fail-closed (is_admin superset) + gating פר-action ב-crm-api + actions `listMembers`/`setMemberRole` (admin-only, audited, מסרב שינוי-עצמי) + טסטים. **T1 (self-elevation) סגור מבנית.** נותר: **rollout ע"י הבעלים** (החלת המיגרציה + פריסת crm-api) + **PR2: טאב "צוות והרשאות"** ב-web. |
+| C.2 | 🟡 **הרשאות ברמת נציג** | **בסיס נבנה** — [`docs/CRM_C2_ROLES_PLAN.md`](./CRM_C2_ROLES_PLAN.md); אימות פרוד §6 עבר (2026-07-10) | טבלת `crm_members` ייעודית (option B: RLS-on, ללא policies ל-anon/authenticated, grants מבוטלים) + `requireCrmAccess` fail-closed (is_admin superset) + gating פר-action ב-crm-api + actions `listMembers`/`setMemberRole` (admin-only, audited, מסרב שינוי-עצמי) + טסטים. **T1 (self-elevation) סגור מבנית.** **PR2 בוצע:** טאב "צוות והרשאות" (`CrmTeam.tsx` — `listMembers`/`setMemberRole`, שינוי-עצמי חסום, ביטול בדו-שלבי) + gating של הקונסולה לפי `whoami` (טאבי `admin_only` מוסתרים לתפקיד מדורג). נותר: **rollout ע"י הבעלים** (החלת המיגרציה + פריסת crm-api). |
 | C.3 | 🔴 **קמפיינים/תבניות WhatsApp יוצאות** | §30A consent gating | שליחה יזומה מרובה — חייב שער הסכמה שיווקי + אישור משפטי. |
 
 ---
@@ -128,8 +139,13 @@
   ברצף **מבטלת את זו שבאמצע**. פרוס **פונקציה אחת בכל פעם** ווודא success לפני הבאה.
 - **Middleware של desktop:** נתיב Next ללא `.html` twin מוגש ב-desktop (כמו `/crm`).
   נתיב חדש → ודא שאין תאום סטטי (`site/<name>.html`).
-- **stub של `@std/assert` מקומית** משווה ב-`JSON.stringify` (רגיש-לסדר) — טסטים בסגנון
-  `auditDetail` "נכשלים" מקומית אך **עוברים ב-CI** (deep-equal אמיתי). אל תתקן אותם.
+- **jsr.io חסום בסביבת הפיתוח המקומית** — `deno task test` מושך `jsr:@std/assert`
+  ולכן לא ירוץ כמות שהוא. מריצים דרך `deno.json` מקומי (מחוץ ל-repo) שממפה
+  `@std/assert` (וגם `jsr:@std/assert`) ל-shim מקומי, ומעבירים אותו ב-`--config`:
+  `cd supabase/functions && deno test --config <path>/deno.offline.json --allow-env --allow-net --allow-read --allow-import tests/`.
+  ה-shim עושה deep-equal **מבני** אמיתי (לא `JSON.stringify` רגיש-לסדר כמו ה-stub
+  הישן), כך שטסטים בסגנון `auditDetail` עוברים מקומית בדיוק כמו ב-CI — **כישלון
+  מקומי הוא כישלון אמיתי**, אל תתעלמו ממנו. (אומת 2026-07-26: 1341 עוברים, 0 נכשלים.)
 - **Vercel free-tier:** מכסת deploy יומית — תצוגות עלולות לא להיבנות. אמת מקומית.
 
 ## 7. Definition of Done (לכל פרוסה)

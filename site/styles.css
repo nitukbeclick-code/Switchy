@@ -51,6 +51,20 @@
   --accent-ink: #075B46;    /* emerald text on ivory/paper */
   --value-ink: #8A570D;     /* amber text on ivory/paper */
 
+  /* CTA GROUND — the one and only fill the WHITE button label sits on
+     (.btn--primary, .plan__cta). Deliberately NOT --accent: --accent is tuned
+     for borders / icons / tints / large display, and the dark theme lifts it to
+     a bright mint (#5DD6AB) so it stays visible on dark glass — white on that
+     mint is 1.80:1, catastrophically below the 4.5:1 AA floor. These two tokens
+     are the theme-aware pair that always clears AA with white, so the CTA can
+     be re-skinned per theme without anyone re-deriving the maths.
+     ANY layer that restyles the primary CTA's background MUST come through
+     here — never `background: linear-gradient(..., var(--accent), ...)`.
+     Light values are identical to --accent/--accent-d (the 2026-07 editorial
+     look), so this token costs nothing visually in light mode. */
+  --cta-bg: #087A5B;        /* white label 5.32:1 ✓ (== --accent) */
+  --cta-bg-d: #075B46;      /* white label 8.10:1 ✓ (== --accent-d) */
+
   /* Semantic status colours — driven from one place so toasts / field-errors /
      callouts stop hand-coding raw hex. Light surfaces (--*-t) for tinted ground. */
   --error: #DC2626;   --error-t: #FEE2E2;
@@ -153,6 +167,14 @@
        text tiers alias back to them — accent text stays bright, not dark. */
     --accent-ink: #7AE1BC;
     --value-ink: #F2C66D;
+
+    /* CTA ground goes the OTHER way from the accents: the label on it is white,
+       so the fill has to get DEEPER on dark, not brighter. Measured with white
+       #fff: #0D8060 = 4.91:1, #0C7458 = 5.75:1 — both clear AA with headroom,
+       and both still clear the 3:1 non-text floor against the dark canvas
+       (#0E1713: 3.71:1 / 3.18:1) so the button shape stays perceivable. */
+    --cta-bg: #0D8060;
+    --cta-bg-d: #0C7458;
 
     /* Semantic status — lifted hues + dark tinted grounds so callouts/toasts
        stay legible on dark glass (the light --*-t tints would glare). */
@@ -361,12 +383,14 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   .btn:hover::before { transform: translateX(-120%); }
 }
 /* Inset top highlight = the glass edge that makes the gradient read dimensional. */
-/* Fixed deep-green gradient (theme-independent) so WHITE label text clears AA
-   (≥5:1) in BOTH themes — white on the brighter --accent (#16A34A) is only
-   3.3:1, and the dark theme would lift --accent to #4ADE80 (1.7:1). The vivid
-   brand green still reads through the green glow/halo shadows below. */
+/* The ground comes from --cta-bg/--cta-bg-d (:root), the theme-aware pair that
+   always clears AA with the WHITE label — see the token comment for why this is
+   NOT --accent. This used to be a hardcoded #15803D→#126C34 gradient, which was
+   AA-safe but also silently overridden by the 2026-07 editorial layer at the
+   bottom of this file; routing both through one token means whichever
+   declaration wins the cascade, the label is still legible. */
 .btn--primary {
-  background: linear-gradient(165deg, #15803D, #126C34); color: #fff;
+  background: linear-gradient(165deg, var(--cta-bg), var(--cta-bg-d)); color: #fff;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.32), 0 2px 6px rgba(21,128,61,.24);
 }
 .btn--primary:hover { filter: brightness(1.05); }
@@ -380,7 +404,12 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .btn--inverse:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), var(--ring-value); }
 .btn--primary:active { transform: translateY(0) scale(.97); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(22,163,74,.3); }
 .btn--ghost { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px var(--line); }
-.btn--ghost:hover { background: #fff; }
+/* Hover solidifies the translucent ghost surface — via the THEMED paper token,
+   never a literal #fff: the editorial layer at the bottom of this file gives
+   .btn--ghost `color: var(--ink-800)`, which is #E5E7EB in dark, and a fixed
+   white ground put that label at 1.24:1. var(--white) tracks the theme
+   (#FFFCF6 light — visually the same brighten — / #15231E dark). */
+.btn--ghost:hover { background: var(--white); }
 @media (hover: hover) and (pointer: fine) {
   .btn--ghost:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--ink-200), var(--shadow-sm); }
 }
@@ -1667,7 +1696,8 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
    to a second row instead (the CTA itself never line-breaks mid-label). */
 .plan__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 /* Filled ACTION pill (was a bare text link) — the conversion CTA earns the
-   brand gradient. White on --accent-d-range greens clears AA (5.0:1). */
+   brand gradient. Same ground as .btn--primary: --cta-bg/--cta-bg-d, the
+   theme-aware pair that keeps the white label ≥4.5:1 in BOTH themes. */
 .plan__cta {
   flex: 1 1 auto;
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
@@ -1675,7 +1705,7 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
   text-decoration: none; padding: 10px 14px; min-height: 44px;
   white-space: nowrap; /* the label must never wrap into two lines inside a card */
   border-radius: 12px;
-  background: linear-gradient(165deg, #15803D, #126C34);
+  background: linear-gradient(165deg, var(--cta-bg), var(--cta-bg-d));
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 6px 16px -6px rgba(22,163,74,.45);
   transition: box-shadow .18s, filter .15s, transform .15s var(--ease-spring);
 }
@@ -4680,9 +4710,18 @@ textarea { font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sa
   font-weight: 800;
   letter-spacing: -.01em;
 }
+/* ⚠ READ BEFORE TOUCHING `background` HERE.
+   This block sits ~4300 lines AFTER the .btn--primary / .plan__cta definitions
+   and has the SAME specificity, so it WINS the cascade — it silently killed the
+   AA-safe fill once already (it shipped `var(--accent), var(--accent-d)`, which
+   in dark mode is #5DD6AB/#36B98B and drops the white label to 1.80:1 / 2.48:1,
+   on every hero CTA, plan-card CTA and lead-form submit on 269 pages).
+   The ground is therefore --cta-bg/--cta-bg-d, the theme-aware AA-safe pair —
+   re-skin the ANGLE, the radius, the shadow, the label weight freely, but the
+   two colour stops stay tokens. Verify with `node scripts/check-cta-contrast.mjs`. */
 .btn--primary,
 .plan__cta {
-  background: linear-gradient(135deg, var(--accent), var(--accent-d));
+  background: linear-gradient(135deg, var(--cta-bg), var(--cta-bg-d));
   color: #fff;
   border-color: transparent;
   box-shadow: 0 12px 28px rgba(8,122,91,.22);

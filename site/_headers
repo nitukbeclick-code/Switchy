@@ -1,9 +1,25 @@
+# ⚠️ NOT IN EFFECT — this file is Netlify / Cloudflare Pages syntax only.
+#
+# This project deploys on **Vercel**, and Vercel ignores `_headers` entirely.
+# The live header policy is the root `/vercel.json` (`outputDirectory: "site"`,
+# so the Vercel project root is the repo root, not this directory). This file is
+# kept only as a fallback for an alternate host — Cloudflare Pages reads
+# `_headers` and does NOT read `netlify.toml`, so deleting it would leave a
+# Cloudflare Pages deploy with zero security headers.
+#
+# Rule: if you touch header policy, change root `/vercel.json` FIRST, then copy
+# its values verbatim here (and into `netlify.toml` / `site/vercel.json`).
+# The CSP below is in sync with root `/vercel.json` as of 2026-07-26:
+# googletagmanager + google-analytics allowed (GA4 gtag.js is injected on every
+# page by build.js `analyticsTag()` and by the hand-written index.html);
+# plausible.io removed because nothing on the site loads it.
+
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' https://plausible.io https://www.googletagmanager.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://orzitfqmlvopujsoyigr.supabase.co https://plausible.io https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; form-action 'self'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; script-src 'self' https://www.googletagmanager.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://orzitfqmlvopujsoyigr.supabase.co https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com; form-action 'self'; upgrade-insecure-requests
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 
 /*.css
@@ -14,4 +30,7 @@
   Cache-Control: public, max-age=31536000, immutable
 /*.png
   Cache-Control: public, max-age=31536000, immutable
-/* Updated: 1781224297 */
+
+# Was: `/* Updated: 1781224297 */` — a manual cache-bust token to force a
+# Cloudflare Pages rebuild. It parsed as a bogus path block (`/*` + garbage), so
+# it is a real comment now.

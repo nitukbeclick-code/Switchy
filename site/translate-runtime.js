@@ -558,6 +558,15 @@
   // failed batch's records to `unresolved` (if given) for a later retry pass.
   // Resolves with the total count of genuine translations applied.
   function runBatches(lang, batches, limit, unresolved, onFirst) {
+    // The generation this run belongs to. Batches outlive their switch: pick
+    // German, change your mind, go back to Hebrew, and German's in-flight batches
+    // keep pumping. applyBatch below is already guarded (`current === lang`) so
+    // stale TEXT can't land — but the liveFetched bookkeeping was not, so a
+    // superseded switch could stamp "live" onto the NEXT switch's lang_switch
+    // event and make a bundled language look endpoint-dependent. Since that event
+    // is what decides which languages get a shipped bundle, a wrong reading here
+    // becomes a wrong bundling decision later.
+    var startGen = switchSeq;
     return new Promise(function (resolve) {
       if (!batches.length) { resolve(0); return; }
       var idx = 0, active = 0, total = 0;
@@ -579,7 +588,7 @@
               pump();
             };
             if (!need || need.length === 0) { done(); return; }
-            liveFetched = true; // dict/cache did not cover this batch — see lang_switch
+            if (startGen === switchSeq) liveFetched = true; // this switch still owns the flag
             fetchTranslationsRetrying(lang, need, RETRY_MAX).then(function (res) {
               for (var j = 0; j < need.length; j++) {
                 var tr = res[j];

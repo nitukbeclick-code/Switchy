@@ -169,6 +169,141 @@ export async function sendText(
   }
 }
 
+// ── Approved templates: the ONLY lawful way to reopen a closed conversation ──
+// WhatsApp lets a business send free-form text only inside a 24h window that the
+// CUSTOMER opens by writing to us. Outside it Meta rejects with 131047 and a
+// pre-approved TEMPLATE is required. Until now this codebase had no template
+// path at all — it could detect the rejection (see lastSendWasOutside24hWindow)
+// and do nothing about it. That made every proactive job structurally unable to
+// reach anyone who had gone quiet for a day, which for a renewal/price-drop
+// alert is essentially everyone.
+//
+// A template is registered and approved in the Meta console, not here. This code
+// only ADDRESSES one: a name, a language, and the ordered {{1}}…{{n}} body
+// substitutions. Nothing is sent unless a caller supplies a spec, so the path is
+// dark — and behaviour is byte-identical to today — until real templates exist.
+export interface TemplateSpec {
+  /** The approved template's name in the Meta console (e.g. "renewal_due"). */
+  name: string;
+  /** BCP-47-ish code Meta registered it under — usually "he" here. */
+  language: string;
+  /** Ordered {{1}}, {{2}}, … body substitutions. Must match the approved body. */
+  bodyParams?: string[];
+}
+
+/** A spec is only usable when both required halves are real, non-empty strings. */
+export function isTemplateSpec(v: unknown): v is TemplateSpec {
+  if (!v || typeof v !== "object") return false;
+  const t = v as Partial<TemplateSpec>;
+  return typeof t.name === "string" && t.name.trim() !== "" &&
+    typeof t.language === "string" && t.language.trim() !== "";
+}
+
+// Sends an approved template. Same fail-soft contract as sendText: returns the
+// wamid or null, never throws, retries once on a 5xx.
+//
+// It deliberately does NOT touch the _lastSendOutside24hWindow side-channel: a
+// template is the answer to that condition, so clearing the flag here would erase
+// the very signal the caller is acting on.
+export async function sendTemplate(
+  to: string,
+  spec: TemplateSpec,
+): Promise<string | null> {
+  if (!TOKEN) {
+    jlog({ at: "wa.sendTemplate", ok: false, error: "WHATSAPP_TOKEN not set" });
+    return null;
+  }
+  const dest = (to ?? "").trim();
+  if (!dest || !isTemplateSpec(spec)) {
+    jlog({ at: "wa.sendTemplate", ok: false, error: "missing to/template" });
+    return null;
+  }
+  // Meta rejects a body parameter containing a newline, a tab, or a run of 4+
+  // spaces — the whole message fails, not just the formatting. Callers build
+  // these from Hebrew copy that can change later, so the transport normalises
+  // rather than trusting the caller to remember. Purely whitespace folding: no
+  // figure, word or link is altered.
+  const params = (spec.bodyParams ?? []).map((text) => ({
+    type: "text",
+    text: String(text ?? "").replace(/\s+/g, " ").trim(),
+  }));
+  const payload = {
+    messaging_product: "whatsapp",
+    to: dest,
+    type: "template",
+    template: {
+      name: spec.name,
+      language: { code: spec.language },
+      // Meta rejects an empty components array on a body-less template, so the
+      // block is included only when there is something to substitute.
+      ...(params.length ? { components: [{ type: "body", parameters: params }] } : {}),
+    },
+  };
+  try {
+    const res = await graphPostRetry5xx("wa.sendTemplate", payload);
+    if (!res.ok) {
+      const msg = await res.text().catch(() => "");
+      // The template name/params are ours, not customer content, so they are safe
+      // to log — and a rejected template is almost always a mismatch against what
+      // Meta approved, which is exactly what an operator needs to see.
+      jlog({ at: "wa.sendTemplate", ok: false, status: res.status, template: spec.name, msg });
+      await captureError(`wa.sendTemplate ${res.status}`, {
+        fn: "sendTemplate",
+        status: res.status,
+        template: spec.name,
+      });
+      return null;
+    }
+    return await wamidOf(res);
+  } catch (e) {
+    jlog({ at: "wa.sendTemplate", ok: false, error: String(e), template: spec.name });
+    await captureError(e, { fn: "sendTemplate", template: spec.name });
+    return null;
+  }
+}
+
+/** What actually happened, so a caller can count deliveries honestly. */
+export type ProactiveSendVia = "text" | "template";
+export interface ProactiveSendResult {
+  wamid: string | null;
+  via: ProactiveSendVia | null;
+  /** The free-form attempt hit Meta's 24h block (whether or not a template saved it). */
+  outsideWindow: boolean;
+}
+
+// The proactive-send strategy: try free-form, and ONLY if Meta refuses it for the
+// 24h window, retry with the approved template.
+//
+// Free-form first is deliberate. It costs nothing when the window is open (most
+// replies to an active conversation), it needs no last-inbound-timestamp
+// bookkeeping to stay correct, and Meta does not bill a rejected message — so the
+// wasted call is a rejected POST, not a charge. Sending a template first would be
+// both more expensive and worse UX for someone mid-conversation.
+//
+// With `template` null — the state until templates are approved in Meta — this is
+// exactly sendText plus an honest classification of why it failed.
+export async function sendProactive(
+  to: string,
+  body: string,
+  template: TemplateSpec | null,
+): Promise<ProactiveSendResult> {
+  const wamid = await sendText(to, body);
+  if (wamid) return { wamid, via: "text", outsideWindow: false };
+
+  const outsideWindow = lastSendWasOutside24hWindow();
+  // Any other failure (token, network, 5xx, bad request) is NOT something a
+  // template fixes — retrying with one would just burn a second call.
+  if (!outsideWindow || !isTemplateSpec(template)) {
+    return { wamid: null, via: null, outsideWindow };
+  }
+  const tplWamid = await sendTemplate(to, template);
+  return {
+    wamid: tplWamid,
+    via: tplWamid ? "template" : null,
+    outsideWindow: true,
+  };
+}
+
 // Marks an inbound message as read (the blue double-tick) so the user sees the
 // bot acknowledged them before the reply lands. Returns true on success, null on
 // any failure (no token / bad id / network) — never throws.

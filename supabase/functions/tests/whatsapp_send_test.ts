@@ -532,3 +532,141 @@ Deno.test("sendDocument fail-softs a network throw to null without throwing", as
     s.restore();
   }
 });
+
+// ── sendTemplate / sendProactive: reopening a closed 24h window ─────────────
+// The ONLY lawful way to message someone who has not written to us in 24h. These
+// pin the payload shape Meta accepts and, more importantly, the strategy: a
+// template is a LAST resort tried only when the free-form send was refused for
+// the window specifically — never on a success, and never on an ordinary failure
+// that a template would not fix.
+
+Deno.test("sendTemplate posts the approved-template payload with positional body params", async () => {
+  const s = stubFetch([() => okWamid("wamid.TPL")]);
+  try {
+    const id = await wa.sendTemplate("+972500000001", {
+      name: "savings_alert",
+      language: "he",
+      bodyParams: ["חיסכון של ₪30 לחודש."],
+    });
+    assertEquals(id, "wamid.TPL");
+    assertEquals(s.calls.length, 1);
+    const b = s.calls[0].body as Record<string, unknown>;
+    assertEquals(b.type, "template");
+    const tpl = b.template as Record<string, unknown>;
+    assertEquals(tpl.name, "savings_alert");
+    assertEquals(tpl.language, { code: "he" });
+    assertEquals(tpl.components, [{
+      type: "body",
+      parameters: [{ type: "text", text: "חיסכון של ₪30 לחודש." }],
+    }]);
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendTemplate omits `components` entirely when the template takes no params", async () => {
+  // Meta rejects an empty components array on a body-less template.
+  const s = stubFetch([() => okWamid()]);
+  try {
+    await wa.sendTemplate("+972500000002", { name: "ping", language: "he" });
+    const tpl = (s.calls[0].body as Record<string, unknown>).template as Record<string, unknown>;
+    assertEquals("components" in tpl, false);
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendTemplate folds newlines/tabs in a param (Meta rejects the whole message otherwise)", async () => {
+  const s = stubFetch([() => okWamid()]);
+  try {
+    await wa.sendTemplate("+972500000003", {
+      name: "t",
+      language: "he",
+      bodyParams: ["  שורה\n\nאחרת\tעם\tטאבים   "],
+    });
+    const tpl = (s.calls[0].body as Record<string, unknown>).template as Record<string, unknown>;
+    const comps = tpl.components as Array<{ parameters: Array<{ text: string }> }>;
+    assertEquals(comps[0].parameters[0].text, "שורה אחרת עם טאבים");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendTemplate fail-softs a rejection to null without throwing", async () => {
+  const s = stubFetch([() => new Response("bad template", { status: 400 })]);
+  try {
+    assertEquals(await wa.sendTemplate("+972500000004", { name: "t", language: "he" }), null);
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendTemplate guards a missing/blank template name before hitting Graph", async () => {
+  const s = stubFetch([() => okWamid()]);
+  try {
+    assertEquals(await wa.sendTemplate("+972500000005", { name: "  ", language: "he" }), null);
+    assertEquals(s.calls.length, 0); // never left the process
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendProactive: window OPEN → free-form only, the template is never touched", async () => {
+  const s = stubFetch([() => okWamid("wamid.TXT")]);
+  try {
+    const r = await wa.sendProactive("+972500000006", "hi", { name: "t", language: "he" });
+    assertEquals(r, { wamid: "wamid.TXT", via: "text", outsideWindow: false });
+    assertEquals(s.calls.length, 1); // exactly one send — no speculative template
+    assertEquals((s.calls[0].body as Record<string, unknown>).type, "text");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendProactive: window CLOSED → falls back to the template and reports via:template", async () => {
+  const s = stubFetch([
+    // Meta's re-engagement block on the free-form attempt…
+    () => new Response(JSON.stringify({ error: { code: 131047 } }), { status: 400 }),
+    () => okWamid("wamid.TPL"), // …then the template lands
+  ]);
+  try {
+    const r = await wa.sendProactive("+972500000007", "hi", {
+      name: "savings_alert",
+      language: "he",
+      bodyParams: ["חיסכון של ₪30 לחודש."],
+    });
+    assertEquals(r, { wamid: "wamid.TPL", via: "template", outsideWindow: true });
+    assertEquals(s.calls.length, 2);
+    assertEquals((s.calls[1].body as Record<string, unknown>).type, "template");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendProactive: window CLOSED with NO template configured → no second call", async () => {
+  // The state until a template is approved in Meta. Behaviour must be identical
+  // to plain sendText, plus an honest classification of why it failed.
+  const s = stubFetch([
+    () => new Response(JSON.stringify({ error: { code: 131047 } }), { status: 400 }),
+  ]);
+  try {
+    const r = await wa.sendProactive("+972500000008", "hi", null);
+    assertEquals(r, { wamid: null, via: null, outsideWindow: true });
+    assertEquals(s.calls.length, 1);
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("sendProactive: an ORDINARY failure does not burn a template call", async () => {
+  // A 5xx is retried once by sendText itself (2 calls), then gives up. A template
+  // does not fix a transient outage, so it must not be attempted.
+  const s = stubFetch([() => new Response("boom", { status: 503 })]);
+  try {
+    const r = await wa.sendProactive("+972500000009", "hi", { name: "t", language: "he" });
+    assertEquals(r, { wamid: null, via: null, outsideWindow: false });
+    assertEquals(s.calls.length, 2); // the two free-form attempts, no template
+  } finally {
+    s.restore();
+  }
+});

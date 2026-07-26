@@ -40,7 +40,11 @@ import { firstEnv } from "../_shared/config.ts";
 import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { jlog } from "../_shared/log.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
-import { sendText as sendWhatsapp } from "../_shared/whatsapp.ts";
+import {
+  lastSendWasOutside24hWindow,
+  sendProactive,
+  sendText as sendWhatsapp,
+} from "../_shared/whatsapp.ts";
 import * as compliance from "../_shared/compliance.ts";
 import { importVapidKeys, sendWebPush, type VapidKeys } from "../site-push-notify/webpush.ts";
 import {
@@ -52,6 +56,7 @@ import {
   opportunityForTracked,
   latestPriceByPlan,
   type PriceSnapshot,
+  resolveWatchTemplate,
   sendWatchWhatsapp,
   type TrackedPlan,
   type WatchContact,
@@ -258,6 +263,17 @@ interface RunResult {
   sentPush: number;
   sentWhatsapp: number;
   failed: number;
+  // Free-form WhatsApp sends Meta refused because the customer has not written
+  // to us in 24h (error 131047). NOT a failure — the expected outcome for a job
+  // that fires days after the last message, and the exact number an approved
+  // template would convert into a delivery. Counted apart from `failed` so the
+  // API-blip signal stays clean and this one stays visible.
+  outsideWindow: number;
+  // Of the sends above, how many landed via an APPROVED TEMPLATE after the
+  // free-form attempt was refused. Zero until templates are approved in Meta and
+  // WHATSAPP_TEMPLATE_SAVINGS is set; after that, this is the number that used to
+  // be silently lost, and `outsideWindow` becomes the remainder still unreachable.
+  sentTemplate: number;
   pruned: number;
   suppressed: number; // opportunities skipped purely by suppression (pre-filter)
   suppressedSkipped: number; // WhatsApp sends skipped by the live send-time gate
@@ -272,7 +288,7 @@ async function runPass(
 ): Promise<RunResult> {
   const base: RunResult = {
     ok: false, watched: 0, opportunities: 0, candidates: 0, sentPush: 0, sentWhatsapp: 0,
-    failed: 0, pruned: 0, suppressed: 0, suppressedSkipped: 0, quietHoursSkipped: 0, dryRun,
+    failed: 0, outsideWindow: 0, sentTemplate: 0, pruned: 0, suppressed: 0, suppressedSkipped: 0, quietHoursSkipped: 0, dryRun,
   };
 
   const watched = await fetchWatchedPlans();
@@ -317,7 +333,11 @@ async function runPass(
   }
 
   let opportunities = 0, candidates = 0, sentPush = 0, sentWhatsapp = 0;
-  let failed = 0, pruned = 0, suppressedCount = 0, quietHoursSkipped = 0;
+  let failed = 0, outsideWindow = 0, sentTemplate = 0, pruned = 0, suppressedCount = 0, quietHoursSkipped = 0;
+  // Resolved once per pass, not per contact: it is static config, and reading it
+  // in the loop would just repeat the same env lookup for every alert. null when
+  // no template is approved yet, which keeps the template path dark.
+  const watchTemplate = resolveWatchTemplate(firstEnv);
   let suppressedSkipped = 0;
 
   for (const tracked of watched) {
@@ -395,18 +415,63 @@ async function runPass(
     // treats the contact as NOT suppressed and still sends, matching this fn's
     // posture (never silently drop every alert on a read error).
     if (canWhatsapp && phone) {
+      // The sender is wrapped rather than passed directly so the §30A suppression
+      // gate in sendWatchWhatsapp — the one thing here that must never be
+      // bypassed — keeps its narrow, pure, unit-tested signature. `via` is
+      // captured per iteration, so there is no cross-talk between contacts.
+      // A const array rather than a `let via` deliberately: a `let` initialised
+      // to null and assigned ONLY inside a closure gets narrowed to `null` by
+      // TypeScript's control-flow analysis, which turns the later
+      // `via === "template"` into a compile error under `strict`. Pushing into a
+      // const array sidesteps narrowing entirely and reads just as clearly.
+      const viaLog: Array<"text" | "template"> = [];
+      // The template carries ONE positional param. Meta renders only what the
+      // approved body declares, so the free-form text cannot simply be poured in:
+      // `alert.body` is the sentence that states the REAL figures (what they pay,
+      // the new price, the saving), which is the whole point of the message and
+      // the only part that must survive into {{1}}. The title is decoration and
+      // the URL belongs in the approved body's static text, where it does not
+      // count against the parameter and cannot be edited per-send.
+      const templateForAlert = watchTemplate
+        ? { ...watchTemplate, bodyParams: [alert.body] }
+        : null;
+      const send = async (to: string, body: string): Promise<string | null> => {
+        const r = await sendProactive(to, body, templateForAlert);
+        if (r.via) viaLog.push(r.via);
+        return r.wamid;
+      };
       const outcome = await sendWatchWhatsapp(
         phone,
         `${alert.title}\n\n${alert.body}\n\n${alert.url}`,
         compliance.isSuppressed,
-        sendWhatsapp,
+        send,
+        lastSendWasOutside24hWindow,
       );
       if (outcome === "sent") {
         sentWhatsapp++;
+        // A template delivery means the free-form attempt WAS refused and the
+        // template rescued it — the whole point of the path, worth counting.
+        if (viaLog.includes("template")) {
+          sentTemplate++;
+          jlog({ at: "watch.whatsapp", ok: true, via: "template" });
+        }
         channelsSent.push("whatsapp");
       } else if (outcome === "suppressed") {
         suppressedSkipped++;
         jlog({ at: "watch.whatsapp", ok: true, skipped: "suppressed" });
+      } else if (outcome === "outside_window") {
+        // Logged at ok:true — nothing malfunctioned. This is the channel telling
+        // us the only lawful way to reach this person is an approved template,
+        // and that we do not have one that worked. With WHATSAPP_TEMPLATE_SAVINGS
+        // unset this is EVERY proactive WhatsApp alert to a quiet contact; once
+        // it is set, whatever remains here is a template that Meta also refused.
+        outsideWindow++;
+        jlog({
+          at: "watch.whatsapp",
+          ok: true,
+          skipped: "outside_24h_window",
+          templateConfigured: watchTemplate !== null,
+        });
       } else {
         failed++;
       }
@@ -428,6 +493,8 @@ async function runPass(
     sentPush,
     sentWhatsapp,
     failed,
+    outsideWindow,
+    sentTemplate,
     pruned,
     suppressed: suppressedCount,
     suppressedSkipped,

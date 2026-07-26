@@ -228,17 +228,71 @@ export function eligibleChannels(contact: WatchContact): ChannelPlan {
 // in the injected `isSuppressed` (returns false on error → we treat the contact
 // as NOT suppressed and still send, rather than silently dropping every alert on
 // a transient DB blip), matching the rest of this function.
-export type WhatsappSendOutcome = "suppressed" | "sent" | "failed";
+// `outside_window` is NOT a transient failure and must never be counted as one.
+// Meta rejects a free-form message to anyone who has not written to us in 24h
+// (error 131047) and requires an approved template instead. That is the DEFAULT
+// state for this job: a savings alert fires days or weeks after the customer's
+// last message, so the 24h window is almost always closed. Folding it into
+// `failed` made the single most structural limitation of the WhatsApp channel
+// look like network noise — the operator sees a failure count and cannot tell
+// "the API blipped" from "we are contractually unable to reach these people."
+// Splitting it out is what makes that visible, and what will measure the fix
+// once approved templates exist.
+export type WhatsappSendOutcome =
+  | "suppressed"
+  | "sent"
+  | "outside_window"
+  | "failed";
 
 export async function sendWatchWhatsapp(
   phone: string,
   text: string,
   isSuppressed: (channel: "whatsapp", contact: string) => Promise<boolean>,
   send: (to: string, body: string) => Promise<string | null>,
+  // Injected so this stays pure-testable with no network and no module state.
+  // Production passes `lastSendWasOutside24hWindow` from _shared/whatsapp.ts,
+  // which classifies the MOST RECENT failed send — hence it is only read
+  // immediately after an awaited `send` that returned null, exactly as its own
+  // contract requires. Omitted → the old two-way sent/failed behaviour.
+  wasOutsideWindow?: () => boolean,
 ): Promise<WhatsappSendOutcome> {
   if (await isSuppressed("whatsapp", phone)) return "suppressed";
   const wamid = await send(phone, text);
-  return wamid ? "sent" : "failed";
+  if (wamid) return "sent";
+  return wasOutsideWindow?.() ? "outside_window" : "failed";
+}
+
+// ── The template that reopens a closed window ────────────────────────────────
+// Resolved from config, NOT hardcoded: the name and language must match what was
+// actually approved in the Meta console, and nothing here can guarantee that. An
+// unset or half-set config yields null, which makes the whole template path inert
+// and keeps behaviour byte-identical to before it existed.
+//
+// The approved body must take exactly ONE substitution, which the caller fills
+// with the alert's factual sentence (what they pay now, the new price, the real
+// saving) — e.g. an approved body of
+//   "שלום, מצאנו עבורכם חיסכון: {{1}} להשוואה המלאה: switchy-ai.com"
+// Two consequences worth stating, because getting either wrong is a rejection on
+// every send rather than a degraded one:
+//   • Params are POSITIONAL, so a template approved with a different arity is
+//     refused by Meta, not silently mis-rendered. It surfaces in the
+//     wa.sendTemplate log with the template name.
+//   • The link belongs in the approved body's STATIC text, not in the parameter.
+//     Meta disallows newlines/tabs in a parameter and scrutinises per-send URLs.
+export interface WatchTemplateCfg {
+  name: string;
+  language: string;
+}
+
+export function resolveWatchTemplate(
+  env: (keys: string[]) => string,
+): WatchTemplateCfg | null {
+  const name = env(["WHATSAPP_TEMPLATE_SAVINGS", "WA_TEMPLATE_SAVINGS"]).trim();
+  if (!name) return null;
+  // Hebrew is this product's audience and the safe default, but the code must be
+  // whatever Meta registered — a mismatch is a rejection, not a fallback.
+  const language = env(["WHATSAPP_TEMPLATE_LANG", "WA_TEMPLATE_LANG"]).trim() || "he";
+  return { name, language };
 }
 
 // ── alert copy (Hebrew, RTL) ──────────────────────────────────────────────────

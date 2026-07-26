@@ -26,6 +26,7 @@ import {
   opportunityDedupeKey,
   opportunityForTracked,
   type PriceSnapshot,
+  resolveWatchTemplate,
   sendWatchWhatsapp,
   type TrackedPlan,
   type WatchContact,
@@ -273,6 +274,50 @@ Deno.test("sendWatchWhatsapp: a failed send (null wamid) is reported as 'failed'
   assertEquals(await sendWatchWhatsapp("+972500000003", "hi", isSuppressed, send), "failed");
 });
 
+// A rejection Meta issues because the 24h customer-service window is CLOSED is
+// not a malfunction — it is the expected outcome for a job that fires days after
+// the customer last wrote, and the only lawful fix is an approved template. It
+// used to be folded into `failed`, where it read as network noise. These three
+// tests pin the split: the classifier decides, it is consulted ONLY on a failed
+// send, and omitting it preserves the old two-way behaviour.
+Deno.test("sendWatchWhatsapp: a 24h-window rejection is 'outside_window', not 'failed'", async () => {
+  const isSuppressed = (_c: "whatsapp", _p: string) => Promise.resolve(false);
+  const send = (_to: string, _body: string) => Promise.resolve(null); // Meta refused
+  const outside = () => true; // …and the refusal looked like error 131047
+  assertEquals(
+    await sendWatchWhatsapp("+972500000005", "hi", isSuppressed, send, outside),
+    "outside_window",
+  );
+});
+
+Deno.test("sendWatchWhatsapp: a non-window failure stays 'failed' even with the classifier wired", async () => {
+  const isSuppressed = (_c: "whatsapp", _p: string) => Promise.resolve(false);
+  const send = (_to: string, _body: string) => Promise.resolve(null);
+  const outside = () => false; // a real transient failure — token, network, 5xx
+  assertEquals(
+    await sendWatchWhatsapp("+972500000006", "hi", isSuppressed, send, outside),
+    "failed",
+  );
+});
+
+Deno.test("sendWatchWhatsapp: the window classifier is NOT consulted on a successful send", async () => {
+  // lastSendWasOutside24hWindow() only describes the most recent FAILED send, so
+  // reading it after a success would report a stale classification from an
+  // earlier call. Asserting it is never called keeps that contract enforced.
+  let consulted = 0;
+  const isSuppressed = (_c: "whatsapp", _p: string) => Promise.resolve(false);
+  const send = (_to: string, _body: string) => Promise.resolve("wamid.OK");
+  const outside = () => {
+    consulted++;
+    return true; // would wrongly mark a delivered message if it were read
+  };
+  assertEquals(
+    await sendWatchWhatsapp("+972500000007", "hi", isSuppressed, send, outside),
+    "sent",
+  );
+  assertEquals(consulted, 0);
+});
+
 Deno.test("sendWatchWhatsapp: a suppression-check error is fail-soft → still SENT (never silently dropped)", async () => {
   // isSuppressed is itself fail-soft (returns false on error). Here we model that
   // posture: a lookup that resolves false (its error path) must NOT block the send
@@ -324,4 +369,44 @@ Deno.test("buildWatchAlert: a better_plan alert says 'market rate, not a promise
   assertStringIncludes(a.body, "מחיר שוק קיים, לא הבטחה"); // truth-only framing
   assertStringIncludes(a.body, "₪90");
   assertStringIncludes(a.url, "/compare?category=internet");
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// resolveWatchTemplate — the config seam that keeps the template path DARK
+// until a real template is approved in the Meta console. Getting this wrong in
+// either direction is expensive: a spurious spec makes every proactive send
+// attempt a template Meta never approved, and a missing one silently returns the
+// job to being unable to reach anyone outside the 24h window.
+// ════════════════════════════════════════════════════════════════════════════
+
+Deno.test("resolveWatchTemplate: no configured name → null (path stays dark)", () => {
+  assertEquals(resolveWatchTemplate(() => ""), null);
+});
+
+Deno.test("resolveWatchTemplate: whitespace-only name is NOT a template", () => {
+  // A half-set env var must not produce a spec Meta will reject on every send.
+  assertEquals(resolveWatchTemplate((keys) => keys[0].includes("LANG") ? "he" : "   "), null);
+});
+
+Deno.test("resolveWatchTemplate: a name alone yields the spec, defaulting the language to he", () => {
+  const cfg = resolveWatchTemplate((keys) =>
+    keys.some((k) => k.includes("SAVINGS")) ? "savings_alert" : ""
+  );
+  assertEquals(cfg, { name: "savings_alert", language: "he" });
+});
+
+Deno.test("resolveWatchTemplate: an explicit language wins over the Hebrew default", () => {
+  // The code must be whatever Meta REGISTERED — a mismatch is a rejection, so it
+  // can never be silently normalised to the audience default.
+  const cfg = resolveWatchTemplate((keys) =>
+    keys.some((k) => k.includes("SAVINGS")) ? "savings_alert" : "he_IL"
+  );
+  assertEquals(cfg, { name: "savings_alert", language: "he_IL" });
+});
+
+Deno.test("resolveWatchTemplate: values are trimmed (a trailing newline in a secret is common)", () => {
+  const cfg = resolveWatchTemplate((keys) =>
+    keys.some((k) => k.includes("SAVINGS")) ? " savings_alert\n" : " he \n"
+  );
+  assertEquals(cfg, { name: "savings_alert", language: "he" });
 });

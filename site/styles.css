@@ -259,10 +259,11 @@ body {
   color: var(--ink);
   /* Living paper: a whisper dot-grid + an icy wash at the top of every page —
      depth for all ~240 pages from one rule. Sections with their own ground
-     simply cover it, so the texture peeks only between surfaces. */
+     simply cover it, so the texture peeks only between surfaces.
+     The emerald radial stays (it reads as ambient light); the amber one was
+     removed so the only amber left on a page is a ₪ figure. */
   background:
     radial-gradient(circle at 86% 5%, rgba(8,122,91,.10), transparent 30rem),
-    radial-gradient(circle at 10% 22%, rgba(211,154,36,.10), transparent 25rem),
     linear-gradient(180deg, #FBF7EF 0, var(--cream) 38rem);
   background-color: var(--cream);
   line-height: 1.6;
@@ -274,7 +275,6 @@ body {
 :root[data-theme="dark"] body {
   background:
     radial-gradient(circle at 86% 5%, rgba(93,214,171,.12), transparent 30rem),
-    radial-gradient(circle at 10% 22%, rgba(242,198,109,.08), transparent 25rem),
     linear-gradient(180deg, #13221C 0, var(--cream) 38rem);
   background-color: var(--cream);
 }
@@ -752,8 +752,14 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .launch-tile__body { margin-top: auto; padding-top: 14px; }
 .launch-tile__name { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: -.5px; color: var(--ink-900); }
 .launch-tile__count { display: block; margin-top: 2px; font-size: 13.5px; color: var(--muted); }
-.launch-tile__price { display: inline-block; margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--tf, var(--accent)) 15%, transparent); color: var(--tt, var(--accent-ink)); font-weight: 800; font-size: 12.5px; }
-:root[data-theme="dark"] .launch-tile__price { color: var(--tf, var(--accent)); }
+/* The entry price is MONEY, not a category tag: the inner ₪ run wears
+   .price-stat (index.html) and the wrapper is just its "מ-… לחודש" frame.
+   It used to print --tt on a --tf-tinted pill, which on the triple tile put
+   #9C6510 on ≈#F9EFDA at 4.29:1 — under the 4.5:1 floor of Israeli std 5568 at
+   12.5px/800. On the tile's own --white ground --value-ink measures 5.94:1
+   (light) / 10.1:1 (dark), so the dark override is no longer needed. The
+   category hue keeps its identity on .launch-tile__ico. */
+.launch-tile__price { display: inline-block; margin-top: 10px; color: var(--muted); font-weight: 700; font-size: 12.5px; }
 
 /* "קטגוריות נוספות" chip row. */
 .hero__more { margin-top: 16px; }
@@ -932,7 +938,12 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 .calc__card input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--green-d), 0 0 0 6px #fff; }
 .calc__result { text-align: center; margin: 26px 0 22px; }
 .calc__resultLabel { display: block; font-size: 14px; opacity: .8; }
-.calc__resultBig { display: block; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 52px; font-weight: 900; color: var(--value); letter-spacing: -1px; }
+/* Typography, colour and tracking now come from the .price-hero tier (see the
+   money-tier block) — this figure IS the page's money moment, so it must be
+   governed by the same rule as every other ₪ rather than by a private 52px
+   declaration. Only the layout role stays here. Note --value (a fill shade, 3.5:1)
+   was never an accessible text colour at any size; the tier's --value-ink is. */
+.calc__resultBig { display: block; }
 .calc__resultUnit { font-size: 14px; opacity: .8; }
 .calc__fine { font-size: 12px; opacity: .65; text-align: center; margin-top: 12px; }
 
@@ -1541,16 +1552,99 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .pflag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: var(--mint); color: var(--green); }
 .pflag--5g { background: var(--lime); color: var(--green-d); }
 .plan__bottom { margin-top: auto; padding-top: 14px; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
-/* The price is the card's decision datum — let it lead the visual hierarchy. */
-.plan__price b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 30px; font-weight: 800; letter-spacing: -.5px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
-.plan__price span { color: var(--muted); font-size: 12px; }
+
+/* ── MONEY TYPE — three tiers, one colour ──────────────────────────────────
+   The :root above already reserves amber for VALUE ("savings only") and every
+   ₪ on the site quietly ignored it: the plan price, the comparison-table cell
+   and the launch tile each hand-rolled their own scale in --ink-900 or
+   --green-d — the SAME ink that draws every h1 and h2 — so the one number the
+   visitor came for read like a paragraph. The rule was written here and never
+   applied; these tiers apply it.
+
+     .price-hero  THE money moment, AT MOST ONE PER PAGE. A second one on the
+                  same page deletes the first one's meaning; if the figure is
+                  coming out of a .map(), it is a .price-row.
+     .price-row   every REPEATED figure — a plan card, a table row. Quieter
+                  than the hero so a column of 59 prices scans AS a column,
+                  still unmistakably louder than the heading above it.
+     .price-stat  money sitting INLINE beside a NON-money figure: the stat
+                  band's "59 מסלולים · מ-₪11", a launch tile, the ticker. It
+                  sets NO font-size on purpose — the size belongs to the row so
+                  the ₪ figure and the ink figure beside it keep one baseline,
+                  and the tier contributes only the money TREATMENT.
+
+   Colour is ALWAYS var(--value-ink) and never a hex, so the dark block's
+   `--value-ink: #F2C66D` re-skin gives all three tiers dark parity for free
+   (5.9:1 on --white / 5.5:1 on --cream in light, 10:1+ on dark glass).
+   Nothing that is not a ₪ figure may wear a tier, and no other type rank on
+   the site may be amber — the monopoly IS the effect. */
+.price-hero,
+.calc__resultBig,
+.price-row,
+.price-stat,
+.plan__price b,
+.plan__annual-total,
+.cmp-price {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  color: var(--value-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* line-height, not the inherited 1.6: at 52px a body line box leaves the
+   figure floating in half a screen of air.
+   `.calc__resultBig` IS this tier — it is the savings calculator's answer, the
+   one figure on the homepage the whole page exists to produce, and it was
+   already 52px amber. It sat OUTSIDE the system (its own rule, its own --value
+   rather than --value-ink), which left the tier declared with zero call sites
+   and made `.price-row` — repeated 59 times on a category page — the loudest
+   money on the surface. Fifty-nine shouts is silence: that is the precise
+   failure this two-tier split exists to prevent, and it had been reproduced
+   here. Annexing the calculator result restores the relationship the tiers
+   describe, and switches it to --value-ink so it inherits dark parity. */
+.price-hero,
+.calc__resultBig { font-size: clamp(38px, 4.4vw, 52px); font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
+/* …but NOT the tier's colour. The calculator figure is the one money moment that
+   does not sit on the ivory ground: .calc__card is a PINNED dark ink panel in
+   BOTH themes (see the premium-ink block near the top of this file), and
+   --value-ink is the AA amber tuned for light surfaces — #8A570D on that ink
+   measures 2.73:1, below even the 3:1 large-text floor. The brighter fill shade
+   is the correct token on a dark ground: 6.65:1, and it is what this figure wore
+   before it joined the tier. Same rule as the --lime pin twenty lines up: text on
+   a fixed-dark band needs a fixed-light colour, or theme tokens quietly ruin it.
+   Verified by measuring both, not by eye. */
+.calc__card .calc__resultBig { color: var(--value); }
+.price-row,
+.plan__price b { font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.price-stat,
+.plan__annual-total { font-weight: 700; letter-spacing: -.02em; }
+/* Two call sites ink their own <b> at (0,1,1) — .stat-band b (--green-d) and
+   .hero__social strong (--ink) — which out-specifies a bare tier class and
+   would leave the ₪ figure the same colour as the count standing next to it.
+   Re-assert the money colour at (0,2,0); the ink figures are untouched. */
+.stat-band .price-stat,
+.hero__social .price-stat { color: var(--value-ink); }
+/* The unit ("לחודש", "לחבילה") is a micro-label, never a second figure. */
+.price-unit { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: var(--muted); }
+/* The currency mark demoted to a raised sibling of the digits. DECLARED, NOT
+   APPLIED: muting the ₪ earns its keep at 40px+ and reads as a rendering fault
+   at 20px, so it belongs to the DISPLAY tiers only — and the display tiers
+   have no call site on this surface yet. Wire it up with .price-hero, never on
+   .price-stat (there is nothing to split at stat size). */
+.price-sign { font-size: .5em; font-weight: 700; line-height: 1.4; vertical-align: top; }
+
+/* The price is the card's decision datum — the tier above owns its treatment;
+   the plan card only asks for a bigger size than a table row. */
+.plan__price b { font-size: 30px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
+/* De-ambered (2026-07): this panel used to be a ~40×200px --value-t field
+   holding five glyphs of amber ink — the MASS shouted louder than the figure
+   it was supposed to support, and the card ended up with two amber areas
+   competing. Neutral ground; the label and the total keep the amber ink. */
 .plan__annual {
-  margin-top: 12px; padding: 11px 12px; border: 1px solid color-mix(in srgb, var(--value) 30%, var(--line));
-  border-radius: 12px; background: var(--value-t); display: grid; gap: 3px;
+  margin-top: 12px; padding: 11px 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--cream); display: grid; gap: 3px;
 }
 .plan__annual-label { color: var(--value-ink); font-size: 11px; font-weight: 800; }
-.plan__annual-total { color: var(--ink); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 19px; font-variant-numeric: tabular-nums; }
+.plan__annual-total { font-size: 19px; }
 .plan__annual small { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .plan__annual-details { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .plan__annual-details summary { color: var(--value-ink); font-weight: 700; cursor: pointer; width: max-content; }
@@ -1708,7 +1802,15 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .cmp-table tbody tr { transition: background .15s; }
 .cmp-table tbody tr:hover td { background: var(--accent-t); }
 .cmp-table tbody tr:last-child th, .cmp-table tbody tr:last-child td { border-bottom: none; }
-.cmp-price { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 900; font-size: 18px; color: var(--green-d); }
+/* The side-by-side tray's price — the .price-row tier's other call site (the
+   tier group above already gives it Rubik + --value-ink + tabular figures; this
+   rule only asks for the tray's own tighter size). It used to print --green-d,
+   i.e. the ACTION accent, on the one datum that is not an action — and in dark
+   --green-d inverts to #FFF8EA, so the price rendered LIGHTER than the body text
+   beside it. It also left .cmp-cost > b (--value-ink) as the only amber in the
+   column, making the DERIVED 12-month cost outrank the price it is derived from.
+   Same figure as the static .cmp table's .price-row: same tier, same colour. */
+.cmp-price { font-weight: 700; font-size: 18px; letter-spacing: -.03em; }
 .cmp-after { display: block; font-size: 11px; color: var(--muted); }
 .cmp-cost { display: grid; gap: 4px; min-width: 150px; }
 .cmp-cost > b { color: var(--value-ink); font-size: 17px; font-variant-numeric: tabular-nums; }
@@ -1847,7 +1949,9 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   /* Calculator stacks vertically and the dark card gets calmer padding. */
   .calc { grid-template-columns: 1fr; gap: var(--space-md); }
   .calc__card { padding: 22px; }
-  .calc__resultBig { font-size: 42px; }
+  /* No .calc__resultBig size override here any more: the .price-hero tier it now
+     belongs to clamps itself (38px floor at this width), so a flat 42px would
+     only fight the tier's own responsive curve. */
   /* Trust strip wraps to a comfortable two-up rather than one cramped line. */
   .trust__row { gap: var(--space-xs) var(--space-sm); }
   .trust__item { font-size: 12px; }
@@ -2078,8 +2182,12 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 @media (hover: hover) and (pointer: fine) {
   .plan--premium:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 1px var(--accent), var(--shadow-lg); }
 }
+/* The budget variant expresses itself through CHROME (quieter rim, cream
+   ground, flatter shadow) — never by muting its price. build.js stamps
+   .plan--budget on the isBest card and badges it "המחיר הנמוך ביותר", so an
+   ink override here greyed out the one figure the page is pointing at while
+   every ordinary card beside it printed the money tier. */
 .plan--budget { border-color: var(--line); background: var(--cream); box-shadow: var(--shadow-sm); }
-.plan--budget .plan__price b { color: var(--ink-700); }
 /* Score badge — a compact amber pill rating the plan's VALUE (e.g. "9.2").
    Amber = value tier; green stays exclusively for actions. */
 .plan__score {
@@ -2915,8 +3023,20 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp tbody tr:hover { background: var(--accent-t); }
 .cmp__num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* Cheapest row — a pale GREEN tint (value = the one green accent, not amber). */
-.cmp__best { background: var(--value-t) !important; }
+/* The cheapest row marks itself with an amber RAIL and its pill, not an amber
+   WASH. Once the price in this row became .price-row (--value-ink #8A570D), the
+   old --value-t ground (#F8E9C8) put amber text on amber at 5.07:1 — the LOWEST
+   contrast price in the whole table, on the one row the page is pointing at. The
+   ground is now a warm neutral lift, so the figure keeps the colour and the row
+   keeps the emphasis; the rail and the "הכי זול" pill are best-value state
+   markers, which is exactly what amber is for. */
+.cmp__best { background: color-mix(in srgb, var(--cream) 62%, var(--white)) !important; }
 .cmp__best td:first-child { box-shadow: inset 3px 0 0 var(--value); }
+/* Winning cell in the provider-vs verdict matrix that is NOT money — "more 5G
+   plans", "more no-commit plans". Those are counts, and amber means savings:
+   tinting them --value-t spent the value accent on a plan tally. Same "this
+   side won" signal, neutral wash + the bold the renderer already emits. */
+.cmp__win { background: color-mix(in srgb, var(--ink-050) 72%, transparent); }
 /* "הכי זול" pill stamped on the cheapest row's provider cell. */
 .cmp__best-pill {
   display: inline-block; margin-inline-start: 8px; vertical-align: middle;
@@ -2927,12 +3047,17 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp__prov { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; font-weight: 600; white-space: nowrap; }
 .cmp__prov:hover span { color: var(--accent); }
 .cmp__name { font-weight: 700; }
-.cmp__jump { color: var(--ink); }
+/* The after-promo price is still money, but it is the price the promo jumps TO
+   — one rank BELOW the figure in the cell beside it. It used to render
+   byte-identical to that figure, so the row read as two equal prices. */
+.cmp__jump { color: var(--ink-600); font-variant-numeric: tabular-nums; }
 /* "קבוע" is DATA, not an action — neutral ink (green stays reserved for accent). */
 .cmp__fixed { color: var(--ink-600); font-weight: 600; }
 .cmp__info { display: inline-block; max-width: 280px; white-space: normal; color: var(--muted); font-size: .84rem; line-height: 1.4; }
 .cmp__annual { display: grid; gap: 3px; min-width: 145px; white-space: normal; }
-.cmp__annual > b { color: var(--value-ink); font-size: 1rem; font-variant-numeric: tabular-nums; }
+/* DERIVED figure (12 × the price in the cell to its right) — demoted below its
+   own source. In amber at 1rem it out-shouted the price it is computed from. */
+.cmp__annual > b { color: var(--ink-700); font-size: .9rem; font-variant-numeric: tabular-nums; }
 .cmp__annual > small { color: var(--muted); font-size: .72rem; }
 .cmp__cost-details { color: var(--muted); font-size: .72rem; line-height: 1.45; text-align: start; }
 .cmp__cost-details summary { color: var(--value-ink); font-weight: 700; cursor: pointer; text-align: center; }
@@ -2960,7 +3085,9 @@ a.chip:active { transform: translateY(0) scale(.97); }
   .cmp thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
   .cmp tbody tr { display: block; background: var(--white); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); margin-bottom: 14px; padding: 4px 2px; }
   .cmp tbody tr:nth-child(even) { background: var(--white); }
-  .cmp tbody tr.cmp__best { background: var(--value-t); border-color: var(--value); }
+  /* Same reasoning as the desktop rule: the card keeps its amber BORDER as the
+     best-value marker, but not an amber ground under an amber price. */
+  .cmp tbody tr.cmp__best { background: color-mix(in srgb, var(--cream) 62%, var(--white)); border-color: var(--value); }
   .cmp td { display: flex; justify-content: space-between; align-items: center; gap: 16px; border: 0; padding: 8px 14px; text-align: left; }
   .cmp td[data-th]::before { content: attr(data-th); font-weight: 700; color: var(--muted); text-align: right; flex: none; }
   .cmp td:first-child { border-bottom: 1px solid var(--line); padding-bottom: 11px; margin-bottom: 4px; }
@@ -4193,7 +4320,18 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 }
 .plan-label__row:last-child { border-bottom: 0; padding-bottom: 0; }
 .plan-label__row b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; color: var(--ink-900); font-variant-numeric: tabular-nums; }
-.plan-label__row--after b { color: var(--value-ink); }
+/* Third call site of the (0,1,1) trap documented at the tier block: this <b>
+   inks itself --ink-900, so script.js stamping .price-stat on the money rows of
+   the plan label had no colour effect at all — every ₪ in the transparency card
+   still read as heading ink. Re-assert at (0,2,0); the non-money rows
+   ('ללא התחייבות', the network name) keep --ink-900 because they get no class. */
+.plan-label__row .price-stat { color: var(--value-ink); }
+/* The after-promo price is the price the promo jumps TO — one rank BELOW the
+   figure above it, exactly as .cmp__jump is demoted below its neighbour. While
+   the row above was stuck in ink this rule was the only amber in the card, so
+   the card pointed at the WORSE number; now that today's price carries the tier,
+   this one steps down instead of competing with it. */
+.plan-label__row--after .price-stat { color: var(--ink-600); }
 :root[data-theme="dark"] .plan-label { background: rgba(28,36,46,.6); border-color: var(--ink-800); box-shadow: none; }
 :root[data-theme="dark"] .plan-label__t { border-color: var(--ink-800); }
 
@@ -4377,7 +4515,11 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 
 /* Ticker items are links into the deals page. */
 a.ticker__item { text-decoration: none; color: var(--ink-700); }
-.ticker__more { color: var(--accent-ink); font-weight: 700; }
+/* The ticker band is a fixed dark ink in BOTH themes (see the .ticker pin near
+   the end of this file), so this label cannot use --accent-ink: that token is
+   the ON-LIGHT emerald (#075B46) and rendered at 2.26:1 on the band. A pinned
+   light mint instead — 14.2:1 on #0C1713, and immune to the theme flip. */
+.ticker__more { color: #CFE9DC; font-weight: 700; }
 a.ticker__item:hover .ticker__more { text-decoration: underline; }
 
 /* ── Community leaders — top contributors board ────────────────────────────── */
@@ -4492,10 +4634,10 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
 .nav__tools a { border-radius: var(--radius-sm); }
 
 .hero--light { padding-block: clamp(30px, 5vw, 74px); }
+/* Emerald only — the amber lobe made a whole hero panel faintly amber, which is
+   exactly the field the price is supposed to be the only occupant of. */
 .hero--light .hero__aurora {
-  background:
-    radial-gradient(circle at 78% 14%, rgba(8,122,91,.20), transparent 34%),
-    radial-gradient(circle at 14% 80%, rgba(211,154,36,.17), transparent 32%);
+  background: radial-gradient(circle at 78% 14%, rgba(8,122,91,.20), transparent 34%);
   filter: blur(18px);
 }
 .hero--light .hero__panel {
@@ -4597,7 +4739,11 @@ textarea:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)
 [data-saving] { color: var(--value-ink); font-variant-numeric: tabular-nums; }
 
 .section { padding-block: clamp(62px, 8vw, 108px); }
-.section--alt { background: color-mix(in srgb, var(--sand) 42%, var(--cream)); }
+/* Neutral warm-grey band, not a --sand one: deals.html stacks amber-priced
+   cards on this section, and an amber ground under amber figures cancels the
+   accent out. The dark override below is already neutral — this aligns light
+   with it. --value-ink still clears AA here (5.16:1 on #F0ECE2). */
+.section--alt { background: color-mix(in srgb, var(--ink-050) 60%, var(--cream)); }
 .section__head { max-width: 720px; }
 .section__head h2 { letter-spacing: -.035em; }
 .eyebrow { color: var(--accent-ink); letter-spacing: .08em; text-transform: uppercase; }
@@ -4606,9 +4752,16 @@ textarea:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)
   border-block: 1px solid var(--line);
 }
 .trust__item svg { color: var(--accent); }
-.ticker { background: var(--green-d); color: #fff; }
+/* Premium ink band — same pin as .cta/.calc__card/.footer above (this one was
+   missed): --green-d INVERTS to #FFF8EA in dark, which would put the hardcoded
+   #fff text below at 1.06:1. A fixed hex renders identically in light (--green-d
+   IS #0C1713 there) and can never be reached by the theme flip. */
+.ticker { background: #0C1713; color: #fff; }
 .ticker a { color: #fff; }
-.ticker b { color: #F2C66D; }
+/* The category NAME is a label, not money — it shared the price's amber, so the
+   band had two equal shouts and no hierarchy. Amber is scoped to the ₪ run. */
+.ticker b { color: #fff; }
+.ticker .price-stat { color: #F2C66D; }
 .footer { background: #0C1713; }
 
 :root[data-theme="dark"] .hero--light .hero__panel {

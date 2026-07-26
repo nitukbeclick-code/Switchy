@@ -41,7 +41,7 @@ import SkeletonCard from "@/components/SkeletonCard";
 import LeadForm from "@/components/LeadFormLazy";
 import SocialProof from "@/components/SocialProof";
 import { CATEGORY_HE } from "@/lib/categories";
-import { leadCategory, priceUnitLabel } from "@/lib/format";
+import { ils, leadCategory, priceUnitLabel } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 import {
   SWITCH_KIT_CATEGORIES,
@@ -415,6 +415,27 @@ function KitResult({ kit }: { kit: SwitchKit }) {
     if (typeof window !== "undefined") window.print();
   }, []);
 
+  // ── What travels with the ask ────────────────────────────────────────────
+  // The <LeadForm> below already POSTs `provider` + an opaque `plan_id`, but with
+  // no `contextNote` its receipt block ("מה שיישלח עם הפנייה") never renders — so
+  // the one thing that DID travel beside the visitor's name and phone was the one
+  // thing they could not see. This note closes that: both clauses are catalogue
+  // values the target card above is rendering right now (the API returned them;
+  // nothing is re-derived here), phrased for the person whose record they land in.
+  //
+  // DELIBERATELY PARTIAL — do not "complete the set" in a later pass:
+  //   • fullName / fromProvider / currentBill / hasCommitment are NOT attached.
+  //     The builder form's own line ("הפרטים שאתם מקלידים משמשים רק להרכבת המכתב —
+  //     לא נשמרים אצלנו") is a promise about exactly those fields; putting any of
+  //     them into a stored lead makes that sentence false.
+  //   • kit.annualSavingUpTo is NOT attached either, even though it is on screen:
+  //     lib/switch-kit.ts derives it as (bill − price) × 12, so storing the saving
+  //     stores the typed bill itself — the same promise, broken by arithmetic.
+  const handoffContextNote = [
+    `ערכת מעבר — ${kit.categoryHe}`,
+    `מסלול יעד: ${kit.toProvider} — ${kit.toPlan} (${ils(kit.price)} ${priceUnitLabelFor(kit)})`,
+  ].join(" · ");
+
   return (
     <section className={`mt-10 ${styles.printArea}`} aria-labelledby="kit-h">
       {/* Header + actions (screen only) */}
@@ -632,9 +653,11 @@ function KitResult({ kit }: { kit: SwitchKit }) {
           Until now this screen answered that with a link to a browse page — on a
           phone, a fresh page load and the funnel restarted. The same consent-gated
           <LeadForm> renders here instead, carrying the REAL target the kit was
-          built for (category + provider + catalogue plan id) so the rep opens the
-          call on the exact plan on screen. Print-hidden: the packet the visitor
-          takes to the provider is a letter, not a form. <SocialProof
+          built for (category + provider + catalogue plan id — plus the note above,
+          which spells those out on screen so the plan_id is not the only thing
+          that travels) so the rep opens the call on the exact plan on screen.
+          Print-hidden: the packet the visitor takes to the provider is a letter,
+          not a form. <SocialProof
           fallback="none"> emits NO DOM unless a real aggregate is published. ──── */}
       <section
         id="lead"
@@ -658,6 +681,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
             defaultCategory={leadCategory(kit.category)}
             provider={kit.toProvider}
             planId={kit.toPlanId}
+            contextNote={handoffContextNote}
           />
         </div>
       </section>

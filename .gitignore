@@ -106,3 +106,6 @@ videos/
 # lives under supabase/functions/)
 /skills-lock.json
 /deno.lock
+
+# Local design-preview screenshots (scripts/preview-site.mjs) — never committed.
+.preview-shots/

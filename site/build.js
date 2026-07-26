@@ -998,10 +998,13 @@ function heroStatBand(plans, { min = 3 } = {}) {
   const entry = Math.min(...set.map((p) => offerPrice(p)));
   const providerCount = new Set(list.map((p) => p.provider)).size;
   const monthlyPriced = monthly.length > 0;
+  // Only the ₪ figure carries the money tier — the two counts beside it stay
+  // --green-d ink. .price-stat sets no font-size precisely for this row: all
+  // three <b> keep .stat-band's 20px, so the baseline never breaks.
   return `<ul class="stat-band" aria-label="נתוני הקטלוג — מהקטלוג">
             <li><b data-count-to="${set.length}">${set.length}</b> מסלולים</li>
             <li><b data-count-to="${providerCount}">${providerCount}</b> ספקים</li>
-            <li>החל מ-<b dir="ltr">₪${entry}</b>${monthlyPriced ? ' לחודש' : ''}</li>
+            <li>החל מ-<b class="price-stat" dir="ltr">₪${entry}</b>${monthlyPriced ? ' לחודש' : ''}</li>
           </ul>`;
 }
 
@@ -1123,7 +1126,7 @@ ${isBest ? '        <span class="plan__badge">המחיר הנמוך ביותר</
         <div class="plan__name">${esc(p.plan)} <span class="plan__net">${esc(p.net)}</span></div>
         ${specs ? `<div class="plan__specs">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
-        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
+        <div class="plan__bottom"><div class="plan__price"><b dir="ltr">₪${priceText(p)}</b> <span class="price-unit">${unit}</span>${after}</div></div>
 ${annual ? `        ${annual}\n` : ''}        <div class="plan__actions">
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת בוואטסאפ — ${p.provider} ${p.plan}`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ${chev(true)}</a>
           <a class="plan__compare" role="button" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
@@ -1894,8 +1897,10 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead
   const waHref = (p) => 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan);
   const prov = (p) => `<a class="cmp__prov" href="provider-${providerSlug(p.provider)}.html">${providerLogo(p.provider, 26)}<span>${esc(p.provider)}</span></a>`;
   const name = (p) => `<button type="button" class="cmp__name cmp__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" title="${esc('כל הפרטים — ' + p.plan)}">${esc(p.plan)}</button>`;
-  // Money runs are bidi-isolated LTR so ₪ + digits render identically in RTL context.
-  const price = (p) => `<b dir="ltr">₪${priceText(p)}</b>`;
+  // Money runs are bidi-isolated LTR so ₪ + digits render identically in RTL
+  // context. .price-row is the repeated-figure money tier (styles.css) — this is
+  // the promo price, the one figure the row exists to deliver.
+  const price = (p) => `<b class="price-row" dir="ltr">₪${priceText(p)}</b>`;
   const annualCell = (p) => {
     const cost = staticPlanCost.calculateTwelveMonthCost(p);
     return `<span class="cmp__annual"><b dir="ltr">${esc(staticPlanCost.formatAnnualCost(cost))}</b><small>ממוצע ${esc(staticPlanCost.formatMonthlyEquivalent(cost))}/חודש</small><details class="cmp__cost-details"><summary>פירוט</summary><span>${esc(staticPlanCost.formatSegments(cost))}</span><span>${esc(cost.disclosure)}</span></details></span>`;
@@ -1978,7 +1983,10 @@ function page(c) {
     const avg = Math.round(monthly.reduce((s, p) => s + p.price, 0) / monthly.length);
     const maxSave = (avg - cheapest) * 12;
     if (maxSave < 100) return '';
-    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-₪${cheapest}/חודש · חסכו עד <strong>₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (₪${avg})</p>`;
+    // Money tier on the ₪ runs only (the plan count keeps its ink <strong>), and
+    // .price-stat sets no font-size so the sentence keeps its 13px rhythm. The
+    // inline runs get the same dir="ltr" bidi isolation as every other ₪ here.
+    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש · חסכו עד <strong class="price-stat" dir="ltr">₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (<span class="price-stat" dir="ltr">₪${avg}</span>)</p>`;
   })();
   // Above-the-fold real-proof band — the light-hero analog of the home ink
   // counts-bar. Every figure is catalogue-derived (this category's live plan
@@ -1991,7 +1999,7 @@ function page(c) {
     ? `<ul class="stat-band" aria-label="נתוני הקטלוג בקטגוריה זו — מהקטלוג">
             <li><b data-count-to="${catPlans.length}">${catPlans.length}</b> מסלולים</li>
             <li><b data-count-to="${catProviderCount}">${catProviderCount}</b> ספקים</li>
-            <li>החל מ-<b dir="ltr">₪${catEntryPrice}</b> לחודש</li>
+            <li>החל מ-<b class="price-stat" dir="ltr">₪${catEntryPrice}</b> לחודש</li>
           </ul>`
     : '';
   const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
@@ -3649,7 +3657,7 @@ ${nav}
         <ul class="stat-band" aria-label="נתוני ${esc(name)} — מהקטלוג">
           <li><b data-count-to="${plans.length}">${plans.length}</b> מסלולים</li>
           ${catNames.length ? `<li><b>${catNames.length}</b> קטגוריות</li>` : ''}
-          <li>החל מ-<b dir="ltr">₪${cheapest}</b></li>
+          <li>החל מ-<b class="price-stat" dir="ltr">₪${cheapest}</b></li>
         </ul>
         <div class="hero__cta">
           <a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם${chev()}</a>
@@ -5151,14 +5159,16 @@ function providerVsVerdictRows(v) {
     const aWins = lowerWins ? av < bv : av > bv;
     return aWins ? 'a' : 'b';
   };
+  // 5th element flags the MONEY row — the renderer styles a ₪ figure and a plan
+  // tally differently, and index-sniffing would silently break if a row moves.
   const rows = [
-    ['מחיר התחלתי', fmtMoney(a.from), fmtMoney(b.from), win(a.from, b.from, true)],
-    ['מספר מסלולים', String(a.count), String(b.count), win(a.count, b.count, false)],
-    ['מסלולי 5G', String(a.n5g), String(b.n5g), win(a.n5g, b.n5g, false)],
-    ['ללא התחייבות', String(a.nNoCommit), String(b.nNoCommit), win(a.nNoCommit, b.nNoCommit, false)],
+    ['מחיר התחלתי', fmtMoney(a.from), fmtMoney(b.from), win(a.from, b.from, true), true],
+    ['מספר מסלולים', String(a.count), String(b.count), win(a.count, b.count, false), false],
+    ['מסלולי 5G', String(a.n5g), String(b.n5g), win(a.n5g, b.n5g, false), false],
+    ['ללא התחייבות', String(a.nNoCommit), String(b.nNoCommit), win(a.nNoCommit, b.nNoCommit, false), false],
   ];
   // "כולל חו״ל" only makes sense where at least one side bundles it (cellular).
-  if (a.nAbroad || b.nAbroad) rows.push(['מסלולים עם חו״ל', String(a.nAbroad), String(b.nAbroad), win(a.nAbroad, b.nAbroad, false)]);
+  if (a.nAbroad || b.nAbroad) rows.push(['מסלולים עם חו״ל', String(a.nAbroad), String(b.nAbroad), win(a.nAbroad, b.nAbroad, false), false]);
   return rows;
 }
 
@@ -5191,11 +5201,16 @@ function providerVsPage(v) {
   const title = `${a.provider} מול ${b.provider} ב${catName} — השוואת מחירים | SWITCHY`;
   const desc = `${a.provider} או ${b.provider}? השוואה אמיתית של מסלולי ה${catName} — מחיר התחלתי, מספר מסלולים, 5G והתחייבות — עם המסלולים הזולים בכל צד, מהקטלוג המעודכן של SWITCHY.`;
   const h1 = `${a.provider} מול ${b.provider}`;
-  // Verdict matrix — winner per dimension, marked with the value (amber) accent.
+  // Verdict matrix — winner per dimension; the amber value accent is spent only
+  // on the price row, the count rows win in neutral (see cell() below).
   const rows = providerVsVerdictRows(v);
   // data-th carries the provider name so the stacked mobile cards (which hide
   // thead) still label each value with whose number it is.
-  const cell = (val, isWin, prov) => `<td class="cmp__num${isWin ? ' cmp__best' : ''}" data-th="${esc(prov)}">${isWin ? `<b>${esc(val)}</b>` : esc(val)}</td>`;
+  // One renderer, four rows — but only the first (מחיר התחלתי) is money. The
+  // other three are plan TALLIES, so they must not wear the money tier or the
+  // amber win tint: "more 5G plans" is not a saving. Winners there get the
+  // neutral .cmp__win wash instead; .cmp__best stays amber where it belongs.
+  const cell = (val, isWin, prov, isMoney) => `<td class="cmp__num${isWin ? (isMoney ? ' cmp__best' : ' cmp__win') : ''}" data-th="${esc(prov)}">${isWin ? `<b${isMoney ? ' class="price-stat"' : ''}>${esc(val)}</b>` : esc(val)}</td>`;
   const matrix = `
     <section class="section section--tight" aria-label="טבלת השוואה ראש בראש">
       <div class="container">
@@ -5204,7 +5219,7 @@ function providerVsPage(v) {
           <table class="cmp">
             <thead><tr><th>קריטריון</th><th class="cmp__num">${providerLogo(a.provider, 24)} ${esc(a.provider)}</th><th class="cmp__num">${providerLogo(b.provider, 24)} ${esc(b.provider)}</th></tr></thead>
             <tbody>
-${rows.map(([label, av, bv, winner]) => `              <tr><td data-th="קריטריון">${esc(label)}</td>${cell(av, winner === 'a', a.provider)}${cell(bv, winner === 'b', b.provider)}</tr>`).join('\n')}
+${rows.map(([label, av, bv, winner, isMoney]) => `              <tr><td data-th="קריטריון">${esc(label)}</td>${cell(av, winner === 'a', a.provider, isMoney)}${cell(bv, winner === 'b', b.provider, isMoney)}</tr>`).join('\n')}
             </tbody>
           </table>
         </div>
@@ -5752,7 +5767,9 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     const best = heroPlans[cat] && heroPlans[cat][0];
     if (!best) return '';
     const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת' }[cat];
-    return `<b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b dir="ltr">₪${best.pr}</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span>`;
+    // Two <b> per item: the category NAME is a label (pinned white on the ink
+    // band) and only the ₪ run wears the money tier's amber.
+    return `<b>${esc(catName)}</b> הכי זול היום: ${esc(best.p)} · <b class="price-stat" dir="ltr">₪${best.pr}</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span>`;
   }).filter(Boolean).map((body, i) => {
     // A11y initial state (script.js keeps it in sync while rotating): only the
     // first item is visible (is-on) — without JS the others stay opacity:0, so

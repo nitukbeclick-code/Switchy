@@ -367,6 +367,16 @@ export default function StreetPricesClient({
           </p>
           <SocialProof fallback="none" className="mt-5" />
           <div className="mt-5 max-w-xl">
+            {/* NO contextNote on purpose — unlike /switch-kit, which attaches the
+                catalogue row it built the packet from. This page promises the
+                report is anonymous three times (the chart caption, the report
+                form, the counter line), and app/street-prices/page.tsx emits the
+                "האם הדיווח שלי אנונימי?" answer as FAQPage JSON-LD, so the promise
+                is published to search engines too. The category / provider / ₪ the
+                visitor just reported therefore do NOT ride along into a record
+                that also holds their name and phone — that is exactly the join the
+                word "אנונימי" rules out. The category alone still reaches the rep,
+                but as `defaultCategory`: a visible, editable field in the form. */}
             <LeadForm source="street-prices" defaultCategory={category} />
           </div>
         </section>

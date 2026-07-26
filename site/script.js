@@ -681,7 +681,7 @@
       // Money runs are bidi-isolated LTR (dir="ltr") so ₪ + digits render on the
       // same side in EVERY column of the RTL table (no more ₪10.9 vs 12₪ drift).
       const priceCell = (p) =>
-        `<span class="cmp-price" dir="ltr">₪${escHtml(p.price)}</span><small> ${per}</small>` +
+        `<span class="cmp-price" dir="ltr">₪${escHtml(p.price)}</span><small class="price-unit"> ${per}</small>` +
         (p.after && Number(p.after) !== Number(p.price) ? `<small class="cmp-after">ואז <span dir="ltr">₪${escHtml(p.after)}</span></small>` : '');
       const annualCell = (p) => {
         if (!planCost || (p.priceUnit && p.priceUnit !== 'month')) return na;
@@ -1141,6 +1141,10 @@
     const btn = $('calcBtn');
     const show = (html) => { if (out) { out.style.display = 'block'; out.innerHTML = html; } };
     const catNames = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת', abroad: 'חו"ל' };
+    // Each ₪ figure is its own bidi-isolated LTR island (same reason as the
+    // comparison table): a result row mixes two money runs with Hebrew unit
+    // words, and without the isolation the sign drifts off its digits.
+    const money = (n) => '<span dir="ltr">' + nis(n) + '</span>';
     const run = () => {
       const cur = parseFloat(bill && bill.value);
       if (!cur || cur <= 0) { show('הזינו את הסכום שאתם משלמים היום.'); return; }
@@ -1150,11 +1154,16 @@
       const catHref = cat ? cat + '.html' : 'plans.html';
       const catLabel = catNames[cat] || 'מסלולים';
       if (yearly > 0) {
+        // `price-stat`, not `price-row`: these figures sit on the same baseline as
+        // their Hebrew label inside a flex row, so the money treatment may add the
+        // typeface and the tabular figures but must not add a font-size — the row
+        // would then break its own alignment. The saving keeps `saving` so the
+        // --value-ink rule still wins on the one figure that is the point.
         show('<div class="calc-result">'
-          + '<div class="calc-result__row"><span>משלמים היום</span><strong>' + nis(cur) + '/חודש · ' + nis(cur * 12) + '/שנה</strong></div>'
-          + '<div class="calc-result__row"><span>מסלול זול ביותר</span><strong>' + nis(cheapest) + '/חודש</strong></div>'
+          + '<div class="calc-result__row"><span>משלמים היום</span><strong class="price-stat">' + money(cur) + '/חודש · ' + money(cur * 12) + '/שנה</strong></div>'
+          + '<div class="calc-result__row"><span>מסלול זול ביותר</span><strong class="price-stat">' + money(cheapest) + '/חודש</strong></div>'
           + '<hr class="calc-result__sep">'
-          + '<div class="calc-result__row calc-result__row--main"><span>חיסכון פוטנציאלי</span><strong class="saving">' + nis(monthly) + '/חודש · ' + nis(yearly) + '/שנה</strong></div>'
+          + '<div class="calc-result__row calc-result__row--main"><span>חיסכון פוטנציאלי</span><strong class="saving price-stat">' + money(monthly) + '/חודש · ' + money(yearly) + '/שנה</strong></div>'
           + '</div>'
           + '<a href="' + catHref + '" class="btn btn--primary btn--block" style="margin-top:16px">לראות את כל מסלולי ' + catLabel + ' ←</a>'
           + '<p style="margin:8px 0 0;font-size:.8rem;color:#6b7280;text-align:center">הערכה מול המסלול הזול בשוק. המחירים מתעדכנים ברציפות.</p>');
@@ -1469,7 +1478,20 @@
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'btn btn--ghost advisor__option';
-        b.textContent = label;
+        // A budget label that is nothing but a money range ('₪50–100', '₪150+')
+        // has no strong RTL character to anchor it, so the dash/plus resolve to
+        // the page direction and the range comes out reversed ('100–₪50').
+        // Isolate those; labels with Hebrew in them ('עד ₪50') stay RTL, and the
+        // isolation goes on a child span so the button keeps its own direction
+        // (and therefore its `text-align: start` and inline padding).
+        if (label.indexOf('₪') > -1 && !/[\u0590-\u05FF]/.test(label)) {
+          const money = document.createElement('span');
+          money.dir = 'ltr';
+          money.textContent = label;
+          b.appendChild(money);
+        } else {
+          b.textContent = label;
+        }
         b.addEventListener('click', () => {
           answers[step.key] = val;
           if (idx < STEPS.length - 1) { idx++; renderStep(); }
@@ -2972,13 +2994,18 @@
       const afterV = p.afterExact != null ? p.afterExact : p.after;
       const hasJump = p.after != null && p.after > p.price;
       const yr = (n) => '₪' + Math.round(n * 12).toLocaleString('he-IL');
-      const row = (k, v, cls) => `<div class="plan-label__row${cls ? ' ' + cls : ''}"><span>${esc(k)}</span><b>${v}</b></div>`;
+      // The label mixes money rows with plain-fact rows in one uniform grid, so
+      // `isMoney` has to be explicit: without it the shared `<b>` hands the money
+      // vocabulary to 'ללא התחייבות' and to the network name, and the treatment
+      // stops meaning "this is a price".
+      const row = (k, v, cls, isMoney) =>
+        `<div class="plan-label__row${cls ? ' ' + cls : ''}"><span>${esc(k)}</span><b${isMoney ? ' class="price-stat"' : ''}>${v}</b></div>`;
       return `<div class="plan-label" role="group" aria-label="תעודת מסלול — כל העובדות במבנה אחיד">
         <p class="plan-label__t">תעודת מסלול <span>שקיפות מלאה, אותו מבנה לכל מסלול</span></p>
-        ${row('מחיר חודשי היום', `<span dir="ltr">₪${esc(priceV)}</span>`)}
-        ${hasJump ? row('מחיר אחרי המבצע', `<span dir="ltr">₪${esc(afterV)}</span>`, 'plan-label__row--after') : row('שינוי מחיר', 'מחיר קבוע — אין קפיצה')}
+        ${row('מחיר חודשי היום', `<span dir="ltr">₪${esc(priceV)}</span>`, null, true)}
+        ${hasJump ? row('מחיר אחרי המבצע', `<span dir="ltr">₪${esc(afterV)}</span>`, 'plan-label__row--after', true) : row('שינוי מחיר', 'מחיר קבוע — אין קפיצה')}
         ${row('התחייבות', p.noCommit ? 'ללא התחייבות' : esc((p.term || '') + ' חודשים'))}
-        ${monthly ? row('עלות שנה (טווח כנה)', hasJump ? `<span dir="ltr">${yr(p.price)}–${yr(p.after)}</span>` : `<span dir="ltr">${yr(p.price)}</span>`) : ''}
+        ${monthly ? row('עלות שנה (טווח כנה)', hasJump ? `<span dir="ltr">${yr(p.price)}–${yr(p.after)}</span>` : `<span dir="ltr">${yr(p.price)}</span>`, null, true) : ''}
         ${p.net ? row('רשת / תשתית', esc(p.net)) : ''}
       </div>`;
     };
@@ -3422,7 +3449,7 @@
       if (best) {
         var yearly = Math.max(0, Math.round((Number(bill.value) - best.pr) * 12));
         save.innerHTML = yearly > 0
-          ? 'לפי מה שאתם משלמים היום — תחסכו עד <b>' + fmt(yearly) + '</b> בשנה'
+          ? 'לפי מה שאתם משלמים היום — תחסכו עד <b dir="ltr">' + fmt(yearly) + '</b> בשנה'
           : 'אתם כבר במחיר מצוין — שווה לוודא מול ההשוואה המלאה';
         // Savings meter: honest arithmetic as a feel-able bar (₪1,500/yr = full).
         if (meter && fill) {

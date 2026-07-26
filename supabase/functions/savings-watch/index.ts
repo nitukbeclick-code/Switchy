@@ -338,6 +338,24 @@ async function runPass(
   // in the loop would just repeat the same env lookup for every alert. null when
   // no template is approved yet, which keeps the template path dark.
   const watchTemplate = resolveWatchTemplate(firstEnv);
+  // AT MOST ONE proactive WhatsApp message per user per pass.
+  //
+  // The dedupe ledger is keyed per OPPORTUNITY (trackedId|source|price), so a
+  // user watching three plans that all move gets three sends in a single pass,
+  // several times a day. While every free-form send outside the 24h window was
+  // being refused by Meta anyway, that was invisible. An approved template makes
+  // it real: three billed marketing messages, three counts against Meta's
+  // per-user marketing limit, and — the expensive one — a message sequence that
+  // reads as spam. One block hurts the quality rating of the whole WABA, which
+  // throttles messaging limits for every customer, not just this one.
+  //
+  // Only WhatsApp is capped. Web Push is free, is not rate-limited by Meta and
+  // costs nothing in sender reputation, so a user still learns about every
+  // opportunity there. And because an opportunity is recorded as alerted ONLY
+  // when some channel actually landed, the ones skipped here are not written to
+  // the ledger and simply roll into the next pass — the alerts spread out over
+  // the day instead of arriving as a burst.
+  const whatsappSentToUser = new Set<string>();
   let suppressedSkipped = 0;
 
   for (const tracked of watched) {
@@ -414,7 +432,7 @@ async function runPass(
     // compliance.isSuppressed is fail-soft (false on error) → a transient DB blip
     // treats the contact as NOT suppressed and still sends, matching this fn's
     // posture (never silently drop every alert on a read error).
-    if (canWhatsapp && phone) {
+    if (canWhatsapp && phone && !whatsappSentToUser.has(tracked.user_id)) {
       // The sender is wrapped rather than passed directly so the §30A suppression
       // gate in sendWatchWhatsapp — the one thing here that must never be
       // bypassed — keeps its narrow, pure, unit-tested signature. `via` is
@@ -448,6 +466,9 @@ async function runPass(
         lastSendWasOutside24hWindow,
       );
       if (outcome === "sent") {
+        // Marked only on a real delivery: a refused send must not spend the
+        // user's one slot for this pass.
+        whatsappSentToUser.add(tracked.user_id);
         sentWhatsapp++;
         // A template delivery means the free-form attempt WAS refused and the
         // template rescued it — the whole point of the path, worth counting.

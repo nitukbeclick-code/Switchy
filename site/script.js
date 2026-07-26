@@ -472,14 +472,23 @@
         // markup) — never swallow a failed submit as if it succeeded. The message
         // is truthful about which failure it was: a duplicate (rate-limited), a
         // dropped connection (network), or the server rejecting the insert.
+        // The DB raises the SAME 'rate limit exceeded' for three unrelated caps:
+        // per-phone 5/24h, per-IP 8/hour, and a GLOBAL 60/hour circuit breaker
+        // (supabase/schema.sql). Only the first means "we already have your
+        // inquiry" — the other two hit FIRST-TIME submitters (an office/CGNAT
+        // egress IP, or the global breaker tripping during exactly the campaign
+        // spike that is worth the most). Claiming a rep will call back is false
+        // there, no row was written, and a visitor who believes they are in hand
+        // has no reason to use the WhatsApp fallback. Say what is true for all
+        // three, matching web/app/api/lead/route.ts, which already gets this right.
         const errMsg = leadErrCode === 'rate_limited'
-          ? 'קיבלנו כבר פנייה מכם — נחזור אליכם בהקדם! אם דחוף, כתבו לנו בוואטסאפ 💬'
+          ? 'יותר מדי בקשות כרגע — נסו שוב בעוד כמה דקות, או כתבו לנו בוואטסאפ 💬'
           : leadErrCode === 'network'
             ? 'אין חיבור כרגע — בדקו את האינטרנט ונסו שוב, או כתבו לנו בוואטסאפ 💬'
             : 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬';
         if (note) { note.classList.add('cta__note--err'); note.textContent = errMsg; }
         const toastMsg = leadErrCode === 'rate_limited'
-          ? 'פנייתכם כבר נקלטה — נחזור בהקדם'
+          ? 'יותר מדי בקשות כרגע — נסו שוב בעוד כמה דקות'
           : leadErrCode === 'network'
             ? 'אין חיבור לאינטרנט — נסו שוב בעוד רגע'
             : 'שגיאה — נסו שוב בעוד רגע';

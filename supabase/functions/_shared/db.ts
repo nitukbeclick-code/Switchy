@@ -18,17 +18,24 @@ export async function serviceFetch(path: string, init: RequestInit = {}): Promis
 
 // Returns null on a FAILED query (so callers can say "try again" instead of
 // confidently reporting "no results"), [] only when genuinely empty.
+// PostgREST puts FILTER VALUES in the query string — `?email=eq.a@b.com`,
+// `?phone=eq.05...`. Logging the raw path therefore writes customer PII into the
+// function logs on any transient hiccup, in flows (account deletion, lead
+// notification) that explicitly promise the opposite. The table name is what
+// triage actually needs; the values are not.
+const safePath = (p: string) => p.split("?")[0];
+
 export async function fetchRows<T = Record<string, unknown>>(path: string): Promise<T[] | null> {
   try {
     const r = await serviceFetch(path, { method: "GET" });
     if (!r || !r.ok) {
-      jlog({ at: "fetchRows", path, ok: false, status: r?.status });
+      jlog({ at: "fetchRows", path: safePath(path), ok: false, status: r?.status });
       return null;
     }
     const j = await r.json();
     return Array.isArray(j) ? j as T[] : [];
   } catch (e) {
-    jlog({ at: "fetchRows", path, ok: false, error: String(e) });
+    jlog({ at: "fetchRows", path: safePath(path), ok: false, error: String(e) });
     return null;
   }
 }
@@ -57,13 +64,13 @@ export async function patchCountResult(
       body: JSON.stringify(body),
     });
     if (!r || !r.ok) {
-      jlog({ at: "patchCount", path, ok: false, status: r?.status });
+      jlog({ at: "patchCount", path: safePath(path), ok: false, status: r?.status });
       return null;
     }
     const rows = await r.json().catch(() => []);
     return Array.isArray(rows) ? rows.length : 0;
   } catch (e) {
-    jlog({ at: "patchCount", path, ok: false, error: String(e) });
+    jlog({ at: "patchCount", path: safePath(path), ok: false, error: String(e) });
     return null;
   }
 }

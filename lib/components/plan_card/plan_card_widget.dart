@@ -68,7 +68,9 @@ class PlanCardWidget extends StatelessWidget {
     final matchLabel = context.select<AppState, String?>(_quizMatch);
     final ffTheme = AppTheme.of(context);
     final isBest = bestMatch ?? plan.highlight;
-    final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
+    // Call the owner of this formula instead of restating it — a second copy is
+    // a second thing to forget when the rule changes (data.dart).
+    final savings = planSaveYear(plan, currentBill);
     final displayPrice = '₪${plan.priceText}';
     final displayAfter = plan.hasPromo ? '₪${plan.afterText}' : null;
 

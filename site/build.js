@@ -3546,7 +3546,13 @@ function providerPage(name, plans) {
   const cheapest = headlineSet.reduce((m, p) => Math.min(m, offerPrice(p)), Infinity);
   const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
   const sortedPlans = plans.slice().sort((a, b) => a.price - b.price);
-  const cards = sortedPlans.map((p, i) => planCardHtml(p, i === 0 && sortedPlans.length > 1)).join('\n        ');
+  // The "lowest price" badge went to sortedPlans[0] — a plain numeric sort, so on
+  // a provider selling abroad packages a ₪0.29-per-MINUTE tariff outranks every
+  // real monthly plan and wears the badge. Anchor it to the first consumer
+  // MONTHLY plan (the same headlinePlans set the price line above already uses),
+  // so the badge and the headline figure cannot disagree.
+  const badgeAnchor = sortedPlans.find(isConsumerMonthlyPlan) || sortedPlans[0];
+  const cards = sortedPlans.map((p) => planCardHtml(p, p === badgeAnchor && sortedPlans.length > 1)).join('\n        ');
   const planCats = [...new Set(plans.map((p) => p.cat))];
   // "Best plans" at-a-glance tables — one per category this provider sells in,
   // reusing the same Kamaze-style comparisonTable() the category pages use. Each

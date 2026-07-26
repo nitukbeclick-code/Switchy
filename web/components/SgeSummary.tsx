@@ -78,23 +78,22 @@ export default function SgeSummary({
       data-ai-summary
       data-sge-summary
       className={[
-        "bento glow-accent p-6 sm:p-7",
+        // FORM: editorial text behind a start-side rule, not a card — the same
+        // treatment as <AeoAnswerBlock>, because these two are the same KIND of
+        // thing (prose an engine lifts) and were previously indistinguishable
+        // from the data panels and the tiles around them. Three shapes on a
+        // page reads as designed; one shape eight times reads as generated.
+        // RTL-safe: border-s/ps follow the writing direction.
+        "border-s-2 border-border/70 ps-4 sm:ps-5",
         className ?? "",
       ]
         .join(" ")
         .trim()}
     >
-      <h2
-        id={headingId}
-        className="mb-2.5 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
-      >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
+      <h2 id={headingId} className="eyebrow">
         {heading}
       </h2>
-      <p className="text-[15px] leading-relaxed text-foreground sm:text-base">
+      <p className="mt-2 text-[15px] leading-relaxed text-foreground sm:text-base">
         {children}
       </p>
     </section>

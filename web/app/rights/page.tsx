@@ -70,30 +70,6 @@ export default function RightsPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
-          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
-          only (no JS) — references the shared --ease-out token and animates ONLY
-          transform + opacity (GPU). Reduced-motion: the animation is removed so
-          blocks render statically at their already-visible resting state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: none; }
-        }
-        /* Heading anchor — faint "#" on hover/focus for deep-linking a section. */
-        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
-        .sw-head:hover .sw-anchor,
-        .sw-head:focus-within .sw-anchor { opacity: 1; }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-          .sw-anchor { transition: none; }
-        }
-      `,
-        }}
-      />
 
       <JsonLd
         data={webPageSchema({
@@ -130,14 +106,9 @@ export default function RightsPage() {
           פרק הזמן הקבוע בדין.
         </p>
         <div
-          className="sw-reveal mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
-          style={{ animationDelay: "120ms" }}
+          className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
-            <span
-              aria-hidden="true"
-              className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
-            />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
             עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
           </span>
           <a
@@ -153,12 +124,12 @@ export default function RightsPage() {
       <div className="mt-10 space-y-5 sm:space-y-6">
         <section
           aria-labelledby="rights-list-h"
-          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
+          className="bento scroll-mt-24 p-6 sm:p-8"
         >
           <div className="sw-head flex items-center gap-2">
             <h2
               id="rights-list-h"
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+              className="h-section text-ink"
             >
               הזכויות שלכם
             </h2>
@@ -193,13 +164,12 @@ export default function RightsPage() {
             site/account-deletion.html sec-1..sec-6 — additive, not reworded. ── */}
         <section
           aria-labelledby="account-deletion-h"
-          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
-          style={{ animationDelay: "40ms" }}
+          className="bento scroll-mt-24 p-6 sm:p-8"
         >
           <div className="sw-head flex items-center gap-2">
             <h2
               id="account-deletion-h"
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+              className="h-section text-ink"
             >
               מחיקת חשבון ונתונים
             </h2>
@@ -279,13 +249,12 @@ export default function RightsPage() {
 
         <section
           aria-labelledby="rights-how-h"
-          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
-          style={{ animationDelay: "60ms" }}
+          className="bento scroll-mt-24 p-6 sm:p-8"
         >
           <div className="sw-head flex items-center gap-2">
             <h2
               id="rights-how-h"
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+              className="h-section text-ink"
             >
               כיצד אנו מטפלים בבקשה
             </h2>
@@ -324,13 +293,12 @@ export default function RightsPage() {
 
         <section
           aria-labelledby="rights-authority-h"
-          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
-          style={{ animationDelay: "180ms" }}
+          className="bento scroll-mt-24 p-6 sm:p-8"
         >
           <div className="sw-head flex items-center gap-2">
             <h2
               id="rights-authority-h"
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+              className="h-section text-ink"
             >
               פנייה לרשות להגנת הפרטיות
             </h2>

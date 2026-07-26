@@ -46,11 +46,33 @@ export interface SocialProofProps {
   className?: string;
 }
 
-/** A single real, aggregate stat (figure + Hebrew label). */
-function Stat({ figure, label }: { figure: string; label: string }) {
+/**
+ * A single real, aggregate stat (figure + Hebrew label).
+ *
+ * `money` decides the treatment, and it is not cosmetic: the site's rule is that
+ * amber means money and nothing else. Two of the three stats here ARE ₪ figures
+ * and take the shared .price-stat tier; the third is a household COUNT, which
+ * was painted the same amber and so quietly spent the signal — a reader scanning
+ * for "how much" was drawn to a number that is not an amount. It renders as ink.
+ */
+function Stat({
+  figure,
+  label,
+  money = false,
+}: {
+  figure: string;
+  label: string;
+  money?: boolean;
+}) {
   return (
     <div className="flex flex-col items-center text-center">
-      <span className="font-display text-2xl font-bold tracking-tight text-value-text sm:text-3xl">
+      <span
+        className={
+          money
+            ? "price-stat text-2xl text-value-text sm:text-3xl"
+            : "font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+        }
+      >
         {figure}
       </span>
       <span className="mt-0.5 text-xs leading-snug text-muted sm:text-sm">
@@ -152,8 +174,16 @@ export default function SocialProof({
       {/* Real aggregate figures — members + typical + total recorded saving. */}
       <div className="mt-5 grid grid-cols-3 gap-4">
         <Stat figure={membersTxt} label="משקי בית שחסכו" />
-        <Stat figure={ilsStat(summary.typicalSaving)} label="חיסכון שנתי טיפוסי" />
-        <Stat figure={ilsStat(summary.totalSaving)} label="סך החיסכון שדווח" />
+        <Stat
+          money
+          figure={ilsStat(summary.typicalSaving)}
+          label="חיסכון שנתי טיפוסי"
+        />
+        <Stat
+          money
+          figure={ilsStat(summary.totalSaving)}
+          label="סך החיסכון שדווח"
+        />
       </div>
 
       {/* Honesty caveat: based-on-report, not a promise. Plus a link to the method. */}

@@ -139,7 +139,7 @@ export default function WalletPage() {
       <section aria-labelledby="proof-h" className="mt-12">
         <h2
           id="proof-h"
-          className="mb-4 font-display text-xl font-bold tracking-tight text-ink"
+          className="mb-4 h-section text-ink"
         >
           חיסכון אמיתי, לא הבטחות
         </h2>

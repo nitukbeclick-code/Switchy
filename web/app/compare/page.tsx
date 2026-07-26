@@ -16,6 +16,7 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
 import EmptyState from "@/components/EmptyState";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getServices,
@@ -124,20 +125,6 @@ export default function CompareIndexPage() {
           only (no JS), references the shared --ease-out token, animates ONLY
           transform + opacity. Reduced-motion removes the animation so cards render
           statically at their resting (fully visible) state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 400ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-        }
-      `,
-        }}
-      />
 
       {/* Structured data: CollectionPage + ItemList + Breadcrumb. */}
       <JsonLd
@@ -167,7 +154,7 @@ export default function CompareIndexPage() {
           picker (they support the tool; they are not the tool). */}
       <header className="mt-4">
         <span
-          className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
+          className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
         >
           <Icon name="search" size={14} aria-hidden="true" />
           מרכז ההשוואה
@@ -197,7 +184,7 @@ export default function CompareIndexPage() {
       <section aria-labelledby="services-h" className="mt-8">
         <h2
           id="services-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           בחרו שירות להשוואה
         </h2>
@@ -215,7 +202,7 @@ export default function CompareIndexPage() {
           />
         ) : (
           <ul className="mt-5 grid grid-cols-1 gap-3 min-[360px]:grid-cols-2 lg:grid-cols-3">
-            {serviceRows.map(({ service: s, plans, min }, i) => {
+            {serviceRows.map(({ service: s, plans, min }) => {
               // The single guided default: the highest-count service leads. Its
               // card spans the full 2-col row, wears the featured-ring language
               // used elsewhere, carries the truthful "הכי הרבה מסלולים" ribbon,
@@ -232,12 +219,11 @@ export default function CompareIndexPage() {
                   <Link
                     href={`/compare/${s.slug}`}
                     className={[
-                      "group sw-reveal card card-interactive relative flex h-full min-h-24 flex-col justify-between gap-2 p-4",
+                      "group card card-interactive relative flex h-full min-h-24 flex-col justify-between gap-2 p-4",
                       isFeatured
                         ? "border-accent/30 bg-accent/[0.06] ring-1 ring-accent/25"
                         : "",
                     ].join(" ")}
-                    style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
                   >
                     {isFeatured && (
                       // VALUE-tinted ribbon (not a button) — a truthful signal
@@ -337,6 +323,35 @@ export default function CompareIndexPage() {
       <div className="mt-8">
         <SgeSummary heading="השורה התחתונה: השוואה">{summary}</SgeSummary>
       </div>
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          The comparison hub itself — the page whose entire promise is "we'll show
+          you what things cost" — carried no form at all. The counts below are the
+          same REAL catalogue totals already rendered in <TrustSignals> above; no
+          `defaultCategory`, because choosing the service IS what this hub is for
+          and the picker above already owns that choice. ─────────────────────── */}
+      <section
+        id="lead"
+        aria-labelledby="compare-lead-h"
+        className="mt-16 scroll-mt-6"
+      >
+        <h2
+          id="compare-lead-h"
+          className="h-section text-ink"
+        >
+          שנעשה את ההשוואה בשבילכם?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם ההצעה המשתלמת ביותר לשימוש שלכם — חינם, בלי
+          התחייבות, והמספר נשאר שלכם.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy
+            source="compare"
+            trustStats={{ planCount, providerCount }}
+          />
+        </div>
+      </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

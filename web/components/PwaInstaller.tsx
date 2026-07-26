@@ -338,8 +338,19 @@ export default function PwaInstaller() {
           setClosing(false);
         }
       }}
+      // Lets the bottom-of-viewport contract in globals.css lift this toast clear
+      // of the sticky lead CTA — but ONLY on routes that actually mount one. The
+      // clearance used to be hardcoded here, so on every page without a CTA bar
+      // the toast hovered 7rem off the bottom edge for nothing.
+      data-pwa-toast=""
       className={[
-        "fixed bottom-4 end-4 z-30 w-[min(20rem,calc(100vw-2rem))]",
+        // Shares the CTA bar's z-40 layer: at `bottom-4 z-30` this toast's two
+        // buttons rendered underneath the opaque bar on a phone — an opt-in
+        // dialog whose only controls could not be tapped. The vertical offset is
+        // now flag-driven (see `:root[data-sticky-lead] [data-pwa-toast]`), so
+        // the resting position is the plain corner.
+        "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] end-4 z-40 sm:bottom-4",
+        "w-[min(20rem,calc(100vw-2rem))]",
         "rounded-2xl border border-border bg-surface p-4 shadow-float",
         // Toast-style slide: GPU-only (transform+opacity), drawer easing. Interruptible
         // CSS transition off `mounted` — not a keyframe — so the SAME curve reverses on
@@ -352,7 +363,9 @@ export default function PwaInstaller() {
         mounted && !isExiting
           ? "translate-y-0 opacity-100"
           : "translate-y-3 opacity-0",
-        "mb-[env(safe-area-inset-bottom)]",
+        // Below sm the safe-area inset is already inside the `bottom` calc above;
+        // only the sm+ corner placement still needs it added as margin.
+        "sm:mb-[env(safe-area-inset-bottom)]",
       ].join(" ")}
     >
       <div className="flex items-start gap-3">

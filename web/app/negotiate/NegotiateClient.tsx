@@ -14,8 +14,10 @@
 //     shown only when the user supplied a real bill. The "not a promise — the
 //     decision is the provider's" framing is shown prominently.
 //   • No PII leaves the browser beyond the (optional) provider/bill the user
-//     types to compute the script — there is no lead capture here. The explicit
-//     hand-off is a link to the existing consent-gated flows.
+//     types to compute the script. The hand-off is the SAME consent-gated
+//     <LeadForm> used everywhere else — rendered inline under the script, because
+//     the moment the ₪ gap is on screen is the moment the ask is worth making;
+//     sending the visitor to another page to start over threw that intent away.
 //
 // Design: premium-2026 bento/card surfaces. Amber = VALUE (the saving figure);
 // green = ACTION (the compute CTA + onward links). Dark-mode safe (CSS-variable
@@ -27,6 +29,11 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import SkeletonCard from "@/components/SkeletonCard";
+// The lazy wrapper, aliased to the component's real name (the QuizWizard idiom):
+// this ask lives behind a network round-trip, so react-hook-form should not ride
+// along in the first chunk of a page whose job is to render a script.
+import LeadForm from "@/components/LeadFormLazy";
+import SocialProof from "@/components/SocialProof";
 import { CATEGORY_HE } from "@/lib/categories";
 import {
   NEGOTIATE_CATEGORIES,
@@ -213,10 +220,17 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
           {status === "loading" ? null : <Icon name="arrow" size={18} aria-hidden />}
         </button>
 
+        {/* Scoped to THIS tool on purpose. The unqualified "לא נשמרים פרטים"
+            sat on a page that now renders a server-posting <LeadForm> further
+            down, so it read as a promise about the whole page. What is true is
+            narrower and still reassuring: the fields in this form are used to
+            compute the script and nothing more (/api/negotiate writes NOTHING —
+            no DB, no PII), while the form below is an explicit, consent-gated
+            choice to send details. */}
         <p className="mt-3 flex items-center gap-1.5 text-xs leading-relaxed text-muted">
           <Icon name="lock" size={14} className="shrink-0 text-accent-text" aria-hidden />
-          התסריט מבוסס על מחירים אמיתיים מתוך הקטלוג שלנו. לא נשמרים פרטים — מה שאתם
-          מקלידים נשאר בדפדפן שלכם.
+          התסריט מבוסס על מחירים אמיתיים מתוך הקטלוג שלנו. מה שתזינו בכלי הזה משמש
+          לחישוב התסריט בלבד ואינו נשמר אצלנו.
         </p>
       </form>
 
@@ -360,20 +374,54 @@ function ScriptResult({
         </span>
       </p>
 
-      {/* Onward — no dead-ends; the explicit consent-gated hand-offs. */}
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      {/* ── The ask, where the intent already is ─────────────────────────────
+          The script IS the result: the visitor is now holding a real market floor
+          and (when they typed a bill) a real ₪ gap. Until now the only way forward
+          was a link to a browse page — on a phone that is a fresh page load and a
+          funnel restarted from zero. The same consent-gated <LeadForm> the rest of
+          the site uses renders right here instead, pre-set to the category the
+          script was built for, so the rep opens the call on the number the visitor
+          is looking at. <SocialProof fallback="none"> emits NO DOM unless there is
+          a real published aggregate to show. ─────────────────────────────────── */}
+      <section
+        id="lead"
+        aria-labelledby="negotiate-lead-h"
+        className="mt-10 scroll-mt-6"
+      >
+        <h3
+          id="negotiate-lead-h"
+          className="font-display text-xl font-bold tracking-tight text-ink"
+        >
+          לא בא לכם להתמקח? נעשה את זה בשבילכם
+        </h3>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם ההצעה המשתלמת ביותר ב{script.categoryHe} —
+          חינם, בלי התחייבות, והמספר נשאר שלכם.
+        </p>
+        <SocialProof fallback="none" className="mt-5" />
+        <div className="mt-5 max-w-xl">
+          <LeadForm source="negotiate" defaultCategory={script.category} />
+        </div>
+      </section>
+
+      {/* Onward — kept so the page never dead-ends, but DEMOTED to quiet text
+          links: exactly one action on this screen (the form above) is allowed to
+          read as primary. `-mx-2 px-2 min-h-11` keeps a real ≥44px tap target
+          without visually padding the link out into a button. */}
+      <div className="mt-6 flex flex-wrap items-center gap-x-5">
         <Link
           href={`/compare/${script.category}`}
-          className="interactive press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
           להשוואת כל מסלולי {script.categoryHe}
-          <Icon name="chevron" size={18} aria-hidden />
+          <Icon name="chevron" size={15} aria-hidden />
         </Link>
         <Link
           href="/quiz"
-          className="interactive press inline-flex items-center justify-center rounded-xl border border-border bg-surface px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent/50 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive -mx-2 inline-flex min-h-11 items-center gap-1 px-2 text-sm font-medium text-accent-text underline-offset-2 hover:text-accent-hover hover:underline"
         >
-          קבלו התאמה אישית והשאירו פרטים
+          התאמה אישית ב-5 שאלות
+          <Icon name="chevron" size={15} aria-hidden />
         </Link>
       </div>
     </section>

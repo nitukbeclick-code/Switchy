@@ -18,8 +18,12 @@ import EmptyState from "@/components/EmptyState";
 import ScrollReveal from "@/components/ScrollReveal";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
+  catalogueTrustStats,
   getCategories,
   buildProviderRankings,
   plansByCategory,
@@ -206,6 +210,17 @@ export default function ProvidersIndexPage() {
         </section>
       </header>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          This hub prices every carrier — the hero's entry price, then a ₪ figure
+          on every card in the grid — and since the lead section was added it also
+          collects a name and a phone number. §7b requires the paid-relationship
+          disclosure to be readable BEFORE the prices it qualifies, so it sits
+          here, directly under the hero and above the grid, and NOT down beside the
+          form, which most readers never reach. Inline variant deliberately: a
+          quiet muted line is what a legal disclosure should look like, and the
+          full banner here would compete with the hero for attention. ─────────── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
+
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">
         <SgeSummary heading="השורה התחתונה: ספקים">{summary}</SgeSummary>
@@ -291,6 +306,37 @@ export default function ProvidersIndexPage() {
             ))}
           </ul>
         )}
+        {/* §17 price-accuracy caveat — every card above carries a "starting
+            from ₪X" figure, so the caveat belongs directly under the grid:
+            VAT-inclusive, accurate as of the update date, verify with the
+            provider before signing. */}
+        <PriceCaveat className="mt-6" />
+      </section>
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          The provider index is a browse surface that ended in links only. Someone
+          who scrolled the whole roster is choosing between carriers right now, and
+          the honest answer to "which one" is a neutral human comparison — which is
+          exactly what this form books. No `defaultCategory`: the hub spans every
+          service, so pre-selecting one would guess wrong most of the time. ────── */}
+      <section
+        id="lead"
+        aria-labelledby="providers-lead-h"
+        className="mt-16 scroll-mt-6"
+      >
+        <h2
+          id="providers-lead-h"
+          className="h-section text-ink"
+        >
+          לא בטוחים איזה ספק מתאים לכם?
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם השוואה אישית בין הספקים — חינם, בלי
+          התחייבות, וללא העדפת ספק.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy source="providers" trustStats={catalogueTrustStats()} />
+        </div>
       </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}

@@ -1,7 +1,7 @@
 "use client";
 
 // ────────────────────────────────────────────────────────────────────────────
-// <LeadForm> — multi-step lead capture (Name → Phone → City → Desired service).
+// <LeadForm> — two-step lead capture (Name + Phone → City / service / consent).
 // Built on react-hook-form. POSTs to /api/lead (server inserts into Supabase with
 // the service-role key; the browser never sees it) and fires fireLeadConversion()
 // ONLY on a confirmed success.
@@ -9,16 +9,39 @@
 // HONESTY / LEGAL: a MANDATORY, unchecked-by-default consent checkbox gates
 // submission. The server stamps consent timestamps + IP and enforces rate limits;
 // this form enforces the checkbox client-side so a lead is never sent without it.
+// Two more rules the form owns, because both are about what a person is TOLD:
+//   • NOTHING TRAVELS INVISIBLY — a host page's `contextNote` (a bill read, quiz
+//     figures, the wallet's typed bills) is folded into `notes` next to the
+//     visitor's name/phone/city, so it is RENDERED above the submit button first.
+//   • NO PROMISE POINTING BACKWARDS — the picked callback window is resolved
+//     through callbackConfirmation() against the clock, so a window that has
+//     already passed today is never confirmed as "היום".
+//
+// WHY TWO STEPS: name and phone share one step because a phone's keychain fills
+// both in a SINGLE autofill invocation — splitting them forced the user to invoke
+// autofill twice for two fields. The submit button is never `disabled` on a
+// missing consent tick: a disabled button swallows the tap and reports nothing,
+// which on a phone (the box is ~300px above the button) is a silent dead end at
+// the last step of the funnel. It stays clickable, looks blocked via
+// `data-blocked`, and a click runs validation → the required error is announced
+// and the checkbox is focused. The GATE ITSELF IS UNCHANGED: RHF's `required`
+// rule on `consent` means onSubmit — and therefore the POST — never runs without
+// a ticked box.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
+import Icon from "@/components/Icon";
+import citiesData from "@/data/cities.json";
 import { CATEGORY_HE } from "@/lib/categories";
 import { fireLeadConversion, trackEvent } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
 import { referralCodeFromQuery } from "@/lib/referral";
 import {
+  CONTACT_WHATSAPP_INTL,
+  CTA_OBJECTIONS,
+  CTA_OBJECTIONS_LABEL,
   MARKETING_CHANNELS,
   MARKETING_OPTIN_HEADING,
   MARKETING_OPTIN_NOTE,
@@ -42,6 +65,94 @@ const SERVICE_CATEGORIES = [
 
 type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
 
+/**
+ * The 42 REAL catalogue cities (web/data/cities.json — the same list that backs
+ * the /compare/[service]/[city] geo pages) offered as a <datalist>, so the city
+ * step is a pick instead of a Hebrew-keyboard typing task on a phone. A datalist
+ * only SUGGESTS: the input stays free text, so a town outside the list is still
+ * typable, and the field stays REQUIRED (it feeds CRM routing).
+ */
+const CITY_SUGGESTIONS: string[] = citiesData.cities.map((c) => c.name);
+
+/**
+ * Optional callback-window preference. The four values are EXACTLY the set
+ * /api/lead validates against (route.ts `allowedCallback`) and persists to the
+ * dedicated leads.callback_time column — anything else is dropped server-side.
+ * `confirmation` is the concrete window echoed back in the success state, so the
+ * promise the user reads is the one they actually asked for. No default is
+ * pre-selected: an optional field must never answer on the user's behalf.
+ *
+ * The two SAME-DAY windows also carry `endHour` — the hour from which "היום"
+ * would point at a time that has already gone by — and `nextDay`, the same
+ * window on the next day. See callbackConfirmation() below.
+ */
+const CALLBACK_TIMES = [
+  { value: "now", label: "עכשיו", confirmation: "בהקדם האפשרי" },
+  {
+    value: "noon",
+    label: "צהריים",
+    confirmation: "היום בשעות הצהריים",
+    endHour: 16,
+    nextDay: "מחר בשעות הצהריים",
+  },
+  {
+    value: "evening",
+    label: "ערב",
+    confirmation: "היום בשעות הערב",
+    endHour: 21,
+    nextDay: "מחר בשעות הערב",
+  },
+  { value: "tomorrow", label: "מחר", confirmation: "מחר" },
+] as const;
+
+type CallbackTime = (typeof CALLBACK_TIMES)[number]["value"];
+
+/** A resolved, clock-checked callback promise (see callbackConfirmation). */
+export interface CallbackPromise {
+  /** The window we are allowed to say out loud, e.g. "מחר בשעות הערב". */
+  text: string;
+  /** True when the asked-for window had already passed and we moved it on. */
+  shifted: boolean;
+}
+
+/**
+ * Resolve the picked callback window into the sentence we may honestly say,
+ * given the clock at the moment of the promise.
+ *
+ * WHY THIS EXISTS: "היום בשעות הצהריים" is a PROMISE. Echoed back without a
+ * clock check, a lead left at 23:00 asking for צהריים was told a rep would call
+ * in a window that had already passed that day — a time in the past. From
+ * `endHour` onwards the same-day windows are behind us, so the confirmation
+ * moves to the SAME window on the next day (`nextDay`) — a window the business
+ * already offers (it is the "מחר" chip), never an invented SLA. Windows without
+ * an `endHour` ("בהקדם האפשרי", "מחר") can never point backwards, so they pass
+ * through untouched. No selection ⇒ null, and the caller keeps the honest
+ * default ("בדרך כלל תוך יום עסקים אחד").
+ *
+ * Pure by design — the clock is an argument, so the boundary is unit-testable.
+ * Israel is a single timezone, so the client's local hour is the right clock.
+ */
+export function callbackConfirmation(
+  value: CallbackTime | "",
+  now: Date = new Date(),
+): CallbackPromise | null {
+  const opt = CALLBACK_TIMES.find((o) => o.value === value);
+  if (!opt) return null;
+  if ("endHour" in opt && now.getHours() >= opt.endHour) {
+    return { text: opt.nextDay, shifted: true };
+  }
+  return { text: opt.confirmation, shifted: false };
+}
+
+/**
+ * The lighter, consent-free channel offered beside the form (and again in the
+ * success state) for anyone who finds a gated form too heavy. Always a text
+ * link with the chat glyph — never a filled button competing with the submit.
+ */
+const WHATSAPP_LEAD_HREF = `https://wa.me/${CONTACT_WHATSAPP_INTL}?text=${encodeURIComponent(
+  "היי, השארתי פרטים באתר",
+)}`;
+
 /** The shape react-hook-form manages. Mirrors the /api/lead client contract. */
 interface LeadFormValues {
   name: string;
@@ -49,6 +160,8 @@ interface LeadFormValues {
   city: string;
   category: ServiceCategory | "";
   consent: boolean;
+  /** OPTIONAL callback window — "" = the user didn't choose one. */
+  callbackTime: CallbackTime | "";
   // OPTIONAL, default-UNCHECKED marketing opt-ins (Spam Law) — separate from the
   // MANDATORY `consent` gate above. Each maps to a leads.consent_marketing_*
   // column server-side.
@@ -83,16 +196,35 @@ export interface LeadFormProps {
   /** Minimal, trusted catalogue mapping used to resolve a `?plans=` shortlist
    * into CRM provider/plan context. Omit outside comparison journeys. */
   planOptions?: PlanIntentOption[];
+  /**
+   * Optional REAL context about what the visitor was looking at when they asked
+   * (e.g. a computed saving, the plan they came from). Appended to the `notes`
+   * payload so the rep opens the call already knowing the ask. /api/lead accepts
+   * `notes` and folds it into the stored note (route.ts). TRUTH-ONLY: callers
+   * must pass a computed/catalogue-derived string, never a marketing claim.
+   * It is also SHOWN to the visitor above the submit button ("מה שיישלח עם
+   * הפנייה"), because it is stored in the same record as their name, phone and
+   * city — write it as a line the person it describes is meant to read.
+   */
+  contextNote?: string;
+  /**
+   * Optional provider/plan the visitor arrived from, sent as the CRM
+   * provider/plan_id when no `?plans=` shortlist is present (a shortlist is an
+   * explicit in-session choice, so it wins over the page's default context).
+   */
+  provider?: string;
+  planId?: string;
 }
 
+// Two steps, not four. Name+phone share a step (one autofill invocation fills
+// both); city, service and consent share the closing step. Four screens for four
+// fields cost 8+ taps and a drop-off per screen.
 const STEP_FIELDS: (keyof LeadFormValues)[][] = [
-  ["name"],
-  ["phone"],
-  ["city"],
-  ["category", "consent"],
+  ["name", "phone"],
+  ["city", "category", "consent"],
 ];
 
-const STEP_TITLES = ["השם שלך", "טלפון ליצירת קשר", "עיר מגורים", "מה מחפשים?"];
+const STEP_TITLES = ["פרטי קשר", "מה מחפשים?"];
 
 export default function LeadForm({
   source,
@@ -102,6 +234,9 @@ export default function LeadForm({
   className,
   trustStats,
   planOptions = [],
+  contextNote,
+  provider,
+  planId,
 }: LeadFormProps) {
   const {
     register,
@@ -111,12 +246,18 @@ export default function LeadForm({
     formState: { errors, isSubmitting },
   } = useForm<LeadFormValues>({
     mode: "onTouched",
+    // The submit button stays clickable without a consent tick (see the file
+    // header), so a blocked submit MUST move focus to the offending field —
+    // otherwise the error renders 300px up the page where nobody sees it.
+    shouldFocusError: true,
     defaultValues: {
       name: "",
       phone: "",
       city: defaultCity ?? "",
       category: defaultCategory ?? "",
       consent: false,
+      // No callback window is pre-selected — the user opts in or leaves it empty.
+      callbackTime: "",
       // Marketing opt-ins are OFF by default — explicit opt-in only (Spam Law).
       marketingSms: false,
       marketingEmail: false,
@@ -128,6 +269,25 @@ export default function LeadForm({
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [intentPlans, setIntentPlans] = useState<PlanIntentOption[]>([]);
+  // The callback promise the ACCEPTED lead carried, so the success state can
+  // name the concrete window the user chose instead of a vague default. It is
+  // RESOLVED at submit time (callbackConfirmation reads the clock there), so a
+  // window that has already passed today is never echoed back as "היום".
+  const [confirmedCallback, setConfirmedCallback] =
+    useState<CallbackPromise | null>(null);
+
+  // ── The receipt's source of truth ────────────────────────────────────────
+  // Everything that will ride along in the lead's `notes` column, assembled the
+  // SAME way the submit handler assembles it (comparison shortlist, then the
+  // host page's contextNote, joined with " | "). The rule this component states
+  // is that nothing about a person's own data travels invisibly — so the block
+  // below renders THIS, not just `contextNote`. Showing only half of the payload
+  // would make the promise false on /compare, where the shortlist is the half
+  // that travels. `intentPlans` is already kept in sync with the URL shortlist
+  // by the effect below, so this needs no extra state.
+  const outgoingNotes = [comparisonIntentNote(intentPlans), contextNote]
+    .filter(Boolean)
+    .join(" | ");
 
   useEffect(() => {
     if (!planOptions.length) return;
@@ -150,11 +310,11 @@ export default function LeadForm({
   // advance — the denominator for the form's micro-funnel / drop-off analysis.
   const startedRef = useRef(false);
 
-  // One ref per step's actionable input/select, so a successful next() can
+  // One ref per step's FIRST actionable input, so a successful next() can
   // programmatically focus the newly-revealed field. On mobile this keeps the
-  // soft keyboard up between the four steps instead of collapsing (a re-tap per
-  // step = a quiet conversion leak). react-hook-form owns its own ref via
-  // register(); mergeRef() below wires both without stealing RHF's.
+  // soft keyboard up between the steps instead of collapsing (a re-tap per step =
+  // a quiet conversion leak). react-hook-form owns its own ref via register();
+  // mergeRef() below wires both without stealing RHF's.
   const stepInputRefs = useRef<Array<HTMLInputElement | HTMLSelectElement | null>>(
     [],
   );
@@ -177,6 +337,11 @@ export default function LeadForm({
 
   // Subscribe to the consent field so the submit button reflects its state.
   const consentChecked = useWatch({ control, name: "consent" });
+  // …and to the callback window, so the "what happens next" promise updates the
+  // moment a chip is picked — the same clock-checked window the success state
+  // echoes, so the pre-submit line can't promise a time the confirmation won't.
+  const callbackChoice = useWatch({ control, name: "callbackTime" });
+  const chosenCallback = callbackConfirmation(callbackChoice);
 
   const lastStep = STEP_FIELDS.length - 1;
   const progress = Math.round(((step + 1) / STEP_FIELDS.length) * 100);
@@ -230,6 +395,12 @@ export default function LeadForm({
         ? selectedPlanIntent(window.location.search, planOptions)
         : [];
     const primaryPlan = selectedPlans[0];
+    // CRM note = the comparison shortlist (when there is one) plus whatever REAL
+    // context the host page computed, joined with the same " | " separator the
+    // server already uses when folding notes into the stored record.
+    const notes = [comparisonIntentNote(selectedPlans), contextNote]
+      .filter(Boolean)
+      .join(" | ");
     try {
       const res = await fetch("/api/lead", {
         method: "POST",
@@ -240,9 +411,12 @@ export default function LeadForm({
           city: values.city.trim(),
           category: values.category || undefined,
           source,
-          provider: primaryPlan?.provider,
-          plan_id: primaryPlan?.id,
-          notes: comparisonIntentNote(selectedPlans) || undefined,
+          provider: primaryPlan?.provider ?? provider,
+          plan_id: primaryPlan?.id ?? planId,
+          notes: notes || undefined,
+          // Optional callback window — validated server-side against exactly this
+          // set and written to the dedicated leads.callback_time column.
+          callback_time: values.callbackTime || undefined,
           // Optional referral attribution (null when the visitor didn't arrive
           // via a share link). The server re-validates with isReferralCode.
           referrer_code: referrerCode || undefined,
@@ -271,6 +445,10 @@ export default function LeadForm({
 
       // Success only — fire conversion tracking exactly once.
       fireLeadConversion({ category: values.category || undefined, source });
+      // Resolve the promise against the SUBMIT-time clock (not render time), so
+      // a צהריים request left at 23:00 is confirmed for tomorrow, never for a
+      // window that has already passed today.
+      setConfirmedCallback(callbackConfirmation(values.callbackTime));
       setDone(true);
     } catch {
       trackEvent("lead_form_error", { source, reason: "network" });
@@ -280,7 +458,15 @@ export default function LeadForm({
     }
   }
 
+  /** Fires the already-wired whatsappClick product event (see lib/tracking). */
+  function trackWhatsapp(location: string) {
+    trackEvent("outbound_click", { dest: "whatsapp", source, location });
+  }
+
   if (done) {
+    // The concrete window the user asked for, already clock-checked at submit
+    // time. Null when they picked nothing ⇒ the honest default SLA below.
+    const callbackPromise = confirmedCallback;
     return (
       <div
         className={[
@@ -305,13 +491,52 @@ export default function LeadForm({
         <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הפרטים התקבלו, תודה!
         </h3>
+        {/* The window the user asked for — or, when that window had already
+            passed by the time they submitted, the next time it comes round,
+            said plainly so the shift is never a silent swap. */}
         <p className="mt-1 text-sm text-muted">
-          נציג יחזור אליכם בדרך כלל תוך יום עסקים אחד עם השוואת הצעות מותאמת.
+          {callbackPromise
+            ? callbackPromise.shifted
+              ? `נציג יחזור אליכם ${callbackPromise.text} — החלון שביקשתם כבר חלף היום — עם השוואת הצעות מותאמת. `
+              : `נציג יחזור אליכם ${callbackPromise.text} — החלון שביקשתם — עם השוואת הצעות מותאמת. `
+            : "נציג יחזור אליכם בדרך כלל תוך יום עסקים אחד עם השוואת הצעות מותאמת. "}
           השירות חינמי וללא התחייבות — תוכלו להחליט בנחת.
         </p>
         <p className="mt-2 text-xs text-muted">
           לא מצאתם את ההודעה? נחזור אליכם בטלפון שהשארתם.
         </p>
+
+        {/* The highest-trust moment in the product used to terminate here. Two
+            QUIET secondary paths — never a second filled button competing with
+            the confirmation: talk to a human now, or book the documented
+            secondary close (a Zoom consultation), which had no path from the
+            primary one. Both are ≥44px tap targets. */}
+        <div className="mt-4 flex flex-col items-center gap-1 border-t border-border/60 pt-3 text-sm">
+          <a
+            href={WHATSAPP_LEAD_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackWhatsapp("lead_success")}
+            className="interactive inline-flex min-h-11 items-center gap-1.5 text-accent-text underline underline-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-accent-hover"
+          >
+            <Icon name="chat" size={16} aria-hidden="true" />
+            לדבר איתנו עכשיו בוואטסאפ
+          </a>
+          <Link
+            href="/book"
+            className="interactive inline-flex min-h-11 items-center gap-1.5 text-accent-text underline underline-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-accent-hover"
+          >
+            {/* RTL: the shared arrow is drawn LTR, so mirror it to point at the
+                logical "forward" (inline-start) in a Hebrew document. */}
+            <Icon
+              name="arrow"
+              size={16}
+              aria-hidden="true"
+              className="rotate-180"
+            />
+            לקבוע שיחת ייעוץ חינמית בזום
+          </Link>
+        </div>
       </div>
     );
   }
@@ -395,7 +620,7 @@ export default function LeadForm({
         {/* SR-only polite announcer: the visible line below is static inline
             text (not a live region), so screen readers wouldn't announce a step
             change on their own. This mirrors it as an aria-live="polite" region
-            so SR users hear "שלב X מתוך 4" each time the step advances. */}
+            so SR users hear "שלב X מתוך 2" each time the step advances. */}
         <p aria-live="polite" className="sr-only">
           שלב {step + 1} מתוך {STEP_FIELDS.length}: {STEP_TITLES[step]}
         </p>
@@ -442,123 +667,123 @@ export default function LeadForm({
         </div>
       </div>
 
-      {/* Step 0 — Name */}
+      {/* Step 0 — Name + phone. Deliberately one step: a phone's keychain fills
+          both fields in a single autofill invocation. */}
       {step === 0 && (
-        <div>
-          <label
-            htmlFor="lead-name"
-            className="mb-1 block text-sm font-medium text-foreground"
-          >
-            שם מלא
-          </label>
-          {(() => {
-            const { ref, ...rest } = register("name", {
-              required: "נא להזין שם",
-              minLength: { value: 2, message: "השם קצר מדי" },
-            });
-            return (
-              <input
-                id="lead-name"
-                type="text"
-                autoComplete="name"
-                enterKeyHint="next"
-                aria-required="true"
-                aria-invalid={errors.name ? "true" : "false"}
-                aria-describedby={errors.name ? "lead-name-error" : undefined}
-                className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                ref={mergeStepRef<HTMLInputElement>(0, ref)}
-                {...rest}
-              />
-            );
-          })()}
-          {errors.name && (
-            <p id="lead-name-error" role="alert" className="mt-1 text-xs text-danger-text">
-              {errors.name.message}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Step 1 — Phone */}
-      {step === 1 && (
-        <div>
-          <label
-            htmlFor="lead-phone"
-            className="mb-1 block text-sm font-medium text-foreground"
-          >
-            מספר טלפון
-          </label>
-          {(() => {
-            const { ref, ...rest } = register("phone", {
-              required: "נא להזין מספר טלפון",
-              validate: (v) =>
-                isValidIsraeliPhone(v) || "מספר הטלפון אינו תקין",
-            });
-            return (
-              <input
-                id="lead-phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                enterKeyHint="next"
-                dir="ltr"
-                aria-required="true"
-                aria-invalid={errors.phone ? "true" : "false"}
-                aria-describedby={errors.phone ? "lead-phone-error" : undefined}
-                className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                ref={mergeStepRef<HTMLInputElement>(1, ref)}
-                {...rest}
-              />
-            );
-          })()}
-          {errors.phone && (
-            <p id="lead-phone-error" role="alert" className="mt-1 text-xs text-danger-text">
-              {errors.phone.message}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Step 2 — City */}
-      {step === 2 && (
-        <div>
-          <label
-            htmlFor="lead-city"
-            className="mb-1 block text-sm font-medium text-foreground"
-          >
-            עיר מגורים
-          </label>
-          {(() => {
-            const { ref, ...rest } = register("city", {
-              required: "נא להזין עיר מגורים",
-              minLength: { value: 2, message: "שם העיר קצר מדי" },
-            });
-            return (
-              <input
-                id="lead-city"
-                type="text"
-                autoComplete="address-level2"
-                enterKeyHint="next"
-                aria-required="true"
-                aria-invalid={errors.city ? "true" : "false"}
-                aria-describedby={errors.city ? "lead-city-error" : undefined}
-                className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                ref={mergeStepRef<HTMLInputElement>(2, ref)}
-                {...rest}
-              />
-            );
-          })()}
-          {errors.city && (
-            <p id="lead-city-error" role="alert" className="mt-1 text-xs text-danger-text">
-              {errors.city.message}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Step 3 — Desired service + mandatory consent */}
-      {step === 3 && (
         <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="lead-name"
+              className="mb-1 block text-sm font-medium text-foreground"
+            >
+              שם מלא
+            </label>
+            {(() => {
+              const { ref, ...rest } = register("name", {
+                required: "נא להזין שם",
+                minLength: { value: 2, message: "השם קצר מדי" },
+              });
+              return (
+                <input
+                  id="lead-name"
+                  type="text"
+                  autoComplete="name"
+                  enterKeyHint="next"
+                  aria-required="true"
+                  aria-invalid={errors.name ? "true" : "false"}
+                  aria-describedby={errors.name ? "lead-name-error" : undefined}
+                  className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  ref={mergeStepRef<HTMLInputElement>(0, ref)}
+                  {...rest}
+                />
+              );
+            })()}
+            {errors.name && (
+              <p id="lead-name-error" role="alert" className="mt-1 text-xs text-danger-text">
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="lead-phone"
+              className="mb-1 block text-sm font-medium text-foreground"
+            >
+              מספר טלפון
+            </label>
+            <input
+              id="lead-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              enterKeyHint="next"
+              dir="ltr"
+              aria-required="true"
+              aria-invalid={errors.phone ? "true" : "false"}
+              aria-describedby={errors.phone ? "lead-phone-error" : undefined}
+              className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+              {...register("phone", {
+                required: "נא להזין מספר טלפון",
+                validate: (v) =>
+                  isValidIsraeliPhone(v) || "מספר הטלפון אינו תקין",
+              })}
+            />
+            {errors.phone && (
+              <p id="lead-phone-error" role="alert" className="mt-1 text-xs text-danger-text">
+                {errors.phone.message}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Step 1 — City, desired service, callback window + mandatory consent */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div>
+            <label
+              htmlFor="lead-city"
+              className="mb-1 block text-sm font-medium text-foreground"
+            >
+              עיר מגורים
+            </label>
+            {(() => {
+              const { ref, ...rest } = register("city", {
+                required: "נא להזין עיר מגורים",
+                minLength: { value: 2, message: "שם העיר קצר מדי" },
+              });
+              return (
+                <input
+                  id="lead-city"
+                  type="text"
+                  autoComplete="address-level2"
+                  enterKeyHint="next"
+                  // Suggestions only — the input stays free text so a town outside
+                  // the catalogue's 42 cities is still typable, and REQUIRED
+                  // (the city routes the lead to the right rep).
+                  list="lead-cities"
+                  aria-required="true"
+                  aria-invalid={errors.city ? "true" : "false"}
+                  aria-describedby={errors.city ? "lead-city-error" : undefined}
+                  className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                  ref={mergeStepRef<HTMLInputElement>(1, ref)}
+                  {...rest}
+                />
+              );
+            })()}
+            <datalist id="lead-cities">
+              {CITY_SUGGESTIONS.map((city) => (
+                <option key={city} value={city} />
+              ))}
+            </datalist>
+            {errors.city && (
+              <p id="lead-city-error" role="alert" className="mt-1 text-xs text-danger-text">
+                {errors.city.message}
+              </p>
+            )}
+          </div>
+
           <div>
             <label
               htmlFor="lead-category"
@@ -566,32 +791,24 @@ export default function LeadForm({
             >
               איזה שירות מעניין אתכם?
             </label>
-            {(() => {
-              const { ref, ...rest } = register("category", {
-                required: "נא לבחור שירות",
-              });
-              return (
-                <select
-                  id="lead-category"
-                  enterKeyHint="done"
-                  aria-required="true"
-                  aria-invalid={errors.category ? "true" : "false"}
-                  aria-describedby={
-                    errors.category ? "lead-category-error" : undefined
-                  }
-                  className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
-                  ref={mergeStepRef<HTMLSelectElement>(3, ref)}
-                  {...rest}
-                >
-                  <option value="">בחרו שירות…</option>
-                  {SERVICE_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {CATEGORY_HE[cat]}
-                    </option>
-                  ))}
-                </select>
-              );
-            })()}
+            <select
+              id="lead-category"
+              enterKeyHint="done"
+              aria-required="true"
+              aria-invalid={errors.category ? "true" : "false"}
+              aria-describedby={
+                errors.category ? "lead-category-error" : undefined
+              }
+              className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+              {...register("category", { required: "נא לבחור שירות" })}
+            >
+              <option value="">בחרו שירות…</option>
+              {SERVICE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {CATEGORY_HE[cat]}
+                </option>
+              ))}
+            </select>
             {errors.category && (
               <p
                 id="lead-category-error"
@@ -602,6 +819,34 @@ export default function LeadForm({
               </p>
             )}
           </div>
+
+          {/* OPTIONAL callback window. /api/lead has always validated this exact
+              four-value set and persisted it to a dedicated leads.callback_time
+              column — the form simply never asked, so every lead arrived with a
+              null preference. Nothing is pre-selected. Native radios (visually
+              hidden) keep arrow-key + label semantics; the ≥44px chip beside each
+              is the styled sibling. */}
+          <fieldset>
+            <legend className="mb-1 block text-sm font-medium text-foreground">
+              מתי נוח שנחזור אליכם?{" "}
+              <span className="font-normal text-muted">(אופציונלי)</span>
+            </legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {CALLBACK_TIMES.map((opt) => (
+                <label key={opt.value} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    value={opt.value}
+                    className="peer sr-only"
+                    {...register("callbackTime")}
+                  />
+                  <span className="interactive flex min-h-11 items-center justify-center rounded-xl border border-border bg-background px-3 text-sm font-medium text-foreground peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:font-semibold peer-checked:text-accent-text peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40">
+                    {opt.label}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           {/* §11 disclosure (Amendment-13 / Privacy Law §11): collected before the
               consent box so the user knows, before consenting, that providing data
@@ -632,9 +877,15 @@ export default function LeadForm({
           {/* Mandatory consent — unchecked by default. The links are NOT wrapped
               in the <label> (a click on a link inside a label would also toggle
               the box); instead the checkbox is associated via id/htmlFor, and the
-              text+links sit beside it so the links navigate without toggling. */}
+              text+links sit beside it so the links navigate without toggling.
+              TAP TARGET: the row is a bordered ≥44px block and the box itself is
+              24px, because the tappable consent area used to be a 20px box plus a
+              ~70×18px text fragment with two target="_blank" links immediately
+              beside it — a thumb miss opened a new tab mid-form. Target size only:
+              the id/htmlFor association and the links-outside-label structure are
+              deliberately unchanged. */}
           <div>
-            <div className="flex items-start gap-2.5 text-sm text-foreground">
+            <div className="flex min-h-11 items-start gap-2.5 rounded-xl border border-border/60 p-3 text-sm text-foreground">
               <input
                 id="lead-consent"
                 type="checkbox"
@@ -643,7 +894,7 @@ export default function LeadForm({
                 aria-describedby={
                   errors.consent ? "lead-consent-error" : undefined
                 }
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
+                className="mt-0.5 h-6 w-6 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
                 {...register("consent", {
                   required:
                     "יש לאשר את תנאי השימוש והסכמה ליצירת קשר כדי להמשיך",
@@ -690,46 +941,62 @@ export default function LeadForm({
           {/* OPTIONAL marketing opt-ins (Spam Law — חוק התקשורת תיקון 40).
               Three default-UNCHECKED, per-channel opt-ins, clearly SEPARATE from
               the mandatory consent gate above. Each is marked as marketing
-              (פרסומת) and removable at any time. */}
-          <fieldset className="rounded-xl border border-border/60 bg-background/60 p-3">
-            <legend className="px-1 text-sm font-medium text-foreground">
+              (פרסומת) and removable at any time.
+              Collapsed behind a native (no-JS) <details>: it is optional by law
+              AND by design, and open it added ~200px between the consent box and
+              the submit — the moment of decision must not sit below the fold.
+              Collapsed ≠ hidden: the heading names it as marketing, the panel is
+              one tap away, and the boxes stay default-unchecked either way.
+              The §11 disclosure and the consent box above keep their shipped
+              order and position exactly. */}
+          <details className="group rounded-xl border border-border/60 bg-background/60">
+            <summary className="interactive flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-sm font-medium text-foreground marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
               {MARKETING_OPTIN_HEADING}
-            </legend>
-            <p className="text-xs leading-relaxed text-muted">
-              {MARKETING_OPTIN_NOTE}
-            </p>
-            <div className="mt-3 space-y-2.5">
-              {MARKETING_CHANNELS.map((ch) => {
-                const fieldName = (
-                  ch.key === "sms"
-                    ? "marketingSms"
-                    : ch.key === "email"
-                      ? "marketingEmail"
-                      : "marketingWhatsapp"
-                ) as
-                  | "marketingSms"
-                  | "marketingEmail"
-                  | "marketingWhatsapp";
-                const id = `lead-marketing-${ch.key}`;
-                return (
-                  <div
-                    key={ch.key}
-                    className="flex items-start gap-2.5 text-sm text-foreground"
-                  >
-                    <input
-                      id={id}
-                      type="checkbox"
-                      className="mt-0.5 h-5 w-5 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
-                      {...register(fieldName)}
-                    />
-                    <label htmlFor={id} className="cursor-pointer leading-snug">
-                      {marketingChannelLabel(ch.label)}
-                    </label>
-                  </div>
-                );
-              })}
-            </div>
-          </fieldset>
+              <Icon
+                name="chevron"
+                size={16}
+                aria-hidden="true"
+                className="shrink-0 rotate-90 text-muted transition-transform duration-200 ease-[var(--ease-out)] group-open:-rotate-90 motion-reduce:transition-none"
+              />
+            </summary>
+            <fieldset className="border-t border-border/60 p-3">
+              <legend className="sr-only">{MARKETING_OPTIN_HEADING}</legend>
+              <p className="text-xs leading-relaxed text-muted">
+                {MARKETING_OPTIN_NOTE}
+              </p>
+              <div className="mt-3 space-y-2.5">
+                {MARKETING_CHANNELS.map((ch) => {
+                  const fieldName = (
+                    ch.key === "sms"
+                      ? "marketingSms"
+                      : ch.key === "email"
+                        ? "marketingEmail"
+                        : "marketingWhatsapp"
+                  ) as
+                    | "marketingSms"
+                    | "marketingEmail"
+                    | "marketingWhatsapp";
+                  const id = `lead-marketing-${ch.key}`;
+                  return (
+                    <div
+                      key={ch.key}
+                      className="flex min-h-11 items-start gap-2.5 text-sm text-foreground"
+                    >
+                      <input
+                        id={id}
+                        type="checkbox"
+                        className="mt-0.5 h-6 w-6 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
+                        {...register(fieldName)}
+                      />
+                      <label htmlFor={id} className="cursor-pointer leading-snug">
+                        {marketingChannelLabel(ch.label)}
+                      </label>
+                    </div>
+                  );
+                })}
+              </div>
+            </fieldset>
+          </details>
         </div>
       )}
 
@@ -740,10 +1007,30 @@ export default function LeadForm({
         </p>
       )}
 
+      {/* RECEIPT — what the host page is attaching to this request. `contextNote`
+          is folded into the POST's `notes` beside the visitor's NAME, PHONE and
+          CITY, so it stops being an anonymous summary the moment they submit:
+          nothing about a person's own data may travel invisibly, and the place
+          to show it is the screen where they decide to send it.
+          It also SELLS: knowing the rep already has the bill/quiz/wallet figures
+          is exactly what makes the call cheap to accept.
+          A receipt, not an alarm — the same quiet surface + hairline border the
+          neighbouring disclosure blocks use, never a warning banner. */}
+      {step === lastStep && outgoingNotes && (
+        <div className="mt-4 rounded-xl border border-border/60 bg-background/60 p-3">
+          <p className="text-xs font-semibold text-foreground">
+            מה שיישלח עם הפנייה:
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            {outgoingNotes}
+          </p>
+        </div>
+      )}
+
       {/* "What happens after you submit" — set expectations honestly, shown on
           the final step right above the submit CTA. No fake urgency. */}
       {step === lastStep && (
-        <div className="mt-5 rounded-xl border border-border/60 bg-background/60 p-4">
+        <div className="mt-4 rounded-xl border border-border/60 bg-background/60 p-3">
           <p className="text-xs font-semibold text-foreground">
             מה קורה אחרי השליחה?
           </p>
@@ -755,7 +1042,17 @@ export default function LeadForm({
               >
                 1
               </span>
-              <span>נציג חוזר אליכם, בדרך כלל תוך יום עסקים אחד.</span>
+              {/* Reflects the window the user just picked, if they picked one —
+                  otherwise the honest default SLA. Never an invented time, and
+                  never a time that has already passed today (the same
+                  clock-checked promise the confirmation will repeat). */}
+              <span>
+                {chosenCallback
+                  ? chosenCallback.shifted
+                    ? `נציג חוזר אליכם ${chosenCallback.text} — החלון שביקשתם כבר חלף היום.`
+                    : `נציג חוזר אליכם ${chosenCallback.text} — החלון שביקשתם.`
+                  : "נציג חוזר אליכם, בדרך כלל תוך יום עסקים אחד."}
+              </span>
             </li>
             <li className="flex items-start gap-2">
               <span
@@ -779,14 +1076,45 @@ export default function LeadForm({
         </div>
       )}
 
-      {/* Navigation */}
+      {/* Objection handling, directly above the submit — the same position and
+          the same four VERIFIED lines the desktop build uses on every form (both
+          read them from lib/legal so the promise cannot drift). These answer the
+          two objections that actually stop people at this exact moment: why is
+          this free, and who gets my number. Set as spaced micro-labels so the
+          block scans in under a second (Hebrew is unicase — the letter-spacing,
+          not `uppercase`, does the work). */}
+      {step === lastStep && (
+        <ul
+          aria-label={CTA_OBJECTIONS_LABEL}
+          className="mt-3 grid gap-2 rounded-xl border border-border/60 bg-background/60 p-3 sm:grid-cols-2"
+        >
+          {CTA_OBJECTIONS.map((objection) => (
+            <li
+              key={objection.text}
+              className="flex items-start gap-2 text-[11px] font-medium leading-snug tracking-[0.03em] text-muted"
+            >
+              <Icon
+                name={objection.icon}
+                size={14}
+                aria-hidden="true"
+                className="mt-px shrink-0 text-accent-text"
+              />
+              <span>{objection.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Navigation. All three controls are ≥48px: the most important button on
+          the site sat at 40px next to an equally-sized "back". `basis-1/3` keeps
+          back subordinate so the primary action stays visually dominant. */}
       <div className="mt-6 flex items-center gap-3">
         {step > 0 && (
           <button
             type="button"
             onClick={back}
             disabled={isSubmitting}
-            className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:border-border-strong/30 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 disabled:opacity-50"
+            className="interactive press inline-flex min-h-12 basis-1/3 items-center justify-center rounded-xl border border-border px-4 text-sm font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:border-border-strong/30 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 disabled:opacity-50"
           >
             חזרה
           </button>
@@ -796,23 +1124,56 @@ export default function LeadForm({
           <button
             type="button"
             onClick={next}
-            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5"
+            className="interactive press inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5"
           >
             המשך
           </button>
         ) : (
+          // NOT disabled on a missing consent tick — see the file header. It stays
+          // clickable so the click runs validation (which surfaces the consent
+          // error and focuses the box); `data-blocked` carries the muted styling
+          // the `disabled:` variants used to, and aria-disabled still tells AT the
+          // action won't go through yet. `disabled` remains ONLY for in-flight
+          // submits, where a second tap would double-post.
           <button
             type="submit"
-            disabled={isSubmitting || !consentChecked}
+            disabled={isSubmitting}
             aria-disabled={isSubmitting || !consentChecked}
-            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+            data-blocked={consentChecked ? undefined : "true"}
+            className="interactive press inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-accent px-4 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 data-[blocked=true]:translate-y-0 data-[blocked=true]:opacity-50 data-[blocked=true]:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           >
             {isSubmitting ? "שולח…" : "קבלת הצעה חינם"}
           </button>
         )}
       </div>
 
-      <p className="mt-3 text-center text-xs text-muted">
+      {/* The lighter channel, for anyone who finds a consent-gated form too
+          heavy. A quiet text link — never a second filled button beside the
+          submit. */}
+      {step === lastStep && (
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted">
+          מעדיפים בלי טופס?
+          <a
+            href={WHATSAPP_LEAD_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackWhatsapp("lead_form")}
+            className="interactive inline-flex min-h-11 items-center gap-1 text-accent-text underline underline-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:text-accent-hover"
+          >
+            <Icon name="chat" size={14} aria-hidden="true" />
+            דברו איתנו בוואטסאפ
+          </a>
+        </p>
+      )}
+
+      <p
+        className={[
+          // Tighter on the last step, where the WhatsApp line above already
+          // carries the gap.
+          step === lastStep ? "mt-1" : "mt-3",
+          "text-center text-xs text-muted",
+        ].join(" ")}
+      >
         השירות חינמי. הפרטים משמשים אך ורק ליצירת קשר בנוגע לפנייה זו — ללא ספאם.
       </p>
     </form>

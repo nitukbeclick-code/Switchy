@@ -420,7 +420,7 @@ export default async function GuidePage({ params }: Params) {
               id={sectionId(i)}
               className="scroll-mt-24"
             >
-              <h2 className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl">
+              <h2 className="h-section text-ink">
                 {s.h2}
               </h2>
               {s.p?.map((p, pi) => (
@@ -455,7 +455,7 @@ export default async function GuidePage({ params }: Params) {
         {/* ── Step-by-step (visible) — only when the guide carries real steps. */}
         {guide.howto && guide.howto.length ? (
           <section className="mt-12">
-            <h2 className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl">
+            <h2 className="h-section text-ink">
               שלב אחר שלב
             </h2>
             <ol className="mt-5 space-y-4">
@@ -483,7 +483,7 @@ export default async function GuidePage({ params }: Params) {
 
         {/* ── In-article CTA → the real compare page for this category ─────── */}
         <div className="bento mt-12 p-6 text-center sm:p-8">
-          <h2 className="font-display text-xl font-bold tracking-tight text-ink">
+          <h2 className="h-section text-ink">
             רוצים לראות כמה תחסכו בפועל?
           </h2>
           <p className="mt-2 text-foreground">
@@ -520,7 +520,7 @@ export default async function GuidePage({ params }: Params) {
           >
             <h2
               id="faq-heading"
-              className="font-display text-xl font-bold tracking-tight text-ink sm:text-2xl"
+              className="h-section text-ink"
             >
               שאלות נפוצות
             </h2>
@@ -575,7 +575,7 @@ export default async function GuidePage({ params }: Params) {
       >
         <h2
           id="lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים שנמצא לכם את המסלול המשתלם ביותר?
         </h2>
@@ -615,12 +615,8 @@ export default async function GuidePage({ params }: Params) {
         >
           <h2
             id="more-guides"
-            className="mb-6 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
+            className="mb-6 h-section text-ink"
           >
-            <span
-              aria-hidden="true"
-              className="inline-block h-5 w-1.5 rounded-full bg-accent"
-            />
             מדריכים נוספים
           </h2>
           <div className="bento-grid">

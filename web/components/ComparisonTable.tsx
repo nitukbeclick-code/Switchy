@@ -11,6 +11,8 @@
 // per-provider carousel (<ProviderCarousels>) instead of one long vertical stack
 // — turning "scroll past 59 cards" into "~8 provider strips you swipe". The
 // desktop table is unchanged. The flat list is still used for skeleton/empty.
+// The shortlist toggle is threaded into each carousel item, so grouping and
+// `interactiveFilters` compose (they used to cancel each other out).
 //
 // The single mobile card lives in <PlanCard> (shared with the carousel); the
 // desktop table stays here. Provider brand colors are the carrier's REAL hue
@@ -173,6 +175,13 @@ export default function ComparisonTable({
   const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "error">(
     "idle",
   );
+  // The filter panel is a disclosure on phones and always-open from lg up. It
+  // starts CLOSED so the server-rendered, mobile-first HTML puts the plans (and
+  // the first ₪) as high as possible; the lg+ "always open" is resolved after
+  // mount via matchMedia, because a <details> cannot be forced open by CSS.
+  // Mobile is the traffic that matters here, and desktop is routed to the static
+  // site by middleware, so paying the expansion on hydration is the right trade.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const viewedRef = useRef(false);
 
   const selectableIds = useMemo(() => new Set(plans.map((plan) => plan.id)), [plans]);
@@ -183,6 +192,19 @@ export default function ComparisonTable({
     viewedRef.current = true;
     trackEvent("comparison_view", { plan_count: plans.length });
   }, [interactiveFilters, plans.length]);
+
+  // Keep the disclosure in sync with the lg breakpoint (the same 1024px the
+  // `lg:hidden` summary uses). Subscription only — it never fights a manual
+  // toggle, it just re-asserts the per-breakpoint default when the viewport
+  // itself crosses the boundary.
+  useEffect(() => {
+    if (!interactiveFilters) return;
+    const wide = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setFiltersOpen(wide.matches);
+    sync();
+    wide.addEventListener("change", sync);
+    return () => wide.removeEventListener("change", sync);
+  }, [interactiveFilters]);
 
   useEffect(() => {
     const trimmed = deferredQuery.trim();
@@ -281,6 +303,39 @@ export default function ComparisonTable({
     }
   }
 
+  /**
+   * The shortlist toggle that sits directly under a MOBILE plan card. Extracted
+   * so the flat list and the per-provider carousels render the identical
+   * control — the carousels receive it as ProviderCarousels' `renderPlanFooter`
+   * render-prop, which is what lets grouping and the shortlist coexist.
+   */
+  function planSelectionToggle(plan: Plan) {
+    const selected = selectedIds.includes(plan.id);
+    const atLimit = !selected && selectedIds.length >= MAX_COMPARE_PLANS;
+    return (
+      <button
+        type="button"
+        aria-pressed={selected}
+        aria-label={planSelectionLabel(plan, selected)}
+        disabled={atLimit}
+        onClick={() => togglePlan(plan)}
+        className={[
+          "interactive mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-45",
+          selected
+            ? "border-accent bg-accent text-accent-contrast"
+            : "border-border bg-surface text-foreground hover:border-accent/50",
+        ].join(" ")}
+      >
+        <span aria-hidden="true">{selected ? "✓" : "+"}</span>
+        {selected
+          ? "נבחר להשוואה"
+          : atLimit
+            ? `ניתן לבחור עד ${MAX_COMPARE_PLANS}`
+            : "הוספה להשוואה"}
+      </button>
+    );
+  }
+
   async function copyComparisonLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -329,6 +384,18 @@ export default function ComparisonTable({
   const hasActiveFilters = Boolean(
     query || provider || noCommit || fiveG || fixedPrice || includeDataOnly,
   );
+  // What the collapsed "סינון ומיון" pill reports, so the panel can hide without
+  // hiding the fact that it is doing something. A non-default sort counts: it
+  // changes what the first card is, which is the whole point of the panel.
+  const activeFilterCount = [
+    Boolean(query.trim()),
+    Boolean(provider),
+    noCommit,
+    fiveG,
+    fixedPrice,
+    includeDataOnly,
+    sort !== "price-asc",
+  ].filter(Boolean).length;
   const resetFilters = () => {
     setQuery("");
     setProvider("");
@@ -371,10 +438,18 @@ export default function ComparisonTable({
   const totalCols = desktopColumns.length;
 
   const sharedDropProps = { priceDrops, autoPriceDrops, priceDropSparkline };
-  // Grouped carousels only when explicitly enabled AND there's real data to group
+  // Grouped carousels whenever explicitly enabled AND there's real data to group
   // (skeleton/empty keep the flat path, which renders those states).
-  const useCarousels =
-    groupByProvider && !selectionEnabled && !showSkeleton && !isEmpty;
+  //
+  // This deliberately does NOT gate on `selectionEnabled` any more. It used to,
+  // which was self-defeating: /compare/[service] passes BOTH `groupByProvider`
+  // and `interactiveFilters`, and `interactiveFilters` is what turns selection
+  // on — so the ONE page the carousels were built for (59 cellular plans, ~32k
+  // px of flat column on a phone) was the one page that never got them. The
+  // shortlist is no longer a reason to fall back: it is threaded INTO each
+  // carousel item via `renderPlanFooter` below, so grouping keeps every
+  // affordance the flat list has.
+  const useCarousels = groupByProvider && !showSkeleton && !isEmpty;
 
   return (
     <div
@@ -384,76 +459,132 @@ export default function ComparisonTable({
     >
       {interactiveFilters ? (
         <div className="mb-5 rounded-2xl border border-border/70 bg-surface p-4 elevate-card sm:p-5">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="min-w-[15rem] flex-1">
-              <span className="mb-1.5 block text-sm font-semibold text-foreground">
-                חיפוש מסלול או ספק
+          {/* On a phone the expanded control set is ~400px of chrome standing
+              between the visitor and the first ₪, so it collapses behind a
+              single 44px pill that carries the active-filter count (state stays
+              visible even while hidden). From lg up the summary is display:none
+              and the panel is open — see `filtersOpen` for why that is resolved
+              after mount rather than in the markup. */}
+          <details
+            className="group"
+            open={filtersOpen}
+            onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
+          >
+            {/* `lg:hidden` is applied ONLY once the panel is actually open. It
+                used to be unconditional, which sealed the filters shut at lg+ in
+                the window before hydration — and permanently if the JS that
+                resolves `filtersOpen` never ran: a closed <details> whose only
+                control is display:none has no way back. Gating the class on the
+                open state keeps the desktop end-state identical (open panel, no
+                redundant summary) while guaranteeing that whenever the panel is
+                shut there is always something visible to re-open it. On phones
+                the lg: prefix never applies, so mobile is untouched. */}
+            <summary
+              className={[
+                "interactive flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                filtersOpen ? "lg:hidden" : "",
+              ]
+                .join(" ")
+                .trim()}
+            >
+              <span className="flex items-center gap-2">
+                <Icon name="search" size={16} aria-hidden="true" />
+                סינון ומיון
+                {activeFilterCount > 0 ? (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-accent-contrast tabular-nums">
+                    {activeFilterCount}
+                  </span>
+                ) : null}
               </span>
-              <span className="relative block">
-                <Icon
-                  name="search"
-                  size={17}
-                  aria-hidden="true"
-                  className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted"
-                />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="לדוגמה: 5G, סלקום, Fiber"
-                  className="min-h-11 w-full rounded-xl border border-border bg-background px-3 pe-10 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-                />
-              </span>
-            </label>
-            <label className="min-w-[10rem] flex-1 sm:max-w-[14rem]">
-              <span className="mb-1.5 block text-sm font-semibold text-foreground">ספק</span>
-              <select
-                value={provider}
-                onChange={(event) => setProvider(event.target.value)}
-                className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-              >
-                <option value="">כל הספקים</option>
-                {providers.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="min-w-[11rem] flex-1 sm:max-w-[15rem]">
-              <span className="mb-1.5 block text-sm font-semibold text-foreground">מיון</span>
-              <select
-                value={sort}
-                onChange={(event) => setSort(event.target.value as ComparisonSort)}
-                className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
-              >
-                <option value="price-asc">מחיר התחלתי — מהנמוך</option>
-                <option value="long-term-asc">מחיר לטווח ארוך — מהנמוך</option>
-                <option value="provider">שם הספק</option>
-              </select>
-            </label>
-          </div>
+              <Icon
+                name="chevron"
+                size={16}
+                aria-hidden="true"
+                className="rotate-90 transition-transform group-open:-rotate-90"
+              />
+            </summary>
 
-          <div className="mt-4 flex flex-wrap gap-2" aria-label="סינון מהיר">
-            <FilterToggle active={noCommit} onClick={() => setNoCommit((v) => !v)}>
-              ללא התחייבות
-            </FilterToggle>
-            <FilterToggle active={fixedPrice} onClick={() => setFixedPrice((v) => !v)}>
-              מחיר קבוע
-            </FilterToggle>
-            {plans.some((plan) => plan.is5G) ? (
-              <FilterToggle active={fiveG} onClick={() => setFiveG((v) => !v)}>
-                5G בלבד
-              </FilterToggle>
-            ) : null}
-            {dataOnlyCount > 0 ? (
-              <FilterToggle
-                active={includeDataOnly}
-                onClick={() => setIncludeDataOnly((v) => !v)}
-              >
-                כולל SIM לגלישה בלבד ({dataOnlyCount})
-              </FilterToggle>
-            ) : null}
-          </div>
+            {/* The search field and both <select>s are text-base (16px) on
+                mobile and text-sm from sm up: iOS Safari force-zooms the whole
+                viewport when a focused control is under 16px, which on the
+                primary product page threw the visitor into a zoomed, sideways-
+                scrolling layout on the first tap. Same fix AiConcierge already
+                uses; no desktop change at all. */}
+            <div className="mt-4 flex flex-wrap items-end gap-3 lg:mt-0">
+              <label className="min-w-[15rem] flex-1">
+                <span className="mb-1.5 block text-sm font-semibold text-foreground">
+                  חיפוש מסלול או ספק
+                </span>
+                <span className="relative block">
+                  <Icon
+                    name="search"
+                    size={17}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 text-muted"
+                  />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="לדוגמה: 5G, סלקום, Fiber"
+                    className="min-h-11 w-full rounded-xl border border-border bg-background px-3 pe-10 text-base text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
+                  />
+                </span>
+              </label>
+              <label className="min-w-[10rem] flex-1 sm:max-w-[14rem]">
+                <span className="mb-1.5 block text-sm font-semibold text-foreground">ספק</span>
+                <select
+                  value={provider}
+                  onChange={(event) => setProvider(event.target.value)}
+                  className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
+                >
+                  <option value="">כל הספקים</option>
+                  {providers.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="min-w-[11rem] flex-1 sm:max-w-[15rem]">
+                <span className="mb-1.5 block text-sm font-semibold text-foreground">מיון</span>
+                <select
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value as ComparisonSort)}
+                  className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20 sm:text-sm"
+                >
+                  <option value="price-asc">מחיר התחלתי — מהנמוך</option>
+                  <option value="long-term-asc">מחיר לטווח ארוך — מהנמוך</option>
+                  <option value="provider">שם הספק</option>
+                </select>
+              </label>
+            </div>
 
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="סינון מהיר">
+              <FilterToggle active={noCommit} onClick={() => setNoCommit((v) => !v)}>
+                ללא התחייבות
+              </FilterToggle>
+              <FilterToggle active={fixedPrice} onClick={() => setFixedPrice((v) => !v)}>
+                מחיר קבוע
+              </FilterToggle>
+              {plans.some((plan) => plan.is5G) ? (
+                <FilterToggle active={fiveG} onClick={() => setFiveG((v) => !v)}>
+                  5G בלבד
+                </FilterToggle>
+              ) : null}
+              {dataOnlyCount > 0 ? (
+                <FilterToggle
+                  active={includeDataOnly}
+                  onClick={() => setIncludeDataOnly((v) => !v)}
+                >
+                  כולל SIM לגלישה בלבד ({dataOnlyCount})
+                </FilterToggle>
+              ) : null}
+            </div>
+          </details>
+
+          {/* The results/reset row stays OUTSIDE the disclosure: "מציגים N מתוך
+              M" is the feedback that makes the collapsed panel safe to collapse,
+              and the reset escape hatch must never be hidden behind the control
+              that produced the filtering. */}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-3 text-sm">
             <p className="text-muted" aria-live="polite">
               מציגים <strong className="text-foreground">{visiblePlans.length}</strong> מתוך {plans.length} מסלולים
@@ -523,20 +654,28 @@ export default function ComparisonTable({
                   <p className="mt-2 line-clamp-2 min-h-10 font-display text-sm font-bold text-ink">
                     {plan.plan}
                   </p>
-                  <p className="mt-2 font-display text-xl font-bold text-value-text tabular-nums">
-                    ₪{display.price}
-                    <span className="ms-1 text-xs font-normal text-muted">
-                      {priceUnitLabel(plan)}
-                    </span>
+                  {/* Same ROW rank as the plan card — the shortlist is where two
+                      or three prices are read side by side, so what matters here
+                      is that the figures ALIGN (tabular, identical tier), not
+                      that each one shouts. `.price-hero` is reserved for the one
+                      figure per page that is the page's payload; three of them
+                      side by side would be three, i.e. none. */}
+                  <p className="price-row mt-2.5 text-value-text">
+                    <span className="price-sign">₪</span>
+                    {display.price}
                   </p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="price-unit mt-1">{priceUnitLabel(plan)}</p>
+                  <p className="mt-1.5 text-xs text-muted">
                     {display.after.text}
                   </p>
-                  <div className="mt-3 rounded-lg border border-value/25 bg-value/[0.07] px-2.5 py-2">
-                    <p className="text-[11px] font-semibold text-value-text">עלות שירות ל־12 חודשים</p>
-                    <p className="mt-0.5 font-display text-base font-bold text-ink tabular-nums">
+                  <div
+                    className="mt-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-border/60 pt-2.5"
+                    title={annual.disclosure}
+                  >
+                    <span className="text-[12px] text-muted">עלות שירות ל־12 חודשים</span>
+                    <strong className="text-[13px] font-semibold text-value-text tabular-nums">
                       {formatAnnualCost(annual)}
-                    </p>
+                    </strong>
                   </div>
                 </article>
               );
@@ -595,6 +734,7 @@ export default function ComparisonTable({
           plans={visiblePlans}
           featured={featured}
           {...sharedDropProps}
+          renderPlanFooter={selectionEnabled ? planSelectionToggle : undefined}
           className="lg:hidden"
         />
       ) : (
@@ -632,36 +772,7 @@ export default function ComparisonTable({
                 label={featured?.[d.plan.id]}
                 {...sharedDropProps}
               />
-              {selectionEnabled ? (
-                <button
-                  type="button"
-                  aria-pressed={selectedIds.includes(d.plan.id)}
-                  aria-label={planSelectionLabel(
-                    d.plan,
-                    selectedIds.includes(d.plan.id),
-                  )}
-                  disabled={
-                    !selectedIds.includes(d.plan.id) &&
-                    selectedIds.length >= MAX_COMPARE_PLANS
-                  }
-                  onClick={() => togglePlan(d.plan)}
-                  className={[
-                    "interactive mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-45",
-                    selectedIds.includes(d.plan.id)
-                      ? "border-accent bg-accent text-accent-contrast"
-                      : "border-border bg-surface text-foreground hover:border-accent/50",
-                  ].join(" ")}
-                >
-                  <span aria-hidden="true">
-                    {selectedIds.includes(d.plan.id) ? "✓" : "+"}
-                  </span>
-                  {selectedIds.includes(d.plan.id)
-                    ? "נבחר להשוואה"
-                    : selectedIds.length >= MAX_COMPARE_PLANS
-                      ? "ניתן לבחור עד 3"
-                      : "הוספה להשוואה"}
-                </button>
-              ) : null}
+              {selectionEnabled ? planSelectionToggle(d.plan) : null}
             </li>
           ))}
         </ul>
@@ -781,12 +892,22 @@ export default function ComparisonTable({
                     </Link>
                   </td>
 
-                  {/* מחיר — tabular-nums aligns the ₪ digits down the column. */}
-                  <td className="px-4 py-3 text-start whitespace-nowrap tabular-nums">
-                    <span className="font-display text-base font-bold text-ink">
-                      ₪{d.price}
-                    </span>{" "}
-                    <span className="text-xs text-muted">{priceUnitLabel(plan)}</span>
+                  {/* מחיר — the money tier at ROW rank, same as the mobile card,
+                      in the one amber that means VALUE, with the ₪ demoted to a
+                      raised sibling and the unit as a micro-label below. This is
+                      the anchor column, and on /compare/cellular it repeats ~59
+                      times: at `.price-hero` size that column was 59 identical
+                      40px shouts, which is why the repeated rank exists. At
+                      `.price-row` it reads as one scannable amber column and
+                      still out-ranks every other cell in the row. */}
+                  <td className="px-4 py-3 text-start whitespace-nowrap">
+                    <span className="price-row block text-value-text">
+                      <span className="price-sign">₪</span>
+                      {d.price}
+                    </span>
+                    <span className="price-unit mt-1 block">
+                      {priceUnitLabel(plan)}
+                    </span>
                     <PriceDropCell plan={plan} {...sharedDropProps} />
                   </td>
 

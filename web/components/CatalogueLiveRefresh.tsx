@@ -20,7 +20,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient, type RealtimeChannel } from "@supabase/supabase-js";
 
 /** Debounce window before a router.refresh — coalesces bursts of owner edits. */
@@ -42,13 +42,23 @@ export default function CatalogueLiveRefresh({
   category,
 }: CatalogueLiveRefreshProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [refreshing, setRefreshing] = useState(false);
+
+  // ROUTE GATE. This is mounted in the root layout, so it also ran on the
+  // homepage — where it has nothing to freshen (the ISR HTML already carries the
+  // real catalogue prices) and everything to cost: a Realtime socket on the
+  // highest-traffic route, plus a floating pill landing in the middle of the
+  // hero's one orchestrated moment. It exists for /compare, the category
+  // landings and /plans/[id]. Gating from INSIDE keeps app/layout.tsx untouched.
+  const routeGated = pathname === "/";
 
   // Timers + indicator floor live in refs so re-renders never reset them.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const indicatorRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (routeGated) return;
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     // Fail-soft: no public config → realtime is simply off (SSR HTML still fresh).
@@ -128,18 +138,23 @@ export default function CatalogueLiveRefresh({
       }
     };
     // category is a stable per-surface string; router is stable across renders.
-  }, [router, category]);
+  }, [router, category, routeGated]);
 
   // The only DOM this renders: a subtle, aria-live "מתעדכן…" pill while a freshen
   // is in flight. Hidden entirely otherwise — the server HTML stands on its own.
-  if (!refreshing) return null;
+  if (routeGated || !refreshing) return null;
 
   return (
     <div
       role="status"
       aria-live="polite"
       data-catalogue-refreshing
-      className="pointer-events-none fixed bottom-4 left-1/2 z-40 -translate-x-1/2"
+      // Reads as CHROME, under the sticky masthead — not as an action. At
+      // `bottom-4` it landed squarely on the sticky lead CTA's label on exactly
+      // the compare/category routes that carry both. top-20 clears the 69px
+      // header; the translate is written out because `left-1/2` is a physical
+      // centre and must not be flipped by RTL.
+      className="pointer-events-none fixed top-20 left-1/2 z-40 -translate-x-1/2"
     >
       <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/95 px-3 py-1.5 text-xs font-medium text-muted shadow-sm backdrop-blur">
         <span

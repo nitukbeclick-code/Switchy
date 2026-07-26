@@ -37,6 +37,7 @@ import {
   useId,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { ils } from "@/lib/format";
 
@@ -45,6 +46,16 @@ export interface SavingsRevealProps {
   currentSpend: number;
   /** The REAL headline annual saving (largest real suggestion saving), ₪/year. */
   annualSaving: number;
+  /**
+   * Optional action rendered directly under the live readout. This is the app's
+   * best conversion pixel — the visitor has just felt the gap in their own money —
+   * and until now it dead-ended. The slot is deliberately a CALLER's node: this
+   * component owns the honesty gate (it returns null when there is no real gap),
+   * so a CTA placed here can never end up next to a fabricated figure. It renders
+   * INSIDE the bento but OUTSIDE the role="slider" element, so a button here can
+   * never swallow the scrubber's pointer capture or its arrow keys.
+   */
+  cta?: ReactNode;
   /** Optional extra classes on the wrapper. */
   className?: string;
 }
@@ -52,6 +63,7 @@ export interface SavingsRevealProps {
 export default function SavingsReveal({
   currentSpend,
   annualSaving,
+  cta,
   className,
 }: SavingsRevealProps) {
   const annualNow = Math.round(currentSpend * 12);
@@ -313,6 +325,12 @@ export default function SavingsReveal({
           </span>
         </p>
       </div>
+
+      {/* The ask, at the exact moment the gap is felt. Outside the slider element
+          (see the `cta` prop docs) so it can never intercept the scrubber's
+          pointer capture or arrow keys, and outside `select-none` so its own text
+          stays selectable. Renders nothing when the caller passes no CTA. */}
+      {cta ? <div className="mt-5">{cta}</div> : null}
     </section>
   );
 }

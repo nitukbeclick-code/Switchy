@@ -10,7 +10,10 @@ import ReviewsBlock from "@/components/ReviewsBlock";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import ComparisonTable from "@/components/ComparisonTable";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import LeadForm from "@/components/LeadForm";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import TalkInCommunity from "@/components/community/TalkInCommunity";
 import { channelForCategory } from "@/lib/community";
 import {
@@ -391,7 +394,7 @@ export default async function ProviderPage({ params }: Params) {
           </div>
           <div className="bento px-5 py-4">
             <dt className="text-muted">מחיר התחלתי</dt>
-            <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-value-text">
+            <dd className="mt-0.5 price-stat text-2xl text-value-text">
               {shownMinPriceText}
             </dd>
           </div>
@@ -413,6 +416,13 @@ export default async function ProviderPage({ params }: Params) {
           </div>
         </dl>
       </header>
+
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          A provider page is exactly where the referral-fee question is sharpest:
+          the whole page is about one carrier we may be paid to refer. So the
+          disclosure goes above the first price claim — the zero-click answer
+          right below quotes this provider's cheapest plan — not after it. ──── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
 
       {/* ── AEO zero-click answer: the provider's REAL cheapest plan + price ──
           The block AI answer engines lift. Empty (omitted) when no priced plan;
@@ -443,7 +453,7 @@ export default async function ProviderPage({ params }: Params) {
       {/* ── Best for ──────────────────────────────────────────────────────── */}
       {picks.length > 0 && (
         <section aria-labelledby="bestfor-h" className="mt-14">
-          <h2 id="bestfor-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+          <h2 id="bestfor-h" className="h-section text-ink">
             המסלול ההתחלתי בכל קטגוריה
           </h2>
           <ul className="mt-6 bento-grid">
@@ -458,7 +468,7 @@ export default async function ProviderPage({ params }: Params) {
                 <p className="mt-1.5 font-display font-semibold text-ink">
                   {plan.plan}
                 </p>
-                <p className="mt-2 font-display text-3xl font-bold tracking-tight text-value-text">
+                <p className="mt-2 price-stat text-3xl text-value-text">
                   {ils(plan.price)}
                 </p>
                 <Link
@@ -476,7 +486,7 @@ export default async function ProviderPage({ params }: Params) {
       {/* ── Head-to-head comparisons ("השווה מול ...") ────────────────────── */}
       {vsPairs.length > 0 && (
         <section aria-labelledby="vs-h" className="mt-14">
-          <h2 id="vs-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+          <h2 id="vs-h" className="h-section text-ink">
             השוו את {provider.name} מול ספק אחר
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
@@ -504,7 +514,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── All plans table ───────────────────────────────────────────────── */}
       <section aria-labelledby="plans-h" className="mt-14">
-        <h2 id="plans-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="plans-h" className="h-section text-ink">
           כל המסלולים של {provider.name}
         </h2>
         <div className="mt-5">
@@ -513,6 +523,10 @@ export default async function ProviderPage({ params }: Params) {
             caption={`מסלולי ${provider.name} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
           />
         </div>
+        {/* §17 price-accuracy caveat, directly under the densest price surface
+            on the page: VAT-inclusive, accurate as of the update date, verify
+            with the provider before signing. */}
+        <PriceCaveat className="mt-3" />
       </section>
 
       {/* ── Editorial reasoning ("למה זה מומלץ") ──────────────────────────── */}
@@ -530,7 +544,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="faq-h" className="h-section text-ink">
           שאלות נפוצות — {provider.name}
         </h2>
         <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
@@ -553,7 +567,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="lead-h" className="h-section text-ink">
           רוצים לעבור ל{provider.name} או להשוות?
         </h2>
         <p className="mt-2 text-foreground">
@@ -570,6 +584,12 @@ export default async function ProviderPage({ params }: Params) {
           />
         </div>
       </section>
+
+      {/* Mobile-only bar back to the form above — this is a long provider page,
+          and on a phone the ask sits far below the plan tables. The verified
+          `#lead` anchor is right above, so the bar resolves its target on mount
+          and auto-hides the moment the form is on screen. */}
+      <StickyLeadCta source="provider" />
 
       {/* ── Talk about this provider in the community ──────────────────────── */}
       <section className="mt-12 rounded-2xl border border-border bg-surface p-5 text-center shadow-soft sm:p-6">

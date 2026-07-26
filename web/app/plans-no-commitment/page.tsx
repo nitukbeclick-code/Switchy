@@ -142,7 +142,7 @@ export default async function PlansNoCommitmentPage() {
         <header className="sw-reveal">
           <h2
             id="no-commit-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+            className="h-section text-ink"
           >
             {TITLE_HE} — סלולר ואינטרנט
           </h2>
@@ -183,7 +183,7 @@ export default async function PlansNoCommitmentPage() {
         >
           <h2
             id="no-commit-lead-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             רוצים שנמצא לכם את המסלול המשתלם ביותר — בלי התחייבות?
           </h2>
@@ -226,12 +226,11 @@ export default async function PlansNoCommitmentPage() {
               { href: "/compare/internet", label: "כל מסלולי האינטרנט — טבלה מלאה" },
               { href: "/cellular-budget", label: "מסלולי סלולר תקציביים" },
               { href: "/kosher-plans", label: "מסלולים כשרים" },
-            ].map((sub, i) => (
+            ].map((sub) => (
               <li key={sub.href}>
                 <Link
                   href={sub.href}
                   className="sw-lift card card-interactive group flex items-center justify-between gap-2 px-4 py-3.5"
-                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
                 >
                   <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                     {sub.label}

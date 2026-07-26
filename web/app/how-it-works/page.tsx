@@ -164,8 +164,7 @@ export default function HowItWorksPage() {
         <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
           <div className="mx-auto max-w-2xl">
             <p
-              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
-              style={{ animationDelay: "0ms" }}
+              className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
             >
               <Icon name="check" size={14} className="shrink-0 text-accent" />
               פשוט כמו 1·2·3 · חינם · בלי התחייבות
@@ -189,8 +188,7 @@ export default function HowItWorksPage() {
                 consult path is a quiet SECONDARY white text link so only one
                 action reads as primary per viewport. Tracked with non-PII labels. */}
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               <TrackedCtaLink
                 href="/compare"
@@ -230,16 +228,15 @@ export default function HowItWorksPage() {
         </p>
         <h2
           id="expect-h"
-          className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+          className="mt-2 h-section text-ink"
         >
           למה לצפות
         </h2>
         <ul className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          {EXPECTATIONS.map((item, i) => (
+          {EXPECTATIONS.map((item) => (
             <li
               key={item.title}
-              className="sw-reveal sw-lift card flex h-full flex-col p-6"
-              style={{ animationDelay: `${Math.min(i * 60, 240)}ms` }}
+              className="sw-lift card flex h-full flex-col p-6"
             >
               <h3 className="font-display text-lg font-semibold tracking-tight text-ink">
                 {item.title}
@@ -264,7 +261,7 @@ export default function HowItWorksPage() {
         </p>
         <h2
           id="consent-h"
-          className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+          className="mt-2 h-section text-ink"
         >
           פונים אליכם רק בהסכמתכם
         </h2>
@@ -324,7 +321,7 @@ export default function HowItWorksPage() {
         </p>
         <h2
           id="faq-h"
-          className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+          className="mt-2 h-section text-ink"
         >
           שאלות על השירות
         </h2>

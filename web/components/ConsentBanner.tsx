@@ -126,6 +126,25 @@ export default function ConsentBanner() {
     if (stored === "granted") updateConsent("granted");
   }, [stored]);
 
+  // ONE DECISION AT A TIME. This banner is z-50; <StickyLeadCta> is z-40 — so on
+  // every first visit the cookie question sat directly on top of the page's only
+  // conversion action. While a choice is pending we flag <html>, and the stacking
+  // contract in globals.css parks the CTA off-screen; the CTA slides back up on
+  // its own drawer transition the instant the flag drops.
+  //
+  // Driven off `shouldShow` (not a bare mount effect) so the flag is released by
+  // the SAME external sync that closes the banner: choose() persists, the store
+  // flips `shouldShow` false, this cleanup runs in that commit. That also covers
+  // unmount and a mid-exit re-open for free — no manual removal in choose(), and
+  // no way for the two to drift out of step. The flag drops when the CHOICE is
+  // made, deliberately not when the slide-down finishes: both bars move together.
+  useEffect(() => {
+    if (!shouldShow) return;
+    const root = document.documentElement;
+    root.setAttribute("data-consent-open", "");
+    return () => root.removeAttribute("data-consent-open");
+  }, [shouldShow]);
+
   // Clear any pending exit timer on unmount.
   useEffect(
     () => () => {
@@ -195,9 +214,15 @@ export default function ConsentBanner() {
           : "translate-y-full opacity-0",
       ].join(" ")}
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      {/* The bottom padding clears the iPhone home-indicator strip: at a flat
+          py-4 the two buttons sat INSIDE it, where the OS swipe-up gesture eats
+          the tap. env() is 0 on every other device, so this costs nothing there. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        {/* One mobile line. The longer version wrapped to three, pushing the bar
+            past 120px — a cookie notice does not get to own a fifth of a phone
+            screen. The full explanation is one tap away in the linked policy. */}
         <p className="text-sm leading-relaxed text-foreground">
-          אנחנו משתמשים ב-cookies כדי לנתח שימוש ולשפר את האתר.{" "}
+          אנחנו משתמשים ב-cookies לניתוח שימוש.{" "}
           <Link
             href="/privacy"
             className="rounded text-accent-text underline transition-colors duration-150 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -205,18 +230,21 @@ export default function ConsentBanner() {
             מדיניות הפרטיות
           </Link>
         </p>
-        <div className="flex shrink-0 gap-2">
+        {/* min-h-11 = the 44px minimum tap target; gap-3 keeps ~12px of dead
+            space between two adjacent, opposite decisions so a thumb aiming at
+            "רק חיוני" cannot land on "אישור" — consent must be a deliberate act. */}
+        <div className="flex shrink-0 gap-3">
           <button
             type="button"
             onClick={() => choose("denied")}
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-ink transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-background active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="min-h-11 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-ink transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-background active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             רק חיוני
           </button>
           <button
             type="button"
             onClick={() => choose("granted")}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="min-h-11 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             אישור
           </button>

@@ -20,6 +20,7 @@ import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
 import {
+  catalogueTrustStats,
   getPlans,
   getProviders,
   getCategories,
@@ -117,10 +118,10 @@ export default function QuizPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 pt-10 pb-20 sm:px-6">
-      {/* Entrance motion: the `.sw-reveal` blocks below use the shared global alias
-          (globals.css) which fires the swRevealUp keyframe — no per-page keyframe
-          is redefined. Reduced-motion is handled globally. Stagger is applied via
-          inline animationDelay on each revealed child. */}
+      {/* Entrance motion: only the hero h1 and its lede use `.sw-reveal` — the shared
+          global alias (globals.css) that fires the swRevealUp keyframe, with no
+          per-page keyframe redefined. One staged moment, high in the page; the CTA
+          and the counts below it render at rest. Reduced-motion is handled globally. */}
 
       {/* Structured data: WebPage + HowTo + Breadcrumb. */}
       <JsonLd
@@ -172,8 +173,7 @@ export default function QuizPage() {
               לכל התאמה. ללא העדפת ספק, חינמי וללא התחייבות.
             </p>
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               {/* PRIMARY — in-page jump to the wizard. Solid green + accent glow +
                   press feedback. Exactly ONE primary per view. */}
@@ -197,8 +197,7 @@ export default function QuizPage() {
             {/* Trust band — REAL catalogue counts; the entry price carries the
                 green VALUE emphasis (text-accent), NOT a button. */}
             <p
-              className="sw-reveal mt-8 text-sm text-white/85"
-              style={{ animationDelay: "150ms" }}
+              className="mt-8 text-sm text-white/85"
             >
               {planCount} מסלולים · {providerCount} ספקים
               {minFeaturedText !== undefined ? (
@@ -214,8 +213,7 @@ export default function QuizPage() {
             {/* Quiet qualitative value line — muted, small green tick, no
                 fabricated figure. */}
             <p
-              className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
-              style={{ animationDelay: "180ms" }}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
             >
               <Icon name="check" size={16} className="shrink-0 text-accent" />
               מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
@@ -249,7 +247,13 @@ export default function QuizPage() {
         <h2 id="quiz-h" className="sr-only">
           שאלון ההתאמה
         </h2>
-        <QuizWizard />
+        {/* REAL catalogue totals for the hand-off form's trust line — the wizard
+            is a client component and cannot read the catalogue itself. */}
+        {/* The mobile-only <StickyLeadCta source="quiz"> is mounted INSIDE the
+            wizard, not here: it resolves its `#lead` target once, in a mount
+            effect, and on this route that target only exists after the results
+            render. Mounted here it would be a permanent no-op. */}
+        <QuizWizard trustStats={catalogueTrustStats()} />
       </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}

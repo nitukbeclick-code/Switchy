@@ -153,8 +153,7 @@ export default function BillsPage() {
           {/* CTA row — exactly ONE primary (solid green, glow, press) that jumps
               to the uploader; the /book consult path is a quiet SECONDARY link. */}
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex flex-col items-center justify-center gap-4"
           >
             <TrackedCtaLink
               href="#bill-upload"
@@ -177,8 +176,7 @@ export default function BillsPage() {
           {/* Trust band — REAL catalogue counts; the entry price carries the green
               VALUE emphasis (text on ink), NOT a button. */}
           <p
-            className="sw-reveal mt-8 text-sm text-white/85"
-            style={{ animationDelay: "150ms" }}
+            className="mt-8 text-sm text-white/85"
           >
             {planCount} מסלולים · {providerCount} ספקים
             {cheapest ? (
@@ -194,8 +192,7 @@ export default function BillsPage() {
           {/* Quiet qualitative value line — muted, small green tick, honest (no
               fabricated figure). */}
           <p
-            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
-            style={{ animationDelay: "180ms" }}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
           >
             <Icon name="check" size={16} className="shrink-0 text-accent" />
             הקריאה אוטומטית, חינם, וההשוואה בלי התחייבות — התמונה אינה נשמרת

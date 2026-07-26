@@ -397,20 +397,6 @@ export default async function ServiceCityPage({ params }: Params) {
           references the shared --ease-out token, animates ONLY transform + opacity.
           Reduced-motion removes the animation so the header renders statically at
           its resting (fully visible) state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-        }
-      `,
-        }}
-      />
 
       {/* GEO structured data: CollectionPage + Place/GeoCoordinates/AdminArea +
           ItemList + FAQ + Breadcrumb + KnowledgeGraph + KnowledgeWeb. Each plan's
@@ -504,7 +490,7 @@ export default async function ServiceCityPage({ params }: Params) {
           catalogue facts, lowest price in the green VALUE text tier. */}
       <header className="mt-4">
         <span
-          className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
+          className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
         >
           <Icon name="search" size={14} aria-hidden="true" />
           {svc.label} ב{c.name} · {c.district}
@@ -524,8 +510,7 @@ export default async function ServiceCityPage({ params }: Params) {
           ממוינים מהזול ליקר.
         </p>
         <dl
-          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
-          style={{ animationDelay: "120ms" }}
+          className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
         >
           <div className="flex items-baseline gap-1.5">
             <dt className="sr-only">מסלולים בהשוואה</dt>
@@ -544,7 +529,7 @@ export default async function ServiceCityPage({ params }: Params) {
           {heroMin != null && (
             <div className="flex items-baseline gap-1.5">
               <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
-              <dd className="font-display text-xl font-bold tracking-tight text-value-text">
+              <dd className="price-stat text-xl text-value-text">
                 <Money amount={heroMin} />
               </dd>
               <span className="text-sm text-muted">החל מ-</span>
@@ -553,9 +538,12 @@ export default async function ServiceCityPage({ params }: Params) {
         </dl>
       </header>
 
-      {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
+      {/* ── AEO zero-click direct answer (right below the H1) ────────────────
+          A LEDE, not a panel — <AeoAnswerBlock> renders as indented editorial
+          text now. Its markup (the [data-direct-answer] node, the speakable id,
+          the JSON-LD above) is byte-identical; only the shell changed. */}
       {directAnswer && (
-        <div className="mt-6">
+        <div className="mt-5">
           <AeoAnswerBlock
             answer={directAnswer}
             dateModified={asOf}
@@ -564,30 +552,26 @@ export default async function ServiceCityPage({ params }: Params) {
         </div>
       )}
 
-      {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
-        <SgeSummary>{summary}</SgeSummary>
-      </div>
-
-      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
-      <div className="mt-8">
-        <AuthorityBlock
-          heading={`השורה התחתונה: ${svc.label} ב${c.name}`}
-          answer={authority.answer}
-          rows={authority.rows}
-          reviewedAt={REVIEWED_AT}
-        />
+      {/* ── Commission disclosure (Consumer Protection §7b) — immediately ABOVE
+          the prices. The geo variant previously carried it only in the lead
+          section far below the table, i.e. AFTER the first ₪; with the table
+          moving up, the disclosure moves up with it and leads. ───────────── */}
+      <div className="mt-6">
+        <CommissionDisclosure variant="banner" />
       </div>
 
       {/* ── Comparison table ────────────────────────────────────────────────
-          The core product, localized. A visible heading + intent caption frame
-          the table (was an sr-only h2). The caption restates the honest national
-          framing (same prices everywhere). Empty live read → shared EmptyState
-          rather than an empty table. */}
-      <section aria-labelledby="table-h" className="mt-12">
+          The core product, localized, and now the first thing under the
+          disclosure instead of the fourth prose panel down. The summary and the
+          authority block are unchanged and still on the page — they have moved
+          below the table (see after <PriceCaveat>). A visible heading + intent
+          caption frame the table (was an sr-only h2). The caption restates the
+          honest national framing (same prices everywhere). Empty live read →
+          shared EmptyState rather than an empty table. */}
+      <section aria-labelledby="table-h" className="mt-8">
         <h2
           id="table-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           טבלת השוואת {svc.label} ב{c.name}
         </h2>
@@ -605,14 +589,35 @@ export default async function ServiceCityPage({ params }: Params) {
           />
         ) : (
           <>
+            {/* groupByProvider: the geo variant lists the SAME national plan set
+                as the hub — up to 59 cards — so it gets the same per-provider
+                swipe strips rather than a 32,000px column on a phone. */}
             <ComparisonTable
               plans={plans}
               caption={`השוואת ${svc.label} ב${c.name} — מחירים בשקלים (אחידים ארצית), כולל מחיר אחרי המבצע`}
+              groupByProvider
             />
             <PriceCaveat className="mt-3" />
           </>
         )}
       </section>
+
+      {/* ── SGE summary ─────────────────────────────────────────────────────
+          Directly after the price caveat: the reader has the numbers, so this is
+          where the 40–50 word conclusion earns its place. */}
+      <div className="mt-10">
+        <SgeSummary>{summary}</SgeSummary>
+      </div>
+
+      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
+      <div className="mt-10">
+        <AuthorityBlock
+          heading={`השורה התחתונה: ${svc.label} ב${c.name}`}
+          answer={authority.answer}
+          rows={authority.rows}
+          reviewedAt={REVIEWED_AT}
+        />
+      </div>
 
       {/* ── AEO conversational Q&A (data-derived; part of the page's FAQPage) ── */}
       {questions.length > 0 && (
@@ -628,14 +633,7 @@ export default async function ServiceCityPage({ params }: Params) {
         aria-labelledby="local-note-h"
         className="bento mt-10 p-6 sm:p-7"
       >
-        <h2
-          id="local-note-h"
-          className="flex items-center gap-2 font-display text-base font-semibold tracking-tight text-ink"
-        >
-          <span
-            aria-hidden="true"
-            className="inline-block h-4 w-1 rounded-full bg-accent"
-          />
+        <h2 id="local-note-h" className="h-section text-ink">
           מה כדאי לדעת על {c.name}
         </h2>
         {/* Honest national-availability line — the visible counterpart of the
@@ -658,7 +656,7 @@ export default async function ServiceCityPage({ params }: Params) {
       <section aria-labelledby="faq-h" className="mt-16">
         <h2
           id="faq-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           שאלות נפוצות — {svc.label} ב{c.name}
         </h2>
@@ -692,7 +690,7 @@ export default async function ServiceCityPage({ params }: Params) {
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
         <h2
           id="lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים עזרה לבחור {svc.label} ב{c.name}?
         </h2>

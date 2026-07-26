@@ -135,30 +135,6 @@ export default function AccessibilityPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
-          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
-          only (no JS) — references the shared --ease-out token and animates ONLY
-          transform + opacity (GPU). Reduced-motion: the animation is removed so
-          blocks render statically at their already-visible resting state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: none; }
-        }
-        /* Heading anchor — faint "#" on hover/focus for deep-linking a section. */
-        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
-        .sw-head:hover .sw-anchor,
-        .sw-head:focus-within .sw-anchor { opacity: 1; }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-          .sw-anchor { transition: none; }
-        }
-      `,
-        }}
-      />
 
       <JsonLd
         data={webPageSchema({
@@ -194,14 +170,9 @@ export default function AccessibilityPage() {
           הנוכחי, ההתאמות שבוצעו, מגבלות ידועות, וכיצד לפנות אלינו לקבלת סיוע.
         </p>
         <div
-          className="sw-reveal mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
-          style={{ animationDelay: "120ms" }}
+          className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
-            <span
-              aria-hidden="true"
-              className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
-            />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
             ההצהרה עודכנה לאחרונה:{" "}
             <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
           </span>
@@ -215,8 +186,7 @@ export default function AccessibilityPage() {
       {/* ── Table of contents — quick jump to any section ──────────────────── */}
       <nav
         aria-label="תוכן העניינים"
-        className="sw-reveal bento mt-8 p-5 sm:p-6"
-        style={{ animationDelay: "150ms" }}
+        className="bento mt-8 p-5 sm:p-6"
       >
         <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
           תוכן העניינים
@@ -252,12 +222,11 @@ export default function AccessibilityPage() {
             <section
               key={s.h}
               aria-labelledby={id}
-              className={`sw-reveal scroll-mt-24 ${
+              className={`scroll-mt-24 ${
                 isReport
                   ? "bento glow-accent border-accent/30 p-6 sm:p-8"
                   : "bento p-6 sm:p-8"
               }`}
-              style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
             >
               <div className="sw-head flex items-center gap-2">
                 {isReport && (
@@ -270,7 +239,7 @@ export default function AccessibilityPage() {
                 )}
                 <h2
                   id={id}
-                  className="font-display text-2xl font-bold tracking-tight text-ink"
+                  className="h-section text-ink"
                 >
                   {s.h}
                 </h2>

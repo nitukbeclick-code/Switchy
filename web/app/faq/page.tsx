@@ -18,9 +18,11 @@ import JsonLd from "@/components/JsonLd";
 import Icon from "@/components/Icon";
 import SgeSummary from "@/components/SgeSummary";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
+import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import { FaqAccordion, type FaqItem } from "@/components/FaqAccordion";
+import { catalogueTrustStats } from "@/lib/data";
 import { GENERAL_FAQ, faqForCategory } from "@/lib/faq";
 import { CATEGORY_HE } from "@/lib/categories";
 import {
@@ -163,8 +165,7 @@ export default function FaqPage() {
         <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
           <div className="mx-auto max-w-2xl">
             <p
-              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
-              style={{ animationDelay: "0ms" }}
+              className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
             >
               <Icon name="check" size={14} className="shrink-0 text-accent" />
               מרכז הידע · בעברית ברורה
@@ -182,8 +183,7 @@ export default function FaqPage() {
             {/* CTA row — exactly ONE primary (solid green, glow, press). The
                 consult path is a quiet SECONDARY white text link. */}
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               <TrackedCtaLink
                 href="/compare"
@@ -206,8 +206,7 @@ export default function FaqPage() {
             {/* Trust band — the honest count of visible Q&A (real, no fabricated
                 figure). tabular-nums column-aligns the digit (parity with home). */}
             <p
-              className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
-              style={{ animationDelay: "150ms" }}
+              className="nums-tabular mt-8 text-sm text-white/85"
             >
               <span className="font-display font-bold text-white">
                 {allQA.length}
@@ -259,7 +258,7 @@ export default function FaqPage() {
           </p>
           <h2
             id={`${s.id}-h`}
-            className="mt-2 font-display text-2xl font-bold tracking-tight text-ink"
+            className="mt-2 h-section text-ink"
           >
             {s.heading}
           </h2>
@@ -277,6 +276,30 @@ export default function FaqPage() {
           )}
         </section>
       ))}
+
+      {/* ── The ask ───────────────────────────────────────────────────────────
+          310 lines of purchase-intent questions ("כמה זה עולה", "איך עוברים",
+          "האם זה באמת בחינם") and, until now, one /book link at the end — the
+          answers removed every objection and then offered nowhere to act. The same
+          consent-gated form the category landings carry closes that. No
+          `defaultCategory`: this page spans every service, so pre-selecting one
+          would guess wrong most of the time. Counts are the real catalogue totals
+          and LeadForm's own gate suppresses the line if they are ever zero. ──── */}
+      <section id="lead" aria-labelledby="faq-lead-h" className="mt-16 scroll-mt-6">
+        <h2
+          id="faq-lead-h"
+          className="h-section text-ink"
+        >
+          נשארה שאלה? נענה עליה בטלפון
+        </h2>
+        <p className="mt-2 text-foreground">
+          השאירו פרטים ונחזור אליכם עם השוואה אישית ותשובה לשאלה שלכם — חינם, בלי
+          התחייבות, והמספר נשאר שלכם.
+        </p>
+        <div className="mt-5 max-w-xl">
+          <LeadFormLazy source="faq" trustStats={catalogueTrustStats()} />
+        </div>
+      </section>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

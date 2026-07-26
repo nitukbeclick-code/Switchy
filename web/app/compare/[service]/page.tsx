@@ -380,20 +380,6 @@ export default async function ServiceHubPage({ params }: Params) {
           not over-delay). Server CSS only (no JS), references the shared --ease-out
           token, animates ONLY transform + opacity. Reduced-motion removes the
           animation so items render statically at their resting (visible) state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-        }
-      `,
-        }}
-      />
 
       {/* GEO structured data: CollectionPage + ItemList + FAQ + Breadcrumb + KnowledgeGraph.
           Each plan's Product data is serialized ONCE in the standalone ItemList
@@ -471,7 +457,7 @@ export default async function ServiceHubPage({ params }: Params) {
           green VALUE text tier and everything else ink/structure. */}
       <header className="mt-4">
         <span
-          className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
+          className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
         >
           <Icon name="search" size={14} aria-hidden="true" />
           השוואת {svc.label}
@@ -491,8 +477,7 @@ export default async function ServiceHubPage({ params }: Params) {
           המבצע.
         </p>
         <dl
-          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
-          style={{ animationDelay: "120ms" }}
+          className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
         >
           <div className="flex items-baseline gap-1.5">
             <dt className="sr-only">מסלולים בהשוואה</dt>
@@ -511,7 +496,7 @@ export default async function ServiceHubPage({ params }: Params) {
           {heroMin != null && (
             <div className="flex items-baseline gap-1.5">
               <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
-              <dd className="font-display text-xl font-bold tracking-tight text-value-text">
+              <dd className="price-stat text-xl text-value-text">
                 <Money amount={heroMin} />
               </dd>
               <span className="text-sm text-muted">החל מ-</span>
@@ -520,9 +505,14 @@ export default async function ServiceHubPage({ params }: Params) {
         </dl>
       </header>
 
-      {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
+      {/* ── AEO zero-click direct answer (right below the H1) ────────────────
+          Now a LEDE, not a panel: <AeoAnswerBlock> renders as indented editorial
+          text so it reads as the opening line of the page rather than as the
+          first of four stacked prose cards. Its markup — the [data-direct-answer]
+          node, the id the speakable schema targets, the JSON-LD emitted above —
+          is byte-identical; only the shell changed. */}
       {directAnswer && (
-        <div className="mt-6">
+        <div className="mt-5">
           <AeoAnswerBlock
             answer={directAnswer}
             dateModified={asOf}
@@ -531,36 +521,27 @@ export default async function ServiceHubPage({ params }: Params) {
         </div>
       )}
 
-      {/* ── Commission disclosure (Consumer Protection §7b) — at the top of the
-          service hub, NOT buried. ────────────────────────────────────────── */}
+      {/* ── Commission disclosure (Consumer Protection §7b) — immediately ABOVE
+          the prices it discloses. The reorder below TIGHTENS this adjacency: the
+          banner and the first ₪ are now one scroll apart instead of three. ── */}
       <div className="mt-6">
         <CommissionDisclosure variant="banner" />
       </div>
 
-      {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
-        <SgeSummary>{summary}</SgeSummary>
-      </div>
-
-      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
-      <div className="mt-8">
-        <AuthorityBlock
-          heading={`השורה התחתונה: ${svc.label}`}
-          answer={authority.answer}
-          rows={authority.rows}
-          reviewedAt={REVIEWED_AT}
-        />
-      </div>
-
       {/* ── Comparison table ────────────────────────────────────────────────
-          The core product. A visible section heading + a one-line intent caption
-          frame the table (it was an sr-only h2 before, leaving the table to
-          dead-start). When the live read yields no plans we render the shared
-          EmptyState (honest "no data yet") instead of an empty table. */}
-      <section aria-labelledby="table-h" className="mt-12">
+          The core product, and now the FIRST thing under the disclosure. It used
+          to sit below the SGE summary and the authority block — roughly three
+          phone screens of prose before a single ₪ on the page a buyer actually
+          lands on. Those two blocks are unchanged and still on the page; they
+          have simply moved under the table (see below), where a reader who wants
+          the reasoning will look for it. A visible section heading + a one-line
+          intent caption frame the table (it was an sr-only h2 before, leaving the
+          table to dead-start). When the live read yields no plans we render the
+          shared EmptyState (honest "no data yet") instead of an empty table. */}
+      <section aria-labelledby="table-h" className="mt-8">
         <h2
           id="table-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           טבלת השוואת {svc.label}
         </h2>
@@ -589,6 +570,23 @@ export default async function ServiceHubPage({ params }: Params) {
         )}
       </section>
 
+      {/* ── SGE summary ─────────────────────────────────────────────────────
+          Directly after the price caveat: the reader has seen the numbers, so
+          this is where the 40–50 word conclusion earns its place. */}
+      <div className="mt-10">
+        <SgeSummary>{summary}</SgeSummary>
+      </div>
+
+      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
+      <div className="mt-10">
+        <AuthorityBlock
+          heading={`השורה התחתונה: ${svc.label}`}
+          answer={authority.answer}
+          rows={authority.rows}
+          reviewedAt={REVIEWED_AT}
+        />
+      </div>
+
       {/* ── AEO conversational Q&A (data-derived; mirrors the FAQPage JSON-LD) ─ */}
       {questions.length > 0 && (
         <AeoQA
@@ -603,7 +601,7 @@ export default async function ServiceHubPage({ params }: Params) {
         <section aria-labelledby="rank-h" className="mt-14">
           <h2
             id="rank-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             ספקי {svc.label} לפי מחיר התחלתי
           </h2>
@@ -617,8 +615,7 @@ export default async function ServiceHubPage({ params }: Params) {
               <li key={pr.slug}>
                 <Link
                   href={`/providers/${pr.slug}`}
-                  className="group sw-reveal card card-interactive flex items-center justify-between px-4 py-3.5"
-                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
+                  className="group card card-interactive flex items-center justify-between px-4 py-3.5"
                 >
                   <span className="flex items-center gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent">
@@ -655,7 +652,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section aria-labelledby="cities-h" className="mt-14">
         <h2
           id="cities-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           השוואת {svc.label} לפי עיר
         </h2>
@@ -664,12 +661,11 @@ export default async function ServiceHubPage({ params }: Params) {
           השוואה ממוקדת מקומית.
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {cities.map((c, i) => (
+          {cities.map((c) => (
             <li key={c.slug}>
               <Link
                 href={`/compare/${service}/${c.slug}`}
-                className="group sw-reveal card card-interactive block px-4 py-3 text-sm"
-                style={{ animationDelay: `${Math.min(i * 30, 240)}ms` }}
+                className="group card card-interactive block px-4 py-3 text-sm"
               >
                 <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                   {svc.label} ב{c.name}
@@ -684,7 +680,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section aria-labelledby="faq-h" className="mt-16">
         <h2
           id="faq-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           שאלות נפוצות — {svc.label}
         </h2>
@@ -718,7 +714,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
         <h2
           id="lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים עזרה לבחור {svc.label}?
         </h2>

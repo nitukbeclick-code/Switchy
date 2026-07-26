@@ -14,7 +14,10 @@
 //   • OCR is imperfect: we surface the read `confidence` + any model `warnings`
 //     as a visible quality disclaimer, and tell the user to verify before acting.
 //   • PRIVACY: a plain note states the photo is sent to Google (Gemini Vision) to
-//     read it and is NOT stored. We hold it in memory only for the upload.
+//     read it and is NOT stored. We hold it in memory only for the upload. The
+//     same note also says where the READ goes: its summary rides along to the
+//     hand-off form (`contextNote`) if — and only if — the visitor chooses to
+//     leave details, and <LeadForm> shows them that exact text before they send.
 //
 // A11y: labelled file input, status region (aria-live) for the loading + result,
 // keyboardable controls, and reduced-motion respect on the spinner.
@@ -35,6 +38,7 @@ import LeadForm from "@/components/LeadForm";
 import PriceCaveat from "@/components/PriceCaveat";
 import BillForensics from "@/components/BillForensics";
 import SavingsReveal from "@/components/SavingsReveal";
+import SocialProof from "@/components/SocialProof";
 import Icon from "@/components/Icon";
 
 // Compression budget: cap the longest edge and re-encode as JPEG. A bill is text-
@@ -142,6 +146,21 @@ function askSwitchyAboutBill(result: AnalyzeResult): void {
   trackEvent("bill_ask_ai", { source: "bills", category });
 }
 
+/** The shared in-page anchor for the hand-off form (also <StickyLeadCta>'s default). */
+const LEAD_ANCHOR_ID = "lead";
+
+/**
+ * Scroll to the hand-off lead form. Mirrors <StickyLeadCta>'s behaviour exactly
+ * (same `#lead` target, same prefers-reduced-motion check) so the two entry points
+ * into the form cannot drift apart. Fail-soft: no target ⇒ nothing happens.
+ */
+function scrollToLead(): void {
+  const target = document.getElementById(LEAD_ANCHOR_ID);
+  if (!target) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+}
+
 export interface BillUploaderProps {
   /**
    * A slim, serializable projection of the REAL catalogue (cat/provider/plan/
@@ -151,9 +170,19 @@ export interface BillUploaderProps {
    * runs on the bill-level overpay vs the surfaced suggestions.
    */
   promoPlans?: ForensicsPlan[];
+  /**
+   * Optional REAL catalogue counts for the hand-off form's trust line ("משווים X
+   * מסלולים מ-Y ספקים"). Server-only (`catalogueTrustStats()` reads the bundled
+   * catalogue through node:fs), so the /bills page must pass it down — this
+   * component cannot derive it. Omitted ⇒ LeadForm shows no count line.
+   */
+  trustStats?: { planCount: number; providerCount: number };
 }
 
-export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
+export default function BillUploader({
+  promoPlans = [],
+  trustStats,
+}: BillUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -251,6 +280,32 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
     ? leadCategory(result.category)
     : undefined;
 
+  // A factual note for the rep, assembled ONLY from figures already rendered on
+  // this screen: what the bill says they pay, the real annual gap the analyzer
+  // returned, and the top REAL suggestion. Each clause is dropped when the read
+  // didn't produce it — an absent fact is omitted, never guessed. It reaches the
+  // CRM attached to the visitor's identity, so <LeadForm> renders it verbatim
+  // above its submit button and the privacy note above says so.
+  const topSuggestion = readable ? result?.suggestions?.[0] : undefined;
+  const handoffContextNote = readable
+    ? [
+        result?.provider ? `ספק נוכחי: ${result.provider}` : null,
+        result?.currentSpend
+          ? `תשלום היום: ${ils(result.currentSpend)} לחודש`
+          : null,
+        result && result.annualSaving > 0
+          ? `חיסכון שנתי מוערך: ${ils(result.annualSaving)}`
+          : null,
+        topSuggestion
+          ? `מסלול מוצע: ${topSuggestion.provider} — ${topSuggestion.name} (${ils(
+              topSuggestion.price,
+            )})`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || undefined
+    : undefined;
+
   return (
     <div className="mt-8">
       {/* Async result/error reveals settle in with a small fade + 8px rise
@@ -286,13 +341,21 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
           className="interactive mt-4 block w-full cursor-pointer rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none file:me-4 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:font-medium file:text-accent-contrast hover:file:bg-accent-hover focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
-        {/* Privacy note — plain, prominent, never buried. */}
+        {/* Privacy note — plain, prominent, never buried. It must describe the
+            WHOLE journey, including the hand-off: the read's summary is passed
+            to <LeadForm> as `contextNote` and stored beside the visitor's name,
+            phone and city, so calling it "anonymous" stopped being true the
+            moment a visitor leaves details. Stated calmly and conditionally
+            ("if you choose to") — the image itself is still never stored, and a
+            reassurance must not be turned into a scare. */}
         <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted">
           <Icon name="lock" size={16} className="mt-0.5 shrink-0" />
           <span>
             הפרטיות שלכם: התמונה נשלחת לקריאה אוטומטית בשירות של Google ‏(Gemini)
-            ‏<strong>ואינה נשמרת</strong> אצלנו — לא התמונה ולא תוכנה. נשמר רק
-            סיכום אנונימי (ספק, סכום, הצעות) לצורך מניעת שימוש לרעה.
+            ‏<strong>ואינה נשמרת</strong> אצלנו — לא התמונה ולא תוכנה. נשמר סיכום
+            הקריאה (ספק, סכום, הצעות) לצורך מניעת שימוש לרעה, ואם תבחרו להשאיר
+            פרטים בטופס שבהמשך — הסיכום הזה יצורף לפנייה שלכם כדי שנציג יוכל
+            לעזור.
           </span>
         </p>
       </div>
@@ -386,6 +449,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
           <div className="mt-6 border-t border-border pt-6">
             <LeadForm
               source="bill-analyzer"
+              trustStats={trustStats}
               heading="לא נורא — נעזור לכם ידנית. השאירו פרטים ונשווה עבורכם, חינם ובלי התחייבות"
             />
           </div>
@@ -451,6 +515,21 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
             <SavingsReveal
               currentSpend={result.currentSpend}
               annualSaving={result.annualSaving}
+              // The scrubber is the moment the gap is FELT — and the real form is
+              // three sections and ~2.5 screens further down, past content that
+              // answers the question and removes the reason to call. Give that
+              // moment the ask directly. The scroll is <StickyLeadCta>'s exact
+              // behaviour (shared #lead target, reduced-motion aware).
+              cta={
+                <button
+                  type="button"
+                  onClick={scrollToLead}
+                  className="interactive press inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:w-auto"
+                >
+                  רוצים שנסגור לכם את הפער?
+                  <Icon name="arrow" size={18} aria-hidden="true" />
+                </button>
+              }
             />
           )}
 
@@ -523,11 +602,27 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
             </div>
           )}
 
-          {/* Hand-off to the lead form — the primary next action. */}
-          <div className="bento p-6 sm:p-8">
+          {/* Honest aggregate directly above the ask. With fallback="none" it
+              emits NO DOM at all unless there is a real published figure, so it
+              can never fabricate proof next to a real saving. */}
+          <SocialProof fallback="none" />
+
+          {/* Hand-off to the lead form — the primary next action.
+              `id="lead"` is the shared in-page anchor: the scrubber's CTA above
+              and <StickyLeadCta> both scroll here, and neither has to know where
+              "here" is. scroll-mt-6 keeps the sticky header off the form's top.
+              `contextNote` is the read that is ALREADY on screen — provider, what
+              they pay today, the real annual gap and the plan we surfaced — so the
+              rep opens the call knowing the ask. Nothing here is computed anew.
+              No `bento` on the wrapper: <LeadForm> already renders its own card,
+              and the old wrapper nested one inside the other — the same plain
+              wrapper the ~30 category landings use is the right single card. */}
+          <div id={LEAD_ANCHOR_ID} className="scroll-mt-6">
             <LeadForm
               source="bill-analyzer"
               defaultCategory={handoffCategory}
+              trustStats={trustStats}
+              contextNote={handoffContextNote}
               heading="רוצים שנעזור לעבור? השאירו פרטים — חינם ובלי התחייבות"
             />
           </div>

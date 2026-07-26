@@ -56,7 +56,7 @@ function Section({
       <p className="font-display text-sm font-bold tracking-tight text-accent-text">
         {n}
       </p>
-      <h2 className="mt-1 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+      <h2 className="mt-1 h-section text-ink">
         {title}
       </h2>
       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted sm:text-base">

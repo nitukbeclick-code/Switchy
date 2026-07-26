@@ -169,7 +169,7 @@ export default async function FiveGvsFourGPage() {
 
       {/* ── 5G slice (real `is5G` plans, cheapest first) ─────────────────── */}
       <section className="mt-8" aria-label="מסלולי 5G">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 className="h-section text-ink">
           מסלולי 5G — הדור החדש
         </h2>
         <div className="mt-4">
@@ -186,7 +186,7 @@ export default async function FiveGvsFourGPage() {
 
       {/* ── 4G slice (non-5G plans, cheapest first) ──────────────────────── */}
       <section className="mt-12" aria-label="מסלולי 4G">
-        <h2 className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 className="h-section text-ink">
           מסלולי 4G — מספיק לרוב
         </h2>
         <div className="mt-4">

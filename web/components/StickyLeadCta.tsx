@@ -46,6 +46,15 @@ export default function StickyLeadCta({
     const target = document.getElementById(targetId);
     if (!target) return; // No lead form on this page → never show the bar.
 
+    // The bar is `fixed` over an OPAQUE surface, so it covers the last ~7rem of
+    // the document — which on every route that mounts it is <SiteFooter>'s legal
+    // row, including the נגישות link that ת"י 5568 requires to be reachable.
+    // Flag <html> so the one global rule in globals.css can reserve real page
+    // padding for it (`:root[data-sticky-lead] body`). The flag lives here, next
+    // to the code that decides the bar exists at all, so no page has to know.
+    const root = document.documentElement;
+    root.setAttribute("data-sticky-lead", "");
+
     // Show the bar only while the lead form is OUT of view; hide it once the
     // user reaches the form (avoids two competing CTAs stacking up).
     const io = new IntersectionObserver(
@@ -59,6 +68,7 @@ export default function StickyLeadCta({
     observerRef.current = io;
     return () => {
       io.disconnect();
+      root.removeAttribute("data-sticky-lead");
     };
   }, [targetId]);
 
@@ -77,6 +87,12 @@ export default function StickyLeadCta({
 
   return (
     <div
+      // Hook for the bottom-of-viewport stacking contract in globals.css: while
+      // <ConsentBanner> is asking for a cookie choice it parks this bar off-screen,
+      // so the visitor is never asked two questions at once (the banner is z-50 and
+      // was covering the only conversion action on a first visit). The bar slides
+      // back up on its own drawer transition the moment the choice is made.
+      data-sticky-lead-cta=""
       // Mobile-only: the in-page CTAs cover sm+; this keeps one primary CTA/view.
       className={[
         "fixed inset-x-0 bottom-0 z-40 sm:hidden",

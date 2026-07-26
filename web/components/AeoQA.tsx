@@ -35,21 +35,18 @@ export default function AeoQA({
   if (!questions || questions.length === 0) return null;
   const headingId = `${id}-heading`;
 
+  // FORM: a DATA panel like <AuthorityBlock> — `card`, not the `bento` tile the
+  // widgets keep. A Q&A list is a document, not a dashboard tile; the heading
+  // rides the .h-section tier so it is no longer smaller than the section H2
+  // that wraps it.
   return (
     <section
       id={id}
       aria-labelledby={headingId}
       data-aeo-qa
-      className={["bento p-6 sm:p-7", className ?? ""].join(" ").trim()}
+      className={["card p-6 sm:p-7", className ?? ""].join(" ").trim()}
     >
-      <h2
-        id={headingId}
-        className="mb-4 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
-      >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
+      <h2 id={headingId} className="mb-4 h-section text-ink">
         {heading}
       </h2>
 

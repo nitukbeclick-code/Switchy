@@ -101,20 +101,20 @@ export default function AuthorityBlock({
       aria-labelledby={headingId}
       data-authority-block
       className={[
-        "bento p-6 sm:p-7",
+        // FORM: a DATA panel — `card` (tighter radius, soft shadow), not the
+        // large-radius `bento` tile the prose blocks and the widgets also used.
+        // The block's substance is a table, so it should look like a document
+        // surface rather than a dashboard tile.
+        "card p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
         .trim()}
     >
-      <h2
-        id={headingId}
-        className="mb-2.5 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
-      >
-        <span
-          aria-hidden="true"
-          className="inline-block h-5 w-1.5 rounded-full bg-accent"
-        />
+      {/* .h-section is the page's SECOND heading tier. The panel heading used to
+          be text-base — visually smaller than the section H2 that wraps it,
+          which inverted the hierarchy on every page this appears on. */}
+      <h2 id={headingId} className="mb-2.5 h-section text-ink">
         {heading}
       </h2>
 

@@ -206,8 +206,7 @@ export default function SwitchKitPage() {
             במקומכם.
           </p>
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex flex-col items-center justify-center gap-4"
           >
             <a
               href="#kit-builder-h"
@@ -228,8 +227,7 @@ export default function SwitchKitPage() {
           {/* Trust band — REAL catalogue counts; the entry price carries the green
               VALUE emphasis (text-accent on ink), NOT a button. */}
           <p
-            className="sw-reveal mt-8 text-sm text-white/85"
-            style={{ animationDelay: "150ms" }}
+            className="mt-8 text-sm text-white/85"
           >
             {planCount} מסלולים · {providerCount} ספקים
             {minFeatured > 0 ? (
@@ -245,8 +243,7 @@ export default function SwitchKitPage() {
           {/* Quiet qualitative value line — muted, small green tick, no fabricated
               figure. The move itself is free; the estimate uses real prices. */}
           <p
-            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
-            style={{ animationDelay: "180ms" }}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
           >
             <Icon name="check" size={16} className="shrink-0 text-accent" />
             ניוד המספר חינמי — והערכה מבוססת על מחירים אמיתיים מהקטלוג

@@ -1,16 +1,15 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
-import TrustSignals from "@/components/TrustSignals";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
+import HeroSavingsHook from "@/components/HeroSavingsHook";
 import Icon, { type IconName } from "@/components/Icon";
 import { ProviderLogo } from "@/components/ProviderLogo";
 import { AiToolsShowcase } from "@/components/AiToolsShowcase";
@@ -114,6 +113,16 @@ const categoryVis = (cat: string): CategoryVis =>
 // anchor — plus any future one) becomes a "קטגוריות נוספות" chip. Order-stable.
 const PRIMARY_LAUNCHER_CATS = ["cellular", "internet", "tv", "triple"];
 
+// The three honest reasons to compare here, folded INTO the carrier band (they
+// used to be a standalone quarter-viewport grid 900px further down, asserting the
+// same facts as the hero counts and the trust strip). Truth-only: each is a real
+// property of the service, not a claim about outcomes.
+const WHY_POINTS: { icon: IconName; text: string }[] = [
+  { icon: "check", text: "ההשוואה חינמית וללא התחייבות" },
+  { icon: "search", text: "מציגים גם את המחיר שאחרי המבצע ואת יחידת החיוב" },
+  { icon: "lock", text: "פונים אליכם רק אם השארתם פרטים ואישרתם בטופס" },
+];
+
 export default function Home() {
   const categories = getCategories();
   const providers = getProviders();
@@ -122,7 +131,13 @@ export default function Home() {
 
   // Featured table: cheapest cellular plans (the highest-traffic category).
   const featuredCat = categories.includes("cellular") ? "cellular" : categories[0];
+  const featuredLabel = CATEGORY_HE[featuredCat] ?? featuredCat;
+  // SIX plans still drive the ItemList JSON-LD (the structured data engines read
+  // is unchanged), while the ONE visible proof block on the page shows the top
+  // four. There used to be a second, lower table rendering all six — byte-for-byte
+  // the same rows as this one, since both filter and sort the same set ascending.
   const featured = cheapestIn(featuredCat, 6);
+  const featuredVisible = featured.slice(0, 4);
   // Keep the cheapest comparable consumer plan itself (not a data-only SIM or a
   // per-minute/day tariff) so the hero makes a like-for-like monthly claim.
   // Keep the plan (not just its rounded sort-key price)
@@ -133,13 +148,6 @@ export default function Home() {
   // is the cheapest; undefined ⇒ no fabricated number is shown.
   const cheapestFeatured = featured[0];
   const minFeaturedText = cheapestFeatured ? priceText(cheapestFeatured) : undefined;
-
-  // Second category anchor for the hero value clause — the honest internet entry
-  // price (CRO's category-honest move), shown only when the catalogue actually
-  // has priced internet plans so the clause can never fabricate a figure.
-  const internetEntry = categories.includes("internet")
-    ? catEntryPriceText("internet")
-    : null;
 
   // Transparent "best value" ranking — cheapest entry point first (top 6).
   const rankings = buildProviderRankings().slice(0, 6);
@@ -173,32 +181,32 @@ export default function Home() {
     `אחרי המבצע; פנייה לספק נשלחת רק לאחר אישורכם.`;
 
   return (
-    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pt-10 pb-20 sm:px-6">
-      {/* Page-scoped motion (Emil Kowalski rules): a one-time entrance reveal that
-          fades + lifts each block in, staggered 30–80ms via inline animationDelay.
-          Server-rendered CSS only (no JS) — references the shared --ease-out token
-          and animates ONLY transform + opacity (GPU). Reduced-motion: animation is
-          removed entirely so blocks render statically at their resting state (the
-          .sw-reveal default is already fully visible). The .sw-lift helper gates a
-          desktop hover-lift behind a real hover-capable, fine pointer so it never
-          sticks on touch. */}
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-20 sm:px-6 sm:pt-10">
+      {/* Page-scoped styling for the light hero ONLY. There is deliberately no
+          `.sw-reveal` / `@keyframes` copy here any more: globals.css already owns
+          that utility (420ms, swRevealUp) together with its reduced-motion and
+          a11y-no-motion overrides, and an unlayered page-local re-declaration
+          silently outran the design-system version — two definitions that only
+          stayed in sync by accident. The hero's four launcher tiles are now the
+          page's ONLY reveal (the <HeroSavingsHook> figure is the second and last
+          beat, scoped inside that component). */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .sw-reveal { animation: swReveal 400ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
         /* Light "category launcher" hero — a bright airy panel (NEVER a dark/black
            slab): a soft mint radial wash over the white --surface. In dark mode the
            panel becomes the dark --surface (still not black) with a faint green glow.
            The headline uses a deep FOREST-GREEN ink (not near-black) that inverts to
-           a soft near-white green on dark; high-contrast a11y mode restores pure ink. */
+           a soft near-white green on dark; high-contrast a11y mode restores pure ink.
+           NO amber wash here, deliberately: this panel is the backdrop the savings
+           figure resolves onto, and that figure is the one amber thing the design
+           allows. A 0.14 amber radial behind it — the largest amber surface on the
+           site — was the payload competing with its own stage. The warmth is the
+           ivory ramp (#fffcf6 → #f7ecd6), a warm NEUTRAL, which is also why the
+           dark variant never needed an amber term to feel like the same panel. */
         .hero-panel {
           background:
             radial-gradient(90% 80% at 92% 0%, rgba(8, 122, 91, 0.16), transparent 64%),
-            radial-gradient(70% 70% at 0% 100%, rgba(211, 154, 36, 0.14), transparent 66%),
             linear-gradient(145deg, #fffcf6, #f7ecd6);
         }
         .hero-ink { color: #14211d; }
@@ -210,18 +218,14 @@ export default function Home() {
         :root[data-theme="dark"] .hero-ink { color: #eaf7ef; }
         :root.a11y-contrast .hero-ink { color: var(--ink); }
         @media (hover: hover) and (pointer: fine) {
-          .sw-lift { transition: transform 180ms var(--ease-out); }
-          /* Lift on hover, but yield to the .press scale(0.98) while active so the
-             tactile press feedback stays crisp (no transform tug-of-war). */
-          .sw-lift:hover:not(:active) { transform: translateY(-2px); }
           .hero-tile {
             transition: transform 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
           }
+          /* Lift on hover, but yield to the .press scale(0.98) while active so the
+             tactile press feedback stays crisp (no transform tug-of-war). */
           .hero-tile:hover:not(:active) { transform: translateY(-3px); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-          .sw-lift:hover { transform: none; }
           .hero-tile:hover { transform: none; }
         }
       `,
@@ -233,49 +237,61 @@ export default function Home() {
       <JsonLd data={itemListSchema(featured)} />
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 
-      {/* ── Hero — light "category launcher" ──────────────────────────────────
-          A bright, airy panel (NO dark/black slab): a soft mint radial wash over
-          the white --surface, a deep-FOREST-GREEN headline (not near-black ink),
-          and the star of the fold — a grid of big, colour-coded category tiles
-          (סלולר/אינטרנט/טלוויזיה/משולב) that ARE the primary navigation, each with
-          its real catalogue count + truthful "מ-₪X לחודש". חו״ל (mixed units) and
-          any future category drop to a quiet chip row (no false monthly anchor).
-          One green CTA closes the fold. Colours are AA-tuned and dark-parity-safe
-          (see the `.hero-*` rules in the page <style>). */}
-      <section className="hero-panel relative isolate overflow-hidden rounded-3xl border border-border/60 px-5 py-10 sm:px-10 sm:py-14">
+      {/* ── Hero — the fold has to answer the search intent ────────────────────
+          A visitor lands here from "כמה אני משלם על סלולר" carrying exactly one
+          number. So the fold is, in order: who we are (eyebrow), what this is
+          (H1), the real catalogue counts + floor on one tabular line, and then the
+          ONE interaction — <HeroSavingsHook>, which turns their own bill into a
+          single amber annual-difference figure with the ask under it. The category
+          launcher tiles and the green CTA close the fold. Everything that used to
+          push those below 844px (a 5-line H1 with a price clause repeated verbatim
+          in the trust band, a 4-line subhead) is gone.
+          Colours are AA-tuned and dark-parity-safe (see `.hero-*` in the <style>). */}
+      <section className="hero-panel relative isolate overflow-hidden rounded-3xl border border-border/60 px-5 py-7 sm:px-10 sm:py-14">
         <div className="mx-auto max-w-3xl">
           {/* Eyebrow pill — honest positioning kicker (free · no-commitment). */}
-          <p
-            className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text"
-            style={{ animationDelay: "0ms" }}
-          >
+          <p className="inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
             <Icon name="check" size={14} className="shrink-0" />
             השוואה חינמית · ללא התחייבות
           </p>
-          {/* H1 — deep forest-green ink (NOT black); the price clause keeps the
-              green VALUE emphasis, bound to the real catalogue entry prices. */}
-          <h1 className="hero-ink sw-reveal mt-4 font-display text-4xl font-bold tracking-tight sm:text-5xl">
-            התקשורת שלכם. במחיר שמרגיש נכון.{" "}
-            <span className="text-accent-text">
-              סלולר מ-₪{minFeaturedText}
-              {internetEntry != null ? ` · אינטרנט מ-₪${internetEntry}` : ""}{" "}
-              לחודש.
-            </span>
+          {/* H1 — deep forest-green ink (NOT black). No entrance animation: this
+              is the LCP element, and starting it at opacity 0 is the canonical way
+              to wreck the metric it is measured by. */}
+          <h1 className="hero-ink mt-4 font-display text-[2rem] font-extrabold leading-[1.15] tracking-tight sm:text-5xl">
+            התקשורת שלכם. במחיר שמרגיש נכון.
           </h1>
-          <p
-            className="sw-reveal mt-4 max-w-2xl text-base font-medium leading-relaxed text-muted sm:text-lg [text-wrap:pretty]"
-            style={{ animationDelay: "60ms" }}
-          >
-            משווים את כל {providers.length} ספקי התקשורת בישראל, מציגים גם את
-            המחיר שאחרי המבצע ומלווים אתכם עד שהמעבר הושלם. בלי לחץ ובלי אותיות קטנות.
+          {/* Trust band — REAL catalogue counts, hoisted directly under the H1 so
+              the fold carries proof before it carries a promise. The floor figure
+              is AMBER (money), never the emerald that means "tap me". */}
+          <p className="nums-tabular mt-3 text-sm text-muted">
+            {planCount} מסלולים · {providers.length} ספקים ·{" "}
+            {categories.length} קטגוריות · החל מ-
+            <span className="font-display font-bold text-value-text">
+              ₪{minFeaturedText}
+            </span>{" "}
+            לחודש
           </p>
 
+          {/* ── THE fold's one interaction ──────────────────────────────────────
+              Rendered only when the catalogue actually has a priced plan to
+              compare against — with no real floor there is no honest arithmetic,
+              so the hook simply does not exist rather than inventing a base. */}
+          {cheapestFeatured && minFeaturedText ? (
+            <HeroSavingsHook
+              className="mt-6"
+              categoryLabel={featuredLabel}
+              cheapestPrice={cheapestFeatured.price}
+              cheapestPlan={cheapestFeatured.plan}
+              cheapestProvider={cheapestFeatured.provider}
+              cheapestPriceText={minFeaturedText}
+              compareHref={`/compare/${featuredCat}`}
+            />
+          ) : null}
+
           {/* Launcher prompt + tiles — the kama-ze-style "pick a service" grid,
-              improved: colour-coded, real counts + truthful monthly entry price. */}
-          <h2
-            className="hero-ink sw-reveal mt-8 font-display text-lg font-bold tracking-tight"
-            style={{ animationDelay: "90ms" }}
-          >
+              improved: colour-coded, real counts + truthful monthly entry price.
+              The four tiles carry the page's only `.sw-reveal` stagger. */}
+          <h2 className="hero-ink mt-8 font-display text-lg font-bold tracking-tight">
             איפה מתחילים לחסוך?
           </h2>
           <ul className="nums-tabular mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -288,7 +304,7 @@ export default function Home() {
                   <Link
                     href={`/compare/${cat}`}
                     aria-label={`${CATEGORY_HE[cat] ?? cat} — ${count} מסלולים${entryLabel ? `, ${entryLabel}` : ""}`}
-                    className="sw-reveal press hero-tile relative flex h-full min-h-[9rem] flex-col overflow-hidden rounded-3xl p-4"
+                    className="sw-reveal press hero-tile relative flex h-full min-h-32 flex-col overflow-hidden rounded-3xl p-4 sm:min-h-36"
                     style={{
                       // Inline color beats the unlayered global `a{color:var(--accent-text)}`
                       // rule (which otherwise tints the tile label + currentColor icon green,
@@ -296,7 +312,7 @@ export default function Home() {
                       color: "#ffffff",
                       backgroundImage: `linear-gradient(160deg, ${vis.from} 0%, ${vis.to} 82%)`,
                       boxShadow: `0 10px 26px -8px ${vis.to}80`,
-                      animationDelay: `${100 + Math.min(i * 50, 250)}ms`,
+                      animationDelay: `${Math.min(i * 50, 150)}ms`,
                     }}
                   >
                     <span
@@ -328,14 +344,14 @@ export default function Home() {
           </ul>
 
           {/* "קטגוריות נוספות" chip row — the categories that have no truthful
-              monthly anchor (חו״ל) or are new, as quiet outline chips. */}
+              monthly anchor (חו״ל) or are new, as quiet outline chips. The label
+              sits INLINE with the chips rather than on its own line: this row is
+              the last thing between the launcher and the CTA that closes the
+              fold, and a stacked label cost 24px the fold could not spare. */}
           {extraCats.length > 0 && (
-            <div
-              className="sw-reveal mt-4"
-              style={{ animationDelay: "160ms" }}
-            >
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
               <p className="text-xs font-semibold text-muted">קטגוריות נוספות</p>
-              <ul className="mt-2 flex flex-wrap gap-2">
+              <ul className="flex flex-wrap gap-2">
                 {extraCats.map((cat) => (
                   <li key={cat}>
                     <Link
@@ -357,10 +373,7 @@ export default function Home() {
 
           {/* CTA row — exactly ONE primary (solid green, glow, press). The Zoom
               /book path is a SECONDARY quiet text link. */}
-          <div
-            className="sw-reveal mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center"
-            style={{ animationDelay: "200ms" }}
-          >
+          <div className="mt-6 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
             <TrackedCtaLink
               href={`/compare/${featuredCat}`}
               location="hero"
@@ -379,68 +392,30 @@ export default function Home() {
               או התייעצו עם נציג
             </TrackedCtaLink>
           </div>
-          {/* Trust band — REAL catalogue counts; the entry price carries the
-              green VALUE emphasis (text, not a button). */}
-          <p
-            className="nums-tabular sw-reveal mt-6 text-sm text-muted"
-            style={{ animationDelay: "230ms" }}
-          >
-            {planCount} מסלולים · {providers.length} ספקים ·{" "}
-            {categories.length} קטגוריות · החל מ-
-            <span className="font-display font-bold text-accent-text">
-              ₪{minFeaturedText}
-            </span>{" "}
-            לחודש
-          </p>
-          {/* Quiet honest value line — qualitative, no fabricated figure. */}
-          <p
-            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-muted"
-            style={{ animationDelay: "260ms" }}
-          >
-            <Icon name="check" size={16} className="shrink-0 text-accent-text" />
-            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
-          </p>
         </div>
       </section>
 
-      {/* ── Trust strip (compact) — REAL catalogue counts + the transparent
-          methodology link, as a lean inline strip directly under the hero. The
-          HEAVY full TrustSignals panel (+ §7b commission disclosure + §17 price
-          caveat) is not removed — it still lives down beside #lead, where those
-          legal components belong right before the hand-off. Every number here is
-          catalogue-derived; nothing is fabricated. ───────────────────────── */}
-      <div className="mx-auto mt-8 max-w-3xl">
-        <TrustSignals
-          variant="compact"
-          planCount={planCount}
-          providerCount={providers.length}
-          categoryCount={categories.length}
-        />
-      </div>
-
-      {/* ── Cheapest-in-cellular teaser (hoisted) ─────────────────────────────
-          The tool-first payoff, pulled up to sit immediately under the hero/trust
-          strip: the three cheapest plans in the featured category so a visitor
-          sees a real, catalogue-derived comparison before any editorial band.
-          Reuses cheapestIn(featuredCat, 3) + the shared <ComparisonTable> (same
-          bundle as the full featured section lower down — they can't drift) and
-          the §17 <PriceCaveat>. The link into the full category uses a direction
-          -aware <Icon name="chevron"> (never a hardcoded ←/→). ─────────────── */}
+      {/* ── Cheapest-in-category proof (the page's ONE price table) ────────────
+          Pulled up to sit immediately under the hero: the four cheapest plans in
+          the featured category, so a visitor sees a real, catalogue-derived
+          comparison before any editorial band. A second table further down used to
+          render the same rows from the same ascending sort — a literal duplicate,
+          with a duplicated H2 promise and CTA ~4,800px apart — and is gone; the
+          ItemList JSON-LD still emits the full six, so nothing changed for engines.
+          One of exactly two `.h-pillar` bands on the page. ──────────────────── */}
       <section aria-labelledby="teaser-h" className="mt-12">
-        <h2
-          id="teaser-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
-          הזולים ביותר ב{CATEGORY_HE[featuredCat] ?? featuredCat}
+        <p className="eyebrow">מהקטלוג המעודכן</p>
+        <h2 id="teaser-h" className="h-pillar mt-2">
+          הזולים ביותר ב{featuredLabel}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          שלושת המסלולים הזולים ביותר בקטגוריה לפי המחיר ההתחלתי — מהקטלוג
-          המעודכן, כולל המחיר שאחרי המבצע.
+          ארבעת המסלולים הזולים ביותר בקטגוריה לפי המחיר ההתחלתי — כולל המחיר
+          שאחרי המבצע ויחידת החיוב.
         </p>
         <div className="nums-tabular mt-6">
           <ComparisonTable
-            plans={cheapestIn(featuredCat, 3)}
-            caption={`שלושת מסלולי ה${CATEGORY_HE[featuredCat] ?? featuredCat} הזולים — מחירים בשקלים`}
+            plans={featuredVisible}
+            caption={`מסלולי ה${featuredLabel} הזולים — מחירים בשקלים`}
           />
           <PriceCaveat className="mt-3" />
         </div>
@@ -450,20 +425,20 @@ export default function Home() {
           label="compare"
           className="interactive mt-5 inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-hover"
         >
-          לכל מסלולי ה{CATEGORY_HE[featuredCat] ?? featuredCat}
+          לכל מסלולי ה{featuredLabel}
           <Icon name="chevron" size={16} aria-hidden="true" />
         </TrackedCtaLink>
       </section>
 
-      {/* ── Provider logo strip (trust band) ──────────────────────────────────
+      {/* ── Provider logo strip (the coverage proof) ───────────────────────────
           A horizontal wrap of EVERY real carrier mark in the catalogue, via the
           shared <ProviderLogo> (real bundled logo, else the carrier's own
-          brand-colored monogram — NEVER recolored to the app accent). It signals
-          coverage with truth-only data: the marks are the same providers counted
-          in TrustSignals above, each a link into its provider page (no
-          dead-ends). Decorative marks are aria-hidden; the provider name beside
-          each carries the label, so the row is fully readable to AT and AA.
-          Motion reuses the page `.sw-reveal` entrance + `.sw-lift` hover. ───── */}
+          brand-colored monogram — NEVER recolored to the app accent). This is the
+          strongest coverage proof on the page, so it is the ONE trust band that
+          survives: the compact TrustSignals strip and the standalone value-props
+          grid asserted the same three facts across ~1,000px, and their honest
+          points are folded in below as a compact icon list. Decorative marks are
+          aria-hidden; the provider name beside each carries the label. ───────── */}
       <section aria-labelledby="carriers-h" className="mt-16">
         <h2 id="carriers-h" className="sr-only">
           הספקים שאנו משווים
@@ -472,16 +447,33 @@ export default function Home() {
           משווים את כל {providers.length} ספקי התקשורת בישראל — במקום אחד
         </p>
         <ul className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
-          {providers.map((p, i) => (
+          {providers.map((p) => (
             <li key={p.slug}>
               <Link
                 href={`/providers/${p.slug}`}
-                className="sw-reveal sw-lift interactive press inline-flex min-h-11 items-center gap-2 rounded-full border border-border/60 bg-surface py-1.5 pe-3.5 ps-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
-                style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
+                className="sw-lift interactive press inline-flex min-h-11 items-center gap-2 rounded-full border border-border/60 bg-surface py-1.5 pe-3.5 ps-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
               >
                 <ProviderLogo provider={p.name} size={28} rounded="full" />
                 <span className="font-medium">{p.name}</span>
               </Link>
+            </li>
+          ))}
+        </ul>
+        {/* The three honest points that used to be a full-width card grid of their
+            own, now one compact line each right where the coverage claim is made. */}
+        <ul className="mx-auto mt-7 flex max-w-2xl flex-col gap-2 sm:items-center">
+          {WHY_POINTS.map((point) => (
+            <li
+              key={point.text}
+              className="flex items-start gap-2 text-sm leading-snug text-muted"
+            >
+              <Icon
+                name={point.icon}
+                size={16}
+                aria-hidden="true"
+                className="mt-0.5 shrink-0 text-accent-text"
+              />
+              {point.text}
             </li>
           ))}
         </ul>
@@ -501,97 +493,13 @@ export default function Home() {
         </div>
       </section>
 
-      <section
-        aria-labelledby="clarity-h"
-        className="mt-16 overflow-hidden rounded-3xl border border-border/70 bg-surface shadow-soft"
-      >
-        <div className="grid items-stretch lg:grid-cols-[0.82fr_1.18fr]">
-          <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-10">
-            <p className="text-xs font-bold tracking-[0.16em] text-accent-text">
-              פחות רעש. יותר ודאות.
-            </p>
-            <h2
-              id="clarity-h"
-              className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl"
-            >
-              מבלגן של חבילות לבחירה אחת ברורה.
-            </h2>
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
-              אנחנו מסדרים את המחירים, תנאי המבצע והאותיות הקטנות באותה שפה — כדי שתראו מה באמת מתאים לכם, בלי לנחש.
-            </p>
-            <Link
-              href="/how-it-works"
-              className="interactive mt-6 inline-flex w-fit items-center gap-1.5 font-semibold text-accent-text hover:text-accent-hover"
-            >
-              כך ההשוואה עובדת
-              <Icon name="chevron" size={17} aria-hidden="true" />
-            </Link>
-          </div>
-          <figure className="relative min-h-64 overflow-hidden border-t border-border/60 bg-[#f7f1e5] lg:min-h-[23rem] lg:border-s lg:border-t-0">
-            <Image
-              src="/assets/switchy-editorial-clarity.webp"
-              alt="המחשה של חבילות תקשורת רבות שמתכנסות לבחירה אחת ברורה"
-              fill
-              sizes="(max-width: 1024px) 100vw, 58vw"
-              className="object-cover"
-            />
-          </figure>
-        </div>
-      </section>
-
-      {/* ── Value props — compact rows (icon + title + one line, ~72–96px each),
-          not quarter-viewport slabs. One hairline card per point; neutral greys
-          with a single green icon accent. mt-16 locks the editorial cadence. ─ */}
-      <section
-        aria-label="למה להשוות איתנו"
-        className="mt-16 grid grid-cols-1 gap-2.5 sm:grid-cols-3"
-      >
-        {[
-          {
-            t: "השוואה חינמית",
-            d: "השוואת כל המסלולים באתר היא ללא עלות וללא התחייבות.",
-            icon: "check" as const,
-          },
-          {
-            t: "מחירים שקופים",
-            d: "מציגים גם את המחיר אחרי המבצע ואת יחידת החיוב — בלי הפתעות.",
-            icon: "search" as const,
-          },
-          {
-            t: "מעבר בהסכמה",
-            d: "ניצור קשר רק אם תשאירו פרטים ותאשרו זאת בטופס.",
-            icon: "lock" as const,
-          },
-        ].map((v, i) => (
-          <article
-            key={v.t}
-            className="sw-reveal card flex items-center gap-3 p-4"
-            style={{ animationDelay: `${i * 70}ms` }}
-          >
-            <span
-              aria-hidden="true"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent-text"
-            >
-              <Icon name={v.icon} size={18} />
-            </span>
-            <div className="min-w-0">
-              <h3 className="font-display text-base font-semibold tracking-tight text-ink">
-                {v.t}
-              </h3>
-              <p className="mt-0.5 text-sm leading-snug text-muted">{v.d}</p>
-            </div>
-          </article>
-        ))}
-      </section>
-
       {/* ── How it works (shared 3-step explainer) ────────────────────────────
           The canonical compare → choose → switch-with-consent strip, single
-          source of truth shared with /how-it-works (so the copy can't drift). It
-          renders its own heading/intro + the staggered `.sw-reveal` step cards;
-          truth-only (no figures, just the service's real promises). ────────── */}
-      <HowItWorks className="mt-16" />
-
-      {/* ── (Category cards moved UP into the light hero launcher) ──────────── */}
+          source of truth shared with /how-it-works (so the copy can't drift). The
+          editorial "clarity" band that used to sit 900px above it said the same
+          thing over a 256px decorative image on a hardcoded ivory panel that
+          glared on the dark canvas; only its voice survives, as this eyebrow. ── */}
+      <HowItWorks className="mt-16" eyebrow="פחות רעש. יותר ודאות." />
 
       {/* ── AI tools showcase ─────────────────────────────────────────────────
           A mobile-first card grid into the app's REAL first-party tools (bill
@@ -607,10 +515,7 @@ export default function Home() {
 
       {/* ── Provider rankings (transparent "best value") ──────────────────── */}
       <section aria-labelledby="rankings-h" className="mt-16">
-        <h2
-          id="rankings-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
+        <h2 id="rankings-h" className="h-section">
           ספקים לפי ערך — דירוג שקוף
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
@@ -627,8 +532,7 @@ export default function Home() {
             <li key={p.slug}>
               <Link
                 href={`/providers/${p.slug}`}
-                className="sw-reveal card card-interactive flex h-full items-center gap-4 p-4"
-                style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
+                className="card card-interactive flex h-full items-center gap-4 p-4"
               >
                 <span
                   aria-hidden="true"
@@ -657,35 +561,9 @@ export default function Home() {
         </Link>
       </section>
 
-      {/* ── Market-Pulse teaser ───────────────────────────────────────────── */}
-      <section aria-labelledby="pulse-h" className="mt-16">
-        <div className="bento p-6 sm:p-9">
-          <h2
-            id="pulse-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
-          >
-            דופק השוק — מצב נוכחי
-          </h2>
-          <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
-            מחיר ממוצע, מינימלי ומקסימלי בכל קטגוריה — תמונת מצב עדכנית של שוק
-            התקשורת בישראל לפי הקטלוג שלנו. נתונים אמיתיים בלבד, ללא גרפים מומצאים.
-          </p>
-          <Link
-            href="/market-pulse"
-            className="interactive press sw-lift mt-6 inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
-          >
-            לצפייה בדופק השוק
-            <Icon name="chevron" size={16} aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
       {/* ── Smart-Timer teaser (commitment-end calculator) ────────────────── */}
       <section aria-labelledby="timer-h" className="mt-16">
-        <h2
-          id="timer-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
+        <h2 id="timer-h" className="h-section">
           מתי נגמרת ההתחייבות שלכם?
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
@@ -697,101 +575,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Guides feature ────────────────────────────────────────────────────
-          Routes high-intent readers into the /guides hub. The count is REAL
-          (getGuides().length) — no fabricated figure. A single bento panel with
-          the page's `.sw-lift` CTA, mobile-first and RTL. ──────────────────── */}
-      <section aria-labelledby="guides-h" className="mt-16">
-        <div className="bento p-6 sm:p-9">
-          <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
-            <Icon name="spark" size={14} className="shrink-0" />
-            ידע שמוביל לחיסכון
-          </p>
-          <h2
-            id="guides-h"
-            className="mt-2 font-display text-2xl font-bold tracking-tight text-ink"
-          >
-            מדריכים — איך לעבור ספק ולחסוך
-          </h2>
-          <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
-            {guideCount} מדריכים בעברית: איך עוברים ספק, בוחרים מסלול סלולר,
-            אינטרנט או טלוויזיה, ומבינים בדיוק על מה משלמים — שלב אחר שלב, בלי
-            ז׳רגון.
-          </p>
-          <Link
-            href="/guides"
-            className="interactive press sw-lift mt-6 inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
-          >
-            לכל המדריכים
-            <Icon name="chevron" size={16} aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
-      {/* ── City quick-links (geo compare pages) ──────────────────────────── */}
-      {cities.length > 0 && (
-        <section aria-labelledby="cities-h" className="mt-16">
-          <h2
-            id="cities-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
-          >
-            השוואת {CATEGORY_HE[featuredCat] ?? featuredCat} לפי עיר
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            אותם ספקים ומסלולים זמינים בכל הארץ. בחרו עיר להשוואה מקומית.
-          </p>
-          <ul className="mt-6 flex flex-wrap gap-2">
-            {cities.map((c) => (
-              <li key={c.slug}>
-                <Link
-                  href={`/compare/${featuredCat}/${c.slug}`}
-                  className="interactive press sw-lift inline-flex min-h-11 items-center rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* ── Featured comparison ───────────────────────────────────────────── */}
-      <section aria-labelledby="featured-h" className="mt-16">
-        <h2
-          id="featured-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
-          מסלולי {CATEGORY_HE[featuredCat] ?? featuredCat} משתלמים
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted">
-          ששת המסלולים הזולים ביותר בקטגוריה לפי המחיר ההתחלתי.
-        </p>
-        <div className="nums-tabular mt-6">
-          <ComparisonTable
-            plans={featured}
-            caption={`מסלולי ${CATEGORY_HE[featuredCat] ?? featuredCat} זולים — מחירים בשקלים`}
-          />
-          <PriceCaveat className="mt-3" />
-        </div>
-        <Link
-          href={`/compare/${featuredCat}`}
-          className="interactive mt-5 inline-flex items-center gap-1 font-medium text-accent-text hover:text-accent-hover"
-        >
-          לכל מסלולי ה{CATEGORY_HE[featuredCat] ?? featuredCat}
-          <Icon name="chevron" size={16} aria-hidden="true" />
-        </Link>
-      </section>
-
       {/* ── FAQ (visible, backs the FAQPage JSON-LD above) ────────────────────
           The same canonical GENERAL_FAQ set already emitted as faqPageSchema at
           the top of the page, now rendered visibly via <FaqAccordion> (native
           <details>, zero JS, RTL, AA). Mapped QA→FaqItem ({q,a}); answering the
           real objections right before the lead hand-off. Truth-only copy. ───── */}
       <section aria-labelledby="faq-h" className="mt-16">
-        <h2
-          id="faq-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
+        <h2 id="faq-h" className="h-section">
           שאלות נפוצות
         </h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
@@ -801,12 +591,10 @@ export default function Home() {
         <FaqAccordion items={faqItems(GENERAL_FAQ)} className="mt-6" />
       </section>
 
-      {/* ── Lead form ─────────────────────────────────────────────────────── */}
+      {/* ── Lead form — the ask. The page's second and last `.h-pillar`. ────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
-        <h2
-          id="lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
-        >
+        <p className="eyebrow">חינם וללא התחייבות</p>
+        <h2 id="lead-h" className="h-pillar mt-2">
           רוצים שנעזור לכם לחסוך?
         </h2>
         <p className="mt-2 leading-relaxed text-foreground">
@@ -840,6 +628,88 @@ export default function Home() {
           />
         </div>
       </section>
+
+      {/* ── "עוד באתר" — the secondary surface, BELOW the ask ──────────────────
+          Market pulse, the guides hub and the geo compare pages are real and worth
+          linking, but they sat between the proof and the form and pushed the ask
+          ~900px further down. A native <details> keeps every link in the HTML (so
+          crawlers index it in full and no internal link equity is lost) while the
+          funnel stops paying for it. Zero JS, keyboard- and AT-correct. ─────── */}
+      <details className="group mt-16">
+        <summary className="interactive flex cursor-pointer list-none items-center justify-between gap-3 rounded-2xl border border-border/60 bg-surface px-5 py-4 text-start marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+          <span className="font-display text-base font-semibold tracking-tight text-ink">
+            עוד באתר
+          </span>
+          <Icon
+            name="chevron"
+            size={18}
+            aria-hidden="true"
+            className="shrink-0 rotate-90 text-muted transition-transform duration-200 ease-[var(--ease-out)] group-open:-rotate-90 motion-reduce:transition-none"
+          />
+        </summary>
+
+        {/* ── Market-Pulse teaser ───────────────────────────────────────────── */}
+        <section aria-labelledby="pulse-h" className="mt-8">
+          <h2 id="pulse-h" className="h-section">
+            דופק השוק — מצב נוכחי
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+            מחיר ממוצע, מינימלי ומקסימלי בכל קטגוריה — תמונת מצב עדכנית של שוק
+            התקשורת בישראל לפי הקטלוג שלנו. נתונים אמיתיים בלבד, ללא גרפים מומצאים.
+          </p>
+          <Link
+            href="/market-pulse"
+            className="interactive mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-hover"
+          >
+            לצפייה בדופק השוק
+            <Icon name="chevron" size={16} aria-hidden="true" />
+          </Link>
+        </section>
+
+        {/* ── Guides hub. The count is REAL (getGuides().length) — but a count
+            only sells the hub once there are many, so it leads with the content
+            and states the number plainly at the end. ───────────────────────── */}
+        <section aria-labelledby="guides-h" className="mt-10">
+          <h2 id="guides-h" className="h-section">
+            מדריכים — איך לעבור ספק ולחסוך
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+            איך עוברים ספק, בוחרים מסלול סלולר, אינטרנט או טלוויזיה, ומבינים בדיוק
+            על מה משלמים — שלב אחר שלב, בעברית ובלי ז׳רגון ({guideCount} מדריכים).
+          </p>
+          <Link
+            href="/guides"
+            className="interactive mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-hover"
+          >
+            לכל המדריכים
+            <Icon name="chevron" size={16} aria-hidden="true" />
+          </Link>
+        </section>
+
+        {/* ── City quick-links (geo compare pages) ──────────────────────────── */}
+        {cities.length > 0 && (
+          <section aria-labelledby="cities-h" className="mt-10">
+            <h2 id="cities-h" className="h-section">
+              השוואת {featuredLabel} לפי עיר
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              אותם ספקים ומסלולים זמינים בכל הארץ. בחרו עיר להשוואה מקומית.
+            </p>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {cities.map((c) => (
+                <li key={c.slug}>
+                  <Link
+                    href={`/compare/${featuredCat}/${c.slug}`}
+                    className="interactive press sw-lift inline-flex min-h-11 items-center rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
+                  >
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </details>
 
       {/* ── Mobile sticky lead CTA — scrolls to the existing #lead form; hides
           once it is in view. One primary CTA per view (sm:hidden). ────────── */}

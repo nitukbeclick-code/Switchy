@@ -29,11 +29,23 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     'abroad': 0,
   };
 
+  /// The headline saving on the PUBLIC marketing surface — so it has to survive
+  /// being quoted back at us.
+  ///
+  /// This used to take min(price) over the whole category, which on cellular is
+  /// an ₪11 data-only SIM: the hero advertised "תוכלו לחסוך עד ₪1,296 בשנה"
+  /// against a plan with no calls. The honest figure, against the cheapest real
+  /// phone line, is ₪1,190. It also used the rounded `price` rather than
+  /// `priceValue`, and on the abroad tab would have annualised a per-day or
+  /// per-minute tariff.
+  ///
+  /// hotDeal already carries exactly this rule — its own comment says
+  /// "מסלולי דאטה-בלבד / כשר אינם תחליף לקו רגיל — החיסכון מולם מטעה" — and
+  /// planSaveYear already uses priceValue. Call them instead of restating them.
   int _potentialSaving(String cat, int bill) {
-    final catPlans = plansByCat(cat);
-    if (catPlans.isEmpty || bill <= 0) return 0;
-    final minPrice = catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-    return ((bill - minPrice) * 12).clamp(0, 999999);
+    if (bill <= 0) return 0;
+    final best = hotDeal(bill, cat: cat);
+    return best == null ? 0 : planSaveYear(best, bill);
   }
 
   @override

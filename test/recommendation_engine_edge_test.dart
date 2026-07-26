@@ -50,6 +50,22 @@ void main() {
       expect(m.annualSaving, (80 - 49) * 12);
     });
 
+    test('a per-minute tariff claims no saving against a per-package bill', () {
+      // ₪1-per-minute vs an ₪80 PACKAGE is not a comparison, but planSaveYear's
+      // x12 turned it into ₪948 — the biggest "saving" in the category, purely
+      // because a minute is cheaper than a package. Per-package plans above keep
+      // their tested behaviour; only 'minute' and 'day' are withheld.
+      const profile = MatchProfile(category: 'abroad', currentBill: 80);
+      final perMinute = RecommendationEngine.scorePlan(
+          plan(id: 'a-min', cat: 'abroad', net: 'esim', price: 1, priceUnit: 'minute', flags: ['abroad']), profile);
+      final perDay = RecommendationEngine.scorePlan(
+          plan(id: 'a-day', cat: 'abroad', net: 'esim', price: 9, priceUnit: 'day', flags: ['abroad']), profile);
+      expect(perMinute.annualSaving, 0);
+      expect(perDay.annualSaving, 0);
+      // Still scored and still ranked — only the saving CLAIM is withheld.
+      expect(perMinute.score, inInclusiveRange(0, 100));
+    });
+
     test('a cheaper abroad plan ranks above a pricier one for the same bill', () {
       // Engine ranks within a single category, so synthesise the abroad set by
       // scoring two plans directly and comparing.

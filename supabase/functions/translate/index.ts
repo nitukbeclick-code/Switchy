@@ -196,6 +196,17 @@ async function handle(req: Request): Promise<Response> {
   // final translation for each unique source string
   const resolved = new Map<string, string>();
 
+  // WHY THE CLIENT NEEDS THESE: every failure here fail-softs by echoing the Hebrew
+  // source (`resolved.get(t) ?? t` below), so a budget-exhausted response, a dead
+  // provider chain and a genuinely-untranslatable batch (brand names, "5G", "eSIM")
+  // are byte-identical on the wire. The runtime counts "applied" as `tr !== source`,
+  // so all three collapse into one "התרגום אינו זמין כרגע" toast — including the
+  // case where the server did its job perfectly. Reporting the counts lets the
+  // client tell "we could not" from "there was nothing to".
+  let attempted = 0; // unique strings that missed the cache and went to the model
+  let cachedNow = 0; // of those, how many produced a genuine, cacheable translation
+  let budgetExhausted = false; // today's model budget is already spent
+
   if (uniques.length > 0) {
     const hashes = await Promise.all(uniques.map((s) => sha256Hex(s)));
     const hashOf = new Map<string, string>();
@@ -270,6 +281,9 @@ async function handle(req: Request): Promise<Response> {
         p_cap: DAILY_MODEL_BUDGET,
       });
 
+      attempted = missing.length;
+      budgetExhausted = budgetOk === false;
+
       if (budgetOk !== false) {
         // Translate every batch CONCURRENTLY (was serial). A page's misses split into
         // a handful of batches; running them in parallel collapses N× model latency
@@ -283,6 +297,7 @@ async function handle(req: Request): Promise<Response> {
 
       // Cache only genuinely-translated rows (never cache a fail-soft identity).
       const cacheable = toCache.filter((r) => r.translated !== r.source_text);
+      cachedNow = cacheable.length;
       await saveCache(cacheable);
 
       // Charge the daily budget AFTER model+verify, for exactly the count we cached
@@ -310,8 +325,25 @@ async function handle(req: Request): Promise<Response> {
 
   // Align output to the original input order; anything not translated → itself.
   const translations = texts.map((t) => resolved.get(t) ?? t);
-  jlog({ at: "translate", lang, in: texts.length, uniques: uniques.length });
-  return json(req, { lang, translations });
+  // `translated` counts what the CLIENT will see as a real change — the same test
+  // the runtime applies — so the two sides can never disagree about what happened.
+  const translated = texts.reduce((n, t, i) => n + (translations[i] !== t ? 1 : 0), 0);
+  jlog({
+    at: "translate",
+    lang,
+    in: texts.length,
+    uniques: uniques.length,
+    translated,
+    attempted,
+    cachedNow,
+    budgetExhausted,
+  });
+  // meta is ADDITIVE: an older cached runtime ignores it and behaves exactly as before.
+  return json(req, {
+    lang,
+    translations,
+    meta: { requested: texts.length, translated, attempted, cached: cachedNow, budgetExhausted },
+  });
 }
 
 Deno.serve(async (req) => {
@@ -323,7 +355,15 @@ Deno.serve(async (req) => {
     try {
       const b = await req.clone().json();
       const texts = Array.isArray(b?.texts) ? b.texts.map((t: unknown) => String(t ?? "")) : [];
-      return json(req, { lang: String(b?.lang ?? ""), translations: texts }, 200);
+      // Same meta contract as the happy path: attempted-but-nothing-cached reads as
+      // a TRANSIENT failure, so the client retries rather than declaring the page
+      // untranslatable. Without this the fatal path is indistinguishable from
+      // "these strings need no translation".
+      return json(req, {
+        lang: String(b?.lang ?? ""),
+        translations: texts,
+        meta: { requested: texts.length, translated: 0, attempted: texts.length, cached: 0, budgetExhausted: false },
+      }, 200);
     } catch (_) {
       return json(req, { error: "translation failed" }, 200);
     }

@@ -31,7 +31,7 @@
 //
 //   Optional env:
 //     PAGES_GLOB          pages to extract from (default "site/*.html").
-//     LANGS               comma-separated codes (default "en,ru,ar,fr,es,am").
+//     LANGS               comma-separated codes (default: the 14 bundled langs).
 //     SUPABASE_URL        edge origin (default the baked public project).
 //     SUPABASE_ANON_KEY   public anon key (default the baked public key).
 //     MAX_MINUTES         wall-clock budget (default 55) — stop gracefully and write
@@ -270,7 +270,16 @@ function writeDict(lang, freshMap) {
 // ── main ──────────────────────────────────────────────────────────────────────
 async function main() {
   const PAGES_GLOB = process.env.PAGES_GLOB || "site/*.html";
-  const LANGS = (process.env.LANGS || "en,ru,ar,fr,es,am")
+  // The BUNDLED set: languages worth shipping as a static /i18n file so a switch
+  // costs zero model calls. Chosen for the audience an Israeli telecom-comparison
+  // site actually serves — the large Russian, Arabic and English populations, then
+  // the migrant-worker and immigrant communities (Ukrainian, Tagalog, Thai,
+  // Amharic, Romanian, Chinese, Tigrinya, Hindi, Nepali), then Spanish/French.
+  // Ordered biggest-audience-first so a truncated run still helps the most people.
+  // The other 13 menu languages (fa, ur, tr, ka, de, it, pt, pl, nl, hu, el, ja,
+  // ko) stay on-demand: real but rare here, and each bundle is ~300–700 KB in the
+  // repo. Adding one is just a code here plus a warm run.
+  const LANGS = (process.env.LANGS || "ru,ar,en,uk,tl,th,am,ro,zh,ti,hi,ne,es,fr")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
@@ -302,7 +311,21 @@ async function main() {
       stopped = true;
       break;
     }
-    const batches = batchTexts(universe, MAX_TEXTS, MAX_TOTAL_CHARS);
+    // ONLY ask for what this language does not already have. writeDict already
+    // merges additively, but the REQUESTS were built from the whole universe, so
+    // every nightly run re-sent ~9,790 strings per language and spent its wall
+    // clock re-fetching known rows. The evidence is the coverage curve against the
+    // default list order en,ru,ar,fr,es,am → 3390, 3453, 2856, 452, 260, 153: the
+    // run always died partway down the list, so the tail never got warmed at all.
+    // Sending only the delta is what lets repeat runs actually converge, and is
+    // the precondition for bundling any additional language.
+    const have = loadExisting(lang);
+    const todo = universe.filter((s) => have[s] === undefined);
+    if (todo.length === 0) {
+      console.log(`  ${lang}: already complete (${Object.keys(have).length} keys) — nothing to fetch`);
+      continue;
+    }
+    const batches = batchTexts(todo, MAX_TEXTS, MAX_TOTAL_CHARS);
     const map = {};
     let echoes = 0;
     let translated = 0;
@@ -336,7 +359,7 @@ async function main() {
     }
     const total = writeDict(lang, map);
     console.log(
-      `  ${lang}: ${universe.length} extracted · ${translated} translated · ${echoes} echoes dropped` +
+      `  ${lang}: ${todo.length} missing of ${universe.length} · ${translated} translated · ${echoes} echoes dropped` +
         (failedBatches ? ` · ${failedBatches} batches failed` : "") +
         ` → ${total} keys in dict`,
     );

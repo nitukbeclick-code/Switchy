@@ -1451,6 +1451,22 @@ const trustBlock = () => `    <section class="section trust-block" aria-label="�
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
 const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
 
+// The EFFECTIVE monthly cost — what the plan really averages over 12 months once
+// a published promo ladder is taken into account. The savings calculator used to
+// annualise the PROMO price (`(bill - offerPrice) * 12`), which for a two-month
+// promo overstates the yearly saving several times over: a plan advertised at
+// ₪39 that becomes ₪159 is not a ₪39 plan for twelve months.
+//
+// When the catalogue publishes a promo price but NOT its duration,
+// calculateTwelveMonthCost returns a range. A savings claim must not be built on
+// the flattering end of a range we admit we do not know, so this takes the
+// MAXIMUM — the least favourable to the claim. Under-promising is recoverable;
+// over-promising is what makes the number worthless.
+const calcEffectiveMonthly = (p) => {
+  const cost = staticPlanCost.calculateTwelveMonthCost(p);
+  return Math.round((cost.maximum / 12) * 100) / 100;
+};
+
 // Headline "from ₪X/month" claims compare like with like. A data-only SIM is
 // still rendered in its dedicated collection and full comparison tables, but it
 // must not masquerade as the cheapest consumer phone plan in a category hero,
@@ -3546,7 +3562,13 @@ function providerPage(name, plans) {
   const cheapest = headlineSet.reduce((m, p) => Math.min(m, offerPrice(p)), Infinity);
   const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
   const sortedPlans = plans.slice().sort((a, b) => a.price - b.price);
-  const cards = sortedPlans.map((p, i) => planCardHtml(p, i === 0 && sortedPlans.length > 1)).join('\n        ');
+  // The "lowest price" badge went to sortedPlans[0] — a plain numeric sort, so on
+  // a provider selling abroad packages a ₪0.29-per-MINUTE tariff outranks every
+  // real monthly plan and wears the badge. Anchor it to the first consumer
+  // MONTHLY plan (the same headlinePlans set the price line above already uses),
+  // so the badge and the headline figure cannot disagree.
+  const badgeAnchor = sortedPlans.find(isConsumerMonthlyPlan) || sortedPlans[0];
+  const cards = sortedPlans.map((p) => planCardHtml(p, p === badgeAnchor && sortedPlans.length > 1)).join('\n        ');
   const planCats = [...new Set(plans.map((p) => p.cat))];
   // "Best plans" at-a-glance tables — one per category this provider sells in,
   // reusing the same Kamaze-style comparisonTable() the category pages use. Each
@@ -4231,18 +4253,25 @@ const collections = [
     filter: (p) => p.cat === 'triple' && offerPrice(p) <= 160, limit: 10,
   },
   {
-    slug: 'internet-cable-only', catSlug: 'internet', catName: 'אינטרנט', eyebrow: 'כבל HOT',
-    title: 'אינטרנט על כבל (HOT) — כל המסלולים מהזול ביותר | SWITCHY',
-    h1: 'אינטרנט על כבל — כל המסלולים',
-    desc: 'כל מסלולי האינטרנט הביתי על תשתית הכבל של HOT — ממוינים מהזול ביותר. זמין כמעט בכל הארץ.',
-    intro: 'אינטרנט על כבל זמין בכמעט כל ישוב עירוני בישראל. הנה כל המסלולים על תשתית הכבל, ממוינים מהזול ליקר.',
+    // The catalogue's `net: 'כבלים'` means "wireline that is NOT fibre" — in
+    // practice Bezeq/CCC copper (נחושת) and Xphone. It does NOT mean HOT's coax:
+    // all three HOT internet plans are `net: 'סיב אופטי'` and appear on the fibre
+    // page. This entry used to be titled "אינטרנט על כבל (HOT) … תשתית הכבל של
+    // HOT" while containing ZERO HOT plans — every visitor was told the seven
+    // Bezeq/Xphone/CCC copper plans below were HOT's cable. Describe what is
+    // actually here. (collectionClaimGate below now fails the build on a repeat.)
+    slug: 'internet-cable-only', catSlug: 'internet', catName: 'אינטרנט', eyebrow: 'נחושת / כבלים',
+    title: 'אינטרנט על נחושת וכבלים (ללא סיב) — כל המסלולים | SWITCHY',
+    h1: 'אינטרנט על נחושת וכבלים — כל המסלולים',
+    desc: 'כל מסלולי האינטרנט הביתי על תשתית ותיקה שאינה סיב אופטי — בזק, Xphone ו-CCC. ממוינים מהזול ביותר.',
+    intro: 'לא בכל כתובת יש סיב אופטי. הנה מסלולי האינטרנט על תשתית הנחושת והכבלים, ממוינים מהזול ליקר — למי שהסיב עדיין לא הגיע אליו.',
     filter: (p) => p.cat === 'internet' && p.net === 'כבלים', limit: 15,
   },
   {
     slug: 'internet-fiber-only', catSlug: 'internet', catName: 'אינטרנט', eyebrow: 'סיב אופטי',
     title: 'אינטרנט סיב אופטי (Fiber) — כל ספקי הסיב בישראל | SWITCHY',
     h1: 'אינטרנט סיב אופטי — כל המסלולים',
-    desc: 'השוואת כל מסלולי אינטרנט הסיב האופטי (FTTH/Fiber) בישראל — בזק, HOT, פרטנר, גולן וגילת. ממוינים מהזול ביותר.',
+    desc: 'השוואת כל מסלולי אינטרנט הסיב האופטי (FTTH/Fiber) בישראל — בזק, HOT, סלקום, פרטנר, גולן טלקום, Xphone, גילת ו-CCC. ממוינים מהזול ביותר.',
     intro: 'אינטרנט סיב אופטי מביא מהירות מלאה ויציבות מקסימלית לבית. הנה כל המסלולים הזמינים בישראל, ממוינים מהזול.',
     filter: (p) => p.cat === 'internet' && p.net === 'סיב אופטי', limit: 20,
   },
@@ -4716,7 +4745,7 @@ ${nav}
 
     <section class="section">
       <div class="container">
-        <div id="calc" class="calc-card reveal" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}">
+        <div id="calc" class="calc-card reveal" data-cheapest="${offerPrice(ch)}" data-effective="${calcEffectiveMonthly(ch)}" data-cat="${c.slug}">
           <h2 class="calc-card__title">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
           <p class="calc-card__lead">המסלול הזול ביותר ב${esc(c.name)} כרגע: <b>${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</b>.</p>
           <label for="calcBill" class="calc-card__label">כמה אתם משלמים היום? (₪ לחודש)</label>
@@ -4913,12 +4942,12 @@ const VERSUS = [
   {
     slug: 'fiber-vs-cable', catSlug: 'internet', catName: 'אינטרנט',
     title: 'סיב אופטי מול כבלים — מה עדיף וכמה זה עולה? | SWITCHY',
-    desc: 'השוואה אמיתית בין אינטרנט סיב אופטי לאינטרנט על כבל (HOT): מהירות, יציבות ומחיר — עם המסלולים הזולים בכל תשתית, מתוך הקטלוג המעודכן של SWITCHY.',
-    h1: 'סיב אופטי מול כבלים',
-    intro: 'שתי התשתיות הנפוצות לאינטרנט ביתי בישראל. סיב אופטי מהיר ויציב יותר; כבל זמין כמעט בכל מקום. הנה ההשוואה — עם המסלולים הזולים בכל צד.',
-    verdict: 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, ולרוב הבתים מהירות של 300–500Mb יותר ממספיקה. כבל (HFC) מהיר וזמין נרחב אך לעיתים מאט בשעות עומס. אם סיב זמין בכתובת שלכם — לרוב כדאי. בכל מקרה זכרו שאתם משלמים על תשתית + ספק, והשוו את שניהם.',
+    desc: 'השוואה אמיתית בין אינטרנט סיב אופטי לאינטרנט על תשתית ותיקה (נחושת/כבלים): מהירות, יציבות ומחיר — עם המסלולים הזולים בכל תשתית, מתוך הקטלוג המעודכן של SWITCHY.',
+    h1: 'סיב אופטי מול נחושת וכבלים',
+    intro: 'שתי התשתיות לאינטרנט ביתי בישראל. סיב אופטי מהיר ויציב יותר; התשתית הוותיקה זמינה כמעט בכל מקום. הנה ההשוואה — עם המסלולים הזולים בכל צד.',
+    verdict: 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, ולרוב הבתים מהירות של 300–500Mb יותר ממספיקה. תשתית הנחושת/כבלים זמינה נרחב אך איטית יותר ולעיתים מאטה בשעות עומס. אם סיב זמין בכתובת שלכם — לרוב כדאי. בכל מקרה זכרו שאתם משלמים על תשתית + ספק, והשוו את שניהם.',
     sideA: { label: 'סיב אופטי', eyebrow: 'הכי מהיר', filter: (p) => p.cat === 'internet' && p.net === 'סיב אופטי', collection: 'internet-fiber-only.html' },
-    sideB: { label: 'כבלים (HOT)', eyebrow: 'זמין נרחב', filter: (p) => p.cat === 'internet' && p.net === 'כבלים', collection: 'internet-cable-only.html' },
+    sideB: { label: 'נחושת / כבלים', eyebrow: 'זמין נרחב', filter: (p) => p.cat === 'internet' && p.net === 'כבלים', collection: 'internet-cable-only.html' },
     guideSlug: 'guide-fiber',
   },
   {
@@ -5926,6 +5955,38 @@ console.log(`Generated ${categories.length} category + ${builtVersus.length} ver
     }
   } catch { /* index.html missing — already warned by the sync step */ }
   for (const w of warns) console.warn(`link check WARN (hand-authored): ${w} does not resolve`);
+
+  // ── Collection claim gate ──────────────────────────────────────────────────
+  // A page that NAMES a provider must actually contain a plan from it. This
+  // shipped for real: "אינטרנט על כבל (HOT) — כל המסלולים על תשתית הכבל של HOT"
+  // listed seven plans and not one was HOT (the catalogue's `net: 'כבלים'` means
+  // non-fibre wireline — Bezeq/CCC copper — while all three HOT internet plans
+  // are `net: 'סיב אופטי'`). Every visitor was told those copper plans were HOT's
+  // cable. A human reviewer cannot catch this by reading either the config or the
+  // page; only cross-checking the prose against the filtered set does.
+  const claimFailures = [];
+  const providerNames = [...new Set(catalogue.plans.map((p) => p.provider))].filter(Boolean);
+  // builtCollections, not collections: a definition that never renders (fewer
+  // than 3 matching plans) cannot mislead anyone.
+  for (const col of builtCollections) {
+    const inCollection = new Set(catalogue.plans.filter(col.filter).map((p) => p.provider));
+    const prose = `${col.title || ''} ${col.h1 || ''} ${col.desc || ''} ${col.intro || ''} ${col.eyebrow || ''}`;
+    for (const name of providerNames) {
+      // Whole-name match only: "HOT" must not be found inside "הוט מובייל".
+      if (!prose.includes(name)) continue;
+      if (!inCollection.has(name)) {
+        claimFailures.push(`${col.slug}: names "${name}" but no ${name} plan matches its filter (has: ${[...inCollection].join(', ') || 'none'})`);
+      }
+    }
+  }
+  if (claimFailures.length) {
+    console.error(`collection claim check FAILED — ${claimFailures.length} page(s) name a provider they do not list:`);
+    for (const f of claimFailures) console.error(`  ${f}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`collection claim check: every provider named by a collection appears in it (${builtCollections.length} collections).`);
+  }
+
   if (fatal.length) {
     console.error(`link check FAILED — ${fatal.length} internal link(s) in generated pages resolve to nothing:`);
     for (const f of fatal) console.error(`  ${f}`);

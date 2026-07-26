@@ -87,14 +87,14 @@ async function deleteCount(path: string): Promise<number> {
       headers: { "Prefer": "return=representation" },
     });
     if (!r || !r.ok) {
-      jlog({ at: "account-delete.deleteCount", path, ok: false, status: r?.status });
+      jlog({ at: "account-delete.deleteCount", path: path.split("?")[0], ok: false, status: r?.status });
       await r?.body?.cancel?.().catch(() => {});
       return 0;
     }
     const rows = await r.json().catch(() => []);
     return Array.isArray(rows) ? rows.length : 0;
   } catch (e) {
-    jlog({ at: "account-delete.deleteCount", path, ok: false, error: String(e) });
+    jlog({ at: "account-delete.deleteCount", path: path.split("?")[0], ok: false, error: String(e) });
     return 0;
   }
 }

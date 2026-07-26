@@ -14,10 +14,13 @@ class _CostBreakdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final isAbroad = plan.cat == 'abroad';
     final unit = priceUnitLabel(plan);
     final estimateMonths = (plan.term != null && plan.term! > 0) ? plan.term! : 12;
-    final estimatedTotal = plan.price * estimateMonths;
+    // Same defect as the 24-month row above: the PROMO price multiplied by the
+    // term. calculatePlanCost reads the published ladder (`part of` the page, so
+    // its import lives there).
+    final estimatedCost =
+        planHasMonthlyTerm(plan) ? calculatePlanCost(plan, months: estimateMonths) : null;
     final feeEntries = plan.fees.entries.toList();
 
     return Container(
@@ -50,10 +53,12 @@ class _CostBreakdownCard extends StatelessWidget {
             ffTheme: ffTheme,
           ),
           // Estimated cost
-          if (!isAbroad) ...[
+          if (estimatedCost != null) ...[
             _PriceRow(
               label: 'עלות מוערכת ל-$estimateMonths חודשים',
-              value: '₪$estimatedTotal',
+              value: estimatedCost.isRange
+                  ? '₪${estimatedCost.minimum.round()}–₪${estimatedCost.maximum.round()}'
+                  : '₪${estimatedCost.minimum.round()}',
               ffTheme: ffTheme,
               isLast: feeEntries.isEmpty,
             ),

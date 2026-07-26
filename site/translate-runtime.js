@@ -125,6 +125,9 @@
   var MAX_NEED = 100; // unique untranslated strings per POST (server cap is 120)
   var MAX_NEED_CHARS = 18000; // summed source chars per POST (server cap is 24000)
   var FAIL_TTL = 3 * 60 * 1000; // how long a failure stamp suppresses auto-apply-on-load
+  // A spent daily budget does not recover in three minutes. Suppress the auto-apply
+  // for the rest of the hour instead of re-failing on every single navigation.
+  var FAIL_TTL_BUDGET = 60 * 60 * 1000;
   var CACHE_KEY_CAP = 40; // max swi18n:c:* localStorage entries kept
   var SEEN_CAP = 2000; // max strings tracked for cross-page __shared promotion
   var DICT_TIMEOUT = 8000; // ms before we give up on the static /i18n/<lang>.json fetch
@@ -141,7 +144,20 @@
   var controllers = []; // live AbortControllers (aborted on restore / new switch)
   var queuedLang = null; // a language requested while a switch was in flight
   var committed = false; // did the CURRENT switch apply ≥1 real translation yet?
+  // Why the CURRENT switch produced nothing, straight from the edge fn's meta:
+  // "" = no failure reported · "budget" = today's model budget is spent (retrying
+  // now is futile) · "transient" = it tried and got nothing back (retry may work).
+  // Without this every one of those — plus a batch that simply had nothing to
+  // translate — showed the same "התרגום אינו זמין כרגע", which is why the notice
+  // reads as noise. See supabase/functions/translate/index.ts meta.
+  var lastDegraded = "";
+  var sawTranslatable = false; // the server DID return real text for some batch
+  var sawMeta = false; // at least one batch came back from a server that reports meta
   var switchSeq = 0; // bumped on every switch/restore to invalidate stale async work
+  // Analytics bookkeeping for the CURRENT switch (see the lang_switch event below).
+  var liveFetched = false; // did any batch need a LIVE POST (vs the dict/cache)?
+  var userPicked = false; // was this switch an explicit choice from the menu?
+  var autoRestore = false; // set around the load-time replay of a stored preference
 
   // ── config / storage ───────────────────────────────────────────────────────
   function endpoint() { return cfg.url.replace(/\/$/, "") + "/functions/v1/translate"; }
@@ -281,15 +297,37 @@
   function storedLang() { try { return localStorage.getItem("swi18n:lang") || SOURCE; } catch (e) { return SOURCE; } }
 
   // ── failure stamp — suppress auto-apply-on-load briefly after a total failure ─
-  function setFailStamp() { try { sessionStorage.setItem("swi18n:fail", String(Date.now())); } catch (e) {} }
-  function clearFailStamp() { try { sessionStorage.removeItem("swi18n:fail"); } catch (e) {} }
+  // A budget exhaustion lasts until the daily reset, so a short stamp just means the
+  // page re-tries (and re-fails) on every navigation for the rest of the session —
+  // which is precisely the "it keeps erroring" complaint. Stamp it for the session.
+  function setFailStamp(reason) {
+    try {
+      sessionStorage.setItem("swi18n:fail", String(Date.now()));
+      if (reason === "budget") sessionStorage.setItem("swi18n:fail-long", "1");
+      else sessionStorage.removeItem("swi18n:fail-long");
+    } catch (e) {}
+  }
+  function clearFailStamp() {
+    try { sessionStorage.removeItem("swi18n:fail"); sessionStorage.removeItem("swi18n:fail-long"); } catch (e) {}
+  }
   function failStampActive() {
     try {
       var v = sessionStorage.getItem("swi18n:fail");
       if (!v) return false;
-      if (Date.now() - (parseInt(v, 10) || 0) > FAIL_TTL) { sessionStorage.removeItem("swi18n:fail"); return false; }
+      var ttl = sessionStorage.getItem("swi18n:fail-long") ? FAIL_TTL_BUDGET : FAIL_TTL;
+      if (Date.now() - (parseInt(v, 10) || 0) > ttl) {
+        sessionStorage.removeItem("swi18n:fail"); sessionStorage.removeItem("swi18n:fail-long"); return false;
+      }
       return true;
     } catch (e) { return false; }
+  }
+
+  // ── analytics ────────────────────────────────────────────────────────────────
+  // GA4, fire-and-forget (docs/events.md). gtag may be absent on this page, blocked,
+  // consent-denied or simply not loaded yet — translation must NEVER depend on it,
+  // so every call is guarded and a throw is swallowed.
+  function track(name, props) {
+    try { if (typeof window.gtag === "function") window.gtag("event", name, props); } catch (e) { /* analytics is best-effort */ }
   }
 
   // ── collection ──────────────────────────────────────────────────────────────
@@ -368,7 +406,12 @@
       return r.json();
     }).then(function (j) {
       cleanup();
-      return (j && Array.isArray(j.translations)) ? j.translations : texts;
+      var arr = (j && Array.isArray(j.translations)) ? j.translations : texts;
+      // The edge fn reports WHY a batch came back unchanged (added 2026-07). An
+      // older deployment omits it — then meta stays null and we fall back to the
+      // previous behaviour exactly.
+      arr.meta = (j && j.meta && typeof j.meta === "object") ? j.meta : null;
+      return arr;
     }, function (e) {
       cleanup();
       throw e;
@@ -515,6 +558,15 @@
   // failed batch's records to `unresolved` (if given) for a later retry pass.
   // Resolves with the total count of genuine translations applied.
   function runBatches(lang, batches, limit, unresolved, onFirst) {
+    // The generation this run belongs to. Batches outlive their switch: pick
+    // German, change your mind, go back to Hebrew, and German's in-flight batches
+    // keep pumping. applyBatch below is already guarded (`current === lang`) so
+    // stale TEXT can't land — but the liveFetched bookkeeping was not, so a
+    // superseded switch could stamp "live" onto the NEXT switch's lang_switch
+    // event and make a bundled language look endpoint-dependent. Since that event
+    // is what decides which languages get a shipped bundle, a wrong reading here
+    // becomes a wrong bundling decision later.
+    var startGen = switchSeq;
     return new Promise(function (resolve) {
       if (!batches.length) { resolve(0); return; }
       var idx = 0, active = 0, total = 0;
@@ -536,6 +588,7 @@
               pump();
             };
             if (!need || need.length === 0) { done(); return; }
+            if (startGen === switchSeq) liveFetched = true; // this switch still owns the flag
             fetchTranslationsRetrying(lang, need, RETRY_MAX).then(function (res) {
               for (var j = 0; j < need.length; j++) {
                 var tr = res[j];
@@ -545,8 +598,25 @@
                 // re-attempts next visit (e.g. once the DB cache is warmed).
                 if (tr != null && tr !== need[j]) m[need[j]] = tr;
               }
+              // A 200 is NOT automatically a success: the edge fn fail-softs by
+              // echoing the source. meta says which it was. A degraded 200 also has
+              // to reach `unresolved` — previously only a THROWN request did, so the
+              // one mechanism that could recover never saw the commonest failure.
+              var meta = res && res.meta;
+              if (meta) {
+                sawMeta = true;
+                if (meta.budgetExhausted) lastDegraded = "budget";
+                else if (meta.translated === 0 && meta.attempted > 0) {
+                  if (lastDegraded !== "budget") lastDegraded = "transient";
+                }
+                if (meta.translated > 0) sawTranslatable = true;
+                if ((meta.budgetExhausted || (meta.translated === 0 && meta.attempted > 0)) && unresolved) {
+                  for (var d = 0; d < batch.recs.length; d++) unresolved.push(batch.recs[d]);
+                }
+              }
               done();
             }, function () {
+              lastDegraded = lastDegraded || "transient";
               if (unresolved) for (var u = 0; u < batch.recs.length; u++) unresolved.push(batch.recs[u]);
               done();
             });
@@ -629,7 +699,40 @@
     if (switchSeq !== myGen) return; // superseded by a restore or a queued switch
     busy = false;
     hideBar(); setTriggersBusy(false);
-    if (!committed) { rollbackToSource(); showToast(lang); setFailStamp(); }
+    if (!committed) {
+      // THREE different outcomes used to land here and all showed the same error.
+      // Tell them apart — crying wolf is why the notice stopped meaning anything.
+      if (lastDegraded) {
+        // The server said it could not do the job. Honest notice + a stamp; the
+        // budget case gets a longer one because retrying before midnight cannot help.
+        rollbackToSource(); showToast(lang, lastDegraded); setFailStamp(lastDegraded);
+      } else if (sawTranslatable) {
+        // It DID return real text and we still painted nothing — a local problem
+        // (detached nodes, a race). Worth surfacing, but not as a service outage.
+        rollbackToSource(); showToast(lang, "local"); setFailStamp();
+      } else if (sawMeta) {
+        // The server REPORTED that there was nothing to translate (brand names,
+        // "5G", numbers, prices) — it worked perfectly. Honour the user's choice
+        // instead of claiming an error: those strings are already correct as-is.
+        commitSwitch(lang, myGen);
+      } else {
+        // No meta at all: an edge function older than this runtime (they deploy
+        // separately, so the window is real). We CANNOT tell "nothing to do" from
+        // "it failed", and assuming success would silently flip a page that never
+        // translated. Keep the previous, conservative behaviour.
+        rollbackToSource(); showToast(lang, ""); setFailStamp();
+      }
+    }
+    // The user's language choice, now that the switch has settled. `resolved_from`
+    // says whether the pre-built /i18n dictionary (or cache) covered it or the live
+    // endpoint was needed — the signal for which of the offered languages deserve a
+    // shipped bundle. NOT fired for the load-time replay of a stored preference
+    // (that is not a choice — see autoRestore), nor for a switch to the language
+    // already active (setLang returns early) or one superseded above.
+    if (userPicked) {
+      userPicked = false;
+      track("lang_switch", { lang: lang, resolved_from: liveFetched ? "live" : "static" });
+    }
     records = pruneRecords(records);
     syncTriggers();
     if (queuedLang && queuedLang !== current) { var q = queuedLang; queuedLang = null; setLang(q); }
@@ -769,18 +872,31 @@
 
   // Honest, non-blocking failure notice (Hebrew — the page stays Hebrew on failure)
   // with a retry that re-attempts the same language. Auto-dismisses after a while.
-  function showToast(lang) {
+  // `reason` comes from the edge fn's meta (see lastDegraded). The copy has to match
+  // reality: offering "try again" when the daily budget is spent trains people to
+  // press a button that cannot work.
+  var TOAST = {
+    budget: "התרגום עמוס כרגע — נסו שוב מאוחר יותר",
+    transient: "התרגום אינו זמין כרגע — נסו שוב",
+    local: "התרגום לא הוחל על העמוד — נסו לרענן",
+    "": "התרגום אינו זמין כרגע — נסו שוב"
+  };
+  function showToast(lang, reason) {
     hideToast();
     ensureStyle();
     var t = document.createElement("div");
     t.className = "swi18n-toast"; t.setAttribute("data-no-translate", "");
     t.setAttribute("role", "status"); t.setAttribute("aria-live", "polite"); t.dir = "rtl";
     var span = document.createElement("span");
-    span.textContent = "התרגום אינו זמין כרגע — נסו שוב";
+    span.textContent = TOAST[reason || ""] || TOAST[""];
     t.appendChild(span);
-    var btn = document.createElement("button"); btn.type = "button"; btn.textContent = "נסו שוב";
-    btn.addEventListener("click", function () { hideToast(); clearFailStamp(); setLang(lang); });
-    t.appendChild(btn);
+    // No retry button on the budget path — it is guaranteed to fail until the daily
+    // budget resets, and a button that never works is worse than no button.
+    if (reason !== "budget") {
+      var btn = document.createElement("button"); btn.type = "button"; btn.textContent = "נסו שוב";
+      btn.addEventListener("click", function () { hideToast(); clearFailStamp(); setLang(lang); });
+      t.appendChild(btn);
+    }
     document.body.appendChild(t);
     try { setTimeout(function () { hideToast(); }, 8000); } catch (e) {}
   }
@@ -798,7 +914,7 @@
     if (lang === SOURCE) {
       abortAll();
       switchSeq++;
-      queuedLang = null; busy = false; committed = false;
+      queuedLang = null; busy = false; committed = false; lastDegraded = ""; sawTranslatable = false; sawMeta = false;
       restoreAll();
       records = []; seenText = new WeakSet();
       current = SOURCE; rememberLang(SOURCE);
@@ -817,7 +933,10 @@
     // throw synchronously in endpoint() and strand busy.
     if (!cfg.url || !cfg.anonKey) { showToast(lang); closeMenu(); return; }
 
-    busy = true; committed = false; queuedLang = null;
+    busy = true; committed = false; queuedLang = null; lastDegraded = ""; sawTranslatable = false; sawMeta = false;
+    // Every entry point EXCEPT the load-time replay is a real user selection (the
+    // menu here, and window.SwitchyI18n.setLang from the Next <LanguageSwitcher/>).
+    liveFetched = false; userPicked = !autoRestore; autoRestore = false;
     var myGen = ++switchSeq;
     showBar(); setTriggersBusy(true); hideToast(); closeMenu();
     // Do NOT flip direction yet — the page stays RTL-Hebrew until the first REAL
@@ -981,7 +1100,12 @@
         // Re-read inside the idle callback: the user may have made a fresh manual
         // choice (or returned to Hebrew) before this fired — never override it.
         var w = storedLang();
-        if (w !== SOURCE && current === SOURCE && !failStampActive()) setLang(w);
+        // Replaying a stored preference is NOT a language choice — autoRestore
+        // suppresses the lang_switch event for this one call.
+        if (w !== SOURCE && current === SOURCE && !failStampActive()) {
+          autoRestore = true;
+          try { setLang(w); } finally { autoRestore = false; }
+        }
       };
       if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 300);
     } else {

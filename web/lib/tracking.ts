@@ -169,8 +169,9 @@ export function fireLeadConversion(details?: {
 
 /**
  * Generic micro-funnel / engagement event. For NON-conversion signals only —
- * lead-form start/step, CTA clicks, outbound clicks — never the lead conversion
- * itself (use fireLeadConversion for that). Carries only category/source/step
+ * lead-form view/start/step, a submit blocked by client-side validation, CTA
+ * clicks, outbound clicks — never the lead conversion itself (use
+ * fireLeadConversion for that). Carries only category/source/step
  * labels; NEVER pass PII (name/phone/city). Mirrors fireLeadConversion's defensive
  * posture: no-ops on the server or when gtag/fbq are absent, and never throws into
  * the UX. Emits to GA4 (gtag 'event') and, when configured, Meta (fbq custom event).

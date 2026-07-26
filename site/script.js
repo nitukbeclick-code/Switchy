@@ -383,6 +383,20 @@
       if (($('leadCompany') && $('leadCompany').value || '').trim()) {
         form.reset();
         if (note) { note.classList.remove('cta__note--err'); note.textContent = 'תודה! נחזור אליך בהקדם ✦'; }
+        // This branch shows the REAL success copy and sends nothing — correct for
+        // a bot, catastrophic for a human. #leadCompany is off-screen but present
+        // and focusable, and `company`/organization is first-class autofill
+        // vocabulary that Chrome fills regardless of autocomplete="off"; some
+        // password managers fill every text input in a form. A visitor who picks
+        // a saved profile could land here and walk away believing they were
+        // contacted.
+        //
+        // Whether that actually happens is measurable, and until now it was the
+        // ONLY submit branch with no telemetry at all — invisible by
+        // construction. Counting it changes nothing a bot can observe. If this
+        // fires at a rate real traffic cannot explain, the field needs renaming
+        // out of the autofill vocabulary (an owner call: it changes what bots see).
+        track('lead_form_blocked', { source: location.pathname, reason: 'honeypot' });
         return;
       }
       const nameEl = $('leadName');
@@ -403,6 +417,15 @@
         // Move focus to the first invalid field so keyboard/AT users land on it.
         const bad = !nameOk ? nameEl : phoneEl;
         if (bad) bad.focus();
+        // lead_form_blocked — the visitor pressed submit and client-side
+        // validation rejected it. Without this the funnel can't tell "gave up"
+        // from "was stopped at the door". `reason` is the coarse field GROUP
+        // that failed — never what was typed. (The honeypot path above is a bot,
+        // not a blocked human, so it stays silent.)
+        track('lead_form_blocked', {
+          source: location.pathname,
+          reason: !nameOk && !phoneOk ? 'name_phone' : (!nameOk ? 'name' : 'phone'),
+        });
         return;
       }
       // Legal consent gate (Privacy Protection Regulations + Spam/Communications
@@ -418,6 +441,7 @@
         toast('יש לאשר את תנאי השימוש ומדיניות הפרטיות', 'error');
         const badConsent = !termsOk ? termsEl : privacyEl;
         if (badConsent) badConsent.focus();
+        track('lead_form_blocked', { source: location.pathname, reason: 'consent' });
         return;
       }
       const now = new Date().toISOString();
@@ -449,6 +473,20 @@
           terms_accepted_at: now,
           privacy_accepted_at: now,
           marketing_accepted_at: marketingAt,
+          // The timestamp alone is NOT what anyone downstream reads. rep-brief
+          // builds its §30A compliance line from these booleans
+          // (rep_brief.ts) and the CRM card is shaped from them
+          // (crm_logic.ts); they default to false. So a visitor who ticked
+          // "אני מעוניין/ת לקבל דיוור שיווקי" arrived as a row that said both
+          // "consented at T" and "no channel consented", and the rep was told
+          // "הלקוח לא אישר דיוור שיווקי" — consent lawfully obtained, then
+          // discarded. The AI-chat lead in this same file always sent them.
+          //
+          // No _email: this form collects name + phone only. Claiming an email
+          // consent we never asked for would be the same class of error in the
+          // opposite direction.
+          consent_marketing_sms: !!marketingAt,
+          consent_marketing_whatsapp: !!marketingAt,
           notes: leadNotes,
         });
       } catch (err) {
@@ -462,14 +500,23 @@
         // markup) — never swallow a failed submit as if it succeeded. The message
         // is truthful about which failure it was: a duplicate (rate-limited), a
         // dropped connection (network), or the server rejecting the insert.
+        // The DB raises the SAME 'rate limit exceeded' for three unrelated caps:
+        // per-phone 5/24h, per-IP 8/hour, and a GLOBAL 60/hour circuit breaker
+        // (supabase/schema.sql). Only the first means "we already have your
+        // inquiry" — the other two hit FIRST-TIME submitters (an office/CGNAT
+        // egress IP, or the global breaker tripping during exactly the campaign
+        // spike that is worth the most). Claiming a rep will call back is false
+        // there, no row was written, and a visitor who believes they are in hand
+        // has no reason to use the WhatsApp fallback. Say what is true for all
+        // three, matching web/app/api/lead/route.ts, which already gets this right.
         const errMsg = leadErrCode === 'rate_limited'
-          ? 'קיבלנו כבר פנייה מכם — נחזור אליכם בהקדם! אם דחוף, כתבו לנו בוואטסאפ 💬'
+          ? 'יותר מדי בקשות כרגע — נסו שוב בעוד כמה דקות, או כתבו לנו בוואטסאפ 💬'
           : leadErrCode === 'network'
             ? 'אין חיבור כרגע — בדקו את האינטרנט ונסו שוב, או כתבו לנו בוואטסאפ 💬'
             : 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬';
         if (note) { note.classList.add('cta__note--err'); note.textContent = errMsg; }
         const toastMsg = leadErrCode === 'rate_limited'
-          ? 'פנייתכם כבר נקלטה — נחזור בהקדם'
+          ? 'יותר מדי בקשות כרגע — נסו שוב בעוד כמה דקות'
           : leadErrCode === 'network'
             ? 'אין חיבור לאינטרנט — נסו שוב בעוד רגע'
             : 'שגיאה — נסו שוב בעוד רגע';
@@ -515,6 +562,27 @@
       }
       showReferralShare();
     });
+    // lead_form_view — the funnel's DENOMINATOR: fires once, when the form is
+    // actually on screen. Deliberately NOT on load: on 269 pages the form sits
+    // below the fold, and counting a form nobody scrolled to as a "view" inflates
+    // every downstream rate (start-per-view, lead-per-view). The observer
+    // disconnects on the first hit, so scrolling away and back doesn't re-fire.
+    // No IntersectionObserver (very old browsers) → no event: a view we can't
+    // verify is worse than a missing one.
+    if ('IntersectionObserver' in window) {
+      // Half the form on screen is the honest bar for "seen", but a form taller
+      // than the viewport can never reach 50% — fall back to first-pixel there
+      // (the same trap the .reveal observer guards against).
+      const viewRatio = form.offsetHeight * 0.5 > window.innerHeight ? 0 : 0.5;
+      const viewIo = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          viewIo.disconnect();
+          track('lead_form_view', { source: location.pathname });
+        });
+      }, { threshold: viewRatio });
+      viewIo.observe(form);
+    }
     // lead_form_start — fires once, the moment the visitor first engages the form.
     // Canonical name matches the web app's LeadForm start event.
     let formStarted = false;
@@ -1041,6 +1109,14 @@
     window.addEventListener('scroll', () => {
       if (!ticking) { ticking = true; requestAnimationFrame(check); }
     }, { passive: true });
+    // check() ran ONLY from the scroll listener, so a page shorter than the
+    // viewport reported zero scroll engagement even though the visitor saw all of
+    // it — `max <= 0` makes pct 100, but no scroll event ever fires to observe
+    // that. Same blind spot on a bfcache restore or an anchor deep-link that
+    // lands mid-page. Prime it once. Deferred to `load` because scrollHeight is
+    // not trustworthy until images have laid out; `fired` keeps it idempotent.
+    if (document.readyState === 'complete') check();
+    else window.addEventListener('load', check, { once: true });
   })();
 
   // ── Sticky mobile CTA ────────────────────────────────────────────────────────
@@ -1135,7 +1211,12 @@
   // ── Savings calculator (calc-*.html) ─────────────────────────────────────
   const calc = $('calc');
   if (calc) {
-    const cheapest = Number(calc.dataset.cheapest) || 0;
+    // Savings are computed against the EFFECTIVE monthly cost (what the plan
+    // averages over 12 months once its published promo ladder is applied), not
+    // the promo headline. Annualising a two-month ₪39 price on a plan that
+    // becomes ₪159 overstated the yearly saving several times over. Falls back
+    // to the headline for a page built before data-effective existed.
+    const cheapest = Number(calc.dataset.effective) || Number(calc.dataset.cheapest) || 0;
     const bill = $('calcBill');
     const out = $('calcOut');
     const btn = $('calcBtn');
@@ -2112,6 +2193,28 @@
     const form = $('bookForm');
     if (!form) return;
 
+    // meeting_form_view / meeting_form_start — the booking funnel's top two steps.
+    // Booking a meeting is a primary conversion and it fired NOTHING before this,
+    // so a drop-off here was invisible. Same honest bar as the lead form: "seen"
+    // means actually on screen, not merely present in the DOM.
+    if ('IntersectionObserver' in window) {
+      const viewRatio = form.offsetHeight * 0.5 > window.innerHeight ? 0 : 0.5;
+      const viewIo = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          viewIo.disconnect(); // once per load — scrolling back is not a second view
+          track('meeting_form_view', { source: location.pathname });
+        });
+      }, { threshold: viewRatio });
+      viewIo.observe(form);
+    }
+    let bookStarted = false;
+    form.addEventListener('focusin', () => {
+      if (bookStarted) return;
+      bookStarted = true;
+      track('meeting_form_start', { source: location.pathname });
+    });
+
     // The Zoom-supported providers, in EXACT catalogue ids. SINGLE SOURCE OF
     // TRUTH is public.provider_capabilities.supports_zoom_meeting — only these 10
     // are opted in; everyone else is NOT supported and must not be bookable. This
@@ -2409,19 +2512,27 @@
       fieldError(phoneEl, phoneOk ? null : 'נא למלא מספר טלפון נייד תקין');
       fieldError(emailEl, emailOk ? null : 'נא למלא אימייל תקין — לשם יישלח קישור ה-Zoom');
 
+      // meeting_form_blocked — instrumented HERE, at the branch that actually
+      // decides, rather than by watching the note element from outside: the slot
+      // lives in the `chosenSlot` closure variable and never reaches an input, so
+      // any DOM-sniffing observer reports "no slot" on a perfectly filled form.
+      // `reason` is the coarse field group only — never a typed value.
+      const blocked = (reason) => track('meeting_form_blocked', { source: location.pathname, reason: reason });
       if (!nameOk || !phoneOk || !emailOk) {
         setNote('נא למלא שם, טלפון ואימייל תקינים 🙏', true);
         const bad = !nameOk ? nameEl : (!phoneOk ? phoneEl : emailEl);
         if (bad) bad.focus();
+        blocked('contact');
         return null;
       }
-      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return null; }
-      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); return null; }
-      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return null; }
+      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); blocked('provider'); return null; }
+      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); blocked('date'); return null; }
+      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); blocked('slot'); return null; }
       if (!termsOk || !privacyOk) {
         setNote('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', true);
         const badC = !termsOk ? termsEl : privacyEl;
         if (badC) badC.focus();
+        blocked('consent');
         return null;
       }
       return { name: name, phone: phone, email: email };
@@ -2448,6 +2559,7 @@
       } catch (_) {
         const msg = 'לא הצלחנו לשלוח קוד אימות — נסו שוב, או דברו איתנו בוואטסאפ 💬';
         setNote(msg, true);
+        track('meeting_form_error', { source: location.pathname, reason: 'server' });
         toast(msg, 'error');
       }
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
@@ -2473,6 +2585,7 @@
         if (!data || !data.ok) {
           const msg = (data && data.error) ? data.error : 'לא הצלחנו לקבוע את הפגישה — בדקו את הפרטים ונסו שוב, או דברו איתנו בוואטסאפ 💬';
           setNote(msg, true);
+        track('meeting_form_error', { source: location.pathname, reason: 'server' });
           toast(msg, 'error');
         } else {
           track('meeting_booked', { provider: chosenProvider });
@@ -2489,6 +2602,7 @@
       } catch (_) {
         const msg = 'לא הצלחנו לקבוע את הפגישה — נסו שוב, או דברו איתנו בוואטסאפ 💬';
         setNote(msg, true);
+        track('meeting_form_error', { source: location.pathname, reason: 'server' });
         toast(msg, 'error');
       }
       if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.classList.remove('is-loading'); if (vLabel) verifyBtn.textContent = vLabel; }
@@ -2694,7 +2808,9 @@
     const calcEl = $('calc');
     const out = $('calcOut');
     if (!calcEl || !out) return;
-    const cheapest = Number(calcEl.dataset.cheapest) || 0;
+    // Same figure the calculator itself uses — the chart must not contradict the
+    // number printed beside it.
+    const cheapest = Number(calcEl.dataset.effective) || Number(calcEl.dataset.cheapest) || 0;
     const inject = () => {
       const result = out.querySelector('.calc-result');
       if (!result || result.querySelector('.calc-result__chart')) return;

@@ -21,15 +21,16 @@ import ComparisonTable from "@/components/ComparisonTable";
 import type { Plan } from "@/lib/types";
 
 /**
- * A matcher for one MONEY-TIER price block. The tier splits the figure across a
- * demoted `.price-sign` span and the digits, so a plain "₪109" string matcher no
- * longer sees a single text node. Matching the `.price-display` element by its
- * full textContent both fixes that and pins the contract: the ₪ stays a real,
- * screen-reader-readable sibling inside the block, never a pseudo-element.
+ * A matcher for one MONEY-TIER price block at the ROW rank. The tier splits the
+ * figure across a demoted `.price-sign` span and the digits, so a plain "₪109"
+ * string matcher no longer sees a single text node. Matching the `.price-row`
+ * element by its full textContent both fixes that and pins the contract: the ₪
+ * stays a real, screen-reader-readable sibling inside the block, never a
+ * pseudo-element.
  */
 function priceBlock(value: string) {
   return (_content: string, element: Element | null) =>
-    element?.classList.contains("price-display") === true &&
+    element?.classList.contains("price-row") === true &&
     element.textContent === value;
 }
 
@@ -159,6 +160,27 @@ describe("ComparisonTable — price + honest post-promo rendering", () => {
     // …and the unit is a separate micro-label, never inline at price size.
     expect(container.querySelectorAll(".price-unit").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("לחודש").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("never spends the HERO rank — a table of prices is a column, not 59 shouts", () => {
+    // This is the rule the money system exists to protect. `.price-hero` is the
+    // one 2.5rem/800 amber figure a page is allowed, and the table is precisely
+    // where it must NOT appear: /compare/cellular renders ~59 rows, and at hero
+    // size that column drowned out the one figure that was supposed to be loud.
+    // Every ₪ here takes the repeated `.price-row` rank instead — still amber,
+    // still tabular, still unmistakably money, just quiet enough to scan.
+    const { container } = render(
+      <ComparisonTable
+        plans={[
+          plan({ id: "a", price: 39 }),
+          plan({ id: "b", price: 49 }),
+          plan({ id: "c", price: 109 }),
+        ]}
+        caption="cap"
+      />,
+    );
+    expect(container.querySelectorAll(".price-hero")).toHaveLength(0);
+    expect(container.querySelectorAll(".price-row").length).toBeGreaterThanOrEqual(3);
   });
 
   it('shows "מחיר קבוע" (NOT a bare dash) when there is no after-promo jump', () => {

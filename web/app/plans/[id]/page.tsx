@@ -405,7 +405,7 @@ export default async function PlanDetailPage({ params }: Params) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <h2
             id="cta-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             רוצים לעבור ל{plan.provider} או להשוות?
           </h2>
@@ -460,7 +460,7 @@ export default async function PlanDetailPage({ params }: Params) {
         <section aria-labelledby="similar-h" className="mt-14">
           <h2
             id="similar-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             מסלולים דומים
           </h2>

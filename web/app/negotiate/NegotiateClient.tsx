@@ -220,10 +220,17 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
           {status === "loading" ? null : <Icon name="arrow" size={18} aria-hidden />}
         </button>
 
+        {/* Scoped to THIS tool on purpose. The unqualified "לא נשמרים פרטים"
+            sat on a page that now renders a server-posting <LeadForm> further
+            down, so it read as a promise about the whole page. What is true is
+            narrower and still reassuring: the fields in this form are used to
+            compute the script and nothing more (/api/negotiate writes NOTHING —
+            no DB, no PII), while the form below is an explicit, consent-gated
+            choice to send details. */}
         <p className="mt-3 flex items-center gap-1.5 text-xs leading-relaxed text-muted">
           <Icon name="lock" size={14} className="shrink-0 text-accent-text" aria-hidden />
-          התסריט מבוסס על מחירים אמיתיים מתוך הקטלוג שלנו. לא נשמרים פרטים — מה שאתם
-          מקלידים נשאר בדפדפן שלכם.
+          התסריט מבוסס על מחירים אמיתיים מתוך הקטלוג שלנו. מה שתזינו בכלי הזה משמש
+          לחישוב התסריט בלבד ואינו נשמר אצלנו.
         </p>
       </form>
 

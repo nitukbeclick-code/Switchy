@@ -16,13 +16,14 @@
 // Per-provider brand colours are NOT used — the page is in the app theme only.
 // ────────────────────────────────────────────────────────────────────────────
 
-import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import ComparisonTable from "@/components/ComparisonTable";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
@@ -213,8 +214,6 @@ function buildAuthorityRows(
 }
 
 // One compact stat card per side (entry price + plan count + cheapest plan name).
-// `style` is an optional pass-through so the caller can stagger the entrance
-// reveal (animationDelay) without changing the card's layout or content.
 //
 // `value` marks THIS side as the lower-entry-price one (a real, derived read from
 // vsVerdict — null on a tie). When set, the entry-price figure keeps the amber
@@ -226,22 +225,19 @@ function SideCard({
   side,
   label,
   value = false,
-  style,
 }: {
   side: VsSide;
   label: string;
   value?: boolean;
-  style?: CSSProperties;
 }) {
   return (
     <div
       className={[
-        "sw-reveal bento card-interactive p-6",
+        "bento card-interactive p-6",
         value ? "border-value/35 glow-value" : "",
       ]
         .join(" ")
         .trim()}
-      style={style}
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium text-muted">{label}</span>
@@ -553,6 +549,14 @@ export default async function VsPage({ params }: Params) {
         </p>
       </header>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          Above every ₪ on the page: the zero-click answer below already quotes
+          both carriers' entry prices, and the side cards, table and verdict all
+          follow. §7b requires the referral-fee relationship to be readable
+          BEFORE the price claims it might be suspected of colouring — not in a
+          footer after them. Inline variant: a quiet legal line, not a panel. ── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
+
       {/* ── AEO zero-click answer — the head-to-head verdict engines lift ──── */}
       <AeoAnswerBlock
         answer={answer}
@@ -593,7 +597,6 @@ export default async function VsPage({ params }: Params) {
             side={b}
             label={`צד ב׳ — ${categoryLabel}`}
             value={verdict.cheaperSide === b}
-            style={{ animationDelay: "60ms" }}
           />
         </div>
       </section>
@@ -611,7 +614,7 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── Unified comparison table (every plan from both sides) ──────────── */}
       <section aria-labelledby="table-h" className="mt-14">
-        <h2 id="table-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="table-h" className="h-section text-ink">
           כל מסלולי {categoryLabel} — {aN} ו{bN}
         </h2>
         <div className="mt-5">
@@ -622,6 +625,11 @@ export default async function VsPage({ params }: Params) {
         </div>
         {/* Honest verification stamp for the table's price claims. */}
         <FactCheckBadge dateModified={asOf} className="mt-3" />
+        {/* §17 price-accuracy caveat — VAT-inclusive, accurate as of the update
+            date, verify with the provider before signing. It sits directly under
+            the densest price surface on the page, which is where the law wants
+            it: attached to the figures, not stranded in a footer. */}
+        <PriceCaveat className="mt-3" />
       </section>
 
       {/* ── AEO conversational Q&A (data-derived, mirrors FAQPage JSON-LD) ─── */}
@@ -635,7 +643,7 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── FAQ — curated match-up questions (distinct from the AEO Q&A above) ─ */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="faq-h" className="h-section text-ink">
           {aN} מול {bN} — ההבדלים בקצרה
         </h2>
         <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
@@ -658,7 +666,7 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="lead-h" className="h-section text-ink">
           לא בטוחים מה מתאים — {aN} או {bN}?
         </h2>
         <p className="mt-2 text-foreground">

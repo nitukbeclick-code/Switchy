@@ -20,7 +20,10 @@
 //     exists is the moment the ask is worth making, and shipping the visitor off
 //     to /quiz to re-answer everything threw that intent away. The figures they
 //     typed ride along as a factual `contextNote` so the rep opens the call
-//     already knowing the ask; nothing is computed or invented for it.
+//     already knowing the ask; nothing is computed or invented for it — and
+//     <LeadForm> RENDERS that note above its submit button ("מה שיישלח עם
+//     הפנייה"), so the visitor sees the figures before they travel next to their
+//     name and phone. No copy on this page claims otherwise.
 //
 // Design: premium-2026 bento cards. Amber = VALUE (saving figures, --value-text);
 // green = ACTION (the CTA link). Dark-mode safe (CSS-variable colors) + RTL.
@@ -180,7 +183,9 @@ export default function WalletClient({ categories }: WalletClientProps) {
 
   // A factual note for the rep, assembled from what is ALREADY on screen: the
   // bills the visitor typed and the arithmetic above. Nothing new is computed and
-  // nothing is invented — an empty calculator produces no note at all.
+  // nothing is invented — an empty calculator produces no note at all. It is
+  // stored beside the visitor's name and phone, so it is written to be read by
+  // them too: <LeadForm> shows it verbatim above its submit button.
   const contextNote =
     filledCount > 0
       ? [

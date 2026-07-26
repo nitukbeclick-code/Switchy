@@ -12,9 +12,10 @@
 // <HowItWorks> explains the consent-only switch model.
 //
 // Server component — pure render from the build-time catalogue + static copy.
-// Motion: the global `.sw-reveal` entrance (opacity + lift, GPU only) staggered
-// 30–80ms via inline animationDelay, plus the global `.sw-lift` desktop hover —
-// both reduced-motion safe (collapse to the resting state in globals.css).
+// Motion: ONE staged moment at the top of the page — the h1 and its lede carry the
+// global `.sw-reveal` entrance (opacity + lift, GPU only); everything below renders
+// at rest. `.sw-lift` still handles the desktop hover. Both are reduced-motion safe
+// (they collapse to the resting state in globals.css).
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -151,8 +152,7 @@ export default function AboutPage() {
         <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
           <div className="mx-auto max-w-2xl">
             <p
-              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
-              style={{ animationDelay: "0ms" }}
+              className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
             >
               <Icon name="check" size={14} className="shrink-0 text-accent" />
               מי אנחנו · שקוף וחינמי
@@ -175,8 +175,7 @@ export default function AboutPage() {
                 consult path is a quiet SECONDARY white text link, so only one
                 action reads as primary per viewport. */}
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               <TrackedCtaLink
                 href="/compare"
@@ -201,8 +200,7 @@ export default function AboutPage() {
                 (text-accent on ink), NOT a button. tabular-nums column-aligns the
                 digits (parity with the home counts bar — same <p> shape). */}
             <p
-              className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
-              style={{ animationDelay: "150ms" }}
+              className="nums-tabular mt-8 text-sm text-white/85"
             >
               <span className="font-display font-bold text-white">
                 {planCount}
@@ -234,12 +232,11 @@ export default function AboutPage() {
       {/* ── The honest model (free service · referral fee) ─────────────────── */}
       <section
         aria-labelledby="model-h"
-        className="sw-reveal bento mt-16 p-6 sm:p-8"
-        style={{ animationDelay: "150ms" }}
+        className="bento mt-16 p-6 sm:p-8"
       >
         <h2
           id="model-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           המודל שלנו — והשירות חינמי לכם
         </h2>
@@ -265,16 +262,15 @@ export default function AboutPage() {
       <section aria-labelledby="do-h" className="mt-16">
         <h2
           id="do-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+          className="h-section text-ink"
         >
           מה אנחנו עושים בשבילכם
         </h2>
         <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          {whatWeDo.map((item, i) => (
+          {whatWeDo.map((item) => (
             <li
               key={item.title}
-              className="sw-reveal card flex h-full gap-4 p-5 sm:p-6"
-              style={{ animationDelay: `${Math.min(i * 60, 240)}ms` }}
+              className="card flex h-full gap-4 p-5 sm:p-6"
             >
               <span
                 aria-hidden="true"
@@ -298,12 +294,11 @@ export default function AboutPage() {
       {/* ── Why trust us (E-E-A-T / transparency stance) ───────────────────── */}
       <section
         aria-labelledby="trust-h"
-        className="sw-reveal bento mt-16 p-6 sm:p-8"
-        style={{ animationDelay: "60ms" }}
+        className="bento mt-16 p-6 sm:p-8"
       >
         <h2
           id="trust-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           למה לסמוך עלינו
         </h2>
@@ -334,12 +329,11 @@ export default function AboutPage() {
       {/* ── Contact / WhatsApp ─────────────────────────────────────────────── */}
       <section
         aria-labelledby="contact-h"
-        className="sw-reveal bento mt-16 p-6 sm:p-8"
-        style={{ animationDelay: "60ms" }}
+        className="bento mt-16 p-6 sm:p-8"
       >
         <h2
           id="contact-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           מדברים איתנו
         </h2>
@@ -372,12 +366,11 @@ export default function AboutPage() {
       {/* ── CTA — start comparing (accent-tinted alternating ground) ──────── */}
       <section
         aria-labelledby="cta-h"
-        className="sw-reveal mt-16 rounded-3xl border border-border/50 bg-accent/[0.03] p-6 text-center sm:p-8"
-        style={{ animationDelay: "60ms" }}
+        className="mt-16 rounded-3xl border border-border/50 bg-accent/[0.03] p-6 text-center sm:p-8"
       >
         <h2
           id="cta-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           מוכנים לחסוך?
         </h2>

@@ -52,7 +52,7 @@ export default function Error({
     >
       <h1
         tabIndex={-1}
-        className="font-display text-2xl font-bold tracking-tight text-ink outline-none sm:text-3xl"
+        className="h-pillar text-ink outline-none"
       >
         משהו השתבש
       </h1>

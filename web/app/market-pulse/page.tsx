@@ -9,6 +9,8 @@ import MarketPulseCharts, {
 // Lazy wrapper (ssr:false + CLS-safe skeleton) — the calculator is below the
 // fold here just like on the home page, so it must not add hydration cost.
 import SmartTimer from "@/components/SmartTimerLazy";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import LeadFormLazy from "@/components/LeadFormLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
@@ -289,6 +291,21 @@ export default function MarketPulsePage() {
         </section>
       </header>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          Almost everything below this line is a price: the SGE summary quotes the
+          cheapest entry point, the authority table quotes a ₪ figure per category,
+          and the charts plot avg/min/max. The page also asks for a name and a
+          phone number now. §7b wants the paid-relationship disclosure ABOVE the
+          prices it qualifies, so it goes here — first thing under the hero —
+          rather than next to the form, which is five sections down. Inline (quiet
+          muted line): a legal disclosure, not another panel in the stack.
+          Deliberately NOT wrapped in the page's staggered `.sw-reveal`: that
+          animation starts at opacity 0 with `both` fill, which would leave a
+          legally-required disclosure invisible for the first half-second of page
+          life. A compliance line renders at rest, immediately, always — matching
+          the other four pages that carry it. ─────────────────────────────────── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
+
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="sw-reveal mt-8" style={{ animationDelay: "120ms" }}>
         <SgeSummary heading="תקציר מצב השוק">{summary}</SgeSummary>
@@ -311,6 +328,11 @@ export default function MarketPulsePage() {
           תרשימי מצב השוק הנוכחי
         </h2>
         <MarketPulseCharts data={rows} />
+        {/* §17 price-accuracy caveat — this page publishes a per-category price
+            table and avg/min/max charts, which is the densest price surface on
+            the site after a comparison table. The caveat closes it: VAT-
+            inclusive, accurate as of the update date, verify with the provider. */}
+        <PriceCaveat className="mt-4" />
       </section>
 
       {/* ── Honesty note: history will accrue for real future trends. ─────── */}
@@ -354,7 +376,7 @@ export default function MarketPulsePage() {
       >
         <h2
           id="pulse-lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           משלמים יותר מהמחירים האלה?
         </h2>

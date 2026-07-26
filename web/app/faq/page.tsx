@@ -165,8 +165,7 @@ export default function FaqPage() {
         <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
           <div className="mx-auto max-w-2xl">
             <p
-              className="sw-reveal mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
-              style={{ animationDelay: "0ms" }}
+              className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/85"
             >
               <Icon name="check" size={14} className="shrink-0 text-accent" />
               מרכז הידע · בעברית ברורה
@@ -184,8 +183,7 @@ export default function FaqPage() {
             {/* CTA row — exactly ONE primary (solid green, glow, press). The
                 consult path is a quiet SECONDARY white text link. */}
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               <TrackedCtaLink
                 href="/compare"
@@ -208,8 +206,7 @@ export default function FaqPage() {
             {/* Trust band — the honest count of visible Q&A (real, no fabricated
                 figure). tabular-nums column-aligns the digit (parity with home). */}
             <p
-              className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
-              style={{ animationDelay: "150ms" }}
+              className="nums-tabular mt-8 text-sm text-white/85"
             >
               <span className="font-display font-bold text-white">
                 {allQA.length}
@@ -261,7 +258,7 @@ export default function FaqPage() {
           </p>
           <h2
             id={`${s.id}-h`}
-            className="mt-2 font-display text-2xl font-bold tracking-tight text-ink"
+            className="mt-2 h-section text-ink"
           >
             {s.heading}
           </h2>
@@ -291,7 +288,7 @@ export default function FaqPage() {
       <section id="lead" aria-labelledby="faq-lead-h" className="mt-16 scroll-mt-6">
         <h2
           id="faq-lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           נשארה שאלה? נענה עליה בטלפון
         </h2>

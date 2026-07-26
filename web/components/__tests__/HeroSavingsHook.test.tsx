@@ -9,7 +9,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import HeroSavingsHook, { annualDifference } from "@/components/HeroSavingsHook";
 
 /** The REAL-catalogue-shaped props the server page passes down. */
@@ -34,7 +34,7 @@ describe("HeroSavingsHook — truth-only annual difference", () => {
     const { container } = render(<HeroSavingsHook {...PROPS} />);
     expect(screen.getByLabelText(/כמה אתם משלמים היום/)).toBeInTheDocument();
     // No figure, no estimate wording, no ask — nothing has been claimed yet.
-    expect(container.querySelector(".price-display")).toBeNull();
+    expect(container.querySelector(".price-hero")).toBeNull();
     expect(screen.queryByText(/הפרש שנתי משוער/)).toBeNull();
     expect(screen.queryByRole("link")).toBeNull();
   });
@@ -44,7 +44,7 @@ describe("HeroSavingsHook — truth-only annual difference", () => {
     enterBill("240"); // (240 − 39) × 12 = 2,412
 
     // Exactly one money moment on the fold, carrying the amber VALUE token.
-    const figures = container.querySelectorAll(".price-display");
+    const figures = container.querySelectorAll(".price-hero");
     expect(figures).toHaveLength(1);
     expect(figures[0]).toHaveTextContent("₪2,412");
     expect(figures[0].className).toContain("text-value-text");
@@ -73,13 +73,42 @@ describe("HeroSavingsHook — truth-only annual difference", () => {
     const { container } = render(<HeroSavingsHook {...PROPS} />);
     enterBill("30"); // already below the ₪39 catalogue floor → difference 0
 
-    expect(container.querySelector(".price-display")).toBeNull();
+    expect(container.querySelector(".price-hero")).toBeNull();
     expect(screen.queryByText(/הפרש שנתי משוער/)).toBeNull();
     expect(
       screen.getByText(/אתם כבר משלמים פחות מהמסלול הזול ביותר/),
     ).toBeInTheDocument();
     // No fabricated win means no ask attached to one.
     expect(screen.queryByRole("link", { name: /החיסכון בפועל/ })).toBeNull();
+  });
+
+  it("dresses the figure in the SHARED money classes, never a local one-off", () => {
+    // The flagship has to eat the design system it exists to showcase. It once
+    // hardcoded `align-super text-[0.42em]` (no colour → an amber ₪ where every
+    // other ₪ on the site is muted) and `tracking-[0.18em]` (a third value for
+    // the one micro-label role). Both are now the shared classes from
+    // globals.css, so a tier tweak reaches the hero and the table together.
+    const { container } = render(<HeroSavingsHook {...PROPS} />);
+    enterBill("240");
+
+    const figure = container.querySelector(".price-hero") as HTMLElement;
+    expect(within(figure).getByText("₪")).toHaveClass("price-sign");
+    expect(container.querySelectorAll(".price-unit")).toHaveLength(1);
+    expect(screen.getByText("לשנה")).toHaveClass("price-unit");
+
+    // No arbitrary-value type utilities anywhere in the money block.
+    expect(figure.outerHTML).not.toMatch(/text-\[|tracking-\[|align-super/);
+    expect(
+      (screen.getByText("לשנה") as HTMLElement).className,
+    ).not.toMatch(/text-\[|tracking-\[/);
+  });
+
+  it("never uses the repeated ROW rank — the fold is the one hero figure", () => {
+    // .price-row is for figures that repeat (table rows, plan cards). If the
+    // hero ever downgraded to it, the page would have no money moment at all.
+    const { container } = render(<HeroSavingsHook {...PROPS} />);
+    enterBill("240");
+    expect(container.querySelector(".price-row")).toBeNull();
   });
 
   it("clamps at zero and mirrors WalletClient's annualSaving arithmetic", () => {

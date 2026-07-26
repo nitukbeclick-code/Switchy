@@ -18,6 +18,8 @@ import EmptyState from "@/components/EmptyState";
 import ScrollReveal from "@/components/ScrollReveal";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import Icon from "@/components/Icon";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
@@ -208,6 +210,17 @@ export default function ProvidersIndexPage() {
         </section>
       </header>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          This hub prices every carrier — the hero's entry price, then a ₪ figure
+          on every card in the grid — and since the lead section was added it also
+          collects a name and a phone number. §7b requires the paid-relationship
+          disclosure to be readable BEFORE the prices it qualifies, so it sits
+          here, directly under the hero and above the grid, and NOT down beside the
+          form, which most readers never reach. Inline variant deliberately: a
+          quiet muted line is what a legal disclosure should look like, and the
+          full banner here would compete with the hero for attention. ─────────── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
+
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">
         <SgeSummary heading="השורה התחתונה: ספקים">{summary}</SgeSummary>
@@ -293,6 +306,11 @@ export default function ProvidersIndexPage() {
             ))}
           </ul>
         )}
+        {/* §17 price-accuracy caveat — every card above carries a "starting
+            from ₪X" figure, so the caveat belongs directly under the grid:
+            VAT-inclusive, accurate as of the update date, verify with the
+            provider before signing. */}
+        <PriceCaveat className="mt-6" />
       </section>
 
       {/* ── The ask ───────────────────────────────────────────────────────────
@@ -308,7 +326,7 @@ export default function ProvidersIndexPage() {
       >
         <h2
           id="providers-lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           לא בטוחים איזה ספק מתאים לכם?
         </h2>

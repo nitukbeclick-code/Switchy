@@ -177,8 +177,7 @@ export default async function Cellular5gPage() {
             השוואה חינמית של כל מסלולי ה-5G בישראל — כולל המחיר שאחרי המבצע.
           </p>
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex flex-col items-center justify-center gap-4"
           >
             <TrackedCtaLink
               href={`/compare/${CATEGORY}`}
@@ -200,8 +199,7 @@ export default async function Cellular5gPage() {
           </div>
           {minFeaturedText !== undefined && total5G > 0 ? (
             <p
-              className="sw-reveal mt-8 text-sm text-white/85"
-              style={{ animationDelay: "150ms" }}
+              className="mt-8 text-sm text-white/85"
             >
               {total5G} מסלולי 5G · החל מ-
               <span className="font-display font-bold text-[#4ade80]">

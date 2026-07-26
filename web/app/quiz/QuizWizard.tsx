@@ -657,7 +657,10 @@ function Results({
   // A factual note for the rep, built ONLY from what the #1 card already shows:
   // the real catalogue plan and — only when the visitor supplied a real bill —
   // the annual saving the shared ranking formula computed against it. No bill ⇒
-  // no saving clause, never a ₪0 stand-in.
+  // no saving clause, never a ₪0 stand-in. It lands in the CRM attached to the
+  // visitor's name and phone, so <LeadForm> renders it above its submit button
+  // ("מה שיישלח עם הפנייה") — the quiz makes no claim that these answers stay on
+  // the device, and this is where the visitor sees what actually travels.
   const contextNote = best
     ? [
         `התאמה מובילה בשאלון: ${best.provider} — ${best.plan} (₪${best.priceText} ${best.priceUnit})`,

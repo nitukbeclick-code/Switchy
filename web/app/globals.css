@@ -720,57 +720,126 @@ button.crm-overlay-btn:not([disabled]):active {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Display tiers: the money tier + the two heading tiers ────────────────────
-   The site's whole proposition is a number in shekels, and until now every ₪
-   figure was set byte-for-byte like the ~80 section headings around it — same
-   face, same weight, same size — so nothing on the page read as money. These are
-   the tiers that fix that. They are CLASS NAMES on purpose: components apply
-   `.price-display`, not a pile of arbitrary-value utilities, so the remaining
-   call sites can be converted by find-and-replace and the scale can be tuned in
-   one place afterwards.
+/* ── Display tiers: the TWO money tiers + the two heading tiers ───────────────
+   The site's whole proposition is a number in shekels, and every ₪ figure used
+   to be set byte-for-byte like the ~80 section headings around it — same face,
+   same weight, same size — so nothing on the page read as money. These are the
+   tiers that fix that. They are CLASS NAMES on purpose: components apply a tier,
+   not a pile of arbitrary-value utilities, so the scale is tuned in one place.
 
-   THE MONEY TIER (.price-display + .price-sign + .price-unit) is reserved for ₪
-   figures and savings numbers, and NOTHING else on the site is allowed to use
-   it — that exclusivity is the whole point. Pair it with `text-value-text` (the
-   AA amber) so the figure is both the loudest and the only amber thing in view.
-   Composition, RTL-safe (₪ is a sibling span, never a pseudo-element, so bidi
-   orders it correctly and screen readers still read the currency):
+   ══ THE MONEY SYSTEM — TWO TIERS, AND WHICH ONE YOU MAY USE ══════════════════
+   A first pass shipped ONE money tier and then spent its exclusivity in the same
+   breath: 2.5rem/800 amber was applied to every table row and every plan card,
+   so /compare/cellular rendered 59 identical 40px amber figures. Fifty-nine
+   shouts is silence. Money still has to be the loudest thing on the screen, so
+   the loudness now lives in a tier that only ONE figure per page may use, and
+   the repeated figures get a quieter tier that still reads unmistakably as money.
 
-     <p class="price-display text-value-text">
-       <span class="price-sign">₪</span>79
-     </p>
+     .price-hero  — THE money moment. AT MOST ONE PER PAGE, and only for a figure
+                    that is the page's emotional payload (today: the annual
+                    difference in <HeroSavingsHook>). 2.5rem / Rubik 800. If you
+                    are about to put this inside a .map(), you want .price-row.
+                    Adding a second one to a page deletes the first one's meaning.
+     .price-row   — EVERY repeated ₪ figure: comparison-table rows, plan cards,
+                    the shortlist. 1.5rem / Rubik 700 — smaller and quieter than
+                    the hero so a column of 59 prices SCANS as a column, but
+                    still larger, heavier, tabular and amber, so it can never be
+                    mistaken for the .h-section (1.25rem/600 ink) headings or the
+                    plan-name links it sits under.
+
+   NOTHING that is not a ₪ figure or a savings number may use either tier, and no
+   other type rank on the site may be amber. Pair both with `text-value-text`
+   (the AA amber) so the figure is the only amber thing in view. Composition is
+   identical for the two tiers and is RTL-safe — ₪ is a sibling span, never a
+   pseudo-element, so bidi orders it with the digit run and screen readers still
+   read the currency:
+
+     <p class="price-hero text-value-text"><span class="price-sign">₪</span>79</p>
+     <p class="price-unit">לשנה</p>
+
+     <p class="price-row text-value-text"><span class="price-sign">₪</span>79</p>
      <p class="price-unit">לחודש</p>
 
+   ONE ₪ TREATMENT. `.price-sign` and `.price-unit` are shared by BOTH tiers and
+   are the only sanctioned way to set them; the hero used to hardcode its own
+   `align-super text-[0.42em]` with no colour, which is why the hero's ₪ was
+   amber while every other ₪ on the site was muted. Everything scales off `em`,
+   so the pair needs no per-tier variant — if a tier ever genuinely does, add a
+   documented modifier class HERE, never an arbitrary-value one-off at the call
+   site.
+
    Rubik is loaded as the full variable axis (layout.tsx, no `weight` array), so
-   weight 800 costs zero extra bytes over the 400/600 already in use.
+   weights 700/800 cost zero extra bytes over the 400/600 already in use.
 
    THE HEADING TIERS (.h-pillar / .h-section) replace the flat single 24px rank
    the page had: one pillar per section band, .h-section for everything under it.
    Two tiers is a hierarchy; one tier is a list. Both inherit the tighter optical
    tracking the h1–h4 rules above set, stated explicitly so the class works on a
-   <p> or a <div> too. .eyebrow is the small caps label that sits above a pillar. */
-.price-display {
+   <p> or a <div> too. .eyebrow is the small spaced label that sits above a pillar. */
+.price-hero,
+.price-row {
   font-family: var(--font-rubik), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  /* Leading, not `line-height: 1`. The figure carries a raised ₪ (below), and a
+     zero-leading line box is exactly the condition under which a raised inline
+     child has nowhere to go: 1.1 gives the line box real room while staying far
+     tighter than body copy, so the money block still reads as one solid mass. */
+  line-height: 1.1;
+}
+.price-hero {
   font-size: 2.5rem;
-  line-height: 1;
   font-weight: 800;
   letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
+}
+.price-row {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 /* The currency mark is a SIBLING of the digits, demoted so the number itself
    carries the weight — a full-size ₪ steals about a fifth of the figure's
-   optical mass for a glyph nobody needs to read. */
+   optical mass for a glyph nobody needs to read.
+
+   POSITIONING, and why it is not `vertical-align: super`. `super` raises the
+   glyph by a font/UA-defined superscript offset measured off the parent's font
+   size, with no relationship to the line box it lives in. Against the old
+   `line-height: 1` that meant a ~13px lift out of a 40px line box with zero
+   leading: the raised inline box grows the line box by an amount no rule here
+   chose, so the price block's height — and therefore its gap to the line-clamped
+   `min-h-10` plan name above it in PlanCard and in the ComparisonTable
+   shortlist — became a font- and browser-dependent number that a margin could
+   only paper over.
+
+   This does it with the box model instead, in two parts:
+
+   1. `vertical-align: top` aligns the sign to the TOP OF THE LINE BOX, a box
+      these tiers control, rather than to a font-supplied offset. Per CSS 2.1
+      §10.8.1 a top-aligned box only grows the line box if it hangs BELOW it, so
+      as long as the sign's box is shorter than the strut it can never grow the
+      line box and can never paint above it — at either tier size, in any
+      browser, whatever the font's superscript metrics say.
+   2. `line-height: 1.4` sizes the sign's own inline box to 1.4 × 0.5em = 0.7em
+      of the PARENT em. That is the whole trick: with the box top pinned to the
+      line box top, the box's height is what sets where its baseline — and so its
+      cap — lands. 0.7em drops the ₪ cap to sit flush with the digits' cap, which
+      is where a superior currency mark belongs, and leaves 0.4em of clearance
+      against the 1.1em strut, so part 1's guarantee holds with room to spare.
+
+   Everything is in `em`, so the pair needs no per-tier variant and no margin
+   nudge: both tiers get the identical optical relationship for free. */
 .price-sign {
   font-size: 0.5em;
   font-weight: 700;
-  vertical-align: super;
+  line-height: 1.4;
+  vertical-align: top;
 }
 /* The unit ("לחודש", "לשנה") is a micro-label BELOW the figure, never inline at
-   the same size — spaced caps so it reads as an annotation, not as more money. */
+   the same size — spaced so it reads as an annotation, not as more money. Shares
+   the one micro-label tracking with .eyebrow; see --tracking-micro below. */
 .price-unit {
   font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
 }
 .h-pillar {
   font-family: var(--font-rubik), system-ui, sans-serif;
@@ -792,11 +861,35 @@ button.crm-overlay-btn:not([disabled]):active {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+/* ── The spaced micro-label role — ONE tracking value ─────────────────────────
+   `.eyebrow` (the label above a pillar) and `.price-unit` (the label under a
+   figure) are the same typographic role at the same 11px: a spaced annotation
+   that must not read as a heading. They had drifted to 0.16em and 0.12em, with a
+   third hardcoded 0.18em in <HeroSavingsHook> (now deleted — it consumes
+   .price-unit). One role gets one value, and it is a token so the next author
+   reaches for the token instead of inventing a fourth.
+
+   0.12em, not 0.16em: this is a Hebrew-first product, and Hebrew letterforms
+   join into word shapes that fragment under Latin-caps tracking. 0.12em at 11px
+   (≈1.3px) is enough separation to read as an annotation while the words stay
+   whole. LeadForm's objection list still carries its own 0.03em — that file is
+   not in this change's ownership.
+
+   NO `text-transform: uppercase` on either. It was inert: every string that
+   flows through these classes is Hebrew (`<html lang="he">`; the .eyebrow call
+   sites are literal Hebrew, and .price-unit is fed only by priceUnitLabel(),
+   whose four returns are לחודש / לחבילה / ליום / לדקה), and Hebrew is unicase.
+   The one path that could carry Latin — a provider name interpolated into an
+   SgeSummary heading — is a proper noun that uppercasing would MANGLE, so the
+   property was not merely dead, it was a latent bug. The letter-spacing does all
+   the work the declaration was there to do. */
+:root {
+  --tracking-micro: 0.12em;
+}
 .eyebrow {
   font-size: 11px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--tracking-micro);
 }
 /* The three muted defaults live in @layer components, NOT unlayered like the
    metrics above: an unlayered rule beats every Tailwind utility layer, so a

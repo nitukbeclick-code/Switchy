@@ -77,8 +77,8 @@ export default function ReferralPage() {
           the VALUE word ("חינם"). TRUTH-ONLY: this is a share-the-tool page with
           no catalogue price to quote, so the hero promises a CHECK ("בדקו כמה
           תוכלו לחסוך") and never fabricates a figure or a reward. Exactly ONE
-          primary CTA (jump to the card) + ONE quiet secondary text link. The
-          .sw-reveal children stagger 60→150ms via inline animationDelay. */}
+          primary CTA (jump to the card) + ONE quiet secondary text link. Only the
+          h1 and its lede stage in (.sw-reveal, 0→60ms). */}
       <header className="mt-5">
         <section className="relative isolate overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
           <div className="mx-auto max-w-2xl">
@@ -94,8 +94,7 @@ export default function ReferralPage() {
               גם לחברים שלכם. קבלו קוד הזמנה אישי ושתפו אותו.
             </p>
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               {/* PRIMARY — solid green fill + accent glow + press feedback. Jumps
                   to the card, which mints the real code on demand. */}
@@ -117,8 +116,7 @@ export default function ReferralPage() {
             {/* Quiet qualitative value line — muted, small green tick, no fabricated
                 figure. "חינם" is a true value claim, not a promised amount. */}
             <p
-              className="sw-reveal mt-8 inline-flex items-center gap-1.5 text-sm text-white/75"
-              style={{ animationDelay: "150ms" }}
+              className="mt-8 inline-flex items-center gap-1.5 text-sm text-white/75"
             >
               <Icon name="check" size={16} className="shrink-0 text-accent" />
               כלי חינמי להשוואת מסלולי תקשורת — שיתוף הכלי, ללא הבטחת תגמול כספי
@@ -140,7 +138,7 @@ export default function ReferralPage() {
       <section aria-labelledby="how-h" className="mt-12">
         <h2
           id="how-h"
-          className="mb-4 font-display text-xl font-bold tracking-tight text-ink"
+          className="mb-4 h-section text-ink"
         >
           איך זה עובד
         </h2>

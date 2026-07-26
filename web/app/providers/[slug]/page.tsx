@@ -10,6 +10,8 @@ import ReviewsBlock from "@/components/ReviewsBlock";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import ComparisonTable from "@/components/ComparisonTable";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import LeadForm from "@/components/LeadForm";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import TalkInCommunity from "@/components/community/TalkInCommunity";
@@ -415,6 +417,13 @@ export default async function ProviderPage({ params }: Params) {
         </dl>
       </header>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          A provider page is exactly where the referral-fee question is sharpest:
+          the whole page is about one carrier we may be paid to refer. So the
+          disclosure goes above the first price claim — the zero-click answer
+          right below quotes this provider's cheapest plan — not after it. ──── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
+
       {/* ── AEO zero-click answer: the provider's REAL cheapest plan + price ──
           The block AI answer engines lift. Empty (omitted) when no priced plan;
           carries the FactCheckBadge verification line + real dateModified. */}
@@ -444,7 +453,7 @@ export default async function ProviderPage({ params }: Params) {
       {/* ── Best for ──────────────────────────────────────────────────────── */}
       {picks.length > 0 && (
         <section aria-labelledby="bestfor-h" className="mt-14">
-          <h2 id="bestfor-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+          <h2 id="bestfor-h" className="h-section text-ink">
             המסלול ההתחלתי בכל קטגוריה
           </h2>
           <ul className="mt-6 bento-grid">
@@ -477,7 +486,7 @@ export default async function ProviderPage({ params }: Params) {
       {/* ── Head-to-head comparisons ("השווה מול ...") ────────────────────── */}
       {vsPairs.length > 0 && (
         <section aria-labelledby="vs-h" className="mt-14">
-          <h2 id="vs-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+          <h2 id="vs-h" className="h-section text-ink">
             השוו את {provider.name} מול ספק אחר
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
@@ -505,7 +514,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── All plans table ───────────────────────────────────────────────── */}
       <section aria-labelledby="plans-h" className="mt-14">
-        <h2 id="plans-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="plans-h" className="h-section text-ink">
           כל המסלולים של {provider.name}
         </h2>
         <div className="mt-5">
@@ -514,6 +523,10 @@ export default async function ProviderPage({ params }: Params) {
             caption={`מסלולי ${provider.name} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
           />
         </div>
+        {/* §17 price-accuracy caveat, directly under the densest price surface
+            on the page: VAT-inclusive, accurate as of the update date, verify
+            with the provider before signing. */}
+        <PriceCaveat className="mt-3" />
       </section>
 
       {/* ── Editorial reasoning ("למה זה מומלץ") ──────────────────────────── */}
@@ -531,7 +544,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="faq-h" className="h-section text-ink">
           שאלות נפוצות — {provider.name}
         </h2>
         <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
@@ -554,7 +567,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="lead-h" className="h-section text-ink">
           רוצים לעבור ל{provider.name} או להשוות?
         </h2>
         <p className="mt-2 text-foreground">

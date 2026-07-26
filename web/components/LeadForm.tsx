@@ -9,6 +9,13 @@
 // HONESTY / LEGAL: a MANDATORY, unchecked-by-default consent checkbox gates
 // submission. The server stamps consent timestamps + IP and enforces rate limits;
 // this form enforces the checkbox client-side so a lead is never sent without it.
+// Two more rules the form owns, because both are about what a person is TOLD:
+//   • NOTHING TRAVELS INVISIBLY — a host page's `contextNote` (a bill read, quiz
+//     figures, the wallet's typed bills) is folded into `notes` next to the
+//     visitor's name/phone/city, so it is RENDERED above the submit button first.
+//   • NO PROMISE POINTING BACKWARDS — the picked callback window is resolved
+//     through callbackConfirmation() against the clock, so a window that has
+//     already passed today is never confirmed as "היום".
 //
 // WHY TWO STEPS: name and phone share one step because a phone's keychain fills
 // both in a SINGLE autofill invocation — splitting them forced the user to invoke
@@ -74,15 +81,68 @@ const CITY_SUGGESTIONS: string[] = citiesData.cities.map((c) => c.name);
  * `confirmation` is the concrete window echoed back in the success state, so the
  * promise the user reads is the one they actually asked for. No default is
  * pre-selected: an optional field must never answer on the user's behalf.
+ *
+ * The two SAME-DAY windows also carry `endHour` — the hour from which "היום"
+ * would point at a time that has already gone by — and `nextDay`, the same
+ * window on the next day. See callbackConfirmation() below.
  */
 const CALLBACK_TIMES = [
   { value: "now", label: "עכשיו", confirmation: "בהקדם האפשרי" },
-  { value: "noon", label: "צהריים", confirmation: "היום בשעות הצהריים" },
-  { value: "evening", label: "ערב", confirmation: "היום בשעות הערב" },
+  {
+    value: "noon",
+    label: "צהריים",
+    confirmation: "היום בשעות הצהריים",
+    endHour: 16,
+    nextDay: "מחר בשעות הצהריים",
+  },
+  {
+    value: "evening",
+    label: "ערב",
+    confirmation: "היום בשעות הערב",
+    endHour: 21,
+    nextDay: "מחר בשעות הערב",
+  },
   { value: "tomorrow", label: "מחר", confirmation: "מחר" },
 ] as const;
 
 type CallbackTime = (typeof CALLBACK_TIMES)[number]["value"];
+
+/** A resolved, clock-checked callback promise (see callbackConfirmation). */
+export interface CallbackPromise {
+  /** The window we are allowed to say out loud, e.g. "מחר בשעות הערב". */
+  text: string;
+  /** True when the asked-for window had already passed and we moved it on. */
+  shifted: boolean;
+}
+
+/**
+ * Resolve the picked callback window into the sentence we may honestly say,
+ * given the clock at the moment of the promise.
+ *
+ * WHY THIS EXISTS: "היום בשעות הצהריים" is a PROMISE. Echoed back without a
+ * clock check, a lead left at 23:00 asking for צהריים was told a rep would call
+ * in a window that had already passed that day — a time in the past. From
+ * `endHour` onwards the same-day windows are behind us, so the confirmation
+ * moves to the SAME window on the next day (`nextDay`) — a window the business
+ * already offers (it is the "מחר" chip), never an invented SLA. Windows without
+ * an `endHour` ("בהקדם האפשרי", "מחר") can never point backwards, so they pass
+ * through untouched. No selection ⇒ null, and the caller keeps the honest
+ * default ("בדרך כלל תוך יום עסקים אחד").
+ *
+ * Pure by design — the clock is an argument, so the boundary is unit-testable.
+ * Israel is a single timezone, so the client's local hour is the right clock.
+ */
+export function callbackConfirmation(
+  value: CallbackTime | "",
+  now: Date = new Date(),
+): CallbackPromise | null {
+  const opt = CALLBACK_TIMES.find((o) => o.value === value);
+  if (!opt) return null;
+  if ("endHour" in opt && now.getHours() >= opt.endHour) {
+    return { text: opt.nextDay, shifted: true };
+  }
+  return { text: opt.confirmation, shifted: false };
+}
 
 /**
  * The lighter, consent-free channel offered beside the form (and again in the
@@ -142,6 +202,9 @@ export interface LeadFormProps {
    * payload so the rep opens the call already knowing the ask. /api/lead accepts
    * `notes` and folds it into the stored note (route.ts). TRUTH-ONLY: callers
    * must pass a computed/catalogue-derived string, never a marketing claim.
+   * It is also SHOWN to the visitor above the submit button ("מה שיישלח עם
+   * הפנייה"), because it is stored in the same record as their name, phone and
+   * city — write it as a line the person it describes is meant to read.
    */
   contextNote?: string;
   /**
@@ -206,11 +269,25 @@ export default function LeadForm({
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [intentPlans, setIntentPlans] = useState<PlanIntentOption[]>([]);
-  // The callback window the ACCEPTED lead carried, so the success state can
-  // promise the concrete window the user chose instead of a vague default.
-  const [confirmedCallback, setConfirmedCallback] = useState<CallbackTime | "">(
-    "",
-  );
+  // The callback promise the ACCEPTED lead carried, so the success state can
+  // name the concrete window the user chose instead of a vague default. It is
+  // RESOLVED at submit time (callbackConfirmation reads the clock there), so a
+  // window that has already passed today is never echoed back as "היום".
+  const [confirmedCallback, setConfirmedCallback] =
+    useState<CallbackPromise | null>(null);
+
+  // ── The receipt's source of truth ────────────────────────────────────────
+  // Everything that will ride along in the lead's `notes` column, assembled the
+  // SAME way the submit handler assembles it (comparison shortlist, then the
+  // host page's contextNote, joined with " | "). The rule this component states
+  // is that nothing about a person's own data travels invisibly — so the block
+  // below renders THIS, not just `contextNote`. Showing only half of the payload
+  // would make the promise false on /compare, where the shortlist is the half
+  // that travels. `intentPlans` is already kept in sync with the URL shortlist
+  // by the effect below, so this needs no extra state.
+  const outgoingNotes = [comparisonIntentNote(intentPlans), contextNote]
+    .filter(Boolean)
+    .join(" | ");
 
   useEffect(() => {
     if (!planOptions.length) return;
@@ -261,11 +338,10 @@ export default function LeadForm({
   // Subscribe to the consent field so the submit button reflects its state.
   const consentChecked = useWatch({ control, name: "consent" });
   // …and to the callback window, so the "what happens next" promise updates the
-  // moment a chip is picked — the same concrete window the success state echoes.
+  // moment a chip is picked — the same clock-checked window the success state
+  // echoes, so the pre-submit line can't promise a time the confirmation won't.
   const callbackChoice = useWatch({ control, name: "callbackTime" });
-  const chosenCallback = CALLBACK_TIMES.find(
-    (opt) => opt.value === callbackChoice,
-  )?.confirmation;
+  const chosenCallback = callbackConfirmation(callbackChoice);
 
   const lastStep = STEP_FIELDS.length - 1;
   const progress = Math.round(((step + 1) / STEP_FIELDS.length) * 100);
@@ -369,7 +445,10 @@ export default function LeadForm({
 
       // Success only — fire conversion tracking exactly once.
       fireLeadConversion({ category: values.category || undefined, source });
-      setConfirmedCallback(values.callbackTime);
+      // Resolve the promise against the SUBMIT-time clock (not render time), so
+      // a צהריים request left at 23:00 is confirmed for tomorrow, never for a
+      // window that has already passed today.
+      setConfirmedCallback(callbackConfirmation(values.callbackTime));
       setDone(true);
     } catch {
       trackEvent("lead_form_error", { source, reason: "network" });
@@ -385,11 +464,9 @@ export default function LeadForm({
   }
 
   if (done) {
-    // The concrete window the user asked for, when they asked for one. Falls
-    // back to the honest default SLA — never an invented time.
-    const callbackPromise = CALLBACK_TIMES.find(
-      (opt) => opt.value === confirmedCallback,
-    )?.confirmation;
+    // The concrete window the user asked for, already clock-checked at submit
+    // time. Null when they picked nothing ⇒ the honest default SLA below.
+    const callbackPromise = confirmedCallback;
     return (
       <div
         className={[
@@ -414,9 +491,14 @@ export default function LeadForm({
         <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הפרטים התקבלו, תודה!
         </h3>
+        {/* The window the user asked for — or, when that window had already
+            passed by the time they submitted, the next time it comes round,
+            said plainly so the shift is never a silent swap. */}
         <p className="mt-1 text-sm text-muted">
           {callbackPromise
-            ? `נציג יחזור אליכם ${callbackPromise} — החלון שביקשתם — עם השוואת הצעות מותאמת. `
+            ? callbackPromise.shifted
+              ? `נציג יחזור אליכם ${callbackPromise.text} — החלון שביקשתם כבר חלף היום — עם השוואת הצעות מותאמת. `
+              : `נציג יחזור אליכם ${callbackPromise.text} — החלון שביקשתם — עם השוואת הצעות מותאמת. `
             : "נציג יחזור אליכם בדרך כלל תוך יום עסקים אחד עם השוואת הצעות מותאמת. "}
           השירות חינמי וללא התחייבות — תוכלו להחליט בנחת.
         </p>
@@ -925,6 +1007,26 @@ export default function LeadForm({
         </p>
       )}
 
+      {/* RECEIPT — what the host page is attaching to this request. `contextNote`
+          is folded into the POST's `notes` beside the visitor's NAME, PHONE and
+          CITY, so it stops being an anonymous summary the moment they submit:
+          nothing about a person's own data may travel invisibly, and the place
+          to show it is the screen where they decide to send it.
+          It also SELLS: knowing the rep already has the bill/quiz/wallet figures
+          is exactly what makes the call cheap to accept.
+          A receipt, not an alarm — the same quiet surface + hairline border the
+          neighbouring disclosure blocks use, never a warning banner. */}
+      {step === lastStep && outgoingNotes && (
+        <div className="mt-4 rounded-xl border border-border/60 bg-background/60 p-3">
+          <p className="text-xs font-semibold text-foreground">
+            מה שיישלח עם הפנייה:
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">
+            {outgoingNotes}
+          </p>
+        </div>
+      )}
+
       {/* "What happens after you submit" — set expectations honestly, shown on
           the final step right above the submit CTA. No fake urgency. */}
       {step === lastStep && (
@@ -941,10 +1043,14 @@ export default function LeadForm({
                 1
               </span>
               {/* Reflects the window the user just picked, if they picked one —
-                  otherwise the honest default SLA. Never an invented time. */}
+                  otherwise the honest default SLA. Never an invented time, and
+                  never a time that has already passed today (the same
+                  clock-checked promise the confirmation will repeat). */}
               <span>
                 {chosenCallback
-                  ? `נציג חוזר אליכם ${chosenCallback} — החלון שביקשתם.`
+                  ? chosenCallback.shifted
+                    ? `נציג חוזר אליכם ${chosenCallback.text} — החלון שביקשתם כבר חלף היום.`
+                    : `נציג חוזר אליכם ${chosenCallback.text} — החלון שביקשתם.`
                   : "נציג חוזר אליכם, בדרך כלל תוך יום עסקים אחד."}
               </span>
             </li>

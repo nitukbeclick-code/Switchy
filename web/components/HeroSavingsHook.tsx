@@ -26,8 +26,12 @@
 //     anywhere. The only path to contact stays the consent-gated #lead form.
 //
 // Design: amber = VALUE, so the figure is the page's single money moment and takes
-// the `.price-display` tier (₪ demoted to a superscript sibling, unit as a spaced
-// micro-label below). Emerald = ACTION, so the ONLY emerald here is the ask that
+// `.price-hero` — the money tier that, by contract in globals.css, at most ONE
+// figure per page may use. Every repeated ₪ on the site (table rows, plan cards)
+// takes the quieter `.price-row` instead, which is what makes this one loud. The ₪
+// and the unit are the shared `.price-sign` / `.price-unit`, so the hero's currency
+// mark and micro-label are byte-for-byte the ones under every other price on the
+// site. Emerald = ACTION, so the ONLY emerald here is the ask that
 // appears with the figure; the compute button stays a quiet bordered control so
 // green keeps meaning exactly one thing in the fold.
 //
@@ -159,20 +163,21 @@ export default function HeroSavingsHook({
       <div aria-live="polite">
         {answered && diff > 0 ? (
           <div className="sw-hook-figure mt-5">
-            {/* THE money moment — the one thing on this page allowed to be amber
-                and this large. Split ₪/digits is decorative; the sr-only line
-                below reads the figure as one phrase. */}
-            <p
-              aria-hidden="true"
-              className="price-display nums-tabular text-value-text"
-            >
-              <span className="align-super text-[0.42em] font-bold">₪</span>
+            {/* THE money moment — `.price-hero` is the tier reserved for exactly
+                one figure per page, and this is that figure. Everything here is
+                the shared system and nothing is a local override: the ₪ is
+                `.price-sign` (so the hero's currency mark is the same demoted,
+                muted glyph as every ₪ in every table row — it used to hardcode
+                `align-super text-[0.42em]` with no colour and came out amber),
+                the unit is `.price-unit` (one micro-label tracking, not a fourth
+                hardcoded one), and the tier already sets tabular figures so there
+                is no `nums-tabular` to add. Split ₪/digits is decorative; the
+                sr-only line below reads the figure as one phrase. */}
+            <p aria-hidden="true" className="price-hero text-value-text">
+              <span className="price-sign">₪</span>
               {diff.toLocaleString("he-IL")}
             </p>
-            <p
-              aria-hidden="true"
-              className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
-            >
+            <p aria-hidden="true" className="price-unit mt-1">
               לשנה
             </p>
             <p className="sr-only">

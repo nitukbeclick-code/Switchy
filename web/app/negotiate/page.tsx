@@ -166,7 +166,7 @@ export default function NegotiatePage() {
           fixed ink fill in both themes. ─────────────────────────────────────── */}
       <section className="relative isolate mt-5 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
         <div className="mx-auto max-w-2xl">
-          <span className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-[#4ade80]">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-[#4ade80]">
             <Icon name="spark" size={14} aria-hidden />
             תסריט שימור מבוסס נתונים
           </span>
@@ -187,8 +187,7 @@ export default function NegotiatePage() {
             פתיחה למשא ומתן, לא הבטחה.
           </p>
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex flex-col items-center justify-center gap-4"
           >
             <TrackedCtaLink
               href="#negotiate-h"
@@ -211,8 +210,7 @@ export default function NegotiatePage() {
           {/* Trust band — REAL catalogue counts; the market-floor entry price
               carries the green VALUE emphasis (text-accent), NOT a button. */}
           <p
-            className="sw-reveal mt-8 text-sm text-white/85"
-            style={{ animationDelay: "150ms" }}
+            className="mt-8 text-sm text-white/85"
           >
             {planCount} מסלולים · {providerCount} ספקים
             {marketFloor > 0 ? (

@@ -504,7 +504,7 @@ export default async function ServiceCityPage({ params }: Params) {
           catalogue facts, lowest price in the green VALUE text tier. */}
       <header className="mt-4">
         <span
-          className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
+          className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
         >
           <Icon name="search" size={14} aria-hidden="true" />
           {svc.label} ב{c.name} · {c.district}
@@ -524,8 +524,7 @@ export default async function ServiceCityPage({ params }: Params) {
           ממוינים מהזול ליקר.
         </p>
         <dl
-          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
-          style={{ animationDelay: "120ms" }}
+          className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
         >
           <div className="flex items-baseline gap-1.5">
             <dt className="sr-only">מסלולים בהשוואה</dt>
@@ -586,7 +585,7 @@ export default async function ServiceCityPage({ params }: Params) {
       <section aria-labelledby="table-h" className="mt-8">
         <h2
           id="table-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           טבלת השוואת {svc.label} ב{c.name}
         </h2>
@@ -671,7 +670,7 @@ export default async function ServiceCityPage({ params }: Params) {
       <section aria-labelledby="faq-h" className="mt-16">
         <h2
           id="faq-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           שאלות נפוצות — {svc.label} ב{c.name}
         </h2>
@@ -705,7 +704,7 @@ export default async function ServiceCityPage({ params }: Params) {
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
         <h2
           id="lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים עזרה לבחור {svc.label} ב{c.name}?
         </h2>

@@ -52,7 +52,7 @@ export default function NotFound() {
 
       <h1
         tabIndex={-1}
-        className="mt-4 font-display text-2xl font-bold tracking-tight text-ink outline-none sm:text-3xl"
+        className="mt-4 h-pillar text-ink outline-none"
       >
         הדף לא נמצא
       </h1>

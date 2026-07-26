@@ -10,8 +10,8 @@
 // action only; no carrier marks here (these are first-party tools).
 //
 // A11y: a single labelled <section>, a real heading, and an <ul>/<li> list of
-// full-card <Link>s with visible focus rings. Motion reuses the page-level
-// `.sw-reveal` entrance + `.card-interactive` hover (both reduced-motion safe,
+// full-card <Link>s with visible focus rings. Motion is hover-only: the cards use
+// `.card-interactive` and stage no entrance of their own (reduced-motion safe,
 // transform/opacity only) — no component-local animation.
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ export function AiToolsShowcase({ className }: { className?: string }) {
     >
       <h2
         id="ai-tools-h"
-        className="font-display text-2xl font-bold tracking-tight text-ink"
+        className="h-section text-ink"
       >
         הכלים החכמים של Switchy
       </h2>
@@ -81,12 +81,11 @@ export function AiToolsShowcase({ className }: { className?: string }) {
       </p>
 
       <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {TOOLS.map((tool, i) => (
+        {TOOLS.map((tool) => (
           <li key={tool.href}>
             <Link
               href={tool.href}
-              className="group sw-reveal card card-interactive flex h-full flex-col p-5"
-              style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
+              className="group card card-interactive flex h-full flex-col p-5"
             >
               <span className="block font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                 {tool.title}

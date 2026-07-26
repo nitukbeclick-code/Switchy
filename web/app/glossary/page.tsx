@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
 import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import EmptyState from "@/components/EmptyState";
@@ -111,7 +112,7 @@ export default function GlossaryPage() {
       >
         <h2
           id="glossary-lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           לא בטוחים מה מתאים לכם? נעבור על זה יחד
         </h2>
@@ -119,6 +120,13 @@ export default function GlossaryPage() {
           השאירו פרטים ונחזור אליכם עם השוואה אישית בשפה פשוטה — חינם, בלי
           התחייבות, והמספר נשאר שלכם.
         </p>
+        {/* §7b paid-relationship disclosure. Unlike the priced hubs there is no ₪
+            anywhere on this page to sit above — the definitions carry no figures.
+            What triggers the §7b obligation here is the form itself: the ask leads
+            to a referral we are paid for. So the disclosure belongs with the ask,
+            ABOVE the fields, where it is read before anyone types a phone number —
+            not after the submit button. */}
+        <CommissionDisclosure variant="inline" className="mt-4 max-w-xl" />
         <div className="mt-5 max-w-xl">
           <LeadFormLazy source="glossary" trustStats={catalogueTrustStats()} />
         </div>

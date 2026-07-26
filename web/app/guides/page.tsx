@@ -111,8 +111,7 @@ export default function GuidesHubPage() {
               guide is lower-intent, so the primary points straight to the compare
               tool; the guides are the whole page below, so no second fill. */}
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex flex-col items-center justify-center gap-4"
           >
             <TrackedCtaLink
               href={`/compare/${featuredCat}`}
@@ -135,8 +134,7 @@ export default function GuidesHubPage() {
           {/* Trust band — REAL catalogue counts; the entry price carries the
               green VALUE emphasis (text-accent on ink), NOT a button. */}
           <p
-            className="sw-reveal mt-8 text-sm text-white/85"
-            style={{ animationDelay: "150ms" }}
+            className="mt-8 text-sm text-white/85"
           >
             {planCount} מסלולים · {providers.length} ספקים · החל מ-
             <span className="font-display font-bold text-[#4ade80]">
@@ -146,8 +144,7 @@ export default function GuidesHubPage() {
           </p>
           {/* Quiet qualitative value line — honest, no fabricated figure. */}
           <p
-            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
-            style={{ animationDelay: "180ms" }}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
           >
             <Icon name="check" size={16} className="shrink-0 text-accent" />
             מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם

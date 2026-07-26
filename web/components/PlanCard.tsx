@@ -218,17 +218,25 @@ export default function PlanCard({
         </Link>
       </p>
 
-      {/* THE MONEY TIER. The price used to be set byte-for-byte like every
-          section H2 on the site (font-display text-2xl font-bold text-ink) and
-          coloured with the ACTION green — so on a page of headings, nothing read
-          as money. `.price-display` (globals.css) is the one type tier reserved
-          for ₪ figures, `text-value-text` the one amber that means VALUE, the ₪
-          is a demoted sibling span so the digits carry the optical mass, and the
-          unit drops BELOW as a spaced micro-label so the number stays one solid
-          block. `d.price` is a pre-formatted STRING from planDisplay (exact-aware:
-          "69.90" vs "69"), so it is rendered as-is — <Money> takes a number and
-          would re-round it. */}
-      <p className="price-display mt-2.5 text-value-text">
+      {/* THE MONEY TIER, ROW RANK. The price used to be set byte-for-byte like
+          every section H2 on the site (font-display text-2xl font-bold text-ink)
+          and coloured with the ACTION green — so on a page of headings, nothing
+          read as money. `.price-row` (globals.css) is the money tier for figures
+          that REPEAT: a card grid or a table renders dozens of these, so it is
+          deliberately quieter than `.price-hero` (which at most one figure per
+          page may use) while staying larger, heavier, tabular and amber enough
+          that it can never be read as a heading. `text-value-text` is the one
+          amber that means VALUE, the ₪ is a demoted sibling span so the digits
+          carry the optical mass, and the unit drops BELOW as a spaced
+          micro-label so the number stays one solid block. `d.price` is a
+          pre-formatted STRING from planDisplay (exact-aware: "69.90" vs "69"),
+          so it is rendered as-is — <Money> takes a number and would re-round it.
+
+          The gap to the line-clamped plan name above is a plain mt-2.5 and needs
+          no defensive padding: `.price-sign` is aligned to the top of its own
+          line box (globals.css), so the raised ₪ is contained by this <p>'s box
+          and cannot paint into the min-h-10 name block. */}
+      <p className="price-row mt-2.5 text-value-text">
         <span className="price-sign">₪</span>
         {d.price}
       </p>

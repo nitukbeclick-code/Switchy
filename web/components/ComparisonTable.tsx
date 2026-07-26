@@ -638,10 +638,13 @@ export default function ComparisonTable({
                   <p className="mt-2 line-clamp-2 min-h-10 font-display text-sm font-bold text-ink">
                     {plan.plan}
                   </p>
-                  {/* Same money tier as the plan card — the shortlist is where
-                      two or three prices are read side by side, so this is the
-                      one place the figures MUST align and dominate. */}
-                  <p className="price-display mt-2.5 text-value-text">
+                  {/* Same ROW rank as the plan card — the shortlist is where two
+                      or three prices are read side by side, so what matters here
+                      is that the figures ALIGN (tabular, identical tier), not
+                      that each one shouts. `.price-hero` is reserved for the one
+                      figure per page that is the page's payload; three of them
+                      side by side would be three, i.e. none. */}
+                  <p className="price-row mt-2.5 text-value-text">
                     <span className="price-sign">₪</span>
                     {display.price}
                   </p>
@@ -873,13 +876,16 @@ export default function ComparisonTable({
                     </Link>
                   </td>
 
-                  {/* מחיר — the money tier, same as the mobile card: the one
-                      type rank reserved for ₪ figures, in the one amber that
-                      means VALUE, with the ₪ demoted to a superscript sibling
-                      and the unit as a micro-label below. It is the anchor
-                      column of the table, so it is allowed to be the tallest. */}
+                  {/* מחיר — the money tier at ROW rank, same as the mobile card,
+                      in the one amber that means VALUE, with the ₪ demoted to a
+                      raised sibling and the unit as a micro-label below. This is
+                      the anchor column, and on /compare/cellular it repeats ~59
+                      times: at `.price-hero` size that column was 59 identical
+                      40px shouts, which is why the repeated rank exists. At
+                      `.price-row` it reads as one scannable amber column and
+                      still out-ranks every other cell in the row. */}
                   <td className="px-4 py-3 text-start whitespace-nowrap">
-                    <span className="price-display block text-value-text">
+                    <span className="price-row block text-value-text">
                       <span className="price-sign">₪</span>
                       {d.price}
                     </span>

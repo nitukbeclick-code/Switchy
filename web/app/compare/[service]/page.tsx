@@ -471,7 +471,7 @@ export default async function ServiceHubPage({ params }: Params) {
           green VALUE text tier and everything else ink/structure. */}
       <header className="mt-4">
         <span
-          className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
+          className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
         >
           <Icon name="search" size={14} aria-hidden="true" />
           השוואת {svc.label}
@@ -491,8 +491,7 @@ export default async function ServiceHubPage({ params }: Params) {
           המבצע.
         </p>
         <dl
-          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
-          style={{ animationDelay: "120ms" }}
+          className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
         >
           <div className="flex items-baseline gap-1.5">
             <dt className="sr-only">מסלולים בהשוואה</dt>
@@ -556,7 +555,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section aria-labelledby="table-h" className="mt-8">
         <h2
           id="table-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           טבלת השוואת {svc.label}
         </h2>
@@ -616,7 +615,7 @@ export default async function ServiceHubPage({ params }: Params) {
         <section aria-labelledby="rank-h" className="mt-14">
           <h2
             id="rank-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             ספקי {svc.label} לפי מחיר התחלתי
           </h2>
@@ -630,8 +629,7 @@ export default async function ServiceHubPage({ params }: Params) {
               <li key={pr.slug}>
                 <Link
                   href={`/providers/${pr.slug}`}
-                  className="group sw-reveal card card-interactive flex items-center justify-between px-4 py-3.5"
-                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
+                  className="group card card-interactive flex items-center justify-between px-4 py-3.5"
                 >
                   <span className="flex items-center gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent">
@@ -668,7 +666,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section aria-labelledby="cities-h" className="mt-14">
         <h2
           id="cities-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           השוואת {svc.label} לפי עיר
         </h2>
@@ -677,12 +675,11 @@ export default async function ServiceHubPage({ params }: Params) {
           השוואה ממוקדת מקומית.
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {cities.map((c, i) => (
+          {cities.map((c) => (
             <li key={c.slug}>
               <Link
                 href={`/compare/${service}/${c.slug}`}
-                className="group sw-reveal card card-interactive block px-4 py-3 text-sm"
-                style={{ animationDelay: `${Math.min(i * 30, 240)}ms` }}
+                className="group card card-interactive block px-4 py-3 text-sm"
               >
                 <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                   {svc.label} ב{c.name}
@@ -697,7 +694,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section aria-labelledby="faq-h" className="mt-16">
         <h2
           id="faq-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           שאלות נפוצות — {svc.label}
         </h2>
@@ -731,7 +728,7 @@ export default async function ServiceHubPage({ params }: Params) {
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
         <h2
           id="lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים עזרה לבחור {svc.label}?
         </h2>

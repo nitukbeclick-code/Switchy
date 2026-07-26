@@ -11,6 +11,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import DataMethodology from "@/components/DataMethodology";
@@ -192,6 +194,17 @@ export default async function VsIndexPage() {
         <SgeSummary heading="השורה התחתונה: השוואות ראש בראש">{summary}</SgeSummary>
       </div>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) ───────────────────
+          Every card below puts two carriers' entry prices side by side and names
+          one of them "זול יותר בכניסה" — a paid-referral business ranking priced
+          options — and the page now collects a name and a phone number too. §7b
+          requires the disclosure to be read BEFORE those prices, so it sits
+          directly above the first card grid rather than beside the form at the
+          bottom: a reader who compares two carriers and taps straight through to
+          /vs/[pair] must have seen it. Inline variant keeps it a quiet legal line
+          instead of a banner competing with the match-ups. ────────────────────── */}
+      <CommissionDisclosure variant="inline" className="mt-6 max-w-2xl" />
+
       {/* ── Match-up cards, grouped by category ───────────────────────────── */}
       {/* Designed empty state — only when the live catalogue gates every pair out
           (never expected in practice, but the hub must never dead-end on a blank
@@ -214,7 +227,7 @@ export default async function VsIndexPage() {
         >
           <h2
             id={`vs-cat-${group.label}`}
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             {group.label}
           </h2>
@@ -310,6 +323,12 @@ export default async function VsIndexPage() {
         </section>
       ))}
 
+      {/* §17 price-accuracy caveat — every match-up card above prints both
+          carriers' entry prices and flags one as cheaper, so the caveat closes
+          the priced region: VAT-inclusive, accurate as of the update date,
+          verify with the provider before signing. */}
+      <PriceCaveat className="mt-8" />
+
       {/* ── Sources & methodology — show your work (E-E-A-T) ──────────────── */}
       <DataMethodology
         dateModified={asOf}
@@ -326,7 +345,7 @@ export default async function VsIndexPage() {
       <section id="lead" aria-labelledby="vs-lead-h" className="mt-16 scroll-mt-6">
         <h2
           id="vs-lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           לא מצליחים להכריע?
         </h2>

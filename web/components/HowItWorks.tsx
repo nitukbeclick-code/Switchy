@@ -17,11 +17,11 @@
 // Server component — pure presentation from props, no client state. Default
 // `steps` are the canonical three; a caller may pass its own to retitle/reorder.
 //
-// Motion (Emil rules): each card composes the global `.sw-reveal` entrance
-// (opacity + translateY only, GPU) with an inline `animationDelay` stagger inside
-// the 30–80ms band. `.card` carries the resting surface; `.sw-lift` adds the
-// desktop-only hover-lift (gated on a fine pointer in globals.css). Under
-// prefers-reduced-motion the reveal/lift collapse globally, so cards render
+// Motion (Emil rules): the step cards do NOT stage an entrance — a page gets one
+// orchestrated moment, and it belongs to whatever sits above this block. `.card`
+// carries the resting surface; `.sw-lift` adds the desktop-only hover-lift (gated
+// on a fine pointer in globals.css). Under
+// prefers-reduced-motion the lift collapses globally, so cards render
 // statically at their fully visible resting state — content is never hidden.
 //
 // RTL/a11y: the document direction is already RTL, so the inline flow + the
@@ -101,7 +101,7 @@ export function HowItWorks({
         )}
         <Heading
           id="how-it-works-h"
-          className="mt-2 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl"
+          className="mt-2 h-section text-ink"
         >
           {heading}
         </Heading>
@@ -120,8 +120,7 @@ export function HowItWorks({
         {steps.map((step, i) => (
           <li
             key={step.title}
-            className="sw-reveal sw-lift card flex h-full flex-col p-6"
-            style={{ animationDelay: `${Math.min(i * 60, 240)}ms` }}
+            className="sw-lift card flex h-full flex-col p-6"
           >
             {/* Brand-accent numbered badge — decorative; the heading carries the
                 meaning, and the <ol> already conveys order to AT. */}

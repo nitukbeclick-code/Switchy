@@ -206,7 +206,7 @@ export default function SwitchIndexPage() {
 
       {/* ── Provider guide cards ──────────────────────────────────────────── */}
       <section aria-labelledby="guides-h" className="mt-14">
-        <h2 id="guides-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="guides-h" className="h-section text-ink">
           בחרו את הספק שאתם רוצים לעזוב
         </h2>
         <p className="mt-2 text-sm text-muted">
@@ -259,7 +259,7 @@ export default function SwitchIndexPage() {
 
       {/* ── Rights FAQ ────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="faq-h" className="h-section text-ink">
           שאלות נפוצות — זכויות בניתוק ומעבר
         </h2>
         <p className="mt-2 text-sm text-muted">עודכן לאחרונה: {REVIEWED_AT}</p>

@@ -18,9 +18,10 @@
 // plans are passed, qualitative copy stands in for any missing numbers.
 //
 // MOBILE-FIRST + RTL: inherits the app's direction; <ComparisonTable> already
-// renders one card per plan on phones and the rich table on lg+. Entrance motion
-// uses the shared `.sw-reveal` (transform + opacity only, <300ms band, reduced-
-// motion safe) and the `.sw-lift` hover — no recoloring of provider brand marks.
+// renders one card per plan on phones and the rich table on lg+. Entrance motion is
+// limited to the hero h1 + lede via the shared `.sw-reveal` (transform + opacity
+// only, <300ms band, reduced-motion safe); the rest of the page renders at rest.
+// `.sw-lift` still handles hover — no recoloring of provider brand marks.
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -180,8 +181,7 @@ export default function CategoryLanding({
                 this view (three-tier PRIMARY: bg-accent + glow + press), tracked
                 as a conversion. Chevron is direction-aware. */}
             <div
-              className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-              style={{ animationDelay: "120ms" }}
+              className="mt-8 flex flex-col items-center justify-center gap-4"
             >
               <TrackedCtaLink
                 href={comparePath}
@@ -202,7 +202,7 @@ export default function CategoryLanding({
           surface above the disclosure/table (content parity with the hero-on
           layout, where this same `intro` sits inside the panel). */}
       {hideHero && (
-        <p className="sw-reveal max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
+        <p className="max-w-2xl text-base leading-relaxed text-muted sm:text-lg">
           {intro}
         </p>
       )}
@@ -257,7 +257,7 @@ export default function CategoryLanding({
       >
         <h2
           id={`${headingId}-lead`}
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים שנמצא לכם את המסלול המשתלם ביותר?
         </h2>
@@ -289,12 +289,11 @@ export default function CategoryLanding({
               לפי סוג מסלול
             </h3>
             <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {subcats.map((sub, i) => (
+              {subcats.map((sub) => (
                 <li key={sub.href}>
                   <Link
                     href={sub.href}
                     className="interactive inline-flex items-center gap-1 font-medium text-accent-text underline underline-offset-4 hover:text-accent-hover"
-                    style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
                   >
                     {sub.label}
                     <Icon name="chevron" size={16} aria-hidden="true" />

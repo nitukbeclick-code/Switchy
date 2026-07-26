@@ -117,6 +117,19 @@ describe("BillUploader — privacy + a11y baseline", () => {
     expect(screen.getByText(/Google/)).toBeInTheDocument();
   });
 
+  it("tells the truth about the hand-off: the read's summary is attached to a lead", () => {
+    render(<BillUploader />);
+    // The summary is passed to <LeadForm> as `contextNote` and stored beside the
+    // visitor's name, phone and city — so it must not be described as anonymous…
+    expect(screen.queryByText(/סיכום אנונימי/)).not.toBeInTheDocument();
+    // …and the note must say where it goes, conditionally on the visitor's own
+    // choice to leave details.
+    expect(
+      screen.getByText(/הסיכום הזה יצורף לפנייה שלכם/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/מניעת שימוש לרעה/)).toBeInTheDocument();
+  });
+
   it("labels the file input", () => {
     render(<BillUploader />);
     // The label text is associated with the input via htmlFor/id.

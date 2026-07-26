@@ -419,7 +419,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
     <section className={`mt-10 ${styles.printArea}`} aria-labelledby="kit-h">
       {/* Header + actions (screen only) */}
       <div className="switchkit-screen-only flex flex-wrap items-center justify-between gap-3">
-        <h2 id="kit-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="kit-h" className="h-section text-ink">
           ערכת המעבר שלכם — {kit.categoryHe}
         </h2>
         <div className="flex flex-wrap gap-2">
@@ -509,7 +509,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
 
       {/* ── The tracker / switch steps ────────────────────────────────────── */}
       <section className={`mt-8 ${styles.section}`} aria-labelledby="steps-h">
-        <h3 id="steps-h" className={`font-display text-xl font-bold tracking-tight text-ink ${styles.printHeading}`}>
+        <h3 id="steps-h" className={`h-section text-ink ${styles.printHeading}`}>
           שלבי המעבר — סמנו תוך כדי התקדמות
         </h3>
         <ol className="mt-4 grid gap-3">
@@ -565,7 +565,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
 
       {/* ── Portability checklist ─────────────────────────────────────────── */}
       <section className={`mt-8 ${styles.section}`} aria-labelledby="check-h">
-        <h3 id="check-h" className={`font-display text-xl font-bold tracking-tight text-ink ${styles.printHeading}`}>
+        <h3 id="check-h" className={`h-section text-ink ${styles.printHeading}`}>
           לפני שעוברים — רשימת בדיקה
         </h3>
         <ul className="mt-4 grid gap-3">
@@ -582,7 +582,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
 
       {/* ── Key dates ─────────────────────────────────────────────────────── */}
       <section className={`mt-8 ${styles.section}`} aria-labelledby="dates-h">
-        <h3 id="dates-h" className={`font-display text-xl font-bold tracking-tight text-ink ${styles.printHeading}`}>
+        <h3 id="dates-h" className={`h-section text-ink ${styles.printHeading}`}>
           מועדים לתשומת לב
         </h3>
         <ul className="mt-4 grid gap-3">
@@ -643,7 +643,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
       >
         <h3
           id="kit-lead-h"
-          className="font-display text-xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים שנעשה את זה במקומכם?
         </h3>
@@ -700,7 +700,7 @@ function LetterBlock({ letter }: { letter: string }) {
   return (
     <section className={`mt-8 ${styles.section}`} aria-labelledby="letter-h">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 id="letter-h" className={`font-display text-xl font-bold tracking-tight text-ink ${styles.printHeading}`}>
+        <h3 id="letter-h" className={`h-section text-ink ${styles.printHeading}`}>
           מכתב הניתוק — לבדיקה ושליחה על ידיכם
         </h3>
         <button

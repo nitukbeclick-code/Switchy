@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
 import LeadFormLazy from "@/components/LeadFormLazy";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
@@ -125,7 +126,7 @@ export default async function GlossaryTermPage({ params }: Params) {
       >
         <h2
           id="term-lead-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           רוצים לדעת איך {entry.term} משפיע על החשבון שלכם?
         </h2>
@@ -133,6 +134,12 @@ export default async function GlossaryTermPage({ params }: Params) {
           השאירו פרטים ונחזור אליכם עם השוואה אישית בשפה פשוטה — חינם, בלי
           התחייבות, והמספר נשאר שלכם.
         </p>
+        {/* §7b paid-relationship disclosure. A term page is one definition long and
+            quotes no ₪ at all, so there are no prices to sit above; what triggers
+            the obligation is the form, which hands the reader to a referral we are
+            paid for. Hence it goes with the ask, ABOVE the fields — read before a
+            phone number is typed, not after the submit button. */}
+        <CommissionDisclosure variant="inline" className="mt-4 max-w-xl" />
         <div className="mt-5 max-w-xl">
           <LeadFormLazy source="glossary" trustStats={catalogueTrustStats()} />
         </div>

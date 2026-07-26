@@ -14,7 +14,10 @@
 //   • OCR is imperfect: we surface the read `confidence` + any model `warnings`
 //     as a visible quality disclaimer, and tell the user to verify before acting.
 //   • PRIVACY: a plain note states the photo is sent to Google (Gemini Vision) to
-//     read it and is NOT stored. We hold it in memory only for the upload.
+//     read it and is NOT stored. We hold it in memory only for the upload. The
+//     same note also says where the READ goes: its summary rides along to the
+//     hand-off form (`contextNote`) if — and only if — the visitor chooses to
+//     leave details, and <LeadForm> shows them that exact text before they send.
 //
 // A11y: labelled file input, status region (aria-live) for the loading + result,
 // keyboardable controls, and reduced-motion respect on the spinner.
@@ -280,7 +283,9 @@ export default function BillUploader({
   // A factual note for the rep, assembled ONLY from figures already rendered on
   // this screen: what the bill says they pay, the real annual gap the analyzer
   // returned, and the top REAL suggestion. Each clause is dropped when the read
-  // didn't produce it — an absent fact is omitted, never guessed.
+  // didn't produce it — an absent fact is omitted, never guessed. It reaches the
+  // CRM attached to the visitor's identity, so <LeadForm> renders it verbatim
+  // above its submit button and the privacy note above says so.
   const topSuggestion = readable ? result?.suggestions?.[0] : undefined;
   const handoffContextNote = readable
     ? [
@@ -336,13 +341,21 @@ export default function BillUploader({
           className="interactive mt-4 block w-full cursor-pointer rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none file:me-4 file:rounded-lg file:border-0 file:bg-accent file:px-4 file:py-2 file:font-medium file:text-accent-contrast hover:file:bg-accent-hover focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
-        {/* Privacy note — plain, prominent, never buried. */}
+        {/* Privacy note — plain, prominent, never buried. It must describe the
+            WHOLE journey, including the hand-off: the read's summary is passed
+            to <LeadForm> as `contextNote` and stored beside the visitor's name,
+            phone and city, so calling it "anonymous" stopped being true the
+            moment a visitor leaves details. Stated calmly and conditionally
+            ("if you choose to") — the image itself is still never stored, and a
+            reassurance must not be turned into a scare. */}
         <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted">
           <Icon name="lock" size={16} className="mt-0.5 shrink-0" />
           <span>
             הפרטיות שלכם: התמונה נשלחת לקריאה אוטומטית בשירות של Google ‏(Gemini)
-            ‏<strong>ואינה נשמרת</strong> אצלנו — לא התמונה ולא תוכנה. נשמר רק
-            סיכום אנונימי (ספק, סכום, הצעות) לצורך מניעת שימוש לרעה.
+            ‏<strong>ואינה נשמרת</strong> אצלנו — לא התמונה ולא תוכנה. נשמר סיכום
+            הקריאה (ספק, סכום, הצעות) לצורך מניעת שימוש לרעה, ואם תבחרו להשאיר
+            פרטים בטופס שבהמשך — הסיכום הזה יצורף לפנייה שלכם כדי שנציג יוכל
+            לעזור.
           </span>
         </p>
       </div>

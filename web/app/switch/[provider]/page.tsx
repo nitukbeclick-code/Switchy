@@ -317,7 +317,7 @@ export default async function SwitchProviderPage({ params }: Params) {
 
       {/* ── Steps (HowTo, visible) ────────────────────────────────────────── */}
       <section aria-labelledby="steps-h" className="mt-14">
-        <h2 id="steps-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="steps-h" className="h-section text-ink">
           שלב אחר שלב: לעזוב את {provider.name}
         </h2>
         <ol className="mt-6 space-y-4">
@@ -352,7 +352,7 @@ export default async function SwitchProviderPage({ params }: Params) {
       >
         <h2
           id="official-h"
-          className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-ink"
+          className="flex items-center gap-2 h-section text-ink"
         >
           <Icon name="lock" size={20} className="text-accent-text" />
           הדף הרשמי של {provider.name}
@@ -396,7 +396,7 @@ export default async function SwitchProviderPage({ params }: Params) {
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="faq-h" className="h-section text-ink">
           שאלות נפוצות — מעבר מ{provider.name}
         </h2>
         <p className="mt-2 text-sm text-muted">עודכן לאחרונה: {REVIEWED_AT}</p>
@@ -419,7 +419,7 @@ export default async function SwitchProviderPage({ params }: Params) {
 
       {/* ── Lead form — help with the switch ──────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
+        <h2 id="lead-h" className="h-section text-ink">
           רוצים שנעזור לכם לעבור?
         </h2>
         <p className="mt-2 text-foreground">

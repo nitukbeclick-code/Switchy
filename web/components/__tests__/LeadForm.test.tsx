@@ -16,7 +16,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import LeadForm from "@/components/LeadForm";
+import LeadForm, { callbackConfirmation } from "@/components/LeadForm";
 import { CTA_OBJECTIONS, CTA_OBJECTIONS_LABEL } from "@/lib/legal";
 
 // Mock tracking so no GA4 / Meta Pixel side effects fire during the test.
@@ -38,6 +38,36 @@ function getConsentCheckbox(): HTMLInputElement {
     .find((el) => el.getAttribute("aria-required") === "true");
   if (!box) throw new Error("consent checkbox not found");
   return box as HTMLInputElement;
+}
+
+/**
+ * Run `run` with the local wall clock pinned to `hour` o'clock.
+ *
+ * The callback confirmation is clock-dependent BY DESIGN (a window that has
+ * already passed must never be promised), so any test asserting the promised
+ * copy has to own the clock — otherwise it passes at 10:00 and fails at 23:00.
+ * The instant is built from LOCAL date parts, so the pinned hour is that hour in
+ * every runner timezone. `shouldAdvanceTime` + `advanceTimers` keep user-event's
+ * own timers ticking while the clock is frozen (the BookClient cooldown idiom).
+ */
+async function withLocalHour(
+  hour: number,
+  run: (user: ReturnType<typeof userEvent.setup>) => Promise<void>,
+) {
+  vi.useFakeTimers({
+    shouldAdvanceTime: true,
+    now: new Date(2026, 0, 15, hour, 0, 0),
+  });
+  try {
+    await run(
+      userEvent.setup({
+        delay: null,
+        advanceTimers: vi.advanceTimersByTime.bind(vi),
+      }),
+    );
+  } finally {
+    vi.useRealTimers();
+  }
 }
 
 /**
@@ -297,34 +327,74 @@ describe("LeadForm — the ask: objections, callback window, escape hatches", ()
       .mockResolvedValue({ ok: true, json: async () => ({}) });
     vi.stubGlobal("fetch", fetchMock);
 
-    const user = userEvent.setup({ delay: null });
-    render(<LeadForm source="test" />);
-    await advanceToFinalStep(user);
-    await user.selectOptions(
-      screen.getByLabelText("איזה שירות מעניין אתכם?"),
-      "internet",
-    );
+    // 10:00 — the ערב window is still ahead, so "היום" is a promise we can keep.
+    await withLocalHour(10, async (user) => {
+      render(<LeadForm source="test" />);
+      await advanceToFinalStep(user);
+      await user.selectOptions(
+        screen.getByLabelText("איזה שירות מעניין אתכם?"),
+        "internet",
+      );
 
-    // Nothing is pre-selected — an optional field must not answer for the user.
-    for (const label of ["עכשיו", "צהריים", "ערב", "מחר"]) {
-      expect(screen.getByLabelText(label)).not.toBeChecked();
-    }
+      // Nothing is pre-selected — an optional field must not answer for the user.
+      for (const label of ["עכשיו", "צהריים", "ערב", "מחר"]) {
+        expect(screen.getByLabelText(label)).not.toBeChecked();
+      }
 
-    await user.click(screen.getByLabelText("ערב"));
-    await user.click(getConsentCheckbox());
-    await user.click(screen.getByRole("button", { name: "קבלת הצעה חינם" }));
+      await user.click(screen.getByLabelText("ערב"));
+      await user.click(getConsentCheckbox());
+      await user.click(screen.getByRole("button", { name: "קבלת הצעה חינם" }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const body = JSON.parse(
-      (fetchMock.mock.calls[0][1] as RequestInit).body as string,
-    );
-    // Exactly the value /api/lead validates against and stores.
-    expect(body.callback_time).toBe("evening");
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+      );
+      // Exactly the value /api/lead validates against and stores.
+      expect(body.callback_time).toBe("evening");
 
-    // The success copy promises the window the user actually chose.
-    expect(
-      await screen.findByText(/היום בשעות הערב/),
-    ).toBeInTheDocument();
+      // The success copy promises the window the user actually chose.
+      expect(await screen.findByText(/היום בשעות הערב/)).toBeInTheDocument();
+    });
+  });
+
+  it("never confirms a window that has already passed: a 23:00 צהריים request is promised for tomorrow", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // 23:00 — "היום בשעות הצהריים" would be a callback in the past. The chosen
+    // window still reaches the CRM unchanged; only the PROMISE moves on.
+    await withLocalHour(23, async (user) => {
+      render(<LeadForm source="test" />);
+      await advanceToFinalStep(user);
+      await user.selectOptions(
+        screen.getByLabelText("איזה שירות מעניין אתכם?"),
+        "internet",
+      );
+      await user.click(screen.getByLabelText("צהריים"));
+
+      // The pre-submit "what happens next" line makes the same promise as the
+      // confirmation will — it must not say "היום" either.
+      expect(
+        await screen.findByText(/מחר בשעות הצהריים/),
+      ).toBeInTheDocument();
+
+      await user.click(getConsentCheckbox());
+      await user.click(screen.getByRole("button", { name: "קבלת הצעה חינם" }));
+
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      const body = JSON.parse(
+        (fetchMock.mock.calls[0][1] as RequestInit).body as string,
+      );
+      expect(body.callback_time).toBe("noon");
+
+      // The confirmation names the next occurrence and says why it moved.
+      expect(await screen.findByText("הפרטים התקבלו, תודה!")).toBeInTheDocument();
+      expect(screen.getByText(/מחר בשעות הצהריים/)).toBeInTheDocument();
+      expect(screen.getByText(/החלון שביקשתם כבר חלף היום/)).toBeInTheDocument();
+      expect(screen.queryByText(/היום בשעות הצהריים/)).not.toBeInTheDocument();
+    });
   });
 
   it("keeps the honest default SLA when no callback window was chosen", async () => {
@@ -389,6 +459,63 @@ describe("LeadForm — the ask: objections, callback window, escape hatches", ()
   });
 });
 
+describe("callbackConfirmation — a promise may never point at the past", () => {
+  // The clock is an argument, so the boundary is asserted directly instead of
+  // through the DOM. Hours are built from LOCAL parts (Israel is one timezone,
+  // the client clock is the right clock) so the assertions hold in any runner.
+  const at = (hour: number, minute = 0) => new Date(2026, 0, 15, hour, minute);
+
+  it("keeps the same-day wording while the window is still ahead", () => {
+    expect(callbackConfirmation("noon", at(9))).toEqual({
+      text: "היום בשעות הצהריים",
+      shifted: false,
+    });
+    // 15:59 — the last minute the צהריים window is still today's.
+    expect(callbackConfirmation("noon", at(15, 59))).toEqual({
+      text: "היום בשעות הצהריים",
+      shifted: false,
+    });
+    expect(callbackConfirmation("evening", at(20, 59))).toEqual({
+      text: "היום בשעות הערב",
+      shifted: false,
+    });
+  });
+
+  it("moves a passed window to the next occurrence, on the hour it passes", () => {
+    // 16:00 exactly — the boundary the defect lived on.
+    expect(callbackConfirmation("noon", at(16))).toEqual({
+      text: "מחר בשעות הצהריים",
+      shifted: true,
+    });
+    expect(callbackConfirmation("noon", at(23))).toEqual({
+      text: "מחר בשעות הצהריים",
+      shifted: true,
+    });
+    expect(callbackConfirmation("evening", at(21))).toEqual({
+      text: "מחר בשעות הערב",
+      shifted: true,
+    });
+  });
+
+  it("leaves the windows that cannot point backwards untouched, at any hour", () => {
+    // "בהקדם האפשרי" and "מחר" name no past instant, so neither ever shifts.
+    for (const hour of [0, 12, 23]) {
+      expect(callbackConfirmation("now", at(hour))).toEqual({
+        text: "בהקדם האפשרי",
+        shifted: false,
+      });
+      expect(callbackConfirmation("tomorrow", at(hour))).toEqual({
+        text: "מחר",
+        shifted: false,
+      });
+    }
+  });
+
+  it("returns null when no window was chosen, so the honest SLA stands", () => {
+    expect(callbackConfirmation("", at(23))).toBeNull();
+  });
+});
+
 describe("LeadForm — optional CRM context props", () => {
   beforeEach(() => {
     fireLeadConversion.mockReset();
@@ -428,6 +555,36 @@ describe("LeadForm — optional CRM context props", () => {
     expect(body.notes).toBe("הגיע ממסלול X");
     expect(body.provider).toBe("סלקום");
     expect(body.plan_id).toBe("plan-1");
+  });
+
+  it("SHOWS the contextNote above the submit — the summary travels with a name and a phone", async () => {
+    // The note is stored in the same record as name/phone/city, so the visitor
+    // must be able to read it before deciding to send. If this regresses, the
+    // hand-off is invisible again and the callers' privacy copy becomes false.
+    const user = userEvent.setup({ delay: null });
+    render(
+      <LeadForm
+        source="bill-analyzer"
+        contextNote="ספק נוכחי: סלקום · תשלום היום: ₪120 לחודש"
+      />,
+    );
+
+    // Not on the contact step — the receipt belongs where the decision is made.
+    expect(screen.queryByText("מה שיישלח עם הפנייה:")).not.toBeInTheDocument();
+
+    await advanceToFinalStep(user);
+
+    expect(screen.getByText("מה שיישלח עם הפנייה:")).toBeInTheDocument();
+    expect(
+      screen.getByText("ספק נוכחי: סלקום · תשלום היום: ₪120 לחודש"),
+    ).toBeInTheDocument();
+  });
+
+  it("renders no receipt when the host page attaches nothing", async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<LeadForm source="test" />);
+    await advanceToFinalStep(user);
+    expect(screen.queryByText("מה שיישלח עם הפנייה:")).not.toBeInTheDocument();
   });
 });
 

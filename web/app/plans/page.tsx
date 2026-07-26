@@ -210,7 +210,7 @@ export default async function PlansPricingPage() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <header className="mt-4">
-        <p className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
+      <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
           מחירון מלא
         </p>
         <h1
@@ -231,8 +231,7 @@ export default async function PlansPricingPage() {
         {/* Compact catalogue stat line — three REAL anchors: plans, providers,
             and the lowest price overall (amber = VALUE). No fabricated metrics. */}
         <dl
-          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm"
-          style={{ animationDelay: "120ms" }}
+          className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm"
         >
           <div className="flex items-baseline gap-2">
             <dt className="text-muted">מסלולים בקטלוג</dt>
@@ -305,7 +304,7 @@ export default async function PlansPricingPage() {
                 <div>
                   <h2
                     id={`cat-${b.cat}-h`}
-                    className="font-display text-2xl font-bold tracking-tight text-ink"
+                    className="h-section text-ink"
                   >
                     מסלולי {b.he}
                   </h2>

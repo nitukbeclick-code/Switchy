@@ -13,9 +13,10 @@
 // Server component — pure render from static copy. NO runtime/community data is
 // read here (the live feed lives on the client community surfaces), so nothing is
 // fabricated: no post counts, member figures or ratings appear on this page.
-// Motion: the global `.sw-reveal` entrance (opacity + 8px lift, GPU only) staggered
-// 30–80ms via inline animationDelay, plus the global `.sw-lift` desktop hover —
-// both reduced-motion safe (collapse to the resting state in globals.css).
+// Motion: ONE staged moment at the top of the page — the h1 and its lede carry the
+// global `.sw-reveal` entrance (opacity + 8px lift, GPU only); the sections below
+// render at rest. `.sw-lift` still handles the desktop hover. Both are
+// reduced-motion safe (they collapse to the resting state in globals.css).
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -126,7 +127,7 @@ export default function CommunityGuidelinesPage() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <header className="mt-4">
-        <p className="sw-reveal inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
+      <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
           <Icon name="check" size={14} aria-hidden="true" />
           קהילה בטוחה · שיח מכובד
         </p>
@@ -147,16 +148,15 @@ export default function CommunityGuidelinesPage() {
       <section aria-labelledby="dos-h" className="mt-14">
         <h2
           id="dos-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           מה אנחנו מצפים
         </h2>
         <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-          {DOS.map((item, i) => (
+          {DOS.map((item) => (
             <li
               key={item.title}
-              className="sw-reveal sw-lift card flex h-full gap-4 p-5 sm:p-6"
-              style={{ animationDelay: `${Math.min(i * 60, 240)}ms` }}
+              className="sw-lift card flex h-full gap-4 p-5 sm:p-6"
             >
               <span
                 aria-hidden="true"
@@ -181,7 +181,7 @@ export default function CommunityGuidelinesPage() {
       <section aria-labelledby="donts-h" className="mt-16">
         <h2
           id="donts-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           מה אסור
         </h2>
@@ -190,11 +190,10 @@ export default function CommunityGuidelinesPage() {
           פוסטים, תגובות, מדיה (תמונות, סרטונים והקלטות קול) ושמות תצוגה כאחד.
         </p>
         <ul className="mt-6 space-y-3">
-          {DONTS.map((item, i) => (
+          {DONTS.map((item) => (
             <li
               key={item.title}
-              className="sw-reveal card flex items-start gap-4 p-5 sm:p-6"
-              style={{ animationDelay: `${Math.min(i * 60, 240)}ms` }}
+              className="card flex items-start gap-4 p-5 sm:p-6"
             >
               <span
                 aria-hidden="true"
@@ -218,12 +217,11 @@ export default function CommunityGuidelinesPage() {
       {/* ── Truth in prices & experiences ─────────────────────────────────── */}
       <section
         aria-labelledby="truth-h"
-        className="sw-reveal bento mt-16 p-6 sm:p-8"
-        style={{ animationDelay: "60ms" }}
+        className="bento mt-16 p-6 sm:p-8"
       >
         <h2
           id="truth-h"
-          className="flex items-center gap-2 font-display text-2xl font-bold tracking-tight text-ink"
+          className="flex items-center gap-2 h-section text-ink"
         >
           <Icon name="info" size={22} aria-hidden="true" className="text-accent" />
           מחירים וחוויות — רק אמת
@@ -257,7 +255,7 @@ export default function CommunityGuidelinesPage() {
       <section aria-labelledby="mod-h" className="mt-16">
         <h2
           id="mod-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           איך פועל הפיקוח על התוכן
         </h2>
@@ -282,8 +280,7 @@ export default function CommunityGuidelinesPage() {
           ].map((step, i) => (
             <li
               key={step.t}
-              className="sw-reveal card flex items-start gap-4 p-5 sm:p-6"
-              style={{ animationDelay: `${Math.min(i * 60, 180)}ms` }}
+              className="card flex items-start gap-4 p-5 sm:p-6"
             >
               <span
                 aria-hidden="true"
@@ -311,12 +308,11 @@ export default function CommunityGuidelinesPage() {
       {/* ── Reporting & blocking ──────────────────────────────────────────── */}
       <section
         aria-labelledby="report-h"
-        className="sw-reveal bento mt-16 p-6 sm:p-8"
-        style={{ animationDelay: "60ms" }}
+        className="bento mt-16 p-6 sm:p-8"
       >
         <h2
           id="report-h"
-          className="flex items-center gap-2 font-display text-2xl font-bold tracking-tight text-ink"
+          className="flex items-center gap-2 h-section text-ink"
         >
           <Icon name="lock" size={22} aria-hidden="true" className="text-accent" />
           דיווח וחסימה — הכלים שלכם
@@ -356,7 +352,7 @@ export default function CommunityGuidelinesPage() {
       <section aria-labelledby="enforce-h" className="mt-16">
         <h2
           id="enforce-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           אכיפה
         </h2>
@@ -404,12 +400,11 @@ export default function CommunityGuidelinesPage() {
       {/* ── CTA — into the community ──────────────────────────────────────── */}
       <section
         aria-labelledby="cta-h"
-        className="sw-reveal mt-16 rounded-3xl border border-border/50 bg-accent/[0.03] p-6 text-center sm:p-8"
-        style={{ animationDelay: "60ms" }}
+        className="mt-16 rounded-3xl border border-border/50 bg-accent/[0.03] p-6 text-center sm:p-8"
       >
         <h2
           id="cta-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           מוכנים להצטרף לשיח?
         </h2>

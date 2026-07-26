@@ -197,7 +197,7 @@ export default function StreetPricesClient({
       <section aria-labelledby="chart-h">
         <h2
           id="chart-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           המחיר האמיתי לפי הקהילה
         </h2>
@@ -222,7 +222,7 @@ export default function StreetPricesClient({
       >
         <h2
           id="report-h"
-          className="font-display text-2xl font-bold tracking-tight text-ink"
+          className="h-section text-ink"
         >
           דווחו כמה אתם משלמים
         </h2>
@@ -357,7 +357,7 @@ export default function StreetPricesClient({
         >
           <h2
             id="street-lead-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
+            className="h-section text-ink"
           >
             משלמים יותר מהמחיר ברחוב?
           </h2>

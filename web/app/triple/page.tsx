@@ -173,8 +173,7 @@ export default async function TripleLandingPage() {
             השוואה חינמית של כל החבילות המשולבות בישראל — כולל המחיר שאחרי המבצע.
           </p>
           <div
-            className="sw-reveal mt-8 flex flex-col items-center justify-center gap-4"
-            style={{ animationDelay: "120ms" }}
+            className="mt-8 flex flex-col items-center justify-center gap-4"
           >
             <TrackedCtaLink
               href={`/compare/${CATEGORY}`}
@@ -196,8 +195,7 @@ export default async function TripleLandingPage() {
           </div>
           {minFeaturedText !== undefined ? (
             <p
-              className="nums-tabular sw-reveal mt-8 text-sm text-white/85"
-              style={{ animationDelay: "150ms" }}
+              className="nums-tabular mt-8 text-sm text-white/85"
             >
               {all.length} מסלולים · החל מ-
               <span className="font-display font-bold text-[#4ade80]">
@@ -210,8 +208,7 @@ export default async function TripleLandingPage() {
               qualitative reassurance, no fabricated figure. Sits BELOW the hard
               catalogue count so the real numbers lead the hedge. */}
           <p
-            className="sw-reveal mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
-            style={{ animationDelay: "180ms" }}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/75"
           >
             <Icon name="check" size={16} className="shrink-0 text-accent" />
             מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם

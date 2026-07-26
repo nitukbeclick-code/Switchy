@@ -1451,6 +1451,22 @@ const trustBlock = () => `    <section class="section trust-block" aria-label="�
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
 const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
 
+// The EFFECTIVE monthly cost — what the plan really averages over 12 months once
+// a published promo ladder is taken into account. The savings calculator used to
+// annualise the PROMO price (`(bill - offerPrice) * 12`), which for a two-month
+// promo overstates the yearly saving several times over: a plan advertised at
+// ₪39 that becomes ₪159 is not a ₪39 plan for twelve months.
+//
+// When the catalogue publishes a promo price but NOT its duration,
+// calculateTwelveMonthCost returns a range. A savings claim must not be built on
+// the flattering end of a range we admit we do not know, so this takes the
+// MAXIMUM — the least favourable to the claim. Under-promising is recoverable;
+// over-promising is what makes the number worthless.
+const calcEffectiveMonthly = (p) => {
+  const cost = staticPlanCost.calculateTwelveMonthCost(p);
+  return Math.round((cost.maximum / 12) * 100) / 100;
+};
+
 // Headline "from ₪X/month" claims compare like with like. A data-only SIM is
 // still rendered in its dedicated collection and full comparison tables, but it
 // must not masquerade as the cheapest consumer phone plan in a category hero,
@@ -4722,7 +4738,7 @@ ${nav}
 
     <section class="section">
       <div class="container">
-        <div id="calc" class="calc-card reveal" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}">
+        <div id="calc" class="calc-card reveal" data-cheapest="${offerPrice(ch)}" data-effective="${calcEffectiveMonthly(ch)}" data-cat="${c.slug}">
           <h2 class="calc-card__title">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
           <p class="calc-card__lead">המסלול הזול ביותר ב${esc(c.name)} כרגע: <b>${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</b>.</p>
           <label for="calcBill" class="calc-card__label">כמה אתם משלמים היום? (₪ לחודש)</label>

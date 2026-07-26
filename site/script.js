@@ -1183,7 +1183,12 @@
   // ── Savings calculator (calc-*.html) ─────────────────────────────────────
   const calc = $('calc');
   if (calc) {
-    const cheapest = Number(calc.dataset.cheapest) || 0;
+    // Savings are computed against the EFFECTIVE monthly cost (what the plan
+    // averages over 12 months once its published promo ladder is applied), not
+    // the promo headline. Annualising a two-month ₪39 price on a plan that
+    // becomes ₪159 overstated the yearly saving several times over. Falls back
+    // to the headline for a page built before data-effective existed.
+    const cheapest = Number(calc.dataset.effective) || Number(calc.dataset.cheapest) || 0;
     const bill = $('calcBill');
     const out = $('calcOut');
     const btn = $('calcBtn');
@@ -2775,7 +2780,9 @@
     const calcEl = $('calc');
     const out = $('calcOut');
     if (!calcEl || !out) return;
-    const cheapest = Number(calcEl.dataset.cheapest) || 0;
+    // Same figure the calculator itself uses — the chart must not contradict the
+    // number printed beside it.
+    const cheapest = Number(calcEl.dataset.effective) || Number(calcEl.dataset.cheapest) || 0;
     const inject = () => {
       const result = out.querySelector('.calc-result');
       if (!result || result.querySelector('.calc-result__chart')) return;

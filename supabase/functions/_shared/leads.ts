@@ -4,6 +4,7 @@
 import type { Lead, TgInlineKeyboard, TriageResult } from "./types.ts";
 import { esc, NL, waDraftLink, waLink } from "./telegram.ts";
 import { insertRow } from "./db.ts";
+import { scoreLead } from "./lead_quality.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI-chat lead capture (Track 2E) — when the site "Switchy AI" chat detects a
@@ -327,6 +328,13 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
     lead.notes ? `📋 <b>הקשר:</b> ${esc(String(lead.notes).slice(0, 700))}` : null,
     triage?.line ? "" : null,
     triage?.line ? `🤖 <i>${esc(triage.line)}</i>${triage.score > 0 ? ` (כוונה: ${triage.score}/5)` : ""}` : null,
+    // DETERMINISTIC completeness (lead_quality.scoreLead), distinct from the 🔥
+    // intent guess above. It was computed for the Sheets/CSV exports only, while
+    // the rep saw a triage line from an LLM call that fail-softs to score 0 on any
+    // error — so the reliable signal went to a spreadsheet and the flaky one to
+    // the person making the call. This says how much the rep has to work with;
+    // it is NOT a purchase-intent claim.
+    `📊 <b>שלמות הפנייה:</b> ${scoreLead(lead)}/100`,
     "",
     REP_COMPLIANCE_LINE,
   ];

@@ -304,10 +304,17 @@ Future<void> _initBackend() async {
       );
       AppState().setQuizCompleted(true);
     }).catchError((_) {}),
-    // Resolve admin status (gates the CRM entry point). Fail-soft: any error
-    // leaves isAdmin false, so a fetch hiccup never exposes the dashboard.
+    // Resolve admin status (gates the ANALYTICS entry — admin-metrics requires a
+    // true admin). Fail-soft: any error leaves isAdmin false, so a fetch hiccup
+    // never exposes the dashboard.
     appBackend.fetchIsAdmin().then((isAdmin) {
       AppState().setIsAdmin(isAdmin);
+    }).catchError((_) {}),
+    // Resolve CRM access separately — it is BROADER (is_admin OR a granted
+    // crm_members viewer/rep role), and gating the console on is_admin alone made
+    // that whole graded layer unreachable. Same fail-soft contract.
+    appBackend.fetchHasCrmAccess().then((can) {
+      AppState().setHasCrmAccess(can);
     }).catchError((_) {}),
   ]);
 }

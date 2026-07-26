@@ -502,10 +502,12 @@ class AccountWidget extends StatelessWidget {
                   _SectionHeader('פעולות מהירות', ffTheme: ffTheme),
                   const SizedBox(height: 12),
                   ...[
-                    if (appState.isAdmin) ...[
+                    // The console opens for any granted CRM role; the analytics
+                    // dashboard stays admin-only (admin-metrics requires it).
+                    if (appState.hasCrmAccess)
                       _ActionTile(icon: Icons.dashboard_rounded, title: 'ניהול לקוחות / CRM', subtitle: 'שיחות וואטסאפ, לידים וצבר מכירות', onTap: () => context.pushNamed('Crm'), ffTheme: ffTheme),
+                    if (appState.isAdmin)
                       _ActionTile(icon: Icons.insights_rounded, title: 'דשבורד אנליטיקס', subtitle: 'מדדי משפך אמיתיים — לידים, ערוצים והמרה', onTap: () => context.pushNamed('Analytics'), ffTheme: ffTheme),
-                    ],
                     _ActionTile(icon: Icons.account_balance_wallet_rounded, title: 'ארנק התקשורת', subtitle: 'כמה כבר חסכת דרכנו', onTap: () => context.pushNamed('Wallet'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.support_agent_rounded, title: 'תסריט מיקוח', subtitle: 'רוצים להישאר? בקשו הנחה עם נתונים אמיתיים', onTap: () => context.pushNamed('Negotiate'), ffTheme: ffTheme),

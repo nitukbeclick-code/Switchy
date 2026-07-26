@@ -224,6 +224,7 @@ async function crmRequest<T>(
 // crm_lead_export audit row server-side, and coalescing would under-count the
 // audited views of that controlled §7b surface.
 const DEDUPED_READS = new Set([
+  "whoami",
   "overview",
   "slaMetrics",
   "listLeads",
@@ -358,6 +359,32 @@ export function fetchSellableLeads(opts?: { status?: LeadStatus }): Promise<{ le
     },
     (j) => hasArray(j, "leads"),
   ).then((r) => r.data);
+}
+
+// ── Who am I (the caller's own CRM role) ─────────────────────────────────────
+
+/** The effective role crm-api resolved for the caller (mirrors crm_roles.ts). */
+export type EffectiveCrmRole = "viewer" | "rep" | "admin";
+
+export interface CrmAccess {
+  role: EffectiveCrmRole;
+  isAdmin: boolean;
+  can: { read: boolean; writeLeads: boolean; converse: boolean; adminOnly: boolean };
+}
+
+/** The caller's own effective CRM role + capabilities.
+ *
+ *  The console gates its shell and tab list on THIS rather than profiles.is_admin.
+ *  crm_roles.ts has modelled viewer/rep/admin all along and crm-api enforces it
+ *  per action, but the UI demanded is_admin — so a rep granted a role could never
+ *  open the surface that role was designed for. A caller with no CRM access at all
+ *  gets a 401/403 from the gate, which surfaces here as a failure. */
+export function fetchCrmAccess(): Promise<CrmFetch<CrmAccess>> {
+  return crmRead<CrmAccess>(
+    "whoami",
+    {},
+    (j) => typeof j.role === "string" && isJsonObject(j.can),
+  );
 }
 
 // ── CRM members (per-rep roles — C.2, admin-only) ─────────────────────────────

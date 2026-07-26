@@ -1008,6 +1008,20 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<bool> fetchHasCrmAccess() async {
+    if (_uid == null) return false;
+    // Ask the SAME gate the mutations go through: whoami resolves is_admin OR a
+    // graded crm_members role. A caller with neither gets 401/403, which _crm
+    // surfaces as an empty map — so the fail-soft default is "no access".
+    try {
+      final data = await _crm('whoami');
+      return data['ok'] == true && (data['role'] as String? ?? '').isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
   Future<CrmOverview> crmOverview() async {
     final data = await _crm('overview');
     return CrmOverview.fromJson(data);

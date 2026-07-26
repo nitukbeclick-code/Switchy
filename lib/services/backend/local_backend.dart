@@ -475,6 +475,9 @@ class LocalBackend implements Backend {
   Future<bool> fetchIsAdmin() async => true;
 
   @override
+  Future<bool> fetchHasCrmAccess() async => true;
+
+  @override
   Future<CrmOverview> crmOverview() async {
     _seedCrm();
     final pipeline = <String, int>{'new': 0, 'contacted': 0, 'won': 0, 'lost': 0};

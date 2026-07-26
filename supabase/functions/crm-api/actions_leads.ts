@@ -431,13 +431,25 @@ export async function actRecordSaving(b: Row, actorUid: string): Promise<Respons
 // claimLead {leadId, rep} → assign the lead to a named rep (claimed_by + timestamp)
 // with a timeline row. `rep` is a display string (same model as assigned_rep /
 // crm_events.actor='rep' — no reps table).
+//
+// ATOMIC, like the Telegram claim (notify-lead/callbacks.ts): the `claimed_by`
+// IS NULL predicate is what makes it a claim rather than a blind overwrite — the
+// second presser matches zero rows and gets told who owns it. Without the guard
+// two reps working the console silently overwrote each other and each believed
+// the lead was theirs.
+//
+// KNOWN GAP (deliberately not papered over): a console claim still can't stamp
+// claimed_by_tg_id, because the caller is a Supabase uid and nothing maps a uid
+// to a Telegram id (crm_members has no such column). The Telegram /myleads
+// command filters on claimed_by_tg_id, so a console-claimed lead does not appear
+// there. Closing that needs a schema change, not a patch here.
 export async function actClaimLead(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
   const rep = s(b.rep).trim().slice(0, 120);
   if (!leadId) return err("leadId חסר", 400, "bad_request");
   if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
   if (!rep) return err("שם נציג חסר", 400, "bad_request");
-  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}&claimed_by=is.null`, {
     claimed_by: rep,
     claimed_at: new Date().toISOString(),
   });
@@ -445,8 +457,16 @@ export async function actClaimLead(b: Row, actorUid: string): Promise<Response> 
     jlog({ at: "crm.claimLead", ok: false, leadId });
     return err("שיוך הליד נכשל", 502, "db_error");
   }
-  // Honest 404 — no claim event/audit for a lead that doesn't exist.
-  if (n === 0) return err("הליד לא נמצא", 404, "not_found");
+  // Zero rows is now ambiguous — the lead may not exist, OR it exists and someone
+  // already owns it. Re-read to answer honestly instead of reporting a 404 for a
+  // lead that is very much there.
+  if (n === 0) {
+    const rows = await fetchRows<Row>(`/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=claimed_by`);
+    if (rows === null) return err("שיוך הליד נכשל", 502, "db_error");
+    if (!rows.length) return err("הליד לא נמצא", 404, "not_found");
+    const owner = s(rows[0].claimed_by).trim();
+    return err(owner ? `הליד כבר בטיפול אצל ${owner}` : "שיוך הליד נכשל — נסו שוב", 409, "already_claimed");
+  }
   await insertRow("lead_events", {
     lead_id: leadId,
     event: "claim",

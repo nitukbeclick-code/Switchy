@@ -69,6 +69,15 @@ export type ToolContext = {
   // Best-effort audit sinks (no-op in tests). preview is PII-light + clipped.
   logCrmEvent?: (ev: { actor: string; event: string; preview?: string }) => Promise<void> | void;
   logSecurityEvent?: (event: string, detail: Record<string, unknown>) => Promise<void> | void;
+  // Deeper per-tool-run audit → public.agent_tool_calls. Complements logCrmEvent
+  // (the CRM activity feed) with a longer-retention analytics table.
+  //
+  // Until this sink existed the table had ZERO writers while admin-metrics
+  // (toolCallsRollup) read it every request — the tool success-rate dashboard was
+  // reporting on a permanently empty table. Same fail-soft contract as the others.
+  logToolCall?: (
+    row: { channel: string; conversation_id: string | null; tool: string; ok: boolean; preview: string | null },
+  ) => Promise<void> | void;
   // Consent-gated lead capture. Returns "captured" | "incomplete" | "error".
   // In production this is _shared/leads.ts captureAiLead; tests inject a fake.
   captureLead?: (input: Record<string, unknown>) => Promise<"captured" | "incomplete" | "error">;
@@ -145,8 +154,22 @@ function planView(p: ScorablePlan): Record<string, unknown> {
 }
 
 async function audit(ctx: ToolContext, tool: string, ok: boolean, preview?: string): Promise<void> {
+  const note = preview ?? (ok ? "ok" : "fail");
   try {
-    await ctx.logCrmEvent?.({ actor: "agent", event: `tool:${tool}`, preview: preview ?? (ok ? "ok" : "fail") });
+    await ctx.logCrmEvent?.({ actor: "agent", event: `tool:${tool}`, preview: note });
+  } catch { /* never blocks */ }
+  // Second, independent sink: the analytics table admin-metrics rolls up. Kept in
+  // its own try so a failure here can't cost us the activity-feed row (or vice
+  // versa) — every tool run should appear in both, but neither may block a tool.
+  try {
+    await ctx.logToolCall?.({
+      channel: ctx.channel,
+      conversation_id: ctx.conversationId ?? null,
+      tool,
+      ok,
+      // The table's CHECK bounds preview at 120; 80 matches the crm_events feed.
+      preview: note.trim().replace(/\s+/g, " ").slice(0, 80) || null,
+    });
   } catch { /* never blocks */ }
 }
 

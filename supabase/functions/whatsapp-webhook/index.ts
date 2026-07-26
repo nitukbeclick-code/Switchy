@@ -1511,6 +1511,11 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         preview: ev.preview,
       }),
     logSecurityEvent: (event, detail) => logSecurityEvent(event, detail as Row),
+    // Deeper per-tool-run audit — the table admin-metrics' tool success-rate
+    // rollup reads. Best-effort like every other sink here.
+    logToolCall: async (row) => {
+      await pgInsert("agent_tool_calls", row as unknown as Row);
+    },
     // The channel is stated explicitly so the row lands as source="whatsapp":
     // leadKeyboard only offers the rep the 🤝 live-takeover buttons when
     // isWhatsappLead(lead), so an agent-captured lead mislabelled "advisor" cost

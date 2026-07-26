@@ -530,6 +530,7 @@ class AppState extends ChangeNotifier {
     _searchQuery = '';
     _sortMode = 'match';
     _isAdmin = false;
+    _hasCrmAccess = false;
     _leadLost = false;
     // NOTE: _themeMode is deliberately KEPT — a device display preference.
 
@@ -759,12 +760,22 @@ class AppState extends ChangeNotifier {
     return ProfileSaveResult.ok;
   }
 
-  // Admin (CRM access) — session-derived from `profiles.is_admin` at startup,
-  // not persisted (the edge function re-checks authoritatively). Gates the CRM
-  // entry tile + the /crm route bounce in the router.
+  // Admin — session-derived from `profiles.is_admin` at startup, not persisted
+  // (the edge function re-checks authoritatively). Gates the ANALYTICS entry +
+  // the /analytics route bounce (admin-metrics requires a true admin).
   bool _isAdmin = false;
   bool get isAdmin => _isAdmin;
   void setIsAdmin(bool v) { _isAdmin = v; notifyListeners(); }
+
+  // CRM access — BROADER than isAdmin. crm-api grades access (crm_roles.ts):
+  // is_admin is the superset, and a crm_members row grants `viewer` (read-only)
+  // or `rep` (read + operate leads/conversations). Gating the CRM route on
+  // is_admin alone made that whole layer unreachable — a granted rep could never
+  // open the console the role was designed for. Session-derived, not persisted;
+  // every crm-api call re-checks server-side, so this is a UX gate only.
+  bool _hasCrmAccess = false;
+  bool get hasCrmAccess => _hasCrmAccess;
+  void setHasCrmAccess(bool v) { _hasCrmAccess = v; notifyListeners(); }
 
   // Lead
   String? _leadName; String? _leadPhone; String? _leadProvider; String? _leadPlanId; String? _leadEmail; String? _leadCallbackTime;

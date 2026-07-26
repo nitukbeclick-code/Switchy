@@ -131,10 +131,16 @@ GoRouter createRouter() {
         state.uri.path != '/website') {
       return '/auth';
     }
-    // Admin-only CRM + analytics — a non-admin who deep-links to either bounces
-    // home. The edge function re-checks authoritatively; this is just the UI gate.
-    if ((state.uri.path == '/crm' || state.uri.path == '/analytics') &&
-        !appState.isAdmin) {
+    // CRM + analytics gates. They are NOT the same audience: crm-api grades
+    // access (crm_roles.ts — is_admin, or a crm_members `viewer`/`rep` row), so
+    // the console opens for any granted role, while admin-metrics behind
+    // /analytics still requires a true admin. Gating both on is_admin made the
+    // whole graded-role layer unreachable. The edge functions re-check
+    // authoritatively; this is just the UI gate.
+    if (state.uri.path == '/crm' && !appState.hasCrmAccess) {
+      return '/home';
+    }
+    if (state.uri.path == '/analytics' && !appState.isAdmin) {
       return '/home';
     }
     final isOnboarding = state.uri.path == '/onboarding';

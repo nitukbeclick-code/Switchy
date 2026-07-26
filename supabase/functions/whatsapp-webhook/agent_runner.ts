@@ -57,6 +57,9 @@ export type AgentRunnerDeps = {
   logCrmEvent: (ev: { actor: string; event: string; preview?: string }) => Promise<void> | void;
   // Append a security_audit_log row. Best-effort.
   logSecurityEvent: (event: string, detail: Record<string, unknown>) => Promise<void> | void;
+  // Append an agent_tool_calls row (the analytics table admin-metrics rolls up).
+  // Optional so an existing caller/test compiles unchanged; absent ⇒ no row.
+  logToolCall?: NonNullable<ToolContext["logToolCall"]>;
   // Consent-gated lead capture (production: _shared/leads.ts captureAiLead).
   captureLead: (input: Record<string, unknown>) => Promise<"captured" | "incomplete" | "error">;
   // Hand the conversation to a human (production: create a lead + flip status).
@@ -137,6 +140,7 @@ export function buildAgentToolContext(
     contactId: deps.contactId ?? null,
     logCrmEvent: deps.logCrmEvent,
     logSecurityEvent: deps.logSecurityEvent,
+    logToolCall: deps.logToolCall,
     captureLead: deps.captureLead,
     escalate: (reason: string) => deps.escalate(reason, handoff),
   };

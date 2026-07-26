@@ -35,6 +35,11 @@ const ROLE_CAPS: Record<EffectiveCrmRole, ReadonlySet<CrmCapability>> = {
 /** action → the single capability it requires. Anything absent here is
  *  admin-only (see canDo) — new actions are locked down until mapped. */
 export const ACTION_CAP: Readonly<Record<string, CrmCapability>> = {
+  // Who am I? Returns the caller's own effective role and capabilities so the
+  // console can render the surface they actually hold instead of gating the whole
+  // app on is_admin. Reveals nothing about anyone else, so "read" is the right
+  // floor — every role that may open the console at all may ask this.
+  whoami: "read",
   // read-only surfaces
   overview: "read",
   slaMetrics: "read",

@@ -5,8 +5,8 @@ import type { Lead } from "./types.ts";
 
 export type FollowUp = {
   lead: Lead;
-  kind: "sla" | "callback";
-  urgency: "🟡" | "🟠" | "🔴" | "⏰";
+  kind: "sla" | "callback" | "followup";
+  urgency: "🟡" | "🟠" | "🔴" | "⏰" | "📌";
   ageHours: number;
 };
 
@@ -78,22 +78,57 @@ function isQuietHour(israelHour: number): boolean {
   return israelHour >= 22 || israelHour < 8;
 }
 
-// Plan at most `cap` messages per run: callback pings first (time-sensitive,
-// highest conversion), then SLA escalations oldest-first.
+// A rep-scheduled next action that has come due.
+//
+// WHY THIS EXISTS: every nudge below used to apply ONLY to status='new'. The
+// instant a rep marked a lead 'contacted' — i.e. the instant it became a live
+// opportunity — all automated pressure stopped permanently. Meanwhile crm-api
+// WRITES follow_up_at (setLeadWorkflow / setLeadNote) and READS it back
+// (attentionLeads), so the signal existed but was PULL-ONLY: it surfaced if a
+// human happened to open that view, and pushed nothing.
+//
+// Fires once per scheduled time: nudged_at is stamped on send, so a later
+// nudged_at than follow_up_at means this reminder already went out and the lead
+// stays quiet until the rep schedules a NEW one. No extra column needed.
+function followUpDue(lead: Lead, now: number): boolean {
+  const due = Date.parse(String(lead.follow_up_at ?? ""));
+  if (!Number.isFinite(due) || due > now) return false;
+  const nudged = Date.parse(String(lead.nudged_at ?? ""));
+  return !Number.isFinite(nudged) || nudged < due;
+}
+
+// Plan at most `cap` messages per run, most-specific first:
+//   1. callback pings   — the customer named a time and it's now (best converting)
+//   2. rep follow-ups   — a human explicitly scheduled this next action
+//   3. SLA escalations  — the generic "nobody has touched this" ladder, oldest first
+//
+// STATUS SCOPE: the SLA ladder and callback pings stay 'new'-only (nudging a lead
+// a rep is already working is noise). 'contacted' leads get exactly one thing —
+// the reminder that rep set for themselves.
 export function planFollowUps(openLeads: Lead[], nowMs: number, israelHour: number, cap = 5): FollowUp[] {
   const callbacks: FollowUp[] = [];
+  const followups: FollowUp[] = [];
   const slas: FollowUp[] = [];
+  const ageOf = (lead: Lead) => (nowMs - Date.parse(String(lead.created_at ?? ""))) / HOUR;
   for (const lead of openLeads) {
-    if (String(lead.status ?? "new") !== "new") continue;
+    const status = String(lead.status ?? "new");
+    if (status === "contacted") {
+      // Quiet-hours-gated like every other TEAM-facing nudge.
+      if (!isQuietHour(israelHour) && followUpDue(lead, nowMs)) {
+        followups.push({ lead, kind: "followup", urgency: "📌", ageHours: ageOf(lead) });
+      }
+      continue;
+    }
+    if (status !== "new") continue;
     if (callbackDue(lead, nowMs, israelHour)) {
-      const ageHours = (nowMs - Date.parse(String(lead.created_at ?? ""))) / HOUR;
-      callbacks.push({ lead, kind: "callback", urgency: "⏰", ageHours });
+      callbacks.push({ lead, kind: "callback", urgency: "⏰", ageHours: ageOf(lead) });
       continue; // a callback ping supersedes an SLA nudge this round
     }
     if (isQuietHour(israelHour)) continue;
     const sla = slaDue(lead, nowMs);
     if (sla.due) slas.push({ lead, kind: "sla", urgency: sla.urgency, ageHours: sla.ageHours });
   }
+  followups.sort((a, b) => Date.parse(String(a.lead.follow_up_at ?? "")) - Date.parse(String(b.lead.follow_up_at ?? "")));
   slas.sort((a, b) => b.ageHours - a.ageHours);
-  return [...callbacks, ...slas].slice(0, cap);
+  return [...callbacks, ...followups, ...slas].slice(0, cap);
 }

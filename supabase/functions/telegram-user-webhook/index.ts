@@ -647,6 +647,11 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
         logSecurityEvent: (event, detail) => {
           insertRow("security_audit_log", { event, detail }).catch(() => {});
         },
+        // Deeper per-tool-run audit — the table admin-metrics' tool success-rate
+        // rollup reads. Fire-and-forget; a failed insert never affects the reply.
+        logToolCall: (row) => {
+          insertRow("agent_tool_calls", row).catch(() => {});
+        },
         // Consent-gated lead capture — the SAME honest gate the site/app/WhatsApp
         // paths use. Refuses unless the agent collected consent===true.
         // The channel is overridden here because this bot runs the shared brain as

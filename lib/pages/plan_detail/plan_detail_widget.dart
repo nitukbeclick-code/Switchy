@@ -12,6 +12,7 @@ import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
+import '../../services/plan_cost.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/analytics_service.dart';
 import '../../services/recommendation_engine.dart';
@@ -140,7 +141,11 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
     final bill = appState.currentBill(plan.cat);
     final saveYear = planSaveYear(plan, bill);
-    final cost24 = plan.price * 24;
+    // Was `plan.price * 24` — the PROMO price multiplied out as if permanent,
+    // printed one row under this card's own "מחיר לאחר מבצע". calculatePlanCost
+    // reads the published ladder instead, and returns a RANGE when the catalogue
+    // never said how long the promo runs (we show the range rather than guess).
+    final cost24 = planHasMonthlyTerm(plan) ? calculatePlanCost(plan, months: 24) : null;
     final inCompare = appState.isInCompare(plan.id);
 
     // Compute match once for this plan
@@ -449,10 +454,12 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 value: plan.commitmentLabel,
                                 ffTheme: ffTheme,
                                 isLast: plan.cat == 'abroad'),
-                            if (plan.cat != 'abroad')
+                            if (cost24 != null)
                               _PriceRow(
                                 label: 'עלות ל-24 חודשים',
-                                value: '₪$cost24',
+                                value: cost24.isRange
+                                    ? '₪${cost24.minimum.round()}–₪${cost24.maximum.round()}'
+                                    : '₪${cost24.minimum.round()}',
                                 ffTheme: ffTheme,
                                 isLast: true),
                           ],

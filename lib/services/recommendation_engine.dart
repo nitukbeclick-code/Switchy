@@ -123,7 +123,23 @@ class RecommendationEngine {
   /// Score one plan against the profile.
   static PlanMatch scorePlan(Plan plan, MatchProfile profile) {
     final abroad = profile.category == 'abroad';
-    final saving = profile.currentBill > 0 ? planSaveYear(plan, profile.currentBill) : 0;
+    // A per-MINUTE or per-DAY abroad tariff cannot be annualised against this
+    // profile's bill. For abroad, MatchProfile.currentBill is a per-PACKAGE
+    // figure (recommendation_engine_edge_test pins that contract deliberately),
+    // so package-vs-package x12 is consistent — but ₪1-per-minute against an
+    // ₪80 package is not a comparison at all. It produced the biggest "saving"
+    // in the category, ₪948, purely because a minute is cheaper than a package.
+    //
+    // Narrow on purpose: 'package' and the unset default keep their existing,
+    // tested behaviour, and NO kind-based demotion happens here — the engine is
+    // deliberately kind-agnostic and that demotion lives in data.dart's
+    // saveRank. The plan is still scored and still ranked; only the saving
+    // CLAIM is withheld, because that is the part that cannot be stated truthfully.
+    final unit = plan.priceUnit;
+    final comparableUnit = unit != 'minute' && unit != 'day';
+    final saving = (profile.currentBill > 0 && comparableUnit)
+        ? planSaveYear(plan, profile.currentBill)
+        : 0;
 
     // ── Sub-scores, each 0..1 ────────────────────────────────────────────────
     final priceScore = _priceScore(plan, profile);

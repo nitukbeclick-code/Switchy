@@ -251,6 +251,57 @@ Deno.test("book_callback inherits the consent gate", async () => {
   assert(ok.ok);
 });
 
+// The spoken slot must reach the leads.callback_time COLUMN. It used to live only
+// in the free-text notes, so followup.ts callbackDue() — which switches on the
+// column — hit default:false and the ⏰ callback ping (ranked ABOVE the SLA
+// ladder because it converts best) never fired for the very customers who named
+// a time; the rep card just read "⏰ זמן חזרה מועדף: —".
+Deno.test("book_callback writes the spoken slot to callback_time, not only the notes", async () => {
+  const captured: Record<string, unknown>[] = [];
+  const ctx = fakeCtx({
+    captureLead: (input) => {
+      captured.push(input);
+      return Promise.resolve("captured");
+    },
+  });
+  const r = await bookCallback(ctx, { slot: "בערב", name: "דנה כהן", phone: "0501234567", consent: true });
+  assert(r.ok);
+  assertEquals(captured[0].callback_time, "evening");
+  // The phrase the customer actually used is still preserved for the rep.
+  assert(String(captured[0].notes ?? "").includes("בערב"));
+});
+
+Deno.test("book_callback refuses to GUESS a window it can't recognise", async () => {
+  const captured: Record<string, unknown>[] = [];
+  const ctx = fakeCtx({
+    captureLead: (input) => {
+      captured.push(input);
+      return Promise.resolve("captured");
+    },
+  });
+  await bookCallback(ctx, { slot: "ביום ראשון", name: "דנה כהן", phone: "0501234567", consent: true });
+  assertEquals(captured[0].callback_time, null, "a guessed window pings the rep at a time nobody asked for");
+  assert(String(captured[0].notes ?? "").includes("ביום ראשון"), "…but the phrase still reaches the rep");
+});
+
+// The lead row's channel is the RUNTIME's truth, never the model's. A WhatsApp
+// lead mislabelled "advisor" costs the rep the 🤝 live-takeover buttons, which
+// leadKeyboard gates on isWhatsappLead(lead).
+Deno.test("create_lead stamps the channel from the ToolContext", async () => {
+  const captured: Record<string, unknown>[] = [];
+  const capture = (input: Record<string, unknown>) => {
+    captured.push(input);
+    return Promise.resolve("captured" as const);
+  };
+  const wa = fakeCtx({ channel: "whatsapp", captureLead: capture });
+  await createLead(wa, { name: "דנה כהן", phone: "0501234567", consent: true });
+  assertEquals(captured[0].channel, "whatsapp");
+
+  const site = fakeCtx({ channel: "site", captureLead: capture });
+  await createLead(site, { name: "דנה כהן", phone: "0501234567", consent: true });
+  assertEquals(captured[1].channel, "site");
+});
+
 // ── escalate_to_human: no consent needed; promises a human ONLY when one was
 //    actually raised (truth gate) ───────────────────────────────────────────────
 

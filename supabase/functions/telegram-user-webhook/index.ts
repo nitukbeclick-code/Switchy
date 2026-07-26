@@ -649,7 +649,11 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
         },
         // Consent-gated lead capture — the SAME honest gate the site/app/WhatsApp
         // paths use. Refuses unless the agent collected consent===true.
-        captureLead: (input) => captureAiLead(input as AiLeadInput),
+        // The channel is overridden here because this bot runs the shared brain as
+        // AgentChannel "app" (the coarse union has no telegram member), but the
+        // conversation really happened on Telegram — and the rep's card + the
+        // source funnel must say so.
+        captureLead: (input) => captureAiLead({ ...input, channel: "telegram" } as AiLeadInput),
         // Human escalation — routes into the SAME startHandoff the deterministic
         // wantsHuman path uses (one contract for "raise a human" on this channel),
         // so a customer whose phrasing misses that regex still reaches the team

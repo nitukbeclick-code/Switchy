@@ -35,6 +35,7 @@ import type { AiKeys, ChatTurn } from "../_shared/ai.ts";
 import type { ScorablePlan } from "../_shared/scoring.ts";
 import { type ActiveLead, runAgent as defaultRunAgent, type RunAgentResult } from "../_shared/agent.ts";
 import type { ToolContext } from "../_shared/tools.ts";
+import { CATEGORY_HE } from "../_shared/leads.ts";
 import {
   appendTurn,
   asChatTurns,
@@ -59,20 +60,85 @@ export type AgentRunnerDeps = {
   // Consent-gated lead capture (production: _shared/leads.ts captureAiLead).
   captureLead: (input: Record<string, unknown>) => Promise<"captured" | "incomplete" | "error">;
   // Hand the conversation to a human (production: create a lead + flip status).
-  // Returns whether the takeover landed; the agent reassures the customer either way.
-  escalate: (reason: string) => Promise<boolean> | boolean;
+  // Returns whether the takeover landed. `handoff` carries what the AGENT knows
+  // and the lead row otherwise wouldn't — see HandoffContext.
+  escalate: (reason: string, handoff: HandoffContext) => Promise<boolean> | boolean;
 };
 
+// What the agent hands the human along with the escalation.
+//
+// WHY THIS EXISTS: the rep used to open the call on two exchanges of chat and
+// nothing else. Meanwhile the session already held the customer's category,
+// budget, the plans they explicitly REJECTED and the objections they raised in
+// their own words — none of which could travel, because escalate_to_human's only
+// parameter is a free-text `reason`. Worse, that paraphrase was then written into
+// the lead as "הודעה אחרונה", so the line labelled "what the customer last said"
+// was actually the model's summary of it.
+export type HandoffContext = {
+  /** The customer's ACTUAL message this turn (never the model's paraphrase). */
+  lastMessage: string;
+  /** Canonical Hebrew fact block from the session slots + bill hint. "" when we
+   *  genuinely know nothing — truth-only, never a padded placeholder. */
+  facts: string;
+};
+
+// Render the session's structured knowledge as a short Hebrew block the rep reads
+// BEFORE the transcript (the Telegram card clips notes at 700 chars, so ordering
+// is not cosmetic — facts must fit inside that window).
+//
+// PURE + exported so the contract is pinned in tests. Truth-only: every line is
+// emitted only when the slot actually holds something. Rejected plan ids are
+// resolved against the live catalogue into "ספק — מסלול" because a raw id tells a
+// human nothing; an id with no matching row is dropped rather than printed raw.
+//
+// The phrasing is deliberately the one rep-brief's parseNeed() already reads back
+// out of `notes` (parseAdvisorHints: a category word, a "עד ₪N" budget cue), so
+// the call brief picks these facts up with no extra plumbing.
+export function buildHandoffFacts(
+  slots: Record<string, unknown>,
+  plans: ScorablePlan[] = [],
+  billHint?: { provider?: string; monthly?: number; category?: string },
+): string {
+  const lines: string[] = [];
+  const category = typeof slots.category === "string" ? slots.category : "";
+  const catHe = category ? (CATEGORY_HE[category] ?? category) : "";
+  if (catHe) lines.push(`קטגוריה: ${catHe}`);
+  if (typeof slots.budget === "number" && slots.budget > 0) lines.push(`תקציב: עד ₪${slots.budget}`);
+  if (billHint && typeof billHint.monthly === "number" && billHint.monthly > 0) {
+    lines.push(`חשבון נוכחי: ₪${billHint.monthly}${billHint.provider ? ` (${billHint.provider})` : ""}`);
+  } else if (billHint?.provider) {
+    lines.push(`ספק נוכחי: ${billHint.provider}`);
+  }
+  if (slots.abroad === true) lines.push('מעוניין/ת בחבילת חו"ל');
+  const rejected = Array.isArray(slots.rejectedPlanIds) ? slots.rejectedPlanIds : [];
+  if (rejected.length) {
+    const named = rejected
+      .map((id) => plans.find((p) => p.id === id))
+      .filter((p): p is ScorablePlan => !!p)
+      .map((p) => `${p.provider} — ${p.plan}`);
+    if (named.length) lines.push(`כבר דחה/תה: ${named.slice(0, 3).join(" · ")}`);
+  }
+  const objections = Array.isArray(slots.objections) ? slots.objections : [];
+  const objText = objections.map((o) => String(o ?? "").trim()).filter(Boolean).slice(0, 3);
+  if (objText.length) lines.push(`התנגדויות: ${objText.join(" · ")}`);
+  return lines.map((l) => `• ${l}`).join("\n");
+}
+
 // Build the ToolContext (minus plans + channel, which runAgent injects). Pure:
-// just stitches the deps into the shape the shared tools expect.
-export function buildAgentToolContext(deps: AgentRunnerDeps): Omit<ToolContext, "plans" | "channel"> {
+// just stitches the deps into the shape the shared tools expect. `handoff` is what
+// the escalate sink receives alongside the model's reason; it defaults to empty so
+// a caller that has no session (or a test) behaves exactly as before.
+export function buildAgentToolContext(
+  deps: AgentRunnerDeps,
+  handoff: HandoffContext = { lastMessage: "", facts: "" },
+): Omit<ToolContext, "plans" | "channel"> {
   return {
     conversationId: deps.conversationId ?? null,
     contactId: deps.contactId ?? null,
     logCrmEvent: deps.logCrmEvent,
     logSecurityEvent: deps.logSecurityEvent,
     captureLead: deps.captureLead,
-    escalate: deps.escalate,
+    escalate: (reason: string) => deps.escalate(reason, handoff),
   };
 }
 
@@ -146,7 +212,12 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
       history,
       keys: input.keys,
       plans: input.plans,
-      toolContext: buildAgentToolContext(input.deps),
+      // Built HERE (not at the caller) because only this point holds the loaded
+      // session — the slots are what make the escalation worth anything to a rep.
+      toolContext: buildAgentToolContext(input.deps, {
+        lastMessage: input.message,
+        facts: buildHandoffFacts(session.slots, input.plans, input.billHint),
+      }),
       templateFallback: input.templateFallback,
       billHint: input.billHint,
       knowledgeContext: input.knowledgeContext,

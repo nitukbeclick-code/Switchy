@@ -85,7 +85,7 @@ import { captureAiLead } from "../_shared/leads.ts";
 // reaches a commission-bearing rep is told Switchy may earn a commission — exactly
 // as the agent's create_lead tool does.
 import { COMMISSION_DISCLOSURE } from "../_shared/tools.ts";
-import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
+import { type AgentRunnerDeps, type HandoffContext, runWhatsappAgent } from "./agent_runner.ts";
 // APP-HANDOFF / OPEN-LEAD AWARENESS: the app's team-card deep-links a user with
 // an open lead to this number with a prefilled status inquiry. isLeadStatusInquiry
 // (shared with the agent persona) detects that shape so a FIRST message that is a
@@ -975,6 +975,72 @@ function normalizeLeadPhone(raw: string): string {
 // importers (incl. whatsapp_lead_handoff_test) keep resolving them from this module.
 export { leadPhoneCandidates, lookupOpenLead };
 
+// How much conversation the hand-off lead carries. Was 4 entries (TWO exchanges).
+// The session keeps 12 (_shared/session.ts MAX_TRANSCRIPT), so the rep was reading
+// a third of what the bot had. Bounded by HANDOFF_NOTES_MAX, which stays well
+// under the leads gate's 2000-char cap on notes.
+const HANDOFF_TRANSCRIPT_TURNS = 10;
+const HANDOFF_NOTES_MAX = 1400;
+
+// The hand-off lead's `notes` — the ONLY thing the rep reads before dialling.
+//
+// ORDER IS THE PRODUCT HERE, not formatting: the Telegram rep card clips notes at
+// 700 pre-escape chars (leads.ts buildText), so whatever lands last is what the
+// rep never sees. Facts the agent already established come first, then the real
+// triggering message, then as much transcript as the budget allows.
+//
+// This inverts the old layout, which spent the entire window on the last TWO
+// exchanges and closed with `reason` — the model's paraphrase — under the label
+// "הודעה אחרונה", i.e. the line claiming to be what the customer last said was
+// actually a summary of it. handoff.lastMessage is the customer's real words; the
+// paraphrase is kept, honestly relabelled as the reason for escalating.
+//
+// Pure + exported so the contract is pinned in tests.
+export function buildHandoffNotes(
+  inText: string,
+  history: ChatTurn[],
+  handoff?: HandoffContext,
+): string {
+  const transcript = history
+    .slice(-HANDOFF_TRANSCRIPT_TURNS)
+    .map((h) => `${h.role === "user" ? "לקוח" : "בוט"}: ${h.text}`)
+    .join("\n");
+  const facts = String(handoff?.facts ?? "").trim();
+  // The deterministic handoff path passes the customer's real text as inText and
+  // supplies no handoff at all, so it keeps behaving exactly as before.
+  const lastMessage = String(handoff?.lastMessage ?? "").trim() || inText;
+  return [
+    facts ? `מה שכבר ידוע מהשיחה:\n${facts}` : "",
+    `הודעה אחרונה: ${lastMessage}`,
+    inText && inText !== lastMessage ? `סיבת ההעברה: ${inText}` : "",
+    transcript ? `שיחת WhatsApp:\n${transcript}` : "",
+  ].filter(Boolean).join("\n\n").slice(0, HANDOFF_NOTES_MAX);
+}
+
+// Attach a lead the AGENT captured mid-conversation to this WhatsApp contact.
+//
+// whatsapp_contacts.lead_id is the ONLY join key between a conversation and a
+// lead — public.leads has no conversation_id — and crm-api's conversation views
+// (actions_conversations.ts) plus notify-lead's leadIdForContact both read it.
+// Until now ONLY createHandoffLead wrote it, so a lead captured by create_lead /
+// book_callback was invisible from the CRM conversation view and the rep's relay
+// replies produced un-attributed lead_events rows.
+//
+// Looked up by the LEAD's phone, not the contact's wa_phone: a customer may leave
+// a different callback number, and we must link the row we actually created.
+// Best-effort + fail-soft — a miss just leaves the pre-existing (unlinked) state.
+async function linkContactToLead(contactId: string, leadPhone: string): Promise<void> {
+  const candidates = leadPhoneCandidates(leadPhone);
+  if (!candidates.length || !contactId) return;
+  const list = encodeURIComponent(candidates.map((c) => `"${c}"`).join(","));
+  const rows = await fetchRows<Row>(
+    `/rest/v1/leads?phone=in.(${list})&order=created_at.desc&limit=1&select=id`,
+  );
+  const leadId = rows && rows.length ? rows[0].id : null;
+  if (!leadId) return;
+  await pgPatch("whatsapp_contacts", `id=eq.${contactId}`, { lead_id: leadId });
+}
+
 // Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
 // contact to handed_off. Returns whether the lead landed. Shared by the explicit
 // handoff intent AND the agent's escalate_to_human tool, so both paths behave
@@ -984,11 +1050,12 @@ export { leadPhoneCandidates, lookupOpenLead };
 // human actually takes the conversation over (notify-lead/callbacks.ts flips
 // whatsapp_conversations.bot_enabled on takeover), so the customer is never
 // stranded waiting for a rep.
-async function createHandoffLead(contact: Row, inText: string, history: ChatTurn[]): Promise<boolean> {
-  const transcript = history
-    .slice(-4)
-    .map((h) => `${h.role === "user" ? "לקוח" : "בוט"}: ${h.text}`)
-    .join("\n");
+async function createHandoffLead(
+  contact: Row,
+  inText: string,
+  history: ChatTurn[],
+  handoff?: HandoffContext,
+): Promise<boolean> {
   const rawPhone = String(contact.wa_phone ?? "");
   // Shape the phone to satisfy the leads trigger (`^[+0-9][0-9\-\s]{7,14}$`) —
   // an unnormalized value would be silently rejected by the BEFORE-INSERT gate.
@@ -998,7 +1065,7 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
     name,
     phone,
     source: "whatsapp",
-    notes: `שיחת WhatsApp:\n${transcript}\n\nהודעה אחרונה: ${inText}`.slice(0, 900),
+    notes: buildHandoffNotes(inText, history, handoff),
   }, { returnRep: true });
   // The leads AFTER-INSERT trigger fires notify-lead → Telegram rep card.
   const leadId = created && created.length ? created[0].id : null;
@@ -1444,9 +1511,19 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         preview: ev.preview,
       }),
     logSecurityEvent: (event, detail) => logSecurityEvent(event, detail as Row),
-    captureLead: (lead) => captureAiLead(lead),
-    escalate: (reason) =>
-      contact ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history) : false,
+    // The channel is stated explicitly so the row lands as source="whatsapp":
+    // leadKeyboard only offers the rep the 🤝 live-takeover buttons when
+    // isWhatsappLead(lead), so an agent-captured lead mislabelled "advisor" cost
+    // the rep the ability to take the conversation over from that card.
+    captureLead: async (lead) => {
+      const result = await captureAiLead({ ...lead, channel: "whatsapp" });
+      if (result === "captured" && contact) {
+        await linkContactToLead(String(contact.id), String(lead.phone ?? ""));
+      }
+      return result;
+    },
+    escalate: (reason, handoff) =>
+      contact ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history, handoff) : false,
   };
 
   // Whether this contact has opted out of marketing — computed up here because it

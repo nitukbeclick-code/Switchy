@@ -74,6 +74,7 @@ const SOURCE_HE: Record<string, string> = {
   porting: "ניוד",
   renewal: "חידוש/תום התחייבות",
   whatsapp: "וואטסאפ",
+  telegram: "טלגרם",
 };
 
 function s(v: unknown): string {

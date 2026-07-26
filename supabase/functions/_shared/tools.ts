@@ -42,7 +42,7 @@ import {
   type Plan as CataloguePlan,
 } from "./catalogue.ts";
 import { fetchRows } from "./db.ts";
-import { buildAiLeadRow } from "./leads.ts";
+import { buildAiLeadRow, parseCallbackSlot } from "./leads.ts";
 import { makeReferralCode } from "./referrals.ts";
 import { buildSwitchKit, type SwitchProfile } from "./switch.ts";
 
@@ -740,10 +740,13 @@ export async function createLead(
     phone?: unknown;
     consent?: unknown;
     consent_share?: unknown;
-    channel?: unknown;
     notes?: unknown;
     provider?: unknown;
     category?: unknown;
+    // INTERNAL — not in the tool declaration, so the model can't set it. Passed by
+    // bookCallback after it maps the customer's spoken slot onto the four windows
+    // followup.ts pings on.
+    callback_time?: unknown;
   },
 ): Promise<ToolResult> {
   const consent = args.consent === true || args.consent === "true";
@@ -765,16 +768,25 @@ export async function createLead(
     await audit(ctx, "create_lead", false, "incomplete");
     return { ok: false, reason: "incomplete", note: "צריך שם וטלפון תקין כדי שנחזור אליך." };
   }
-  // Pre-validate the row honestly (also catches bad phone shape) before the write.
-  const dryRow = buildAiLeadRow({
+  // The lead row's channel is OURS, never the model's: ctx.channel is set by the
+  // runtime that owns the conversation. A WhatsApp lead mislabelled "advisor" is
+  // not just wrong bookkeeping — it costs the rep the 🤝 live-takeover buttons
+  // (leadKeyboard gates them on isWhatsappLead). A caller that knows better than
+  // the coarse AgentChannel (the Telegram bot runs as channel "app") overrides it
+  // in its own captureLead wrapper.
+  const leadInput = {
     name,
     phone,
     consent: true,
     consent_share: consentShare,
+    channel: ctx.channel,
     provider: clipStr(args.provider, 120) || undefined,
     category: clipStr(args.category, 40) || undefined,
     notes: clipStr(args.notes, 600) || undefined,
-  });
+    callback_time: args.callback_time,
+  };
+  // Pre-validate the row honestly (also catches bad phone shape) before the write.
+  const dryRow = buildAiLeadRow(leadInput);
   if (!dryRow) {
     await audit(ctx, "create_lead", false, "invalid");
     return { ok: false, reason: "invalid", note: "מספר הטלפון לא נראה תקין — אפשר לבדוק שוב?" };
@@ -784,15 +796,7 @@ export async function createLead(
   let result: "captured" | "incomplete" | "error" = "error";
   if (capture) {
     try {
-      result = await capture({
-        name,
-        phone,
-        consent: true,
-        consent_share: consentShare,
-        provider: clipStr(args.provider, 120) || undefined,
-        category: clipStr(args.category, 40) || undefined,
-        notes: clipStr(args.notes, 600) || undefined,
-      });
+      result = await capture(leadInput);
     } catch (e) {
       result = "error";
       await ctx.logSecurityEvent?.("agent_lead_capture_error", { channel: ctx.channel, error: String(e) });
@@ -981,13 +985,21 @@ export async function bookCallback(
     slot ? `מועד מועדף: ${slot}` : "",
     isVideo ? "בקשת פגישת וידאו (זום)" : "",
   ].filter(Boolean).join(" | ");
-  // Delegate to the same consent-gated lead path (source/notes carry the slot).
+  // Map the spoken slot onto the leads.callback_time vocabulary. Until now the
+  // slot lived ONLY in the free-text notes, so followup.ts callbackDue() — which
+  // switches on the COLUMN — hit its default:false and the ⏰ callback ping (the
+  // highest-converting nudge, ranked above the SLA ladder) never fired for the
+  // very customers who named a time. The phrase stays in notes either way; an
+  // unrecognisable one just yields no window rather than a guessed one.
+  const callbackTime = parseCallbackSlot(slot);
+  // Delegate to the same consent-gated lead path (notes carry the spoken phrase).
   const res = await createLead(ctx, {
     name: args.name,
     phone: args.phone,
     consent: args.consent,
     notes: notes || "בקשת התקשרות",
     category: undefined,
+    callback_time: callbackTime,
     // Video path: record which (verified-supported) provider the meeting is about.
     provider: isVideo ? videoProvider : undefined,
   });
@@ -1567,7 +1579,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "book_callback",
     description:
-      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר בהערות והנציג חוזר. פגישת וידאו (זום): אם המשתמש מבקש פגישת וידאו/זום — העבר meeting_type=\"video\" ואת שם הספק ב-provider; הכלי בודק מראש אם הספק תומך בפגישות וידאו (לא כל הספקים תומכים). אם אינו תומך — הכלי יסרב בנימוס ותציע במקומה שיחה טלפונית רגילה או פנייה לנציג; לעולם אל תבטיח פגישת וידאו לפני שהכלי אישר. שיחה טלפונית רגילה אינה תלויה בספק ואינה נבדקת.",
+      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר על הפנייה (עכשיו/צהריים/ערב/מחר) וגם בהערות, והנציג חוזר בחלון הזה. פגישת וידאו (זום): אם המשתמש מבקש פגישת וידאו/זום — העבר meeting_type=\"video\" ואת שם הספק ב-provider; הכלי בודק מראש אם הספק תומך בפגישות וידאו (לא כל הספקים תומכים). אם אינו תומך — הכלי יסרב בנימוס ותציע במקומה שיחה טלפונית רגילה או פנייה לנציג; לעולם אל תבטיח פגישת וידאו לפני שהכלי אישר. שיחה טלפונית רגילה אינה תלויה בספק ואינה נבדקת.",
     parameters: {
       type: "object",
       properties: {

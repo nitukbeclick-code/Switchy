@@ -127,7 +127,7 @@ export default function CommunityGuidelinesPage() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <header className="mt-4">
-      <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
+        <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
           <Icon name="check" size={14} aria-hidden="true" />
           קהילה בטוחה · שיח מכובד
         </p>

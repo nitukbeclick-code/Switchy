@@ -166,7 +166,7 @@ export default function NegotiatePage() {
           fixed ink fill in both themes. ─────────────────────────────────────── */}
       <section className="relative isolate mt-5 overflow-hidden rounded-3xl border border-border/60 bg-[#111827] px-5 py-12 text-center sm:px-10 sm:py-16">
         <div className="mx-auto max-w-2xl">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-[#4ade80]">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-[#4ade80]">
             <Icon name="spark" size={14} aria-hidden />
             תסריט שימור מבוסס נתונים
           </span>

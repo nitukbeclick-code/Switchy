@@ -41,7 +41,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import Icon from "@/components/Icon";
 import citiesData from "@/data/cities.json";
 import { CATEGORY_HE } from "@/lib/categories";
@@ -238,6 +238,21 @@ const STEP_FIELDS: (keyof LeadFormValues)[][] = [
 
 const STEP_TITLES = ["פרטי קשר", "מה מחפשים?"];
 
+/**
+ * The order a blocked submit's `reason` lists the failing fields in. FIXED, so
+ * the label is stable ("city_consent", never "consent_city") whatever order
+ * react-hook-form happens to report the errors in — an unstable label would
+ * split one funnel leak across several GA4 rows. Field NAMES only: what failed,
+ * never what was typed.
+ */
+const BLOCKED_FIELD_ORDER: (keyof LeadFormValues)[] = [
+  "name",
+  "phone",
+  "city",
+  "category",
+  "consent",
+];
+
 export default function LeadForm({
   source,
   defaultCategory,
@@ -254,6 +269,7 @@ export default function LeadForm({
     register,
     handleSubmit,
     trigger,
+    getFieldState,
     control,
     formState: { errors, isSubmitting },
   } = useForm<LeadFormValues>({
@@ -322,6 +338,35 @@ export default function LeadForm({
   // advance — the denominator for the form's micro-funnel / drop-off analysis.
   const startedRef = useRef(false);
 
+  // …but `lead_form_start` is only the denominator for people who ENGAGED. The
+  // step above it — the form was actually SEEN — had no event at all, so a page
+  // that renders the form 4000px down and one that puts it under the hero were
+  // indistinguishable in the funnel. `lead_form_view` fires once per mount on
+  // the same "half the form on screen" bar the static form uses, so the shared
+  // name means the same thing on both surfaces. Capability-gated: no
+  // IntersectionObserver ⇒ no event, because a form we cannot observe is not a
+  // form we can honestly call seen.
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    const node = formRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === "undefined") return;
+    // A form taller than the viewport can never reach 50% — fall back to the
+    // first pixel there, or the event would simply never fire on a phone.
+    const threshold =
+      node.offsetHeight * 0.5 > window.innerHeight ? 0 : 0.5;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect(); // once per mount — a scroll-past-and-back isn't a second view.
+        trackEvent("lead_form_view", { source });
+      },
+      { threshold },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [source]);
+
   // One ref per step's FIRST actionable input, so a successful next() can
   // programmatically focus the newly-revealed field. On mobile this keeps the
   // soft keyboard up between the steps instead of collapsing (a re-tap per step =
@@ -360,7 +405,25 @@ export default function LeadForm({
 
   async function next() {
     const ok = await trigger(STEP_FIELDS[step], { shouldFocus: true });
-    if (!ok) return;
+    if (!ok) {
+      // A blocked STEP ADVANCE is a blocked submit as far as the funnel is
+      // concerned — it is the same "was stopped at the door" moment the static
+      // site reports. Without this the two surfaces disagree: a static visitor
+      // who fails the name/phone gate emits lead_form_blocked, a web visitor who
+      // fails the identical gate on "המשך" emits nothing, so the web funnel looks
+      // artificially clean. getFieldState is read (not the destructured `errors`)
+      // because that snapshot is from the last render and trigger() has only just
+      // resolved. Field NAMES only, in the fixed order — never a typed value.
+      trackEvent("lead_form_blocked", {
+        source,
+        reason:
+          BLOCKED_FIELD_ORDER.filter(
+            (field) =>
+              STEP_FIELDS[step].includes(field) && getFieldState(field).invalid,
+          ).join("_") || "unknown",
+      });
+      return;
+    }
     // Micro-funnel: start fires once (first valid advance), then a step event per
     // advance so we can see which step bleeds users. Labels only — no PII.
     if (!startedRef.current) {
@@ -470,6 +533,23 @@ export default function LeadForm({
     }
   }
 
+  /**
+   * The submit button was pressed and client-side validation refused it, so the
+   * POST never happened. `lead_form_error` cannot cover this: it only fires for
+   * submits that DID reach /api/lead, which left a blocked submit — the consent
+   * box in particular, the one gate that stops a lead at the very last step —
+   * looking exactly like a silent abandon. `reason` is the coarse group of
+   * fields that failed, never a typed value.
+   */
+  function onInvalid(invalid: FieldErrors<LeadFormValues>) {
+    trackEvent("lead_form_blocked", {
+      source,
+      reason:
+        BLOCKED_FIELD_ORDER.filter((field) => invalid[field]).join("_") ||
+        "unknown",
+    });
+  }
+
   /** Fires the already-wired whatsappClick product event (see lib/tracking). */
   function trackWhatsapp(location: string) {
     trackEvent("outbound_click", { dest: "whatsapp", source, location });
@@ -555,7 +635,8 @@ export default function LeadForm({
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      ref={formRef}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       onKeyDown={(e) => {
         // On non-final steps a single text input implicit-submits on Enter, which
         // would fire a full-form validation/POST against fields not yet entered.

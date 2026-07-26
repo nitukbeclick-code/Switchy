@@ -154,6 +154,10 @@
   var sawTranslatable = false; // the server DID return real text for some batch
   var sawMeta = false; // at least one batch came back from a server that reports meta
   var switchSeq = 0; // bumped on every switch/restore to invalidate stale async work
+  // Analytics bookkeeping for the CURRENT switch (see the lang_switch event below).
+  var liveFetched = false; // did any batch need a LIVE POST (vs the dict/cache)?
+  var userPicked = false; // was this switch an explicit choice from the menu?
+  var autoRestore = false; // set around the load-time replay of a stored preference
 
   // ── config / storage ───────────────────────────────────────────────────────
   function endpoint() { return cfg.url.replace(/\/$/, "") + "/functions/v1/translate"; }
@@ -316,6 +320,14 @@
       }
       return true;
     } catch (e) { return false; }
+  }
+
+  // ── analytics ────────────────────────────────────────────────────────────────
+  // GA4, fire-and-forget (docs/events.md). gtag may be absent on this page, blocked,
+  // consent-denied or simply not loaded yet — translation must NEVER depend on it,
+  // so every call is guarded and a throw is swallowed.
+  function track(name, props) {
+    try { if (typeof window.gtag === "function") window.gtag("event", name, props); } catch (e) { /* analytics is best-effort */ }
   }
 
   // ── collection ──────────────────────────────────────────────────────────────
@@ -567,6 +579,7 @@
               pump();
             };
             if (!need || need.length === 0) { done(); return; }
+            liveFetched = true; // dict/cache did not cover this batch — see lang_switch
             fetchTranslationsRetrying(lang, need, RETRY_MAX).then(function (res) {
               for (var j = 0; j < need.length; j++) {
                 var tr = res[j];
@@ -700,6 +713,16 @@
         // translated. Keep the previous, conservative behaviour.
         rollbackToSource(); showToast(lang, ""); setFailStamp();
       }
+    }
+    // The user's language choice, now that the switch has settled. `resolved_from`
+    // says whether the pre-built /i18n dictionary (or cache) covered it or the live
+    // endpoint was needed — the signal for which of the offered languages deserve a
+    // shipped bundle. NOT fired for the load-time replay of a stored preference
+    // (that is not a choice — see autoRestore), nor for a switch to the language
+    // already active (setLang returns early) or one superseded above.
+    if (userPicked) {
+      userPicked = false;
+      track("lang_switch", { lang: lang, resolved_from: liveFetched ? "live" : "static" });
     }
     records = pruneRecords(records);
     syncTriggers();
@@ -902,6 +925,9 @@
     if (!cfg.url || !cfg.anonKey) { showToast(lang); closeMenu(); return; }
 
     busy = true; committed = false; queuedLang = null; lastDegraded = ""; sawTranslatable = false; sawMeta = false;
+    // Every entry point EXCEPT the load-time replay is a real user selection (the
+    // menu here, and window.SwitchyI18n.setLang from the Next <LanguageSwitcher/>).
+    liveFetched = false; userPicked = !autoRestore; autoRestore = false;
     var myGen = ++switchSeq;
     showBar(); setTriggersBusy(true); hideToast(); closeMenu();
     // Do NOT flip direction yet — the page stays RTL-Hebrew until the first REAL
@@ -1065,7 +1091,12 @@
         // Re-read inside the idle callback: the user may have made a fresh manual
         // choice (or returned to Hebrew) before this fired — never override it.
         var w = storedLang();
-        if (w !== SOURCE && current === SOURCE && !failStampActive()) setLang(w);
+        // Replaying a stored preference is NOT a language choice — autoRestore
+        // suppresses the lang_switch event for this one call.
+        if (w !== SOURCE && current === SOURCE && !failStampActive()) {
+          autoRestore = true;
+          try { setLang(w); } finally { autoRestore = false; }
+        }
       };
       if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 1200 }); else setTimeout(go, 300);
     } else {

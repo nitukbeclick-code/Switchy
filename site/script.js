@@ -403,6 +403,15 @@
         // Move focus to the first invalid field so keyboard/AT users land on it.
         const bad = !nameOk ? nameEl : phoneEl;
         if (bad) bad.focus();
+        // lead_form_blocked — the visitor pressed submit and client-side
+        // validation rejected it. Without this the funnel can't tell "gave up"
+        // from "was stopped at the door". `reason` is the coarse field GROUP
+        // that failed — never what was typed. (The honeypot path above is a bot,
+        // not a blocked human, so it stays silent.)
+        track('lead_form_blocked', {
+          source: location.pathname,
+          reason: !nameOk && !phoneOk ? 'name_phone' : (!nameOk ? 'name' : 'phone'),
+        });
         return;
       }
       // Legal consent gate (Privacy Protection Regulations + Spam/Communications
@@ -418,6 +427,7 @@
         toast('יש לאשר את תנאי השימוש ומדיניות הפרטיות', 'error');
         const badConsent = !termsOk ? termsEl : privacyEl;
         if (badConsent) badConsent.focus();
+        track('lead_form_blocked', { source: location.pathname, reason: 'consent' });
         return;
       }
       const now = new Date().toISOString();
@@ -515,6 +525,27 @@
       }
       showReferralShare();
     });
+    // lead_form_view — the funnel's DENOMINATOR: fires once, when the form is
+    // actually on screen. Deliberately NOT on load: on 269 pages the form sits
+    // below the fold, and counting a form nobody scrolled to as a "view" inflates
+    // every downstream rate (start-per-view, lead-per-view). The observer
+    // disconnects on the first hit, so scrolling away and back doesn't re-fire.
+    // No IntersectionObserver (very old browsers) → no event: a view we can't
+    // verify is worse than a missing one.
+    if ('IntersectionObserver' in window) {
+      // Half the form on screen is the honest bar for "seen", but a form taller
+      // than the viewport can never reach 50% — fall back to first-pixel there
+      // (the same trap the .reveal observer guards against).
+      const viewRatio = form.offsetHeight * 0.5 > window.innerHeight ? 0 : 0.5;
+      const viewIo = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          viewIo.disconnect();
+          track('lead_form_view', { source: location.pathname });
+        });
+      }, { threshold: viewRatio });
+      viewIo.observe(form);
+    }
     // lead_form_start — fires once, the moment the visitor first engages the form.
     // Canonical name matches the web app's LeadForm start event.
     let formStarted = false;
@@ -1041,6 +1072,14 @@
     window.addEventListener('scroll', () => {
       if (!ticking) { ticking = true; requestAnimationFrame(check); }
     }, { passive: true });
+    // check() ran ONLY from the scroll listener, so a page shorter than the
+    // viewport reported zero scroll engagement even though the visitor saw all of
+    // it — `max <= 0` makes pct 100, but no scroll event ever fires to observe
+    // that. Same blind spot on a bfcache restore or an anchor deep-link that
+    // lands mid-page. Prime it once. Deferred to `load` because scrollHeight is
+    // not trustworthy until images have laid out; `fired` keeps it idempotent.
+    if (document.readyState === 'complete') check();
+    else window.addEventListener('load', check, { once: true });
   })();
 
   // ── Sticky mobile CTA ────────────────────────────────────────────────────────
@@ -2112,6 +2151,28 @@
     const form = $('bookForm');
     if (!form) return;
 
+    // meeting_form_view / meeting_form_start — the booking funnel's top two steps.
+    // Booking a meeting is a primary conversion and it fired NOTHING before this,
+    // so a drop-off here was invisible. Same honest bar as the lead form: "seen"
+    // means actually on screen, not merely present in the DOM.
+    if ('IntersectionObserver' in window) {
+      const viewRatio = form.offsetHeight * 0.5 > window.innerHeight ? 0 : 0.5;
+      const viewIo = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          viewIo.disconnect(); // once per load — scrolling back is not a second view
+          track('meeting_form_view', { source: location.pathname });
+        });
+      }, { threshold: viewRatio });
+      viewIo.observe(form);
+    }
+    let bookStarted = false;
+    form.addEventListener('focusin', () => {
+      if (bookStarted) return;
+      bookStarted = true;
+      track('meeting_form_start', { source: location.pathname });
+    });
+
     // The Zoom-supported providers, in EXACT catalogue ids. SINGLE SOURCE OF
     // TRUTH is public.provider_capabilities.supports_zoom_meeting — only these 10
     // are opted in; everyone else is NOT supported and must not be bookable. This
@@ -2409,19 +2470,27 @@
       fieldError(phoneEl, phoneOk ? null : 'נא למלא מספר טלפון נייד תקין');
       fieldError(emailEl, emailOk ? null : 'נא למלא אימייל תקין — לשם יישלח קישור ה-Zoom');
 
+      // meeting_form_blocked — instrumented HERE, at the branch that actually
+      // decides, rather than by watching the note element from outside: the slot
+      // lives in the `chosenSlot` closure variable and never reaches an input, so
+      // any DOM-sniffing observer reports "no slot" on a perfectly filled form.
+      // `reason` is the coarse field group only — never a typed value.
+      const blocked = (reason) => track('meeting_form_blocked', { source: location.pathname, reason: reason });
       if (!nameOk || !phoneOk || !emailOk) {
         setNote('נא למלא שם, טלפון ואימייל תקינים 🙏', true);
         const bad = !nameOk ? nameEl : (!phoneOk ? phoneEl : emailEl);
         if (bad) bad.focus();
+        blocked('contact');
         return null;
       }
-      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return null; }
-      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); return null; }
-      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return null; }
+      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); blocked('provider'); return null; }
+      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); blocked('date'); return null; }
+      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); blocked('slot'); return null; }
       if (!termsOk || !privacyOk) {
         setNote('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', true);
         const badC = !termsOk ? termsEl : privacyEl;
         if (badC) badC.focus();
+        blocked('consent');
         return null;
       }
       return { name: name, phone: phone, email: email };
@@ -2448,6 +2517,7 @@
       } catch (_) {
         const msg = 'לא הצלחנו לשלוח קוד אימות — נסו שוב, או דברו איתנו בוואטסאפ 💬';
         setNote(msg, true);
+        track('meeting_form_error', { source: location.pathname, reason: 'server' });
         toast(msg, 'error');
       }
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
@@ -2473,6 +2543,7 @@
         if (!data || !data.ok) {
           const msg = (data && data.error) ? data.error : 'לא הצלחנו לקבוע את הפגישה — בדקו את הפרטים ונסו שוב, או דברו איתנו בוואטסאפ 💬';
           setNote(msg, true);
+        track('meeting_form_error', { source: location.pathname, reason: 'server' });
           toast(msg, 'error');
         } else {
           track('meeting_booked', { provider: chosenProvider });
@@ -2489,6 +2560,7 @@
       } catch (_) {
         const msg = 'לא הצלחנו לקבוע את הפגישה — נסו שוב, או דברו איתנו בוואטסאפ 💬';
         setNote(msg, true);
+        track('meeting_form_error', { source: location.pathname, reason: 'server' });
         toast(msg, 'error');
       }
       if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.classList.remove('is-loading'); if (vLabel) verifyBtn.textContent = vLabel; }

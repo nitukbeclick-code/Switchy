@@ -1602,6 +1602,16 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    describe, and switches it to --value-ink so it inherits dark parity. */
 .price-hero,
 .calc__resultBig { font-size: clamp(38px, 4.4vw, 52px); font-weight: 800; letter-spacing: -.04em; line-height: 1.1; }
+/* …but NOT the tier's colour. The calculator figure is the one money moment that
+   does not sit on the ivory ground: .calc__card is a PINNED dark ink panel in
+   BOTH themes (see the premium-ink block near the top of this file), and
+   --value-ink is the AA amber tuned for light surfaces — #8A570D on that ink
+   measures 2.73:1, below even the 3:1 large-text floor. The brighter fill shade
+   is the correct token on a dark ground: 6.65:1, and it is what this figure wore
+   before it joined the tier. Same rule as the --lime pin twenty lines up: text on
+   a fixed-dark band needs a fixed-light colour, or theme tokens quietly ruin it.
+   Verified by measuring both, not by eye. */
+.calc__card .calc__resultBig { color: var(--value); }
 .price-row,
 .plan__price b { font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
 .price-stat,

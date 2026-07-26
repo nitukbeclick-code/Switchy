@@ -40,7 +40,7 @@ on:
   workflow_dispatch:
     inputs:
       langs:
-        description: "Comma-separated language codes to warm (blank = the 6 core langs; 'all' = every language)."
+        description: "Comma-separated language codes to warm (blank = the 14 bundled langs; 'all' = every language)."
         required: false
         default: ""
 
@@ -79,7 +79,12 @@ jobs:
       # converge to the full set. Browser-free and secret-free: extracts from the
       # built site/*.html and POSTs to the PUBLIC edge fn with the baked anon key.
       # `all` expands to every language the edge fn supports (mirrors
-      # SUPPORTED_LANGS in supabase/functions/translate/lib.ts); blank = 6 core.
+      # SUPPORTED_LANGS in supabase/functions/translate/lib.ts); blank = the 14
+      # BUNDLED languages (the default list lives in tools/warm-i18n.mjs).
+      #
+      # Since the warmer now requests only the strings a language is MISSING, a
+      # nightly run costs the delta rather than the whole ~9,790-string universe,
+      # so the list converges instead of starving everything after the first few.
       - name: Warm the static /i18n bundles (browser-free, no service-role key)
         continue-on-error: true
         timeout-minutes: 310

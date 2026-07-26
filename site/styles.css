@@ -1710,6 +1710,19 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
   transition: box-shadow .18s, filter .15s, transform .15s var(--ease-spring);
 }
 .plan__cta:hover { filter: brightness(1.06); color: #fff; }
+/* …but NOT on dark. `filter: brightness()` repaints the resolved fill AFTER the
+   cascade, so it moves the ground toward the WHITE label — on dark, where the
+   CTA ground already sits near the AA floor, that is the wrong direction:
+   --cta-bg #0D8060 is 4.91:1 at rest and brightness(1.06) paints it #0E8866 =
+   4.44:1, under the 4.5 minimum. (btn--primary's 1.05 lands at 4.55:1 — passing,
+   but one token nudge from not passing, so it goes too.) The hover affordance is
+   unaffected: both buttons already change box-shadow, and .btn--primary also
+   lifts on translateY. Light mode keeps the brighten exactly as designed.
+   NOTE for the next person: a contrast checker that reads `backgroundImage` will
+   NOT see this — filter is not part of it. scripts/check-cta-contrast.mjs now
+   samples the painted pixel instead, which is the only way to catch it. */
+:root[data-theme="dark"] .btn--primary:hover,
+:root[data-theme="dark"] .plan__cta:hover { filter: none; }
 @media (hover: hover) and (pointer: fine) {
   .plan__cta:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 22px -6px rgba(22,163,74,.55); }
   .plan__cta:hover .ico { transform: translateX(-2px); }

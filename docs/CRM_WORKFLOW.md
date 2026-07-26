@@ -19,8 +19,13 @@
    (superset); אחרת שורת `crm_members` מעניקה `viewer`/`rep`; מי שאין לו אף אחד —
    נדחה. אחריו שער פר-action לפי `canDo` (`_shared/crm_roles.ts`), ו-action ללא
    מיפוי הוא admin-only. ה-gate ב-UI (`CrmConsole` קורא ל-action `whoami` דרך
-   `fetchCrmAccess` ומרנדר רק את מה שהתפקיד באמת מחזיק) הוא ל-UX בלבד — השרת
-   מאמת שוב, fail-closed, וקריאה ישירה ל-action חסום מחזירה 403 גם אם הכפתור הוסתר.
+   `fetchCrmAccess`) הוא ל-UX בלבד — השרת מאמת שוב, fail-closed, וקריאה ישירה
+   ל-action חסום מחזירה 403 גם אם הכפתור הוסתר.
+   **מה ה-UI באמת עושה היום, במדויק:** הוא צורך אך ורק את `can.adminOnly`
+   (`CrmConsole.tsx:100`) כדי להסתיר את שני הטאבים ה-admin-only. `can.read` /
+   `can.writeLeads` / `can.converse` **אינם נצרכים בשום מקום** — כלומר `viewer`
+   (קריאה-בלבד) עדיין רואה את כפתורי הכתיבה ויקבל 403 רק בלחיצה. השרת מגן, אבל
+   ה-UX של viewer עוד לא נבנה. אל תתארו את זה כ"מרנדר רק את מה שהתפקיד מחזיק".
    `admin-metrics` ו-`rep-brief` עדיין `requireAdmin` (is_admin בלבד).
 2. **הדפדפן לא נוגע ב-PII ישירות.** לעולם לא `select` על `leads` / `whatsapp_*` /
    `lead_events` מהלקוח (ה-lockdown של PR #107 מסתיר את כל עמודות ה-PII ממפתחות
@@ -139,13 +144,18 @@
   ברצף **מבטלת את זו שבאמצע**. פרוס **פונקציה אחת בכל פעם** ווודא success לפני הבאה.
 - **Middleware של desktop:** נתיב Next ללא `.html` twin מוגש ב-desktop (כמו `/crm`).
   נתיב חדש → ודא שאין תאום סטטי (`site/<name>.html`).
-- **jsr.io חסום בסביבת הפיתוח המקומית** — `deno task test` מושך `jsr:@std/assert`
-  ולכן לא ירוץ כמות שהוא. מריצים דרך `deno.json` מקומי (מחוץ ל-repo) שממפה
-  `@std/assert` (וגם `jsr:@std/assert`) ל-shim מקומי, ומעבירים אותו ב-`--config`:
-  `cd supabase/functions && deno test --config <path>/deno.offline.json --allow-env --allow-net --allow-read --allow-import tests/`.
-  ה-shim עושה deep-equal **מבני** אמיתי (לא `JSON.stringify` רגיש-לסדר כמו ה-stub
-  הישן), כך שטסטים בסגנון `auditDetail` עוברים מקומית בדיוק כמו ב-CI — **כישלון
-  מקומי הוא כישלון אמיתי**, אל תתעלמו ממנו. (אומת 2026-07-26: 1341 עוברים, 0 נכשלים.)
+- **הפקודה הקנונית היא `deno task test` כמות שהיא** — היא מושכת `jsr:@std/assert`
+  מ-jsr.io, וכך רץ גם ה-CI. אם jsr.io **נגיש** אצלכם, אין כאן שום מלכודת; דלגו.
+  *רק* בסביבה שבה jsr.io חסום (חלק מסוכני ה-CI/סנדבוקסים — 403 גם ישיר וגם דרך
+  proxy) הפקודה לא תרוץ, ואז מייצרים **מקומית, מחוץ ל-repo** (בכוונה — זו מגבלת
+  סביבה, לא נכס של הפרויקט): קובץ shim שמייצא את
+  `assert/assertEquals/assertFalse/assertExists/assertMatch/assertStringIncludes/assertInstanceOf`
+  עם deep-equal **מבני**, ו-`deno.json` שממפה אליו גם את `@std/assert` וגם את
+  `jsr:@std/assert` (וכן stub ריק ל-`jsr:@supabase/functions-js/edge-runtime.d.ts`),
+  ומריצים `deno test --config <אותו קובץ> …`. **אזהרה:** אל תשתמשו ב-stub שמשווה
+  ב-`JSON.stringify` — הוא רגיש-לסדר-מפתחות ומייצר כשלים מדומים בטסטים בסגנון
+  `auditDetail`. עם shim מבני, **כישלון מקומי הוא כישלון אמיתי** ואין להתעלם ממנו.
+  (אומת 2026-07-26 בדרך הזו: 1341 עוברים, 0 נכשלים — זהה ל-CI.)
 - **Vercel free-tier:** מכסת deploy יומית — תצוגות עלולות לא להיבנות. אמת מקומית.
 
 ## 7. Definition of Done (לכל פרוסה)

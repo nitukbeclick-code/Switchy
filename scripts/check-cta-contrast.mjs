@@ -137,7 +137,41 @@ const PROBE = (selector) => {
   const bg = parse(cs.backgroundColor);
   if (!stops.length || bg[3] > 0) stops.push(over(bg));
 
-  return { label: over(parse(cs.color)), stops, text: el.textContent.trim().slice(0, 24) };
+  // FILTER IS NOT PART OF backgroundImage — and it repaints the resolved fill
+  // AFTER the cascade, so a checker that stops at the declared stops reports a
+  // ratio the user never sees. That blind spot shipped once already: a
+  // `filter: brightness(1.06)` hover on .plan__cta took a 4.91:1 dark ground to
+  // 4.44:1 while this script printed a clean pass. Model what we can, and REFUSE
+  // to guess at what we cannot — an unmodelled filter returns a flag that main()
+  // turns into a hard failure, never a silent green.
+  const filter = cs.filter && cs.filter !== "none" ? cs.filter : "";
+  let unmodelled = "";
+  const applyFilter = (c) => {
+    if (!filter) return c;
+    let out = c.slice(0, 3);
+    for (const fn of filter.matchAll(/([a-z-]+)\(([^)]*)\)/gi)) {
+      const [, name, arg] = fn;
+      const n = arg.trim().endsWith("%") ? parseFloat(arg) / 100 : parseFloat(arg);
+      if (name === "brightness" && Number.isFinite(n)) {
+        out = out.map((v) => Math.min(255, Math.max(0, v * n)));
+      } else if (name === "opacity" && Number.isFinite(n)) {
+        out = [0, 1, 2].map((i) => out[i] * n + under[i] * (1 - n));
+      } else if (name === "grayscale" && n === 0) {
+        /* no-op */
+      } else {
+        unmodelled = `${name}(${arg})`;
+      }
+    }
+    return out;
+  };
+
+  return {
+    label: applyFilter(over(parse(cs.color))),
+    stops: stops.map(applyFilter),
+    filter,
+    unmodelled,
+    text: el.textContent.trim().slice(0, 24),
+  };
 };
 
 async function main() {
@@ -178,6 +212,7 @@ async function main() {
                 fill: hex(stop),
                 label: hex(probe.label),
                 cr: ratio(probe.label, stop),
+                unmodelled: probe.unmodelled,
               });
             }
             await page.mouse.move(0, 0);
@@ -213,13 +248,21 @@ async function main() {
     );
   }
   const failed = rows.filter((r) => r.cr < AA);
+  // A filter this script cannot model is NOT a pass — it is an unknown, and an
+  // unknown reported as green is exactly how the hover bug survived the first
+  // run of this gate. Fail loudly and name the function so it can be added.
+  const blind = [...new Set(rows.filter((r) => r.unmodelled).map((r) => r.unmodelled))];
   console.log("─".repeat(78));
+  for (const f of blind) {
+    console.log(`✗ UNMODELLED FILTER \`${f}\` — this script cannot compute the painted`);
+    console.log("  colour through it. Add it to applyFilter() or the number above is a guess.");
+  }
   console.log(
     failed.length
       ? `✗ ${failed.length} measurement(s) below AA ${AA}:1 — worst ${worst.toFixed(2)}:1`
       : `✓ all CTA labels clear AA ${AA}:1 in both themes — worst ${worst.toFixed(2)}:1`,
   );
-  process.exit(failed.length ? 1 : 0);
+  process.exit(failed.length || blind.length ? 1 : 0);
 }
 
 main().catch((err) => {

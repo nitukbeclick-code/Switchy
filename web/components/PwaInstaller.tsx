@@ -338,14 +338,18 @@ export default function PwaInstaller() {
           setClosing(false);
         }
       }}
+      // Lets the bottom-of-viewport contract in globals.css lift this toast clear
+      // of the sticky lead CTA — but ONLY on routes that actually mount one. The
+      // clearance used to be hardcoded here, so on every page without a CTA bar
+      // the toast hovered 7rem off the bottom edge for nothing.
+      data-pwa-toast=""
       className={[
-        // Sits ABOVE the sticky lead CTA, not behind it. At `bottom-4 z-30` this
-        // toast's two buttons were rendered underneath the opaque z-40 CTA bar on
-        // a phone — an opt-in dialog whose only controls could not be tapped. It
-        // now clears the bar's reserved 7rem (matching the body padding in
-        // globals.css) and shares its z-40 layer, falling back to the plain
-        // corner at sm+ where the CTA bar is hidden.
-        "fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] end-4 z-40 sm:bottom-4",
+        // Shares the CTA bar's z-40 layer: at `bottom-4 z-30` this toast's two
+        // buttons rendered underneath the opaque bar on a phone — an opt-in
+        // dialog whose only controls could not be tapped. The vertical offset is
+        // now flag-driven (see `:root[data-sticky-lead] [data-pwa-toast]`), so
+        // the resting position is the plain corner.
+        "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] end-4 z-40 sm:bottom-4",
         "w-[min(20rem,calc(100vw-2rem))]",
         "rounded-2xl border border-border bg-surface p-4 shadow-float",
         // Toast-style slide: GPU-only (transform+opacity), drawer easing. Interruptible

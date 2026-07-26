@@ -223,16 +223,25 @@ export default function WalletClient({ categories }: WalletClientProps) {
           <Icon name="spark" size={16} className="text-value-text" aria-hidden />
           חיסכון שנתי פוטנציאלי (מוערך)
         </p>
-        <p
-          className={[
-            "mt-1.5 font-display font-extrabold leading-none tracking-tight",
-            totalSaving > 0
-              ? "text-5xl text-value-text sm:text-6xl"
-              : "text-3xl text-muted",
-          ].join(" ")}
-        >
-          {totalSaving > 0 ? ilsStat(totalSaving) : "₪0"}
-        </p>
+        {/* THE money moment of this page — the wallet exists to produce exactly
+            this figure, so it takes .price-hero (the one-per-page display tier)
+            instead of the ad-hoc text-5xl/6xl it carried before. That old scale
+            was actually LARGER than the hero tier, which quietly made the whole
+            "one figure per page may be this loud" rule unenforceable: the
+            loudest ₪ on the site lived outside the system that was supposed to
+            own loudness. The ₪ is split into .price-sign here (display tier), so
+            the sign is demoted exactly as it is in the hero hook and the table.
+            The zero state stays quiet ink — nothing to celebrate yet. */}
+        {totalSaving > 0 ? (
+          <p className="price-hero mt-1.5 text-value-text">
+            <span className="price-sign">₪</span>
+            {Math.round(totalSaving).toLocaleString("he-IL")}
+          </p>
+        ) : (
+          <p className="mt-1.5 font-display text-3xl font-extrabold leading-none tracking-tight text-muted">
+            ₪0
+          </p>
+        )}
         {totalSaving > 0 ? (
           <p className="mt-2 text-sm font-medium text-foreground">
             כ-{ilsStat(Math.round(totalSaving / 12))} בכל חודש שנשארים בכיס שלכם.

@@ -470,7 +470,23 @@ export default function ComparisonTable({
             open={filtersOpen}
             onToggle={(event) => setFiltersOpen(event.currentTarget.open)}
           >
-            <summary className="interactive flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent lg:hidden">
+            {/* `lg:hidden` is applied ONLY once the panel is actually open. It
+                used to be unconditional, which sealed the filters shut at lg+ in
+                the window before hydration — and permanently if the JS that
+                resolves `filtersOpen` never ran: a closed <details> whose only
+                control is display:none has no way back. Gating the class on the
+                open state keeps the desktop end-state identical (open panel, no
+                redundant summary) while guaranteeing that whenever the panel is
+                shut there is always something visible to re-open it. On phones
+                the lg: prefix never applies, so mobile is untouched. */}
+            <summary
+              className={[
+                "interactive flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground marker:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                filtersOpen ? "lg:hidden" : "",
+              ]
+                .join(" ")
+                .trim()}
+            >
               <span className="flex items-center gap-2">
                 <Icon name="search" size={16} aria-hidden="true" />
                 סינון ומיון

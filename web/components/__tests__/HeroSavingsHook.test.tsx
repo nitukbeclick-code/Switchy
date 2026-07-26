@@ -56,9 +56,16 @@ describe("HeroSavingsHook — truth-only annual difference", () => {
       screen.getByText(/הפרש שנתי משוער לפי הסכום שהזנתם/),
     ).toBeInTheDocument();
     // The comparison is named, and quotes the EXACT advertised price (₪38.90),
-    // never a rounded-up figure.
+    // never a rounded-up figure. The amount is rendered by <Money>, which wraps
+    // it in a dir="ltr" isolate so the ₪ cannot be re-ordered by the bidi
+    // algorithm inside this Hebrew sentence — hence the figure and its "לחודש"
+    // suffix are deliberately SEPARATE nodes. Assert each, plus the isolate
+    // itself, so a regression that drops the isolation fails here.
     expect(screen.getByText(/סלקום — Talk 100GB/)).toBeInTheDocument();
-    expect(screen.getByText(/₪38\.90 לחודש/)).toBeInTheDocument();
+    const price = screen.getByText("₪38.90");
+    expect(price).toBeInTheDocument();
+    expect(price).toHaveAttribute("dir", "ltr");
+    expect(price.parentElement).toHaveTextContent(/₪38\.90\s*לחודש/);
 
     // The ask that comes with the figure: the on-page consent-gated lead form.
     expect(

@@ -486,7 +486,7 @@ export default async function PlanDetailPage({ params }: Params) {
                       {s.plan}
                     </span>
                     <span className="mt-auto flex items-baseline gap-1">
-                      <span className="font-display text-xl font-bold tracking-tight text-value-text">
+                      <span className="price-stat text-xl text-value-text">
                         ₪{sd.price}
                       </span>
                       <span className="text-xs text-muted">

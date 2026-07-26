@@ -49,6 +49,7 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import PriceCaveat from "@/components/PriceCaveat";
+import Money from "@/components/Money";
 import { ils } from "@/lib/format";
 
 export interface HeroSavingsHookProps {
@@ -188,7 +189,7 @@ export default function HeroSavingsHook({
               <span className="font-medium text-foreground">
                 {cheapestProvider} — {cheapestPlan}
               </span>{" "}
-              החל מ-₪{cheapestPriceText} לחודש. חיסכון בפועל תלוי בתנאי הספק
+              החל מ-<Money text={cheapestPriceText} /> לחודש. חיסכון בפועל תלוי בתנאי הספק
               ואינו מובטח.
             </p>
             <PriceCaveat className="mt-2" />
@@ -214,7 +215,7 @@ export default function HeroSavingsHook({
           // exact dark pattern this component exists to avoid.
           <p className="mt-4 text-sm leading-relaxed text-muted">
             אתם כבר משלמים פחות מהמסלול הזול ביותר שיש לנו ב{categoryLabel} (
-            {cheapestProvider} — {cheapestPlan}, ₪{cheapestPriceText} לחודש), אז
+            {cheapestProvider} — {cheapestPlan}, <Money text={cheapestPriceText} /> לחודש), אז
             אין כאן הפרש להציג.
           </p>
         ) : null}

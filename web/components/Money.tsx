@@ -14,17 +14,24 @@
 
 import { ils } from "@/lib/format";
 
-export interface MoneyProps {
-  /** The amount in ILS (rounded by ils()). */
-  amount: number;
-  /** Optional classes (typography/color) applied to the isolated span. */
-  className?: string;
-}
+/**
+ * Either a raw amount (formatted here by ils(), the rounding single-source) or a
+ * PRE-FORMATTED figure string. The second form exists because the catalogue's
+ * decimal-preserving helper `priceText()` returns a string — "10.90", not 10.9 —
+ * so the highest-value ₪ sites on the site could not use <Money> at all and
+ * hand-rolled `₪{str}` instead, losing the bidi isolate. Accepting the string
+ * removes that blocker without touching the display contract. The union keeps it
+ * honest: exactly one of the two, never both, never neither.
+ */
+export type MoneyProps = { className?: string } & (
+  | { amount: number; text?: never }
+  | { text: string; amount?: never }
+);
 
-export default function Money({ amount, className }: MoneyProps) {
+export default function Money({ amount, text, className }: MoneyProps) {
   return (
     <span dir="ltr" className={className}>
-      {ils(amount)}
+      {text === undefined ? ils(amount as number) : `₪${text}`}
     </span>
   );
 }

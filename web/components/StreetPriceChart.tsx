@@ -151,7 +151,7 @@ function CategoryCard({ agg }: { agg: StreetPriceAggregate }) {
         <>
           <p className="mt-1 text-sm text-foreground">
             חציון:{" "}
-            <span className="font-display text-xl font-bold text-value-text">
+            <span className="price-stat text-xl text-value-text">
               {ils(agg.median)}
             </span>{" "}
             <span className="text-muted">לחודש</span>

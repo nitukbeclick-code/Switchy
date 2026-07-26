@@ -135,30 +135,6 @@ export default function AccessibilityPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
-          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
-          only (no JS) — references the shared --ease-out token and animates ONLY
-          transform + opacity (GPU). Reduced-motion: the animation is removed so
-          blocks render statically at their already-visible resting state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: none; }
-        }
-        /* Heading anchor — faint "#" on hover/focus for deep-linking a section. */
-        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
-        .sw-head:hover .sw-anchor,
-        .sw-head:focus-within .sw-anchor { opacity: 1; }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-          .sw-anchor { transition: none; }
-        }
-      `,
-        }}
-      />
 
       <JsonLd
         data={webPageSchema({

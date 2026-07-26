@@ -197,11 +197,16 @@ export default function Home() {
            slab): a soft mint radial wash over the white --surface. In dark mode the
            panel becomes the dark --surface (still not black) with a faint green glow.
            The headline uses a deep FOREST-GREEN ink (not near-black) that inverts to
-           a soft near-white green on dark; high-contrast a11y mode restores pure ink. */
+           a soft near-white green on dark; high-contrast a11y mode restores pure ink.
+           NO amber wash here, deliberately: this panel is the backdrop the savings
+           figure resolves onto, and that figure is the one amber thing the design
+           allows. A 0.14 amber radial behind it — the largest amber surface on the
+           site — was the payload competing with its own stage. The warmth is the
+           ivory ramp (#fffcf6 → #f7ecd6), a warm NEUTRAL, which is also why the
+           dark variant never needed an amber term to feel like the same panel. */
         .hero-panel {
           background:
             radial-gradient(90% 80% at 92% 0%, rgba(8, 122, 91, 0.16), transparent 64%),
-            radial-gradient(70% 70% at 0% 100%, rgba(211, 154, 36, 0.14), transparent 66%),
             linear-gradient(145deg, #fffcf6, #f7ecd6);
         }
         .hero-ink { color: #14211d; }

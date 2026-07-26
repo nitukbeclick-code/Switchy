@@ -380,20 +380,6 @@ export default async function ServiceHubPage({ params }: Params) {
           not over-delay). Server CSS only (no JS), references the shared --ease-out
           token, animates ONLY transform + opacity. Reduced-motion removes the
           animation so items render statically at their resting (visible) state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-        }
-      `,
-        }}
-      />
 
       {/* GEO structured data: CollectionPage + ItemList + FAQ + Breadcrumb + KnowledgeGraph.
           Each plan's Product data is serialized ONCE in the standalone ItemList
@@ -510,7 +496,7 @@ export default async function ServiceHubPage({ params }: Params) {
           {heroMin != null && (
             <div className="flex items-baseline gap-1.5">
               <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
-              <dd className="font-display text-xl font-bold tracking-tight text-value-text">
+              <dd className="price-stat text-xl text-value-text">
                 <Money amount={heroMin} />
               </dd>
               <span className="text-sm text-muted">החל מ-</span>

@@ -50,21 +50,6 @@ export const revalidate = 3600;
 // the category hub. Kept small so the page stays mobile-light and fast.
 const PREVIEW_PER_CATEGORY = 4;
 
-// Page-scoped entrance reveal (Emil Kowalski rules): fade + lift, <300ms past the
-// initial offset, custom ease-out token, animates ONLY transform + opacity, and
-// disabled under prefers-reduced-motion. Static CSS string → rendered as a plain
-// <style> child (no dangerouslySetInnerHTML, no JS).
-const REVEAL_CSS = `
-.sw-reveal { animation: swReveal 280ms var(--ease-out) both; }
-@keyframes swReveal {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .sw-reveal { animation: none; }
-}
-`;
-
 export const metadata: Metadata = pageMetadata({
   title: "מחירון מלא — מחירי כל מסלולי התקשורת בישראל",
   // Fact-dense, truth-only site-wide TL;DR (total plans, providers, covered
@@ -180,7 +165,6 @@ export default async function PlansPricingPage() {
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
       {/* Entrance-reveal keyframes (static CSS, no JS). */}
-      <style>{REVEAL_CSS}</style>
 
       {/* GEO structured data: CollectionPage + ItemList (the cheapest previewed
           plans, real) + Breadcrumb. */}
@@ -248,7 +232,7 @@ export default async function PlansPricingPage() {
           {overallMin != null && (
             <div className="flex items-baseline gap-2">
               <dt className="text-muted">המחיר הזול ביותר</dt>
-              <dd className="font-display text-xl font-bold tracking-tight text-value-text">
+              <dd className="price-stat text-xl text-value-text">
                 {ils(overallMin)}
               </dd>
             </div>

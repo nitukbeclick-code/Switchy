@@ -397,20 +397,6 @@ export default async function ServiceCityPage({ params }: Params) {
           references the shared --ease-out token, animates ONLY transform + opacity.
           Reduced-motion removes the animation so the header renders statically at
           its resting (fully visible) state. */}
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
-        @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .sw-reveal { animation: none; }
-        }
-      `,
-        }}
-      />
 
       {/* GEO structured data: CollectionPage + Place/GeoCoordinates/AdminArea +
           ItemList + FAQ + Breadcrumb + KnowledgeGraph + KnowledgeWeb. Each plan's
@@ -543,7 +529,7 @@ export default async function ServiceCityPage({ params }: Params) {
           {heroMin != null && (
             <div className="flex items-baseline gap-1.5">
               <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
-              <dd className="font-display text-xl font-bold tracking-tight text-value-text">
+              <dd className="price-stat text-xl text-value-text">
                 <Money amount={heroMin} />
               </dd>
               <span className="text-sm text-muted">החל מ-</span>

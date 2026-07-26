@@ -394,7 +394,7 @@ export default async function ProviderPage({ params }: Params) {
           </div>
           <div className="bento px-5 py-4">
             <dt className="text-muted">מחיר התחלתי</dt>
-            <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-value-text">
+            <dd className="mt-0.5 price-stat text-2xl text-value-text">
               {shownMinPriceText}
             </dd>
           </div>
@@ -468,7 +468,7 @@ export default async function ProviderPage({ params }: Params) {
                 <p className="mt-1.5 font-display font-semibold text-ink">
                   {plan.plan}
                 </p>
-                <p className="mt-2 font-display text-3xl font-bold tracking-tight text-value-text">
+                <p className="mt-2 price-stat text-3xl text-value-text">
                   {ils(plan.price)}
                 </p>
                 <Link

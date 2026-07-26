@@ -243,10 +243,17 @@ html {
   scroll-padding-top: 4.5rem;
 }
 
+/* The page ground is a WARM NEUTRAL, not a tinted accent. It used to carry a
+   decorative amber radial alongside the green one, which put the site's rarest
+   signal — amber means money, and only money — into the background of every
+   single page. The one figure allowed to be amber was competing with the surface
+   under it. The warmth people actually read here comes from the ivory ramp
+   (#fbf7ef → --background), a chosen warm neutral rather than an accent wash, so
+   removing the amber costs the page nothing and gives the money its monopoly
+   back. The faint green stays: green is ACTION, and it is everywhere anyway. */
 body {
   background:
     radial-gradient(circle at 86% 5%, rgba(8, 122, 91, 0.10), transparent 30rem),
-    radial-gradient(circle at 10% 22%, rgba(211, 154, 36, 0.10), transparent 25rem),
     linear-gradient(180deg, #fbf7ef 0, var(--background) 38rem);
   background-color: var(--background);
   color: var(--foreground);
@@ -375,6 +382,21 @@ h4 {
 }
 :root[data-consent-open] [data-sticky-lead-cta] {
   transform: translateY(100%);
+}
+/* (3) CLEAR ONLY WHAT IS THERE. The PWA install toast has to sit above the CTA
+       bar or its two buttons end up under an opaque z-40 surface — but it used
+       to hardcode that 7rem clearance on EVERY route, so on the many pages that
+       never mount a sticky CTA (/privacy, /terms, /community …) the toast floated
+       a hand's width off the bottom edge for no reason. It now rests in the
+       corner and is lifted by the same `data-sticky-lead` flag that pays for the
+       bar, so the offset exists exactly when the bar does. */
+:root[data-sticky-lead] [data-pwa-toast] {
+  bottom: calc(7rem + env(safe-area-inset-bottom));
+}
+@media (min-width: 640px) {
+  :root[data-sticky-lead] [data-pwa-toast] {
+    bottom: 1rem;
+  }
 }
 
 /* Horizontal scroll-shadow affordance (used on the comparison-table wrapper).
@@ -746,9 +768,19 @@ button.crm-overlay-btn:not([disabled]):active {
                     still larger, heavier, tabular and amber, so it can never be
                     mistaken for the .h-section (1.25rem/600 ink) headings or the
                     plan-name links it sits under.
+     .price-stat  — money that sits INLINE beside a non-money figure: a <dd> in a
+                    hero stat row ("18 ספקים" / "מ-₪39"), a median inside a
+                    sentence. It sets NO font-size on purpose. These figures must
+                    stay the same size as the ink stat next to them or the row
+                    stops aligning, so the size is owned by the local utility and
+                    this tier contributes only the money TREATMENT — Rubik,
+                    tabular, tight tracking. A first pass tried to cover these
+                    with .price-row and the size collision is why they were left
+                    off-system entirely; naming the real third context is better
+                    than nine hand-rolled amber scales pretending not to exist.
 
-   NOTHING that is not a ₪ figure or a savings number may use either tier, and no
-   other type rank on the site may be amber. Pair both with `text-value-text`
+   NOTHING that is not a ₪ figure or a savings number may use any tier, and no
+   other type rank on the site may be amber. Pair them with `text-value-text`
    (the AA amber) so the figure is the only amber thing in view. Composition is
    identical for the two tiers and is RTL-safe — ₪ is a sibling span, never a
    pseudo-element, so bidi orders it with the digit run and screen readers still
@@ -760,22 +792,39 @@ button.crm-overlay-btn:not([disabled]):active {
      <p class="price-row text-value-text"><span class="price-sign">₪</span>79</p>
      <p class="price-unit">לחודש</p>
 
-   ONE ₪ TREATMENT. `.price-sign` and `.price-unit` are shared by BOTH tiers and
-   are the only sanctioned way to set them; the hero used to hardcode its own
-   `align-super text-[0.42em]` with no colour, which is why the hero's ₪ was
-   amber while every other ₪ on the site was muted. Everything scales off `em`,
-   so the pair needs no per-tier variant — if a tier ever genuinely does, add a
-   documented modifier class HERE, never an arbitrary-value one-off at the call
-   site.
+   ONE ₪ TREATMENT, AND ITS SCOPE. `.price-sign` and `.price-unit` are shared by
+   the two DISPLAY tiers and are the only sanctioned way to set them; the hero
+   used to hardcode its own `align-super text-[0.42em]` with no colour, which is
+   why the hero's ₪ was amber while every other ₪ on the site was muted.
+   Everything scales off `em`, so the pair needs no per-tier variant — if a tier
+   ever genuinely does, add a documented modifier class HERE, never an
+   arbitrary-value one-off at the call site.
+
+   The demotion is DELIBERATELY display-only. Muting and raising the ₪ is a
+   typographic move that earns its keep at 40px and 24px, where a full-size sign
+   competes with the figure it belongs to. At the ~20px of an inline stat it
+   would read as a rendering fault, not a decision — so `.price-stat` keeps the
+   sign with its digits, at the digits' colour. That is why `.price-stat` sites
+   render `<Money>` (which owns the bidi isolate) rather than splitting the sign
+   into a sibling span: at that size there is nothing to split.
 
    Rubik is loaded as the full variable axis (layout.tsx, no `weight` array), so
    weights 700/800 cost zero extra bytes over the 400/600 already in use.
 
    THE HEADING TIERS (.h-pillar / .h-section) replace the flat single 24px rank
-   the page had: one pillar per section band, .h-section for everything under it.
-   Two tiers is a hierarchy; one tier is a list. Both inherit the tighter optical
-   tracking the h1–h4 rules above set, stated explicitly so the class works on a
-   <p> or a <div> too. .eyebrow is the small spaced label that sits above a pillar. */
+   the page had. Both inherit the tighter optical tracking the h1–h4 rules above
+   set, stated explicitly so the class works on a <p> or a <div> too. .eyebrow is
+   the small spaced label that sits above a pillar.
+
+   WHEN TO REACH FOR .h-pillar — and mostly, don't. The page <h1> (text-3xl/4xl)
+   is already the rank above .h-section, so an ordinary page HAS its two tiers
+   without a pillar anywhere. .h-pillar is a THIRD rank that only earns its place
+   when a page is long enough that its sections group into BANDS and the reader
+   needs to know where one band ends — today that is the homepage (16 sections)
+   and essentially nothing else. On a five-section page it encodes nothing, and a
+   structural device that encodes nothing is decoration. If you are adding one
+   because a page "looks flat", the answer is usually spacing or density, not a
+   fourth type size. */
 .price-hero,
 .price-row {
   font-family: var(--font-rubik), system-ui, sans-serif;
@@ -795,6 +844,14 @@ button.crm-overlay-btn:not([disabled]):active {
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+/* No font-size and no line-height: both belong to the stat row this sits in, so
+   the money figure and the ink figure beside it stay on one baseline. */
+.price-stat {
+  font-family: var(--font-rubik), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 /* The currency mark is a SIBLING of the digits, demoted so the number itself
    carries the weight — a full-size ₪ steals about a fifth of the figure's

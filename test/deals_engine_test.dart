@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chosech/data.dart';
 import 'package:chosech/services/backend/backend.dart';
+import 'package:chosech/services/plan_cost.dart';
 import 'package:chosech/pages/deals/deals_engine.dart';
 
 /// Tests for the pure [DealsEngine] — the honest price-drop diff behind the
@@ -100,6 +101,67 @@ void main() {
 
     test('empty input yields no drops', () {
       expect(DealsEngine.dropsFrom(const []), isEmpty);
+    });
+  });
+
+  // The push notification quotes this figure straight to someone's phone.
+  group('annualSaving does not annualise a promo the headline just started', () {
+    // A real catalogue plan whose price is a promo with a published ladder.
+    final promo = allPlans.firstWhere(
+      (p) =>
+          planHasMonthlyTerm(p) &&
+          calculatePlanCost(p, months: 12).maximum > p.priceValue * 12,
+      orElse: () => allPlans.first,
+    );
+
+    test('the fixture really is a step-up plan (guards a vacuous pass)', () {
+      // orElse would hand back a flat plan and every assertion below would hold
+      // trivially. If the catalogue ever stops carrying a laddered plan, fail
+      // here rather than quietly stop testing the thing this group is about.
+      expect(
+        calculatePlanCost(promo, months: 12).maximum,
+        greaterThan(promo.priceValue * 12),
+      );
+    });
+
+    test('nets the year at the old price against the real 12-month cost', () {
+      // The snapshot's NEW price is the plan's current catalogue price, which is
+      // the case in production — plan_price_history records that same price.
+      final oldPrice = promo.priceValue + 60;
+      final drops = DealsEngine.dropsFrom([
+        snap(promo.id, oldPrice, base, cat: promo.cat, provider: promo.provider),
+        snap(promo.id, promo.priceValue, base.add(const Duration(days: 1)),
+            cat: promo.cat, provider: promo.provider),
+      ]);
+      expect(drops, hasLength(1));
+      final d = drops.single;
+      final cost = calculatePlanCost(promo, months: 12);
+      expect(d.annualSaving, (oldPrice * 12 - cost.maximum).round().clamp(0, 999999));
+      // …and it never exceeds the naive figure this replaced.
+      expect(d.annualSaving, lessThanOrEqualTo((d.dropAmount * 12).round()));
+    });
+
+    test('falls back to the plain drop when the catalogue price has moved on', () {
+      // Synthetic snapshot prices that match no catalogue row: the ladder we
+      // hold describes a different price than the one that dropped, so mixing
+      // the two sources is refused and the plain drop stands.
+      final drops = DealsEngine.dropsFrom([
+        snap(realPlanId, 50, base),
+        snap(realPlanId, 40, base.add(const Duration(days: 1))),
+      ]);
+      expect(drops.single.annualSaving, 120); // 10 * 12, unchanged
+    });
+
+    test('never returns a negative saving', () {
+      final drops = DealsEngine.dropsFrom([
+        snap(promo.id, promo.priceValue + 3, base,
+            cat: promo.cat, provider: promo.provider),
+        snap(promo.id, promo.priceValue, base.add(const Duration(days: 1)),
+            cat: promo.cat, provider: promo.provider),
+      ]);
+      for (final d in drops) {
+        expect(d.annualSaving, greaterThanOrEqualTo(0));
+      }
     });
   });
 }

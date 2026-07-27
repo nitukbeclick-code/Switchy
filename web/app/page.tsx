@@ -31,6 +31,8 @@ import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils } from "@/lib/format";
 import { priceText } from "@/lib/plan-display";
+import { calculateTwelveMonthCost } from "@/lib/plan-cost";
+import type { Plan } from "@/lib/types";
 
 // GENERAL_FAQ items are {question, answer} (QA); <FaqAccordion> renders {q, a}.
 // Map them here so the SAME canonical home FAQ copy drives both the visible
@@ -53,6 +55,17 @@ function cheapestIn(cat: string, n: number) {
     .filter(isConsumerHeadlinePlan)
     .sort((a, b) => a.price - b.price)
     .slice(0, n);
+}
+
+// What a plan really costs per month across its first twelve, once any published
+// promo ladder is taken into account. The DISPLAYED price stays the advertised
+// headline — that is what the visitor would be quoted on day one, and it is
+// correct — but a headline that expires inside the year is not a year's price,
+// so the hook's arithmetic runs on this instead. Where the catalogue publishes a
+// promo without its duration the engine returns a range and this takes the
+// costliest end: the smallest defensible claim.
+function effectiveMonthly(plan: Plan): number {
+  return Math.round((calculateTwelveMonthCost(plan).maximum / 12) * 100) / 100;
 }
 
 // The REAL catalogue entry price for a category (lowest numeric price), or null
@@ -280,7 +293,7 @@ export default function Home() {
             <HeroSavingsHook
               className="mt-6"
               categoryLabel={featuredLabel}
-              cheapestPrice={cheapestFeatured.price}
+              effectiveMonthly={effectiveMonthly(cheapestFeatured)}
               cheapestPlan={cheapestFeatured.plan}
               cheapestProvider={cheapestFeatured.provider}
               cheapestPriceText={minFeaturedText}

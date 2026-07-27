@@ -10,9 +10,11 @@
 // the only interaction above the fold and the only orchestrated motion on the page.
 //
 // HONESTY (E-E-A-T, ABSOLUTE): the arithmetic is byte-for-byte the app's shipped
-// savings contract — `max(0, round((bill − cheapestPrice) × 12))`, the same
-// annualSaving() that drives app/wallet/WalletClient.tsx and planSaveYear. The
-// comparison price is a REAL catalogue figure resolved server-side and passed in
+// savings contract — `max(0, round((bill − effectiveMonthly) × 12))`, the same
+// annualSaving() that drives app/wallet/WalletClient.tsx and planSaveYear. Note
+// effectiveMonthly, not the headline rendered beside it: a promo price that
+// expires inside the year is not a year's price. Both figures are REAL catalogue
+// values resolved server-side and passed in
 // (page.tsx already computes it for the trust band), so this component holds no
 // catalogue of its own and cannot drift from it. Consequences of that contract:
 //   • Nothing is shown until the visitor enters their own number — we never seed,
@@ -55,8 +57,15 @@ import { ils } from "@/lib/format";
 export interface HeroSavingsHookProps {
   /** Hebrew label of the featured category, e.g. "סלולר". */
   categoryLabel: string;
-  /** REAL cheapest headline price in that category (₪/month) — the arithmetic base. */
-  cheapestPrice: number;
+  /**
+   * What the cheapest plan really costs per month across its first twelve, once
+   * any published promo ladder is taken into account — the arithmetic base, and
+   * the ONLY numeric price this component takes. Equal to the headline for a flat
+   * plan; on internet the two differ by ₪1,000 a year, which is why the headline
+   * is passed separately as display TEXT (cheapestPriceText) and can never be
+   * mistaken for something to compute with.
+   */
+  effectiveMonthly: number;
   /** REAL cheapest plan's display name (catalogue). */
   cheapestPlan: string;
   /** REAL cheapest plan's provider (catalogue). */
@@ -74,13 +83,19 @@ export interface HeroSavingsHookProps {
 }
 
 /**
- * Annual difference = ((bill − cheapestPrice) × 12), clamped to ≥ 0. Deliberately
- * identical to WalletClient's annualSaving() so the two surfaces can never quote
- * the visitor two different numbers for the same bill.
+ * Annual difference = a year of the bill minus a year of what the plan REALLY
+ * costs, clamped to ≥ 0. Deliberately identical to WalletClient's annualSaving()
+ * so the two surfaces can never quote the visitor two different numbers for the
+ * same bill.
+ *
+ * The second argument is the EFFECTIVE monthly cost, not the advertised headline
+ * rendered beside it. פרטנר Fiber 1000Mb is the cheapest internet plan at a ₪39
+ * headline and costs ₪1,468 across its first year; netting the headline off a
+ * ₪140 bill put ₪1,212 a year on the home page where the honest figure is ₪212.
  */
-export function annualDifference(bill: number, cheapestPrice: number): number {
+export function annualDifference(bill: number, effectiveMonthly: number): number {
   if (!Number.isFinite(bill) || bill <= 0) return 0;
-  return Math.max(0, Math.round((bill - cheapestPrice) * 12));
+  return Math.max(0, Math.round((bill - effectiveMonthly) * 12));
 }
 
 /** Parse a possibly-messy numeric input into a non-negative integer, or 0. */
@@ -91,7 +106,7 @@ function parseBill(raw: string): number {
 
 export default function HeroSavingsHook({
   categoryLabel,
-  cheapestPrice,
+  effectiveMonthly,
   cheapestPlan,
   cheapestProvider,
   cheapestPriceText,
@@ -107,7 +122,7 @@ export default function HeroSavingsHook({
   const [committed, setCommitted] = useState("");
 
   const bill = parseBill(committed);
-  const diff = annualDifference(bill, cheapestPrice);
+  const diff = annualDifference(bill, effectiveMonthly);
   // Three states, in order of what the visitor has actually told us: nothing yet,
   // a bill that is already at/below the catalogue floor, and a real difference.
   const answered = bill > 0;

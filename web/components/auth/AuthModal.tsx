@@ -16,6 +16,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { getBrowserSupabase, SUPABASE_CONFIGURED } from "@/lib/supabase-browser";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 
@@ -185,7 +186,19 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
 
   if (!open) return null;
 
-  return (
+  // PORTALLED TO <body> ON PURPOSE — `position: fixed` is NOT enough.
+  //
+  // A non-`none` `backdrop-filter` on any ancestor makes that ancestor the
+  // containing block for fixed-position descendants, so this overlay resolves
+  // against the ancestor instead of the viewport. The site header's mobile panel
+  // carries `backdrop-blur`, and rendering the modal inside it collapsed this
+  // full-screen overlay to a sliver — measured in Chromium: 272×16px at x=742
+  // inside a `w-64 backdrop-blur` panel, versus the correct 1024×768 when the
+  // same markup sits under a panel without the blur.
+  //
+  // jsdom does not lay out, so no component test in this repo can catch that
+  // regression; the portal removes the whole class of it for every caller.
+  const overlay = (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
       onMouseDown={(e) => {
@@ -334,6 +347,11 @@ export default function AuthModal({ open, onClose, defaultMode = "signin" }: Aut
       </div>
     </div>
   );
+
+  // `document` is undefined during SSR; the modal only ever opens from a click,
+  // so there is nothing to render server-side anyway.
+  if (typeof document === "undefined") return overlay;
+  return createPortal(overlay, document.body);
 }
 
 /** In-flight spinner shown in place of the provider mark while redirecting. */

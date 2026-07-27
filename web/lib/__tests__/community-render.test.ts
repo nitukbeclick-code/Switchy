@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
-import { clip, heDate, initial, relativeTime, renderBody } from "@/lib/community-render";
+import {
+  clip,
+  heCount,
+  heDate,
+  initial,
+  relativeTime,
+  renderBody,
+} from "@/lib/community-render";
 
 // ────────────────────────────────────────────────────────────────────────────
 // lib/community-render.tsx — the shared community presentation helpers, hoisted
@@ -153,5 +160,50 @@ describe("renderBody", () => {
     ) as ReactElement<{ className: string; children: string }>;
     expect(mention.props.children).toBe("@dana");
     expect(mention.props.className).toBe("font-semibold text-accent-text");
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// heCount — Hebrew number agreement. The bug this replaces was "1 תגובות",
+// which a low-traffic community rendered on nearly every row (the Q&A hub only
+// lists posts with reply_count >= 1, and the trending strip only lists posts
+// with reply_count >= 1 — so the single most common badge was the broken one).
+// ────────────────────────────────────────────────────────────────────────────
+
+describe("heCount", () => {
+  it("agrees the singular with the noun's gender", () => {
+    expect(heCount(1, "reply")).toBe("תגובה אחת");
+    expect(heCount(1, "conversation")).toBe("שיחה אחת");
+    expect(heCount(1, "like")).toBe("לייק אחד");
+    expect(heCount(1, "post")).toBe("פוסט אחד");
+  });
+
+  it("uses the counting form for exactly two", () => {
+    expect(heCount(2, "reply")).toBe("שתי תגובות");
+    expect(heCount(2, "conversation")).toBe("שתי שיחות");
+    expect(heCount(2, "like")).toBe("שני לייקים");
+    expect(heCount(2, "post")).toBe("שני פוסטים");
+  });
+
+  it("uses numeral + plural from three up", () => {
+    expect(heCount(3, "reply")).toBe("3 תגובות");
+    expect(heCount(11, "post")).toBe("11 פוסטים");
+    expect(heCount(1234, "like")).toBe("1,234 לייקים");
+  });
+
+  it("never renders the ungrammatical '1 <plural>' shape", () => {
+    for (const noun of ["reply", "conversation", "like", "post"] as const) {
+      expect(heCount(1, noun)).not.toMatch(/^1\s/);
+    }
+  });
+
+  it("floors zero / negative / non-finite input to a plural zero", () => {
+    expect(heCount(0, "reply")).toBe("0 תגובות");
+    expect(heCount(-4, "reply")).toBe("0 תגובות");
+    expect(heCount(Number.NaN, "reply")).toBe("0 תגובות");
+  });
+
+  it("truncates a fractional count rather than inventing a rounded one", () => {
+    expect(heCount(1.9, "reply")).toBe("תגובה אחת");
   });
 });

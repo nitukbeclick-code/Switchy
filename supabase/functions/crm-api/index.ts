@@ -66,7 +66,9 @@ import {
 import {
   actAddNote,
   actAttentionLeads,
+  actAssignLead,
   actClaimLead,
+  actReleaseLead,
   actGetLeadDetail,
   actListLeads,
   actListSellableLeads,
@@ -183,6 +185,10 @@ Deno.serve(async (req: Request) => {
         return await actRecordSaving(body, access.uid);
       case "claimLead":
         return await actClaimLead(body, access.uid);
+      case "releaseLead":
+        return await actReleaseLead(body, access.uid);
+      case "assignLead":
+        return await actAssignLead(body, access.uid);
       case "repLeaderboard":
         return await actRepLeaderboard();
       case "listMeetings":

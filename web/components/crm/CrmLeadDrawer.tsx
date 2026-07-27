@@ -17,8 +17,10 @@ import { useAuth } from "@/lib/auth-context";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import {
   addCrmNote,
+  assignCrmLead,
   claimCrmLead,
   type CrmFailure,
+  type CrmFetch,
   type CrmLeadDetail,
   type CrmLeadEvent,
   fetchCrmLeadDetail,
@@ -28,6 +30,7 @@ import {
   type LeadPriority,
   type LeadStatus,
   recordCrmSaving,
+  releaseCrmLead,
   setCrmLeadNote,
   setCrmLeadStatus,
   setCrmLeadWorkflow,
@@ -79,6 +82,7 @@ export default function CrmLeadDrawer({
   prevId,
   nextId,
   onNavigate,
+  canAdmin = false,
 }: {
   leadId: string;
   onClose: () => void;
@@ -88,6 +92,12 @@ export default function CrmLeadDrawer({
   nextId?: string | null;
   /** Page to another lead — the parent swaps selectedId and remounts the drawer. */
   onNavigate?: (id: string) => void;
+  /** Does the caller hold `admin_only` (from crm-api whoami)? Gates the
+   *  release/reassign controls, which are admin-only server-side.
+   *  DEFAULTS FALSE, and that direction matters: this is a display gate on top of
+   *  a fail-closed server check, so a missing prop must hide the control rather
+   *  than offer a button that always 403s. crm-api remains the real gate. */
+  canAdmin?: boolean;
 }) {
   const [data, setData] = useState<{ lead: CrmLeadDetail; events: CrmLeadEvent[] } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,6 +112,9 @@ export default function CrmLeadDrawer({
   const [note, setNote] = useState("");
   const [mainNote, setMainNote] = useState("");
   const [savingInput, setSavingInput] = useState("");
+  // Release/reassign inputs (admin-only controls, rendered only when claimed).
+  const [releaseReason, setReleaseReason] = useState("");
+  const [assignTo, setAssignTo] = useState("");
   const [priority, setPriority] = useState<LeadPriority>("normal");
   const [followUpAt, setFollowUpAt] = useState("");
   const [followUpNote, setFollowUpNote] = useState("");
@@ -221,6 +234,32 @@ export default function CrmLeadDrawer({
     [actionBusy, reload, onChanged],
   );
 
+  // Like runAction, but for the mutations that return a TYPED outcome instead of
+  // a bare boolean. Release/reassign each have failure modes the operator has to
+  // be able to read — "nobody holds this lead" (409), "you are not an admin"
+  // (403), "no such lead" (404) — and runAction would render all three as the
+  // same "הפעולה נכשלה. נסו שוב." on a control whose whole job is taking a lead
+  // away from a colleague. `okMsg` is a function so the message can name what the
+  // server actually reported (who held it) rather than what we hoped.
+  const runTypedAction = useCallback(
+    async <T,>(fn: () => Promise<CrmFetch<T>>, okMsg: (v: T) => string): Promise<boolean> => {
+      if (actionBusy) return false;
+      setActionBusy(true);
+      setNotice(null);
+      const res = await fn();
+      setActionBusy(false);
+      if (res.failure) {
+        setNotice({ text: res.failure.message, ok: false });
+        return false;
+      }
+      setNotice({ text: okMsg(res.data), ok: true });
+      await reload();
+      onChanged?.();
+      return true;
+    },
+    [actionBusy, reload, onChanged],
+  );
+
   const repName = (profile?.name ?? "").trim() || "מנהל";
 
   const onAddNote = useCallback(async () => {
@@ -243,6 +282,39 @@ export default function CrmLeadDrawer({
   const onClaim = useCallback(() => {
     void runAction(() => claimCrmLead(leadId, repName), `הליד שויך ל${repName}.`);
   }, [leadId, repName, runAction]);
+
+  const onRelease = useCallback(() => {
+    void runTypedAction(
+      () => releaseCrmLead(leadId, releaseReason.trim() || undefined),
+      (r) =>
+        r.alreadyReleased
+          ? "הליד כבר שוחרר בינתיים."
+          : r.releasedFrom
+            ? `הליד שוחרר מ${r.releasedFrom} וחזר למאגר.`
+            : "הליד שוחרר וחזר למאגר.",
+    ).then((ok) => {
+      if (ok) setReleaseReason("");
+    });
+  }, [leadId, releaseReason, runTypedAction]);
+
+  const onAssign = useCallback(() => {
+    const to = assignTo.trim();
+    if (!to) {
+      setNotice({ text: "הזינו שם נציג להעברה.", ok: false });
+      return;
+    }
+    void runTypedAction(
+      () => assignCrmLead(leadId, to),
+      (r) =>
+        r.unchanged
+          ? `הליד כבר משויך ל${to}.`
+          : r.previousOwner
+            ? `הליד הועבר מ${r.previousOwner} ל${to}.`
+            : `הליד שויך ל${to}.`,
+    ).then((ok) => {
+      if (ok) setAssignTo("");
+    });
+  }, [leadId, assignTo, runTypedAction]);
 
   const onSaveWorkflow = useCallback(async () => {
     let followUpIso: string | null = null;
@@ -457,6 +529,64 @@ export default function CrmLeadDrawer({
                   <button type="button" disabled={actionBusy} onClick={onClaim} className={`${BTN_GHOST} w-full`}>
                     שייך אליי ({repName})
                   </button>
+                )}
+
+                {/* Undoing a claim. Shown only to an admin AND only while someone
+                    actually holds the lead — before this existed, claimLead's
+                    `claimed_by=is.null` guard made a claim permanent, so a rep who
+                    left held their whole book forever with no way back.
+                    The server is the real gate (ACTION_CAP → admin_only); this is
+                    the display gate, defaulting closed. */}
+                {canAdmin && lead.claimedBy && (
+                  <div className="space-y-2 rounded-xl border border-border bg-background p-2.5">
+                    <p className="text-xs font-medium text-muted">
+                      ניהול שיוך — הליד אצל {lead.claimedBy}
+                    </p>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="crm-release-reason" className="text-xs text-muted">
+                        סיבת שחרור (רשות — נרשמת בתיעוד הליד)
+                      </label>
+                      <input
+                        id="crm-release-reason"
+                        type="text"
+                        value={releaseReason}
+                        onChange={(e) => setReleaseReason(e.target.value)}
+                        placeholder="למשל: הנציג בחופשה"
+                        className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                      />
+                      <button
+                        type="button"
+                        disabled={actionBusy}
+                        onClick={onRelease}
+                        className={`${BTN_GHOST} w-full`}
+                      >
+                        שחרור למאגר
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="crm-assign-to" className="text-xs text-muted">
+                        העברה לנציג אחר
+                      </label>
+                      <input
+                        id="crm-assign-to"
+                        type="text"
+                        value={assignTo}
+                        onChange={(e) => setAssignTo(e.target.value)}
+                        placeholder="שם הנציג"
+                        className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+                      />
+                      <button
+                        type="button"
+                        disabled={actionBusy || !assignTo.trim()}
+                        onClick={onAssign}
+                        className={`${BTN_GHOST} w-full`}
+                      >
+                        העברה
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 <div className="space-y-1.5">

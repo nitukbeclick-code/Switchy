@@ -64,6 +64,11 @@ const BULK_TARGETS: { status: LeadStatus; label: string }[] = [
 
 const RANGE_KEYS: readonly DateRange[] = ["all", "1d", "7d", "30d"];
 
+// Rows per server window. 200 is crm-api's historical default, so the FIRST page
+// is byte-identical to what this list fetched before paging existed — the change
+// is purely that there is now a way to ask for the next one.
+const PAGE_SIZE = 200;
+
 function LeadsSkeleton() {
   return (
     <div className="space-y-2" aria-hidden="true">
@@ -74,7 +79,7 @@ function LeadsSkeleton() {
   );
 }
 
-export default function CrmLeads() {
+export default function CrmLeads({ canAdmin = false }: { canAdmin?: boolean } = {}) {
   // Filters initialize from the URL (mirrored below on every change), so a
   // refresh / tab-switch / shared link restores the exact view.
   const params = useSearchParams();
@@ -100,6 +105,15 @@ export default function CrmLeads() {
   // drives the honest "-partial" CSV suffix (NOT `leads.length >= 200`, which
   // mislabels an exactly-200 window with no more rows).
   const [hasMore, setHasMore] = useState(false);
+  // How many rows the server has been asked to SKIP for the current view — the
+  // next page's offset. Deliberately NOT derived from `leads.length`: with a
+  // search active crm-api filters its window in memory and returns only the
+  // matches, so the rows we hold are fewer than the rows scanned. Paging on
+  // `leads.length` would re-request an overlapping window and silently skip
+  // every lead in the gap. `hasMore` means the server saw a full window, so the
+  // next offset is always the previous one plus PAGE_SIZE.
+  const [offset, setOffset] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   // The typed reason of the last failed load (server message + retryability).
@@ -258,12 +272,16 @@ export default function CrmLeads() {
           status: filter === "all" ? undefined : filter,
           search: search || undefined,
           sort,
+          limit: PAGE_SIZE,
         });
     return request.then((res) => {
       if (seq !== loadSeq.current) return; // a newer load superseded this one
       if (res.data) {
         setLeads(res.data.leads);
         setHasMore(res.data.hasMore);
+        // A fresh view always starts one page in (attentionOnly is a complete,
+        // purpose-built queue with no windowing, so it is never pageable).
+        setOffset(attentionOnly ? 0 : PAGE_SIZE);
         const serverAsOf =
           "asOf" in res.data && typeof res.data.asOf === "string"
             ? Date.parse(res.data.asOf)
@@ -287,6 +305,47 @@ export default function CrmLeads() {
     beginLoad();
     await load();
   }, [beginLoad, load]);
+
+  // Fetch the NEXT window and append. Separate from `load` on purpose: it must
+  // not clear the list (no skeleton, no scroll jump) and it must not reset the
+  // rep filter, the selection or the undo buffer — a rep who has ticked twelve
+  // rows and then loads more has not asked to lose them.
+  //
+  // Shares `loadSeq` with `load`, so a filter/sort/search change mid-flight wins
+  // and this page is discarded rather than appended to a list it does not belong
+  // to — the bug that would otherwise show a "new" lead under the wrong stage.
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore || attentionOnly) return;
+    const seq = ++loadSeq.current;
+    setLoadingMore(true);
+    return fetchCrmLeads({
+      status: filter === "all" ? undefined : filter,
+      search: search || undefined,
+      sort,
+      limit: PAGE_SIZE,
+      offset,
+    }).then((res) => {
+      if (seq !== loadSeq.current) return; // superseded — drop this page
+      if (res.data) {
+        const page = res.data.leads;
+        // De-dupe by id. Rows are ordered by created_at, which is not unique and
+        // shifts as leads arrive, so two adjacent windows can legitimately
+        // overlap by a row. Appending blind would render a duplicate key and let
+        // a bulk action count the same lead twice.
+        setLeads((prev) => {
+          const existing = new Set((prev ?? []).map((l) => l.id));
+          return [...(prev ?? []), ...page.filter((l) => !existing.has(l.id))];
+        });
+        setHasMore(res.data.hasMore);
+        setOffset((prev) => prev + PAGE_SIZE);
+      } else {
+        // Keep the rows already on screen; report the failure without wiping the
+        // view a rep is working in.
+        setBulkMsg({ text: res.failure.message, ok: false });
+      }
+      setLoadingMore(false);
+    });
+  }, [attentionOnly, filter, hasMore, loadingMore, offset, search, sort]);
 
   // Switch stage/sort: reset the view in the click, then the effect refetches.
   const changeFilter = useCallback(
@@ -604,7 +663,32 @@ export default function CrmLeads() {
       ) : error || !leads ? (
         <ErrorNotice failure={failure} fallback="לא הצלחנו לטעון את הלידים." onRetry={() => void reload()} />
       ) : leads.length === 0 ? (
-        <NoticeCard>{search ? "לא נמצאו לידים תואמים לחיפוש." : "אין לידים בשלב הזה."}</NoticeCard>
+        // The empty state must not claim more than it knows. crm-api searches
+        // the FETCHED WINDOW in memory, so "0 results" while `hasMore` is true
+        // means "not in the rows loaded so far" — NOT "no such lead". The old
+        // copy said "לא נמצאו לידים תואמים לחיפוש" either way, so a rep looking up
+        // a customer whose lead sat past the window was told it did not exist.
+        <NoticeCard>
+          {search ? (
+            hasMore ? (
+              <span className="flex flex-wrap items-center gap-2">
+                <span>לא נמצאו התאמות בלידים שנטענו עד כה — ייתכן שהליד נמצא רחוק יותר ברשימה.</span>
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={() => void loadMore()}
+                  className={BTN_GHOST}
+                >
+                  {loadingMore ? "טוען…" : "המשך לחפש בלידים הבאים"}
+                </button>
+              </span>
+            ) : (
+              "לא נמצאו לידים תואמים לחיפוש."
+            )
+          ) : (
+            "אין לידים בשלב הזה."
+          )}
+        </NoticeCard>
       ) : (
         <>
           {selected.size > 0 && (
@@ -861,6 +945,27 @@ export default function CrmLeads() {
           </ul>
           </>
           )}
+
+          {/* The window is bounded, so say so and offer the next one. Without
+              this the list simply STOPPED at the server's window with nothing on
+              screen admitting it — the rep's "all leads" was a first page wearing
+              the name of the whole. attentionOnly is excluded because that queue
+              is purpose-built and complete, not a window. */}
+          {!attentionOnly && hasMore && (
+            <div className="flex flex-col items-center gap-1.5 pt-1">
+              <button
+                type="button"
+                disabled={loadingMore}
+                onClick={() => void loadMore()}
+                className={BTN_GHOST}
+              >
+                {loadingMore ? "טוען…" : "טעינת לידים נוספים"}
+              </button>
+              <p className="text-xs text-muted">
+                {`מוצגים ${leads.length.toLocaleString("he-IL")} לידים — יש עוד ברשימה`}
+              </p>
+            </div>
+          )}
         </>
       )}
 
@@ -876,6 +981,7 @@ export default function CrmLeads() {
           onNavigate={(id) => setSelectedId(id)}
           onClose={() => setSelectedId(null)}
           onChanged={() => void reload()}
+          canAdmin={canAdmin}
         />
       )}
     </div>

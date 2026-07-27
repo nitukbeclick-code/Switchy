@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   setCrmLeadWorkflow: vi.fn(),
   recordCrmSaving: vi.fn(),
   claimCrmLead: vi.fn(),
+  releaseCrmLead: vi.fn(),
+  assignCrmLead: vi.fn(),
 }));
 
 vi.mock("@/lib/crm-admin", async (importOriginal) => {
@@ -30,6 +32,8 @@ vi.mock("@/lib/crm-admin", async (importOriginal) => {
     setCrmLeadWorkflow: mocks.setCrmLeadWorkflow,
     recordCrmSaving: mocks.recordCrmSaving,
     claimCrmLead: mocks.claimCrmLead,
+    releaseCrmLead: mocks.releaseCrmLead,
+    assignCrmLead: mocks.assignCrmLead,
   };
 });
 
@@ -80,6 +84,105 @@ beforeEach(() => {
   mocks.setCrmLeadNote.mockResolvedValue(true);
   mocks.setCrmLeadWorkflow.mockResolvedValue(true);
   mocks.claimCrmLead.mockResolvedValue(true);
+  mocks.releaseCrmLead.mockResolvedValue({ data: { ok: true, releasedFrom: "דנה" }, failure: null });
+  mocks.assignCrmLead.mockResolvedValue({ data: { ok: true, previousOwner: "דנה" }, failure: null });
+});
+
+// ── Release / reassign: the admin-only exit from a permanent claim ───────────
+// claimLead is guarded `claimed_by=is.null`, which made a claim a ONE-WAY DOOR:
+// a rep who left held their book forever. These controls are the way back, and
+// because they take a lead away from a colleague they are gated twice — server
+// (ACTION_CAP → admin_only) and here.
+
+describe("CrmLeadDrawer claim management", () => {
+  const claimed = () => detail({ claimedBy: "דנה", claimedAt: "2026-07-11T09:00:00Z" });
+
+  it("hides the controls from a non-admin even on a claimed lead", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} />); // canAdmin defaults false
+    await screen.findByRole("heading", { name: "דנה כהן" });
+    expect(screen.queryByRole("button", { name: "שחרור למאגר" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "העברה" })).not.toBeInTheDocument();
+  });
+
+  it("hides them from an admin when nobody holds the lead", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(detail({ claimedBy: null }));
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+    // Nothing to release — the claim button is the right control here instead.
+    expect(screen.queryByRole("button", { name: "שחרור למאגר" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /שייך אליי/ })).toBeInTheDocument();
+  });
+
+  it("releases with the typed reason and names who held it", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    const onChanged = vi.fn();
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} onChanged={onChanged} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+
+    fireEvent.change(screen.getByLabelText(/סיבת שחרור/), { target: { value: "בחופשה" } });
+    fireEvent.click(screen.getByRole("button", { name: "שחרור למאגר" }));
+
+    await waitFor(() => expect(mocks.releaseCrmLead).toHaveBeenCalledWith("L1", "בחופשה"));
+    expect(await screen.findByText("הליד שוחרר מדנה וחזר למאגר.")).toBeInTheDocument();
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("omits an empty reason rather than sending a blank string", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+    fireEvent.click(screen.getByRole("button", { name: "שחרור למאגר" }));
+    await waitFor(() => expect(mocks.releaseCrmLead).toHaveBeenCalledWith("L1", undefined));
+  });
+
+  it("surfaces the SERVER's message on a failure, not a generic one", async () => {
+    // The whole reason these two use the typed CrmFetch path: a rep must be able
+    // to tell "you are not an admin" from "nobody holds this lead" from a network
+    // blip. A boolean-returning action renders all three identically.
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    mocks.releaseCrmLead.mockResolvedValue({
+      data: null,
+      failure: { status: 403, message: "אין לך הרשאה לפעולה הזו.", retryable: false },
+    });
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+    fireEvent.click(screen.getByRole("button", { name: "שחרור למאגר" }));
+    expect(await screen.findByText("אין לך הרשאה לפעולה הזו.")).toBeInTheDocument();
+    expect(screen.queryByText("הפעולה נכשלה. נסו שוב.")).not.toBeInTheDocument();
+  });
+
+  it("reassigns and reports who the lead came from", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+
+    fireEvent.change(screen.getByLabelText("העברה לנציג אחר"), { target: { value: "רון" } });
+    fireEvent.click(screen.getByRole("button", { name: "העברה" }));
+
+    await waitFor(() => expect(mocks.assignCrmLead).toHaveBeenCalledWith("L1", "רון"));
+    expect(await screen.findByText("הליד הועבר מדנה לרון.")).toBeInTheDocument();
+  });
+
+  it("will not send a whitespace-only rep name", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+    fireEvent.change(screen.getByLabelText("העברה לנציג אחר"), { target: { value: "   " } });
+    // The button is disabled on a blank name, so nothing is dispatched at all.
+    expect(screen.getByRole("button", { name: "העברה" })).toBeDisabled();
+    expect(mocks.assignCrmLead).not.toHaveBeenCalled();
+  });
+
+  it("reports a no-op reassignment honestly instead of claiming a move", async () => {
+    mocks.fetchCrmLeadDetail.mockResolvedValue(claimed());
+    mocks.assignCrmLead.mockResolvedValue({ data: { ok: true, unchanged: true }, failure: null });
+    render(<CrmLeadDrawer leadId="L1" onClose={() => {}} canAdmin />);
+    await screen.findByRole("heading", { name: "דנה כהן" });
+    fireEvent.change(screen.getByLabelText("העברה לנציג אחר"), { target: { value: "דנה" } });
+    fireEvent.click(screen.getByRole("button", { name: "העברה" }));
+    expect(await screen.findByText("הליד כבר משויך לדנה.")).toBeInTheDocument();
+  });
 });
 
 describe("CrmLeadDrawer focus contract", () => {

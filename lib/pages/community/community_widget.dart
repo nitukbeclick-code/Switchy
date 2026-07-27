@@ -49,6 +49,54 @@ List<CommunityPost> mergeOlderCommunityPage(
   return out;
 }
 
+/// The community channels a post's `channel` column may store — byte-identical
+/// to `CHANNELS` in web/lib/community.ts and `channels` in
+/// shared/community-channels.json.
+///
+/// The Hebrew label IS the key: `community_posts.channel` is a plain TEXT
+/// column, nothing in the database constrains it, and every surface filters
+/// with an exact string compare. One divergent codepoint therefore partitions
+/// the community silently — no error, just an empty channel. That is exactly
+/// what happened here: this list spelled abroad `'חו"ל'` with an ASCII quote
+/// (U+0022) while the web wrote `'חו״ל'` with the Hebrew GERSHAYIM (U+05F4),
+/// so posts filed from the app were invisible in the web's abroad channel and
+/// vice versa. The two spellings are near-indistinguishable on screen, which is
+/// why test/community_channels_test.dart compares RUNES, not strings.
+///
+/// Changing this list means changing web/lib/community.ts and
+/// shared/community-channels.json in the same commit.
+const List<String> kCommunityChannels = [
+  'המלצות',
+  'סלולר',
+  'אינטרנט',
+  'טלוויזיה',
+  'חו״ל', // GERSHAYIM U+05F4 — NOT an ASCII quote.
+  'חבילה משולבת',
+  'עזרה בניתוק',
+];
+
+/// The "everything" filter label. A UI-only sentinel — it is NEVER written to
+/// `community_posts.channel`, so it is not a member of [kCommunityChannels].
+const String kAllChannel = 'הכל';
+
+/// Off-canonical channel spellings OBSERVED in shipped code, mapped to the
+/// canonical string (`legacy_variants` in shared/community-channels.json).
+///
+/// This is a REPAIR table, not a list of accepted values. Reads fold through
+/// [canonicalChannel] so posts already stored under a former spelling still
+/// appear in their channel before the back-fill migration
+/// (supabase/community-channel-normalise-2026-07.sql) runs. Nothing writes a
+/// variant: the composer only ever offers [kCommunityChannels].
+const Map<String, String> kLegacyChannelVariants = {
+  'חו"ל': 'חו״ל', // ASCII quote U+0022 — this file's own former spelling.
+  'חול': 'חו״ל', // no punctuation at all.
+};
+
+/// Folds a stored channel string onto its canonical spelling for COMPARISON and
+/// DISPLAY. Unknown values pass through unchanged — an unrecognised channel is
+/// shown as written rather than guessed at.
+String canonicalChannel(String raw) => kLegacyChannelVariants[raw] ?? raw;
+
 class CommunityWidget extends StatefulWidget {
   const CommunityWidget({super.key});
 
@@ -59,7 +107,7 @@ class CommunityWidget extends StatefulWidget {
 class _CommunityWidgetState extends State<CommunityWidget> {
   final _searchCtrl = TextEditingController();
   late List<CommunityPost> _posts;
-  String _activeChannel = 'הכל';
+  String _activeChannel = kAllChannel;
   String _searchQuery = '';
   bool _sortByPopular = false;
   bool _showBookmarksOnly = false;
@@ -87,7 +135,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   bool _loadingOlder = false;
   bool _reachedFeedEnd = false;
 
-  static const _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל', 'חבילה משולבת', 'עזרה בניתוק'];
+  /// The filter rail: the "everything" sentinel followed by the real channels.
+  /// Only [kCommunityChannels] is ever written to a post.
+  static const _channels = [kAllChannel, ...kCommunityChannels];
 
   StreamSubscription<void>? _changesSub;
 
@@ -230,18 +280,26 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     // kept so they see a subtle "בבדיקת מנהל" placeholder instead of it silently
     // vanishing (the body is replaced in [_PostCard]).
     var base = _posts.where((p) => !p.isFlagged || appState.isOwnPost(p.id)).toList();
-    if (_activeChannel != 'הכל') {
-      base = base.where((p) => p.channel == _activeChannel).toList();
+    if (_activeChannel != kAllChannel) {
+      // Fold legacy spellings before comparing, so a post stored under the old
+      // ASCII-quote 'חו"ל' still shows up in the canonical 'חו״ל' channel.
+      base = base.where((p) => canonicalChannel(p.channel) == _activeChannel).toList();
     }
     if (_showBookmarksOnly) {
       base = base.where((p) => appState.isBookmarked(p.id)).toList();
     }
     if (_searchQuery.isNotEmpty) {
-      final q = _searchQuery.toLowerCase();
+      // Fold BOTH sides through canonicalChannel. Folding only the stored value
+      // would still miss a member who types the ASCII-quote spelling — the one
+      // this app itself shipped until today — and folding only the query would
+      // miss the posts already stored under it. The other three channel reads
+      // (:286, the highlights tally and the post chip) fold too; search was the
+      // odd one out, so "חו״ל" and 'חו"ל' returned different result sets.
+      final q = canonicalChannel(_searchQuery).toLowerCase();
       base = base.where((p) =>
           p.text.toLowerCase().contains(q) ||
           p.author.toLowerCase().contains(q) ||
-          p.channel.toLowerCase().contains(q)).toList();
+          canonicalChannel(p.channel).toLowerCase().contains(q)).toList();
     }
     if (_sortByPopular) return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
     return base;
@@ -569,11 +627,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                               ),
                             ),
                             const SizedBox(width: 8),
+                            // No verified check here either — see the post
+                            // card's author row: post.isVerified has no source
+                            // of truth in this app.
                             Text(post.author, style: ffTheme.labelMedium),
-                            if (post.isVerified) ...[
-                              const SizedBox(width: 4),
-                              Icon(Icons.verified_rounded, size: 13, color: ffTheme.info, semanticLabel: 'משתמש מאומת'),
-                            ],
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -803,7 +860,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       return;
     }
     final ctrl = TextEditingController();
-    String selectedChannel = _activeChannel == 'הכל' ? 'המלצות' : _activeChannel;
+    // The composer only ever offers canonical channels, so what it writes to
+    // community_posts.channel is always a member of [kCommunityChannels].
+    String selectedChannel =
+        _activeChannel == kAllChannel ? kCommunityChannels.first : _activeChannel;
     String? pendingType;
     String? pendingData;
     int? pendingDur;
@@ -846,7 +906,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8, runSpacing: 6,
-                  children: _channels.where((c) => c != 'הכל').map((ch) {
+                  children: kCommunityChannels.map((ch) {
                     final active = selectedChannel == ch;
                     // Announced as a selectable button; >=48dp hit area around
                     // the unchanged painted chip. ONE chip language — ACTIVE =
@@ -1058,7 +1118,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     var visibleTotal = 0;
     for (final p in visiblePosts) {
       visibleTotal++;
-      channelCounts[p.channel] = (channelCounts[p.channel] ?? 0) + 1;
+      final ch = canonicalChannel(p.channel);
+      channelCounts[ch] = (channelCounts[ch] ?? 0) + 1;
     }
     // Reduced motion KEEPS the entrance fade (opacity) but DROPS the translate
     // — the feed reveal stays vestibular-safe.
@@ -1139,30 +1200,26 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   color: ffTheme.primary,
                 ),
                 const Spacer(),
-                // Flexible + ellipsis: at large OS text scales the pill yields
+                // A trophy chip reading 'קהילה פעילה' used to sit here with
+                // NOTHING gating it — it rendered over an empty feed, which is
+                // the one case where it is provably false. There is no real
+                // activity threshold available on this screen to gate it on
+                // (community_feed carries no time-windowed engagement), so it
+                // is gone rather than re-derived from a made-up floor.
+                //
+                // What replaces it is the scope the three counts were missing.
+                // They are sums over the posts CURRENTLY LOADED — the feed
+                // pulls one bounded page at a time and grows as you scroll — so
+                // they are not community-wide totals and must not read as such.
+                // Flexible + ellipsis: at large OS text scales it yields
                 // instead of overflowing the stats strip.
                 Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: ffTheme.accent1,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.emoji_events_rounded, size: 14, color: ffTheme.primary),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'קהילה פעילה',
-                            style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: Text(
+                    'לפי הפוסטים שנטענו',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                    textAlign: TextAlign.left,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -1179,7 +1236,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               children: _channels.map((ch) {
                 final active = _activeChannel == ch;
-                final count = ch == 'הכל' ? visibleTotal : (channelCounts[ch] ?? 0);
+                final count = ch == kAllChannel ? visibleTotal : (channelCounts[ch] ?? 0);
                 return Semantics(
                   button: true,
                   selected: active,
@@ -1338,43 +1395,18 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             ),
           ).animate().fadeIn(duration: 280.ms),
 
-          // Hot deal banner
-          ..._posts.where((p) => p.isTeam && p.planId != null).take(1).map((p) =>
-            Semantics(
-              button: true,
-              label: 'עסקת השבוע — צפייה בחבילה',
-              child: Pressable(
-              onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.planId!}),
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  // Fixed ink "deal of the week" banner — const ink gradient so
-                  // the white content reads in both themes.
-                  gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary]),
-                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.local_fire_department_rounded, size: 22, color: Colors.white),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('עסקת השבוע', style: ffTheme.labelSmall.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w700)),
-                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.copyWith(color: Colors.white70, height: 1.3)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white54),
-                  ],
-                ),
-              ),
-              ),
-            ).animate().fadeIn(duration: 400.ms),
-          ),
+          // An 'עסקת השבוע' ("deal of the week") banner used to sit here,
+          // showing the first post matching `isTeam && planId != null`. Both
+          // gates are unreachable: nothing populates CommunityPost.isTeam or
+          // .planId — SupabaseBackend._postFromRow reads neither (community_feed
+          // has no such columns), the composer sets neither, and the bundled
+          // seed list is empty. So the banner could never render.
+          //
+          // It is not restored behind a working gate either, because the claim
+          // itself was never earned: "deal of the week" implies a weekly ranking
+          // and there was none — it was whichever staff post happened to be
+          // first in the feed. Nothing here can compute a real weekly best, so
+          // nothing here should assert one.
 
           // Posts list
           Expanded(
@@ -1503,6 +1535,35 @@ class _PostCard extends StatefulWidget {
 class _PostCardState extends State<_PostCard> {
   bool _bouncing = false;
 
+  /// OPTIMISTIC like delta for this card, applied on top of the server
+  /// aggregate carried in `post.likes`.
+  ///
+  /// The card used to render `post.likes + (hasLiked ? 1 : 0)`, which
+  /// double-counted the viewer's own like on every load after the first.
+  /// `post.likes` is `community_feed.like_count`, defined in
+  /// supabase/schema.sql as `count(*) from post_likes group by post_id` — the
+  /// viewer's own `post_likes` row is ALREADY in it. `hasLiked` meanwhile reads
+  /// `AppState._likedPosts`, which is persisted to SharedPreferences and never
+  /// reconciled against the server. So: like a post sitting at 3 → the card
+  /// optimistically shows 4 (right) → the next fetch returns like_count 4 → the
+  /// card shows 5 (wrong), and it stays wrong across restarts.
+  ///
+  /// The +1 belongs to the WINDOW between the tap and the fetch that reflects
+  /// it, not to the fact of having liked. So it lives here and is dropped the
+  /// moment a fresh aggregate lands (see [didUpdateWidget]).
+  int _likeDelta = 0;
+
+  @override
+  void didUpdateWidget(covariant _PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A different post reused this slot, or a new server count arrived for the
+    // same post — either way the optimistic delta has been superseded.
+    if (oldWidget.post.id != widget.post.id ||
+        oldWidget.post.likes != widget.post.likes) {
+      _likeDelta = 0;
+    }
+  }
+
   String _timeAgo(DateTime t) {
     final diff = DateTime.now().difference(t);
     if (diff.inSeconds < 60) return 'עכשיו';
@@ -1518,20 +1579,19 @@ class _PostCardState extends State<_PostCard> {
   Widget build(BuildContext context) {
     final ffTheme = widget.ffTheme;
     final post = widget.post;
-    final isTrending = post.likes >= 15;
 
+    // A 'טרנדינג' badge + green hairline used to fire on `post.likes >= 15`.
+    // The count is real (community_feed.like_count), but the CLAIM is not: a
+    // trend is engagement over a window, and like_count is an all-time total
+    // with no time dimension anywhere in the view — so a post that collected 15
+    // likes two years ago wore "trending" forever. This is the same defect the
+    // web lane already fixed by deriving its strip from a 7-day
+    // community_highlights window (web/components/community/CommunityFeed.tsx);
+    // no equivalent window is available to this screen, so the honest move is
+    // to drop the claim rather than pick a new arbitrary floor.
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: isTrending
-          // A trending post wears the green ACTIVE hairline (warning amber
-          // stays reserved for genuine warnings).
-          ? ffTheme.cardDecoration(radius: ffTheme.radiusLg).copyWith(
-              border: Border.all(
-                color: ffTheme.brandAccent.withValues(alpha: 0.5),
-                width: 1.5,
-              ),
-            )
-          : ffTheme.cardDecoration(radius: ffTheme.radiusLg),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1540,28 +1600,6 @@ class _PostCardState extends State<_PostCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Trending badge
-                if (isTrending) ...[
-                  // Trending = a positive/active state → the green tint chip
-                  // (warning amber stays reserved for genuine warnings).
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: ffTheme.brandAccentTint,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.local_fire_department_rounded, size: 11, color: ffTheme.brandAccent),
-                        const SizedBox(width: 4),
-                        Text('טרנדינג', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                ],
-
                 // Author row
                 Row(
                   children: [
@@ -1582,22 +1620,25 @@ class _PostCardState extends State<_PostCard> {
                           Row(
                             children: [
                               Flexible(child: Text(post.author, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis)),
-                              if (post.isTeam) ...[
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
-                                  // Micro "team" badge — no token sits at 9px, so
-                                  // the nearest Rubik token (titleSmall) carries
-                                  // the face and the 9px / white delta rides via
-                                  // copyWith.
-                                  child: Text('צוות', style: ffTheme.titleSmall.copyWith(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
-                                ),
-                              ],
-                              if (post.isVerified) ...[
-                                const SizedBox(width: 4),
-                                Icon(Icons.verified_rounded, size: 14, color: ffTheme.info, semanticLabel: 'משתמש מאומת'),
-                              ],
+                              // A 'צוות' (staff) badge on `post.isTeam` and a
+                              // blue verified check on `post.isVerified` used to
+                              // sit here. Both are authority marks with NO
+                              // source of truth behind them in this app:
+                              // CommunityPost defaults both to false and nothing
+                              // ever passes true — SupabaseBackend._postFromRow
+                              // reads neither (community_feed exposes no such
+                              // column), the composer sets neither, and the seed
+                              // list is empty. They rendered for nobody while
+                              // standing ready to vouch for anybody the moment a
+                              // client-settable field got wired to them.
+                              //
+                              // Verification IS real elsewhere:
+                              // profiles.is_verified_customer, written only by
+                              // the service-role helper in
+                              // supabase/verified-customer-flow-2026-07.sql and
+                              // rendered by the web as 'לקוח מאומת'. If this
+                              // screen is to show a check, it must join that
+                              // column — not a bool the client could set itself.
                             ],
                           ),
                           Text(_timeAgo(post.timestamp), style: ffTheme.labelSmall),
@@ -1608,7 +1649,9 @@ class _PostCardState extends State<_PostCard> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
-                      child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                      // Canonical spelling, so a legacy-stored post is labelled
+                      // with the same string its channel chip carries.
+                      child: Text(canonicalChannel(post.channel), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                     ),
                     const SizedBox(width: 4),
                     // Bookmark
@@ -1774,7 +1817,10 @@ class _PostCardState extends State<_PostCard> {
                   final liked = appState.hasLiked(post.id);
                   return _ActionBtn(
                     icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    label: '${post.likes + (liked ? 1 : 0)}',
+                    // Server aggregate + the pending optimistic delta only.
+                    // Clamped at 0 so an unlike racing a stale count can never
+                    // paint a negative.
+                    label: '${math.max(0, post.likes + _likeDelta)}',
                     // Theme token, not a raw Colors.red (dark-parity).
                     color: liked ? ffTheme.error : ffTheme.secondaryText,
                     // A restrained confirmation pop on like — the heart is a
@@ -1788,7 +1834,10 @@ class _PostCardState extends State<_PostCard> {
                       HapticFeedback.selectionClick();
                       appBackend.setLike(post.id, !liked).catchError((_) {});
                       appState.toggleLike(post.id);
-                      setState(() { _bouncing = true; });
+                      setState(() {
+                        _likeDelta += liked ? -1 : 1;
+                        _bouncing = true;
+                      });
                       Future.delayed(const Duration(milliseconds: 320), () { if (mounted) setState(() => _bouncing = false); });
                     },
                   );

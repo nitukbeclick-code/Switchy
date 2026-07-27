@@ -27,8 +27,10 @@ import { jsonResponse, withFetchStub } from "./_capture_handler.ts";
 import { MAX_NOTE_LEN, THREAD_MSG_CAP } from "../crm-api/crm_logic.ts";
 import {
   actAddNote,
+  actAssignLead,
   actAttentionLeads,
   actClaimLead,
+  actReleaseLead,
   actGetLeadDetail,
   actListLeads,
   actListSellableLeads,
@@ -372,6 +374,155 @@ Deno.test("claimLead still succeeds normally on an unclaimed lead", async () => 
       assertEquals(rec.filter((c) => c.url.includes("/rest/v1/leads?id=eq.") && c.method === "GET").length, 0);
       assertEquals(of(rec, "/rest/v1/lead_events").length, 1);
     });
+  });
+});
+
+// ── releaseLead / assignLead: undoing a claim ────────────────────────────────
+// claimLead's `claimed_by=is.null` guard made a claim a ONE-WAY DOOR — nothing in
+// crm-api could clear the column again, so a rep who left held their whole book
+// permanently and an admin could not intervene. These two actions are the exit.
+
+Deno.test("releaseLead returns the lead to the pool and records who held it", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(
+        rec,
+        (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i),
+        () => jsonResponse([{ claimed_by: "דנה" }]),
+      ),
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i), () => jsonResponse([{ id: LEAD }])),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const r = await actReleaseLead({ leadId: LEAD, reason: "יצאה לחופשת לידה" }, ACTOR);
+      assertEquals(r.status, 200);
+      assertEquals((await r.json()).releasedFrom, "דנה");
+
+      // The write actually CLEARS both columns — a release that left claimed_at
+      // set would leave the lead looking claimed to every "claimed since" report.
+      const patch = of(rec, "/rest/v1/leads?id=eq.", "PATCH");
+      assertEquals(JSON.parse(patch[0].body), { claimed_by: null, claimed_at: null });
+
+      // The timeline names the previous owner AND the reason, because a lead that
+      // silently leaves a rep's book looks identical to one that was never theirs.
+      const ev = JSON.parse(of(rec, "/rest/v1/lead_events", "POST")[0].body);
+      assertEquals(ev.event, "release");
+      assertStringIncludes(ev.note, "דנה");
+      assertStringIncludes(ev.note, "יצאה לחופשת לידה");
+      assertEquals(ev.actor_name, "דנה לוי", "the ADMIN who released it, not the rep it came from");
+
+      const audit = JSON.parse(of(rec, "/rest/v1/security_audit_log", "POST")[0].body);
+      assertEquals(audit.event, "crm_lead_release");
+      assertEquals(audit.detail.from, "דנה");
+    });
+  });
+});
+
+Deno.test("releaseLead 404s on a missing lead and 409s on one nobody holds", async () => {
+  await withEnv(async () => {
+    // Missing lead → honest 404, and NOTHING is written.
+    const rec: Call[] = [];
+    await withFetchStub([
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i), () => jsonResponse([])),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const r = await actReleaseLead({ leadId: LEAD }, ACTOR);
+      assertEquals(r.status, 404);
+      assertEquals((await r.json()).code, "not_found");
+      assertEquals(of(rec, "/rest/v1/leads?id=eq.", "PATCH").length, 0, "no blind PATCH on a missing lead");
+      assertEquals(of(rec, "/rest/v1/lead_events").length, 0);
+    });
+
+    // Already unclaimed → 409 with its own code, so the UI can say something true
+    // rather than reporting a success that changed nothing.
+    const rec2: Call[] = [];
+    await withFetchStub([
+      route(rec2, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i), () => jsonResponse([{ claimed_by: null }])),
+      profileRoute(rec2),
+      ...sinkRoutes(rec2),
+    ], async () => {
+      const r = await actReleaseLead({ leadId: LEAD }, ACTOR);
+      assertEquals(r.status, 409);
+      assertEquals((await r.json()).code, "not_claimed");
+      assertEquals(of(rec2, "/rest/v1/leads?id=eq.", "PATCH").length, 0);
+    });
+  });
+});
+
+Deno.test("assignLead overwrites another rep's claim and names who it took it from", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i), () => jsonResponse([{ claimed_by: "דנה" }])),
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i), () => jsonResponse([{ id: LEAD }])),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const r = await actAssignLead({ leadId: LEAD, rep: "רון" }, ACTOR);
+      assertEquals(r.status, 200);
+      assertEquals((await r.json()).previousOwner, "דנה");
+
+      // Deliberately UNGUARDED, unlike claimLead: an admin naming a new owner
+      // wants that outcome, not first-come-first-served. Assert the absence of
+      // the guard so nobody "fixes" it back into a claim and silently reinstates
+      // the one-way door.
+      const patch = of(rec, "/rest/v1/leads?id=eq.", "PATCH");
+      assertEquals(patch.length, 1);
+      assertFalse(patch[0].url.includes("claimed_by=is.null"));
+      assertEquals(JSON.parse(patch[0].body).claimed_by, "רון");
+
+      const ev = JSON.parse(of(rec, "/rest/v1/lead_events", "POST")[0].body);
+      assertEquals(ev.event, "assign");
+      assertStringIncludes(ev.note, "דנה");
+      assertStringIncludes(ev.note, "רון");
+
+      const audit = JSON.parse(of(rec, "/rest/v1/security_audit_log", "POST")[0].body);
+      assertEquals(audit.event, "crm_lead_assign");
+      assertEquals(audit.detail.from, "דנה");
+      assertEquals(audit.detail.to, "רון");
+    });
+  });
+});
+
+Deno.test("assignLead to the CURRENT owner writes nothing at all", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isGet(i), () => jsonResponse([{ claimed_by: "רון" }])),
+      route(rec, (u, i) => u.includes("/rest/v1/leads?id=eq.") && isPatch(i), () => jsonResponse([{ id: LEAD }])),
+      profileRoute(rec),
+      ...sinkRoutes(rec),
+    ], async () => {
+      const r = await actAssignLead({ leadId: LEAD, rep: "רון" }, ACTOR);
+      assertEquals(r.status, 200);
+      assert((await r.json()).unchanged, "a no-op reassignment reports itself as one");
+      // No PATCH: it would stamp a fresh claimed_at and age the lead's ownership
+      // backwards every time an admin double-clicked.
+      assertEquals(of(rec, "/rest/v1/leads?id=eq.", "PATCH").length, 0);
+      assertEquals(of(rec, "/rest/v1/lead_events").length, 0, "and no meaningless 'moved from רון to רון' row");
+    });
+  });
+});
+
+Deno.test("both new actions refuse junk BEFORE touching the network", async () => {
+  await withEnv(async () => {
+    for (const [name, call] of [
+      ["releaseLead/no id", () => actReleaseLead({}, ACTOR)],
+      ["releaseLead/bad id", () => actReleaseLead({ leadId: "not-a-uuid" }, ACTOR)],
+      ["assignLead/bad id", () => actAssignLead({ leadId: "../../etc", rep: "רון" }, ACTOR)],
+      ["assignLead/no rep", () => actAssignLead({ leadId: LEAD, rep: "   " }, ACTOR)],
+    ] as const) {
+      const rec: Call[] = [];
+      await withFetchStub([
+        route(rec, () => true, () => jsonResponse([])),
+      ], async () => {
+        const r = await call();
+        assertEquals(r.status, 400, name);
+        assertEquals(rec.length, 0, `${name} must not reach the database`);
+      });
+    }
   });
 });
 

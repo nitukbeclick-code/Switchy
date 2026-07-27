@@ -55,6 +55,7 @@ import {
   type ComposerPrefill,
   type PostHydration,
 } from "@/lib/community";
+import { heCount } from "@/lib/community-render";
 import { providerBySlug } from "@/lib/providers.generated";
 import { useAuth } from "@/lib/auth-context";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
@@ -167,6 +168,12 @@ export default function CommunityFeed() {
   const [loading, setLoading] = useState(true); // first page of the current tab
   const [loadingMore, setLoadingMore] = useState(false);
   const [reachedEnd, setReachedEnd] = useState(false);
+  // Did the reader actually PAGE? reachedEnd goes true on the very first page
+  // whenever it comes back short (rows < PAGE_SIZE), which on a small community
+  // is always — so "הגעתם לסוף הפיד." greeted people who had scrolled nothing.
+  // "You reached the end" is only meaningful after there was a journey; until
+  // then the list simply is what it is, and needs no epitaph.
+  const [pagedOnce, setPagedOnce] = useState(false);
   // A FAILED first-page load is not an empty feed — it renders a retry card.
   const [feedError, setFeedError] = useState(false);
   // Bumped by the retry button so the first-page effect re-runs (event-driven
@@ -415,6 +422,7 @@ export default function CommunityFeed() {
     setPrevFeedQueryKey(feedQueryKey);
     setLoading(true);
     setReachedEnd(false);
+    setPagedOnce(false);
   }
   useEffect(() => {
     if (!ready || !blocksReady) return;
@@ -682,6 +690,8 @@ export default function CommunityFeed() {
   // ── Load an older page (cursor = the oldest loaded created_at) ────────────────
   const loadOlder = useCallback(async () => {
     if (loadingMore || reachedEnd || posts.length === 0) return;
+    // From here on the reader HAS paged, so "you reached the end" can be earned.
+    setPagedOnce(true);
     // The cursor is the OLDEST post by time, regardless of the current sort.
     let oldest = posts[0].created_at;
     for (const p of posts) {
@@ -766,9 +776,20 @@ export default function CommunityFeed() {
   // In search mode we show the results list instead of the feed; the trending
   // strip is hidden so search stays the focus.
   const searchMode = results !== null;
+  // "מה חם בקהילה" must describe a TREND, and one post in seven days is not a
+  // trend — it is a single post wearing a trending badge. The community_highlights
+  // RPC groups by channel with no floor (`group by channel ... limit 3`), so on a
+  // quiet week it happily returns `{channel: "סלולר", posts: 1}`. The counts it
+  // returns are real, so we don't restate them differently — we just decline to
+  // call a count of 1 "hot". Floor of 2 applied here, client-side, because the RPC
+  // lives outside this lane; active_posts already carries its own reply_count >= 1
+  // floor server-side and every row there is a real, linkable conversation.
+  const trendingChannels = (highlights?.channels ?? []).filter(
+    (c) => c.posts >= 2,
+  );
   const hasHighlights =
     !!highlights &&
-    (highlights.channels.length > 0 || highlights.active_posts.length > 0);
+    (trendingChannels.length > 0 || highlights.active_posts.length > 0);
   const feedTitle = unanswered
     ? "שאלות שמחכות לתשובה"
     : tab === ALL_CHANNEL
@@ -952,14 +973,14 @@ export default function CommunityFeed() {
           >
             <h2 className="text-sm font-semibold text-ink">מה חם בקהילה</h2>
 
-            {highlights.channels.length > 0 && (
+            {trendingChannels.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {highlights.channels.map((c) => (
+                {trendingChannels.map((c) => (
                   <button
                     key={c.channel}
                     type="button"
                     onClick={() => setTab(c.channel as Tab)}
-                    aria-label={`עבור לערוץ ${c.channel} · ${c.posts} פוסטים`}
+                    aria-label={`עבור לערוץ ${c.channel} · ${heCount(c.posts, "post")}`}
                     className="interactive press inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-muted [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     <span>{c.channel}</span>
@@ -983,9 +1004,10 @@ export default function CommunityFeed() {
                       <span className="min-w-0 flex-1 truncate text-sm text-foreground group-hover:text-ink">
                         {p.body}
                       </span>
-                      <span className="shrink-0 whitespace-nowrap text-xs text-muted">
-                        <span className="tabular-nums">{p.reply_count}</span>{" "}
-                        תגובות
+                      {/* active_posts is gated server-side at reply_count >= 1,
+                          so this was the second guaranteed "1 תגובות". */}
+                      <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">
+                        {heCount(p.reply_count, "reply")}
                       </span>
                       <span aria-hidden="true" className="text-accent-text">
                         ←
@@ -1059,11 +1081,14 @@ export default function CommunityFeed() {
               <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
                 {feedTitle}
               </h2>
-              {!loading && posts.length > 0 && (
-                <span className="shrink-0 text-xs tabular-nums text-muted">
-                  {posts.length.toLocaleString("he-IL")} שיחות נטענו
-                </span>
-              )}
+              {/* REMOVED: "{posts.length} שיחות נטענו". It counted the rows this
+                  CLIENT had paged in — not the community — but next to a feed
+                  title it reads as a size claim, and on a quiet feed it published
+                  "3 שיחות נטענו" as if that were the whole community. There is no
+                  honest relabel worth keeping: the only true statement is "you
+                  have loaded N of an unknown total", which is both uglier and
+                  less useful than the list of posts sitting directly beneath it.
+                  The rows are their own count. */}
             </div>
             {/* "New posts" pill — buffered live inserts, loaded on click (never jumps
             the feed mid-read). Sticky so it stays reachable while scrolling. */}
@@ -1120,18 +1145,37 @@ export default function CommunityFeed() {
                       ? "היו הראשונים לשתף חוויה, לשאול שאלה או להמליץ על ספק."
                       : `אין עדיין פוסטים בערוץ "${tab}". פתחו את השיחה.`}
                 </p>
-                {(unanswered || tab !== ALL_CHANNEL) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (unanswered) setUnanswered(false);
-                      else setTab(ALL_CHANNEL);
-                    }}
-                    className="interactive press mt-4 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  >
-                    {unanswered ? "הצגת כל הפוסטים" : "חזרה לכל הערוצים"}
-                  </button>
-                )}
+                {/* An empty feed is the ONE screen that must not dead-end. The
+                    copy already invites the reader to start the conversation, but
+                    the all-channels empty state — the exact state a first visitor
+                    lands in — used to render no control at all: the invitation had
+                    no door. The composer sits at the top of this very page, so the
+                    CTA is a real in-page anchor to it (works signed-in and
+                    signed-out; the signed-out composer's own button opens auth).
+                    Suppressed only for the "unanswered" filter, where the honest
+                    action is clearing the filter, not writing a post. */}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  {!unanswered && (
+                    <a
+                      href="#community-composer"
+                      className="interactive press inline-flex min-h-11 items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      פתיחת שיחה חדשה
+                    </a>
+                  )}
+                  {(unanswered || tab !== ALL_CHANNEL) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (unanswered) setUnanswered(false);
+                        else setTab(ALL_CHANNEL);
+                      }}
+                      className="interactive press inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      {unanswered ? "הצגת כל הפוסטים" : "חזרה לכל הערוצים"}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <ul className="stagger flex list-none flex-col gap-4 p-0">
@@ -1169,7 +1213,9 @@ export default function CommunityFeed() {
               </>
             )}
 
-            {!loading && posts.length > 0 && reachedEnd && (
+            {/* Only after a real page-load — a first page that simply came back
+                short is not an "end" the reader arrived at. */}
+            {!loading && posts.length > 0 && reachedEnd && pagedOnce && (
               <p className="py-2 text-center text-xs text-muted">
                 הגעתם לסוף הפיד.
               </p>

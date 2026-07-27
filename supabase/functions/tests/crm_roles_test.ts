@@ -39,7 +39,18 @@ const WRITE_ACTIONS = [
   "claimLead",
   "setMeetingStatus",
 ];
-const ADMIN_ACTIONS = ["listSellableLeads", "listMembers", "setMemberRole"];
+const ADMIN_ACTIONS = [
+  "listSellableLeads",
+  "listMembers",
+  "setMemberRole",
+  // Undoing or redirecting a claim. NOT write_leads: `leads.claimed_by` is a
+  // free-text display string with no uid behind it, so "release your own lead"
+  // is unauthorisable from the caller's identity — and a write_leads grant here
+  // would mean any rep may take any other rep's book. See the note in
+  // _shared/crm_roles.ts.
+  "releaseLead",
+  "assignLead",
+];
 
 Deno.test("viewer: read-only — every read passes, every write/converse/admin denied", () => {
   for (const a of READ_ACTIONS) assert(canDo("viewer", a), `viewer should read ${a}`);
@@ -75,6 +86,15 @@ Deno.test("the sensitive surfaces (sellable feed + role mgmt) require admin_only
   assertEquals(ACTION_CAP["listSellableLeads"], "admin_only");
   assertEquals(ACTION_CAP["listMembers"], "admin_only");
   assertEquals(ACTION_CAP["setMemberRole"], "admin_only");
+  // A rep may CLAIM (atomic, first-come-first-served) but may not release or
+  // reassign — the two directions have different blast radii and must not drift
+  // onto the same capability.
+  assertEquals(ACTION_CAP["claimLead"], "write_leads");
+  assertEquals(ACTION_CAP["releaseLead"], "admin_only");
+  assertEquals(ACTION_CAP["assignLead"], "admin_only");
+  assertFalse(canDo("rep", "releaseLead"));
+  assertFalse(canDo("rep", "assignLead"));
+  assert(canDo("rep", "claimLead"));
   // only admin holds admin_only
   assert(roleHasCapability("admin", "admin_only"));
   assertFalse(roleHasCapability("rep", "admin_only"));

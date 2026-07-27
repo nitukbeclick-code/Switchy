@@ -294,8 +294,17 @@ export type LeadSort = "recent" | "oldest";
  *  authoritative "the table continues past this window" flag (computed on the
  *  raw window, before the search filter) — use it, not `leads.length >= 200`,
  *  to decide whether an export is partial. */
+// `limit`/`offset` page the server window. They are OPTIONAL and omitted by
+// default, so an unparameterised call behaves exactly as before (the server's
+// historical 200-row default).
+//
+// Passing them matters for more than long lists: crm-api's `search` is an
+// in-memory filter over the FETCHED WINDOW (never interpolated into PostgREST —
+// see actions_leads). Without paging, a search could only ever see the first
+// window, so a lead at row 250 was unfindable and the console said
+// "לא נמצאו לידים תואמים לחיפוש" — asserting absence it could not know.
 export function fetchCrmLeads(
-  opts?: { status?: LeadStatus; search?: string; sort?: LeadSort },
+  opts?: { status?: LeadStatus; search?: string; sort?: LeadSort; limit?: number; offset?: number },
 ): Promise<CrmFetch<{ leads: CrmLead[]; hasMore: boolean }>> {
   return crmRead<{ leads: CrmLead[]; hasMore: boolean }>(
     "listLeads",
@@ -303,6 +312,8 @@ export function fetchCrmLeads(
       ...(opts?.status ? { status: opts.status } : {}),
       ...(opts?.search ? { search: opts.search } : {}),
       ...(opts?.sort === "oldest" ? { sort: "oldest" } : {}),
+      ...(typeof opts?.limit === "number" ? { limit: opts.limit } : {}),
+      ...(typeof opts?.offset === "number" && opts.offset > 0 ? { offset: opts.offset } : {}),
     },
     (j) => hasArray(j, "leads"),
   );
@@ -514,6 +525,50 @@ export async function recordCrmSaving(leadId: string, annualSaving: number): Pro
 export async function claimCrmLead(leadId: string, rep: string): Promise<boolean> {
   const res = await crmPost<{ ok?: boolean }>("claimLead", { leadId, rep });
   return !!res?.ok;
+}
+
+// ── Undoing a claim (admin-only) ─────────────────────────────────────────────
+// These two return the TYPED outcome (CrmFetch), not the `boolean` the older
+// mutations above collapse to, and that is deliberate rather than inconsistent:
+// both have failure modes the rep must be able to read.
+//
+//   releaseLead → 409 "not_claimed" when nobody holds it
+//   both        → 403 when the caller is a rep rather than an admin
+//   both        → 404 on an id that is not there
+//
+// A `!!res?.ok` here would render every one of those as the same silent
+// no-op, on a control whose whole purpose is taking a lead away from someone.
+// (The older ones are C4 in the plan — worth converting, but not by widening
+// this change.)
+
+/** Result of releasing a claim. `releasedFrom` is the rep who held it. */
+export interface CrmReleaseResult {
+  ok: boolean;
+  releasedFrom?: string;
+  /** True when the row was already free by the time the write landed. */
+  alreadyReleased?: boolean;
+}
+
+/** Return a claimed lead to the unclaimed pool so any rep can take it. */
+export function releaseCrmLead(leadId: string, reason?: string): Promise<CrmFetch<CrmReleaseResult>> {
+  return crmRequest<CrmReleaseResult>(
+    "releaseLead",
+    { leadId, ...(reason ? { reason } : {}) },
+    (j) => typeof j.ok === "boolean",
+  );
+}
+
+/** Result of a reassignment. `previousOwner` is null when it was unclaimed. */
+export interface CrmAssignResult {
+  ok: boolean;
+  previousOwner?: string | null;
+  /** True when the named rep already held it and nothing was written. */
+  unchanged?: boolean;
+}
+
+/** Hand a lead to a named rep, overwriting whoever currently holds it. */
+export function assignCrmLead(leadId: string, rep: string): Promise<CrmFetch<CrmAssignResult>> {
+  return crmRequest<CrmAssignResult>("assignLead", { leadId, rep }, (j) => typeof j.ok === "boolean");
 }
 
 // ── Meetings (Zoom bookings) ────────────────────────────────────────────────

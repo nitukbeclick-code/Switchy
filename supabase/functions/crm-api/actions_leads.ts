@@ -477,6 +477,107 @@ export async function actClaimLead(b: Row, actorUid: string): Promise<Response> 
   return json({ ok: true });
 }
 
+// releaseLead {leadId, reason?} → clear claimed_by/claimed_at so the lead returns
+// to the unclaimed pool and ANY rep can claim it again.
+//
+// WHY THIS EXISTS. actClaimLead above is guarded `claimed_by=is.null`, which is
+// what makes it a claim rather than a blind overwrite — correct, and until now
+// also a one-way door: nothing anywhere in crm-api could ever clear the column
+// again. A rep who left, went on leave, or claimed a lead by mistake held it
+// permanently, and an admin had no way to undo it. That is not a rare edge —
+// it is what happens to every book when a person stops working it.
+//
+// Admin-only (see ACTION_CAP), because `claimed_by` is an unverifiable display
+// string and "release your own" cannot be authorised from the caller's uid. The
+// comment there explains the trade-off in full.
+export async function actReleaseLead(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  const reason = s(b.reason).trim().slice(0, 200);
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+
+  // Read the current owner FIRST: it goes in the timeline note and the audit row,
+  // and after the PATCH it is gone. Also lets us tell "no such lead" apart from
+  // "already unclaimed", which are different answers to the rep asking.
+  const before = await fetchRows<Row>(
+    `/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=claimed_by`,
+  );
+  if (before === null) return err("שחרור הליד נכשל", 502, "db_error");
+  if (!before.length) return err("הליד לא נמצא", 404, "not_found");
+  const owner = s(before[0].claimed_by).trim();
+  if (!owner) return err("הליד כבר לא משויך לאף נציג", 409, "not_claimed");
+
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}&claimed_by=not.is.null`, {
+    claimed_by: null,
+    claimed_at: null,
+  });
+  if (n === null) {
+    jlog({ at: "crm.releaseLead", ok: false, leadId });
+    return err("שחרור הליד נכשל", 502, "db_error");
+  }
+  // Zero rows here means someone released it between our read and our write —
+  // the outcome the caller wanted is the outcome they got, so this is not an error.
+  if (n === 0) return json({ ok: true, alreadyReleased: true });
+
+  await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "release",
+    note: reason ? `שוחרר מ${owner} — ${reason}` : `שוחרר מ${owner}`,
+    actor_name: await actorName(actorUid),
+  });
+  await logAudit(actorUid, "crm_lead_release", { lead_id: leadId, from: owner, reason });
+  return json({ ok: true, releasedFrom: owner });
+}
+
+// assignLead {leadId, rep} → set claimed_by to a named rep, OVERWRITING whoever
+// holds it. This is the deliberate counterpart to claimLead's atomic guard: an
+// admin handing a book over does not want first-come-first-served semantics, they
+// want the lead to end up with the person they named.
+//
+// Admin-only, and it is the only path in crm-api that can overwrite another rep's
+// claim — so it always records who it took the lead FROM, in both the lead's
+// timeline and the Reg.13 audit row. A silent reassignment would look identical
+// to the rep as their lead simply vanishing from their book.
+export async function actAssignLead(b: Row, actorUid: string): Promise<Response> {
+  const leadId = s(b.leadId).trim();
+  const rep = s(b.rep).trim().slice(0, 120);
+  if (!leadId) return err("leadId חסר", 400, "bad_request");
+  if (!isUuidish(leadId)) return err("leadId לא תקין", 400, "bad_request");
+  if (!rep) return err("שם נציג חסר", 400, "bad_request");
+
+  const before = await fetchRows<Row>(
+    `/rest/v1/leads?id=eq.${q(leadId)}&limit=1&select=claimed_by`,
+  );
+  if (before === null) return err("שיוך הליד נכשל", 502, "db_error");
+  if (!before.length) return err("הליד לא נמצא", 404, "not_found");
+  const owner = s(before[0].claimed_by).trim();
+  // Re-assigning to the current owner is a no-op, not a write: it would otherwise
+  // stamp a fresh claimed_at and push a meaningless "reassigned to X from X" row
+  // into the timeline every time an admin double-clicked.
+  if (owner === rep) return json({ ok: true, unchanged: true });
+
+  // NO `claimed_by=is.null` guard here, unlike actClaimLead — that is the whole
+  // point. A claim is first-come-first-served; an admin reassignment is an
+  // instruction. Re-adding the guard would silently restore the one-way door.
+  const n = await patchCountResult(`/rest/v1/leads?id=eq.${q(leadId)}`, {
+    claimed_by: rep,
+    claimed_at: new Date().toISOString(),
+  });
+  if (n === null || n === 0) {
+    jlog({ at: "crm.assignLead", ok: false, leadId });
+    return err("שיוך הליד נכשל", 502, "db_error");
+  }
+
+  await insertRow("lead_events", {
+    lead_id: leadId,
+    event: "assign",
+    note: owner ? `הועבר מ${owner} ל${rep}` : `שויך ל${rep}`,
+    actor_name: await actorName(actorUid),
+  });
+  await logAudit(actorUid, "crm_lead_assign", { lead_id: leadId, to: rep, from: owner || null });
+  return json({ ok: true, previousOwner: owner || null });
+}
+
 // repLeaderboard {} → per-rep performance over the claimed leads: how many each
 // rep took, closed as won / lost, and the REAL annual saving they booked. There
 // is no PostgREST GROUP BY without an RPC, so we read the claimed leads and

@@ -277,7 +277,10 @@ function CrmConsoleInner() {
             falls back to the dashboard rather than mounting a section whose every
             request would 403. */}
         {(shown === "dashboard") && <CrmDashboard onNavigate={selectTab} />}
-        {shown === "leads" && <CrmLeads />}
+        {/* canAdmin gates the drawer's release/reassign controls. It comes from
+            the SAME resolved whoami that hides the admin-only tabs above, so the
+            console never shows a control the server would 403. */}
+        {shown === "leads" && <CrmLeads canAdmin={!!access?.can.adminOnly} />}
         {shown === "meetings" && <CrmMeetings />}
         {shown === "conversations" && <CrmInbox />}
         {shown === "contacts" && <CrmContacts />}

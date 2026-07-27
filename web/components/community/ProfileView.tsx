@@ -39,7 +39,7 @@ import {
   type PublicProfile,
 } from "@/lib/community";
 import { useAuth } from "@/lib/auth-context";
-import { initial } from "@/lib/community-render";
+import { heCount, initial } from "@/lib/community-render";
 import AuthModal from "@/components/auth/AuthModal";
 import PostCard from "./PostCard";
 import ProfileEditor from "./ProfileEditor";
@@ -379,15 +379,41 @@ export default function ProfileView({ userId }: { userId: string }) {
               )}
 
               {/* Truthful stats — reflect the posts loaded on this page only;
-                  "N+" when a full page means there may be more. */}
+                  "N+" when a full page means there may be more.
+                  Agreement: an exact count goes through heCount so a one-post
+                  member reads "פוסט אחד", not "1 פוסטים". A "+" figure is a
+                  floor, not a count, so it keeps the numeral + plural noun
+                  ("20+ פוסטים") — the only form that stays true of "at least". */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-                  <span className="tabular-nums">{`${postCount}${plus}`}</span>
-                  <span className="ms-1">פוסטים</span>
+                  {plus ? (
+                    <>
+                      <span className="tabular-nums">{`${postCount}${plus}`}</span>
+                      <span className="ms-1">פוסטים</span>
+                    </>
+                  ) : (
+                    <span className="tabular-nums">
+                      {heCount(postCount, "post")}
+                    </span>
+                  )}
                 </span>
                 <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted">
-                  <span className="tabular-nums">{`${likesReceived}${plus}`}</span>
-                  <span className="ms-1">לייקים שהתקבלו</span>
+                  {plus ? (
+                    <>
+                      <span className="tabular-nums">{`${likesReceived}${plus}`}</span>
+                      <span className="ms-1">לייקים שהתקבלו</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="tabular-nums">
+                        {heCount(likesReceived, "like")}
+                      </span>
+                      {/* The relative clause agrees with the count too. */}
+                      <span className="ms-1">
+                        {likesReceived === 1 ? "שהתקבל" : "שהתקבלו"}
+                      </span>
+                    </>
+                  )}
                 </span>
               </div>
             </div>

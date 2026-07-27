@@ -11,6 +11,8 @@
 //   • clip(s, n)        — whitespace-collapsed hard clip with an ellipsis (the
 //                         permalink title/description + Q&A hub row formula).
 //   • heDate(iso)       — absolute Hebrew date ("6 ביולי 2026") for <time>.
+//   • heCount(n, noun)  — a count meeting a Hebrew noun, with real agreement
+//                         ("תגובה אחת" / "שתי תגובות" / "7 תגובות").
 //
 // NOTE: <NotificationsBell> keeps its OWN relativeTime on purpose — it uses
 // floor-based rounding, "ממש עכשיו" phrasing and month→year bridging, so folding
@@ -62,6 +64,57 @@ export function heDate(iso: string): string {
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return "";
   return d.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// ── Hebrew number agreement ──────────────────────────────────────────────────
+// Hebrew does not pluralise like English: a numeral does not just sit in front of
+// a fixed plural noun. "1 תגובות" is ungrammatical (it reads roughly like
+// "1 replies"), and it is exactly what a low-traffic community renders on almost
+// every row — the Q&A hub only lists posts with reply_count >= 1, so the single
+// most common badge in the product was the broken one.
+//
+// The forms we need per noun:
+//   1 → the singular WITH its agreeing "one" ("תגובה אחת", "פוסט אחד") — the
+//       numeral follows the noun and inflects for gender.
+//   2 → the counting form ("שתי תגובות" f. / "שני פוסטים" m.) — a bare "2" is
+//       acceptable but the word form is what a Hebrew reader expects.
+//   otherwise → numeral + plural noun ("7 תגובות"), which is correct from 3 up.
+//
+// This is presentation only: the NUMBER is never changed, invented or rounded —
+// heCount renders whatever real count it is handed.
+
+/** The three agreement forms of one countable Hebrew noun. */
+interface NounForms {
+  /** Count of exactly one, e.g. "תגובה אחת". */
+  one: string;
+  /** Count of exactly two, e.g. "שתי תגובות". */
+  two: string;
+  /** Plural noun that follows a numeral, e.g. "תגובות". */
+  many: string;
+}
+
+/** Every counted noun the community surfaces render, with real gender agreement
+ *  (תגובה/שיחה are feminine → אחת/שתי; לייק/פוסט are masculine → אחד/שני). */
+const HE_NOUNS = {
+  reply: { one: "תגובה אחת", two: "שתי תגובות", many: "תגובות" },
+  conversation: { one: "שיחה אחת", two: "שתי שיחות", many: "שיחות" },
+  like: { one: "לייק אחד", two: "שני לייקים", many: "לייקים" },
+  post: { one: "פוסט אחד", two: "שני פוסטים", many: "פוסטים" },
+} as const satisfies Record<string, NounForms>;
+
+/** Nouns `heCount` knows how to agree with. */
+export type HeNoun = keyof typeof HE_NOUNS;
+
+/** A real count meeting a Hebrew noun, with number + gender agreement.
+ *  `heCount(1, "reply")` → "תגובה אחת", `heCount(2, "reply")` → "שתי תגובות",
+ *  `heCount(7, "reply")` → "7 תגובות". Non-finite / negative inputs floor to 0
+ *  ("0 תגובות") — the helper never invents a count, it only renders one. */
+export function heCount(n: number, noun: HeNoun): string {
+  const forms = HE_NOUNS[noun];
+  const c = Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+  if (c === 1) return forms.one;
+  if (c === 2) return forms.two;
+  return `${c.toLocaleString("he-IL")} ${forms.many}`;
 }
 
 /** First rendered char of a name, for the avatar fallback monogram. */

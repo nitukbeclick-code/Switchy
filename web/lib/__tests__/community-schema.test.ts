@@ -14,10 +14,11 @@ import {
 //     least one visible (non-flagged) reply; otherwise noindex,follow. This is
 //     the moderation-safety line for the ONLY indexable UGC surface — weakening
 //     it would index unanswered lines that slipped moderation.
-//  2. TRUTHFUL QAPage: answerCount = the real visible replies; acceptedAnswer is
-//     the AUTHOR's genuine choice (falling back to the earliest reply), the rest
-//     are suggestedAnswer, and with ZERO replies no answer node exists at all —
-//     nothing is ever fabricated.
+//  2. TRUTHFUL QAPage: answerCount = the real visible replies; acceptedAnswer
+//     exists ONLY for the AUTHOR's genuine choice — never a fallback — every
+//     other visible reply is a suggestedAnswer, and with ZERO replies no answer
+//     node exists at all. The schema must never assert an accepted answer the
+//     rendered page refuses to badge (it badges only the real accepted_reply_id).
 // ────────────────────────────────────────────────────────────────────────────
 
 function post(overrides: Partial<QaPostInput> = {}): QaPostInput {
@@ -111,36 +112,58 @@ describe("buildQaSchema — truthful QAPage (real question + real answers only)"
     expect(suggested.map((s) => s.text)).toEqual(["תשובה a", "תשובה c"]);
   });
 
-  it("falls back to the EARLIEST reply when the author made no choice", () => {
-    const q = buildQaSchema(post({ accepted_reply_id: null }), [reply("a"), reply("b")])
-      .mainEntity as Record<string, unknown>;
-    expect((q.acceptedAnswer as Record<string, unknown>).text).toBe("תשובה a");
-  });
-
-  it("a DANGLING accepted_reply_id (deleted/flagged-out reply) falls back to the earliest reply", () => {
-    const q = buildQaSchema(post({ accepted_reply_id: "gone" }), [reply("a"), reply("b")])
-      .mainEntity as Record<string, unknown>;
-    expect((q.acceptedAnswer as Record<string, unknown>).text).toBe("תשובה a");
-  });
-
-  it("omits suggestedAnswer entirely when the accepted reply is the only one", () => {
-    const q = buildQaSchema(post(), [reply("a")]).mainEntity as Record<string, unknown>;
-    expect(q.acceptedAnswer).toBeDefined();
-    expect(q.suggestedAnswer).toBeUndefined();
-  });
-
-  it("every Answer carries the reply's REAL body/author/date verbatim", () => {
+  it("the accepted Answer is the chosen reply VERBATIM (real body/author/date)", () => {
     const r = reply("a", {
       body: "המסלול של פרטנר ב-₪29",
       author: "יוסי",
       created_at: "2026-07-02T08:30:00Z",
     });
-    const q = buildQaSchema(post(), [r]).mainEntity as Record<string, unknown>;
+    const q = buildQaSchema(post({ accepted_reply_id: "a" }), [r])
+      .mainEntity as Record<string, unknown>;
     expect(q.acceptedAnswer).toEqual({
       "@type": "Answer",
       text: "המסלול של פרטנר ב-₪29",
       author: { "@type": "Person", name: "יוסי" },
       dateCreated: "2026-07-02T08:30:00Z",
     });
+  });
+
+  it("omits suggestedAnswer entirely when the chosen reply is the only one", () => {
+    const q = buildQaSchema(post({ accepted_reply_id: "a" }), [reply("a")])
+      .mainEntity as Record<string, unknown>;
+    expect(q.acceptedAnswer).toBeDefined();
+    expect(q.suggestedAnswer).toBeUndefined();
+  });
+
+  // ── NO FALLBACK: the page badges only a real choice, so neither does the schema ──
+
+  it("NO acceptedAnswer when the author made no choice — every reply is a suggestedAnswer", () => {
+    const q = buildQaSchema(post({ accepted_reply_id: null }), [
+      reply("a"),
+      reply("b"),
+      reply("c"),
+    ]).mainEntity as Record<string, unknown>;
+    expect("acceptedAnswer" in q).toBe(false); // the KEY is absent, not undefined
+    expect(q.acceptedAnswer).toBeUndefined();
+    expect(q.answerCount).toBe(3); // the real count is still told truthfully
+    const suggested = q.suggestedAnswer as Array<Record<string, unknown>>;
+    expect(suggested.map((s) => s.text)).toEqual(["תשובה a", "תשובה b", "תשובה c"]);
+  });
+
+  it("a DANGLING accepted_reply_id (reply deleted/flagged out) elects NOTHING", () => {
+    const q = buildQaSchema(post({ accepted_reply_id: "gone" }), [reply("a"), reply("b")])
+      .mainEntity as Record<string, unknown>;
+    expect("acceptedAnswer" in q).toBe(false);
+    const suggested = q.suggestedAnswer as Array<Record<string, unknown>>;
+    expect(suggested.map((s) => s.text)).toEqual(["תשובה a", "תשובה b"]);
+  });
+
+  it("with no choice and a SINGLE reply, that reply is suggested — never accepted", () => {
+    const q = buildQaSchema(post({ accepted_reply_id: null }), [reply("a")])
+      .mainEntity as Record<string, unknown>;
+    expect("acceptedAnswer" in q).toBe(false);
+    expect((q.suggestedAnswer as Array<Record<string, unknown>>).map((s) => s.text)).toEqual([
+      "תשובה a",
+    ]);
   });
 });

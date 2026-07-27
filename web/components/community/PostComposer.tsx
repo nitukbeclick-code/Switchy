@@ -250,7 +250,7 @@ export default function PostComposer({
   onRequireAuth,
   prefill,
 }: PostComposerProps) {
-  const { user, profile } = useAuth();
+  const { ready, user, profile } = useAuth();
 
   const [channel, setChannel] = useState<Channel>(CHANNELS[0]);
   const [body, setBody] = useState("");
@@ -344,6 +344,32 @@ export default function PostComposer({
     });
     return () => cancelAnimationFrame(raf);
   }, [prefill]);
+
+  // ── Waiting on the session ─────────────────────────────────────────────────
+  // AuthProvider starts `ready:false, user:null`, so keying the signed-out prompt
+  // off `user` alone told every RETURNING MEMBER "התחברו כדי לפרסם" for the whole
+  // first paint, then swapped it for their composer — the app greeting its own
+  // members as strangers. Hold a skeleton of the same shape until the session
+  // resolves; nothing is claimed either way while we don't know.
+  if (!ready) {
+    return (
+      <section
+        id="community-composer"
+        aria-label="פרסום בקהילה"
+        aria-busy="true"
+        className="bento scroll-mt-24 p-4 sm:p-6"
+      >
+        <div aria-hidden="true" className="flex items-start gap-3">
+          <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-border/70" />
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="h-3 w-24 animate-pulse rounded bg-border/60" />
+            <div className="h-20 w-full animate-pulse rounded-xl bg-border/50" />
+            <div className="h-9 w-28 animate-pulse rounded-xl bg-border/60" />
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   // ── Signed-out prompt ──────────────────────────────────────────────────────
   if (!user) {

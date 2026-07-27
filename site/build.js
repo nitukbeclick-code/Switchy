@@ -4099,7 +4099,14 @@ ${cards}
 
   // Channel list mirrors the in-app community channels — shown as honest "what
   // you'll find inside" chips, not as a fake live feed with fabricated posts.
-  const channels = ['המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו״ל', 'עזרה בניתוק'];
+  //
+  // Read from COMMUNITY_CHANNELS rather than hand-kept. This list used to be its
+  // own copy and had silently lost 'חבילה משולבת' — six of seven — so the app
+  // landing page under-promised the product and disagreed with community.html,
+  // which lists all seven. (COMMUNITY_CHANNELS is declared below at module level;
+  // appPage() is not CALLED until writePage() near the end of the file, so the
+  // binding is initialised by then.)
+  const channels = COMMUNITY_CHANNELS;
   const chanChips = channels.map((c) => `<span class="chip">${esc(c)}</span>`).join('\n          ');
 
   const aiChips = AI_CHIPS.map(([ico, label]) =>
@@ -4468,16 +4475,29 @@ ${footer}
 // key, RLS public-read). The page ships empty shells (#communityFeed,
 // #ratingsSummary) that JS fills, plus an honest "post via the app" CTA — the
 // site never writes community content (posting needs app sign-in).
+// The community channels, in display order. community_posts.channel is a plain
+// TEXT column whose value IS the Hebrew label, so `data-channel` below must carry
+// the CANONICAL string verbatim — script.js compares it with `===` against
+// post.channel. This list previously emitted ENGLISH keys ('recommend',
+// 'cellular', 'abroad', …) which matched no stored row, so every filter button but
+// "all" painted the empty state, and it omitted 'חבילה משולבת' entirely, leaving
+// that channel's posts unreachable. Canonical source: shared/community-channels.json
+// (mirrors web/lib/community.ts CHANNELS); the pairing is pinned codepoint-for-
+// codepoint by web/lib/__tests__/community-channels.test.ts — keep them in step.
+const COMMUNITY_CHANNELS = [
+  'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו״ל', 'חבילה משולבת', 'עזרה בניתוק',
+];
+// UI-only "everything" sentinel — never written to the channel column.
+const COMMUNITY_ALL_CHANNEL = 'הכל';
+
 function communityPage() {
   const url = `${SITE}/community.html`;
   const title = 'קהילת SWITCHY — דיונים אמיתיים ודירוגי ספקים | SWITCHY';
   const desc = 'הצטרפו לקהילת SWITCHY: דיונים אמיתיים על מסלולי סלולר, אינטרנט, טלוויזיה וחו״ל, ודירוגי ספקים מלקוחות אמיתיים. שאלו, השוו ולמדו לפני שאתם עוברים.';
   // Channel filter mirrors the in-app community channels (script.js filters the
-  // live feed client-side by data-channel).
-  const channels = [
-    ['all', 'הכול'], ['recommend', 'המלצות'], ['cellular', 'סלולר'], ['internet', 'אינטרנט'],
-    ['tv', 'טלוויזיה'], ['abroad', 'חו״ל'], ['help', 'עזרה בניתוק'],
-  ];
+  // live feed client-side by data-channel). value === label for every real
+  // channel; only the "all" sentinel differs.
+  const channels = [['all', COMMUNITY_ALL_CHANNEL], ...COMMUNITY_CHANNELS.map((c) => [c, c])];
   const chanBtns = channels
     .map(([val, label], i) => `<button class="community__chan${i === 0 ? ' community__chan--active' : ''}" type="button" data-channel="${esc(val)}" aria-pressed="${i === 0 ? 'true' : 'false'}">${esc(label)}</button>`)
     .join('\n          ');

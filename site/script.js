@@ -1221,7 +1221,9 @@
     const out = $('calcOut');
     const btn = $('calcBtn');
     const show = (html) => { if (out) { out.style.display = 'block'; out.innerHTML = html; } };
-    const catNames = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת', abroad: 'חו"ל' };
+    // Display labels only (never compared). Gershayim U+05F4, like the rest of the
+    // site — this one had an ASCII quote and rendered a different-looking חו״ל.
+    const catNames = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת', abroad: 'חו״ל' };
     // Each ₪ figure is its own bidi-isolated LTR island (same reason as the
     // comparison table): a result row mixes two money runs with Hebrew unit
     // words, and without the isolation the sign drifts off its digits.
@@ -1893,6 +1895,22 @@
     return (/^https:\/\//i.test(s) || /^data:image\//i.test(s)) ? s : '';
   };
 
+  // community_posts.channel is a plain TEXT column — the Hebrew label IS the key,
+  // and nothing in the DB constrains it. The abroad channel shipped three ways:
+  // 'חו״ל' with the Hebrew gershayim U+05F4 (canonical, per
+  // shared/community-channels.json + web/lib/community.ts), 'חו"ל' with an ASCII
+  // quote U+0022, and bare 'חול'. They render nearly identically and none compares
+  // equal, so an exact === filter partitions the channel: posts written one way are
+  // invisible under the other's button, with no error — just an empty feed. Fold the
+  // known variants onto the canonical spelling before comparing OR displaying.
+  // supabase/community-channel-normalise-2026-07.sql repairs the STORED rows; this
+  // keeps the site correct for anything written before it is applied by hand.
+  const CHANNEL_ALIASES = { 'חו"ל': 'חו״ל', 'חול': 'חו״ל' };
+  const normChannel = (ch) => {
+    const s = String(ch == null ? '' : ch).trim();
+    return CHANNEL_ALIASES[s] || s;
+  };
+
   // Hebrew relative time — "לפני N דקות/שעות/ימים", falling back to a date.
   const relTimeHe = (iso) => {
     const t = Date.parse(iso);
@@ -1929,9 +1947,10 @@
       if (statsBox) statsBox.hidden = false;
     };
 
-    // Channel chip for a post (falls back to "כללי" when unset).
+    // Channel chip for a post (falls back to "כללי" when unset). Normalised so a
+    // post stored with a variant spelling still reads as its canonical channel.
     const channelChip = (ch) =>
-      '<span class="post-card__channel">' + escHtmlS(ch || 'כללי') + '</span>';
+      '<span class="post-card__channel">' + escHtmlS(normChannel(ch) || 'כללי') + '</span>';
 
     const mediaHtml = (type, url) => {
       const safe = type === 'image' ? safeMediaUrl(url) : '';
@@ -2023,7 +2042,11 @@
       const filterRow = $('communityFilter') || document.querySelector('.community__filter');
 
       const paintFeed = () => {
-        const list = activeChannel ? allPosts.filter((p) => p.channel === activeChannel) : allPosts;
+        // Both sides normalised: the button carries the canonical spelling, the row
+        // may still hold a legacy variant until the normalise migration is applied.
+        const list = activeChannel
+          ? allPosts.filter((p) => normChannel(p.channel) === activeChannel)
+          : allPosts;
         feed.innerHTML = '';
         if (!list.length) {
           feed.innerHTML = '<p class="community__empty">אין עדיין פוסטים בערוץ הזה — היו הראשונים באפליקציה.</p>';
@@ -2043,7 +2066,7 @@
           staticChans.forEach((b) => {
             b.addEventListener('click', () => {
               const dc = b.getAttribute('data-channel') || '';
-              activeChannel = (dc === 'all' || dc === '') ? '' : dc;
+              activeChannel = (dc === 'all' || dc === '') ? '' : normChannel(dc);
               staticChans.forEach((c) => {
                 const on = c === b;
                 c.classList.toggle('community__chan--active', on);
@@ -2055,7 +2078,8 @@
           return;
         }
         const channels = [];
-        allPosts.forEach((p) => { if (p.channel && !channels.includes(p.channel)) channels.push(p.channel); });
+        // Normalised first, so two spellings of one channel collapse into one chip.
+        allPosts.forEach((p) => { const ch = normChannel(p.channel); if (ch && !channels.includes(ch)) channels.push(ch); });
         if (!channels.length) return;
         const mk = (val, label) => {
           const b = document.createElement('button');
@@ -3740,7 +3764,7 @@
         host.innerHTML = posts.map(function (post) {
           return '<a class="home-post" href="community.html#post-' + escHtmlS(String(post.id)) + '">' +
             '<span class="home-post__head"><b>' + escHtmlS(post.author || 'אנונימי') + '</b>' +
-            '<span class="home-post__channel">' + escHtmlS(post.channel || 'כללי') + '</span>' +
+            '<span class="home-post__channel">' + escHtmlS(normChannel(post.channel) || 'כללי') + '</span>' +
             '<time>' + escHtmlS(relTimeHe(post.created_at)) + '</time></span>' +
             '<span class="home-post__body">' + escHtmlS(String(post.body || '').slice(0, 140)) + '</span>' +
           '</a>';

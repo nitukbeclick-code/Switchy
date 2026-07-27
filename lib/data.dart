@@ -180,6 +180,27 @@ Plan? planById(String id) {
   try { return allPlans.firstWhere((p) => p.id == id); } catch (_) { return null; }
 }
 
+/// Whether a category's catalogue `price` is a HEAD-TO-HEAD figure that may be
+/// compared against the user's own bill.
+///
+/// Electricity is not. plans_electricity.dart states its price is "an INDICATIVE
+/// monthly bill for a typical household AFTER the discount — a representative
+/// figure, not a fixed fee", and rests its safety on one sentence: "the
+/// electricity category's currentBill is 0 so the savings engine never treats
+/// these indicative figures as a head-to-head price."
+///
+/// That invariant holds only while the bill stays 0 — and the bills screen
+/// renders a card for EVERY category, so a user can set one. The moment they do,
+/// both saving derivations start quoting a difference between their real bill and
+/// a representative household figure, as though it were an offer. The real offer
+/// is a percentage off the regulated tariff, which lives in feats/specs and is
+/// not a subtraction.
+///
+/// Consult this wherever a saving is derived, not where one is displayed: the
+/// two derivations below do not read each other, so guarding one leaves the bug
+/// live in the other.
+bool isPriceComparableCategory(String catId) => catId != 'electricity';
+
 int planSaveYear(Plan p, int currentBill) {
   // Use the exact price so the saving is accurate to the agora even when the
   // headline price is rounded for sorting.

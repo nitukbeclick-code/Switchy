@@ -81,4 +81,16 @@ void main() {
     expect(after.any((n) => n.id == id), isFalse);
     expect(after.length, equals(before.length - 1));
   });
+
+  // The SECOND, independent saving derivation. computeSavings and
+  // computeNotifications do not read each other, so guarding one leaves the bug
+  // live in the other — which is exactly how the first attempt at this fix
+  // shipped looking complete.
+  test('an electricity bill never becomes a savings notification', () {
+    final s = AppState();
+    s.resetAllBills();
+    s.setCurrentBill('electricity', 900); // setCurrentBill flips billsPersonalized itself
+    final notes = computeNotifications(s);
+    expect(notes.any((n) => n.title.contains('חוסך') || n.body.contains('חוסך')), isFalse);
+  });
 }

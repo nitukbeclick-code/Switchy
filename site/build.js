@@ -2019,12 +2019,33 @@ function page(c) {
     const cheapest = monthly[0].price;
     const maxP = monthly[monthly.length - 1].price;
     const avg = Math.round(monthly.reduce((s, p) => s + p.price, 0) / monthly.length);
-    const maxSave = (avg - cheapest) * 12;
-    if (maxSave < 100) return '';
+    // The saving was (avg headline − cheapest headline) × 12: two PROMO prices,
+    // multiplied out as though both lasted a year. On internet that produced
+    // "חסכו עד ₪744 בשנה" resting on a ₪39 price the catalogue itself publishes
+    // as ₪139 from month 3 and ₪159 from month 13.
+    //
+    // Both sides are now real 12-month service costs, paired so the claim is the
+    // SMALLEST defensible one: the plan you switch TO at its maximum (you might
+    // pay more than the promo suggests), the catalogue baseline at its minimum
+    // (they might pay less than we assume). Any other pairing flatters us.
+    //
+    // On today's catalogue that erases the internet and tv claims entirely — they
+    // were built on promos and do not survive honest accounting — and moves
+    // cellular/triple by ~3.5%, which is the arithmetic, not a new promise.
+    const costs = monthly.map((p) => staticPlanCost.calculateTwelveMonthCost(p));
+    const cheapestYear = costs[0].maximum;
+    const avgYear = costs.reduce((s, c) => s + c.minimum, 0) / costs.length;
+    const maxSave = Math.max(0, Math.round(avgYear - cheapestYear));
+    // A category that cannot honestly claim a saving keeps its real facts — the
+    // plan count and the entry price — and simply drops the clause it cannot
+    // support, rather than losing the whole line.
+    if (maxSave < 100) {
+      return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש</p>`;
+    }
     // Money tier on the ₪ runs only (the plan count keeps its ink <strong>), and
     // .price-stat sets no font-size so the sentence keeps its 13px rhythm. The
     // inline runs get the same dir="ltr" bidi isolation as every other ₪ here.
-    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש · חסכו עד <strong class="price-stat" dir="ltr">₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (<span class="price-stat" dir="ltr">₪${avg}</span>)</p>`;
+    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש · חסכו עד <strong class="price-stat" dir="ltr">₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (<span class="price-stat" dir="ltr">₪${Math.round(avgYear / 12)}</span> לחודש, לפי עלות שירות ל־12 ח׳)</p>`;
   })();
   // Above-the-fold real-proof band — the light-hero analog of the home ink
   // counts-bar. Every figure is catalogue-derived (this category's live plan

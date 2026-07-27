@@ -7,7 +7,28 @@
 // its logic, consent, or API — it is purely a navigation affordance into it.
 //
 // UX / funnel discipline:
-//   • Hidden on sm+ (the in-page CTAs are visible there; one primary CTA per view).
+//   • Hidden on lg+ — the breakpoint where <SiteHeader>'s /book CTA appears
+//     (`lg:inline-flex`). These two MUST name the same breakpoint: the bar is the
+//     persistent ask below it, the masthead pill is the persistent ask above it,
+//     and any gap between them is a width with NO ask in the page chrome.
+//
+//     It used to be `sm:hidden`, which opened exactly that gap across 640–1023px
+//     — and proxy.ts:34 routes `tablet|ipad|kindle|silk|playbook` to THIS app on
+//     purpose ("Phones AND tablets count as mobile so touch devices get the
+//     touch-first app"), so every tablet landed in it. Measured in Chromium on
+//     an iPad UA, before this change:
+//
+//         route              width      sticky  hdr CTA  first in-page ask
+//         /compare/cellular  768x1024   no      no       1391px (fold 1024)
+//         /plans             768x1024   no      no       1192px (fold 1024)
+//         /                  768x1024   no      no        797px (above fold)
+//
+//     i.e. on the highest-intent route a tablet visitor had to scroll past a
+//     full screen height before the product asked for anything. The "in-page
+//     CTAs cover sm+" rationale was a desktop intuition; it does not survive
+//     contact with the mobile layout at a tablet width.
+//   • The reservation in globals.css (`:root[data-sticky-lead] body`) is keyed to
+//     the SAME breakpoint and moves with it — see the stacking contract there.
 //   • Auto-hides once the real lead form scrolls into view, so the page never
 //     shows two competing lead CTAs at once.
 //   • Smooth-scrolls to #lead and respects prefers-reduced-motion.
@@ -93,9 +114,11 @@ export default function StickyLeadCta({
       // was covering the only conversion action on a first visit). The bar slides
       // back up on its own drawer transition the moment the choice is made.
       data-sticky-lead-cta=""
-      // Mobile-only: the in-page CTAs cover sm+; this keeps one primary CTA/view.
+      // Hidden at lg+, where <SiteHeader>'s /book pill takes over as the
+      // persistent ask. Keep this breakpoint and that one identical — see the
+      // header comment; a mismatch is a band of widths with no ask at all.
       className={[
-        "fixed inset-x-0 bottom-0 z-40 sm:hidden",
+        "fixed inset-x-0 bottom-0 z-40 lg:hidden",
         "border-t border-border bg-surface/95 backdrop-blur",
         "px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
         "transition-transform duration-300 ease-[var(--ease-drawer)] motion-reduce:transition-none",

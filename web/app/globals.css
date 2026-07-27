@@ -347,7 +347,7 @@ h4 {
    BOTTOM-OF-VIEWPORT STACKING CONTRACT
    ────────────────────────────────────────────────────────────────────────────
    Four independent surfaces want the bottom edge of a phone screen: the sticky
-   lead CTA (z-40, opaque, sm:hidden), the cookie banner (z-50), the push opt-in
+   lead CTA (z-40, opaque, lg:hidden), the cookie banner (z-50), the push opt-in
    toast, and the "מתעדכן…" freshness pill. Left to themselves they stacked, and
    two of the collisions were outright defects — so the ordering lives HERE, once,
    as a flag-driven contract, instead of being re-negotiated per page.
@@ -359,8 +359,15 @@ h4 {
        once it confirms its scroll target exists; we pay for the bar with real
        page padding so the document can actually scroll clear of it. Reserved
        unconditionally (not only while the bar is on screen) so the page height
-       never twitches as the bar slides in and out. The bar is sm:hidden, so the
-       reservation ends at the same breakpoint.
+       never twitches as the bar slides in and out. The bar is lg:hidden, so the
+       reservation ends at the same breakpoint — 1024px, matching Tailwind's `lg`
+       and <SiteHeader>'s `lg:inline-flex` /book pill. FOUR PLACES ENCODE THIS ONE
+       NUMBER (the component's class, the body reservation below, the PWA-toast
+       lift below that, and the header's CTA) — and they are in three different
+       files and two different languages, which is why they drifted at all.
+       components/__tests__/StickyLeadCta.test.tsx pins them together,
+       because the last time they disagreed the gap was invisible: 640–1023px had
+       neither the bar nor the pill, and that is exactly the band tablets get.
 
    (2) ONE DECISION AT A TIME. <ConsentBanner> (z-50) sat directly on top of the
        CTA (z-40): on a first visit the only conversion action on the page was
@@ -375,7 +382,7 @@ h4 {
 :root[data-sticky-lead] body {
   padding-bottom: calc(7rem + env(safe-area-inset-bottom));
 }
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   :root[data-sticky-lead] body {
     padding-bottom: 0;
   }
@@ -393,7 +400,7 @@ h4 {
 :root[data-sticky-lead] [data-pwa-toast] {
   bottom: calc(7rem + env(safe-area-inset-bottom));
 }
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   :root[data-sticky-lead] [data-pwa-toast] {
     bottom: 1rem;
   }

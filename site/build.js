@@ -1473,7 +1473,14 @@ const calcEffectiveMonthly = (p) => {
 // provider hero, ticker, deal card or machine-readable summary.
 const isConsumerMonthlyPlan = (p) =>
   (!p.priceUnit || p.priceUnit === 'month') &&
-  !(p.cat === 'cellular' && String(p.kind || '').toLowerCase() === 'dataonly');
+  // 'kosher' belongs here for the same reason 'dataonly' does. The cheapest plan
+  // surviving the old predicate was רמי לוי "זול להיות בקשר כשר" at ₪14.9 —
+  // minutes only, NO data — so the cellular hero advertised an entry price for a
+  // plan most visitors cannot use as their phone plan. The honest headline is
+  // ₪19.8. Both kinds keep their own accurate headlines on their own collection
+  // pages (kosher-plans.html, data-only.html); they are excluded from the
+  // CATEGORY headline, not from the site.
+  !(p.cat === 'cellular' && ['dataonly', 'kosher'].includes(String(p.kind || '').toLowerCase()));
 
 // ── Shared social-card image metadata ───────────────────────────────────────
 // Single source of truth for the OG/Twitter image so the dimensions + alt match
@@ -1829,16 +1836,31 @@ function plansItemListJsonLd(plans, listUrl, listName) {
 // `temporalCoverage` is the REAL catalogue month (CATALOGUE_MONTH). Returns null
 // when no priced plan exists so callers omit it rather than emit an empty offer.
 function categoryAggregateOfferNode(plans, categoryLabel) {
-  const prices = plans
+  // lowPrice/highPrice must come from the SAME set the visible "החל מ-₪X" band
+  // uses, or the comment above is false — and it was: cellular.html showed humans
+  // "החל מ-₪19.8" while emitting lowPrice 10.9 (a data-only tablet SIM), and
+  // abroad.html emitted 1 (a per-MINUTE tariff). Search and answer engines were
+  // being told a cheaper entry price than any human ever saw.
+  //
+  // offerCount deliberately stays over ALL priced plans: it is the size of the
+  // ItemList the page actually renders, and narrowing it would swap this
+  // inconsistency for a new one — a page showing "59 מסלולים" while its schema
+  // claims 51.
+  const priceBasis = plans.filter(isConsumerMonthlyPlan);
+  const priceSrc = priceBasis.length ? priceBasis : plans;
+  const prices = priceSrc
     .map(offerPrice)
     .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
-  if (prices.length === 0) return null;
+  const allPrices = plans
+    .map(offerPrice)
+    .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
+  if (prices.length === 0 || allPrices.length === 0) return null;
   const node = {
     '@type': 'AggregateOffer',
     priceCurrency: 'ILS',
     lowPrice: Math.min(...prices),
-    highPrice: Math.max(...prices),
-    offerCount: prices.length,
+    highPrice: Math.max(...allPrices),
+    offerCount: allPrices.length,
     availability: 'https://schema.org/InStock',
     temporalCoverage: CATALOGUE_MONTH,
   };

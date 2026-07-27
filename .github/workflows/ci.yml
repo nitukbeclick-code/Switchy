@@ -193,6 +193,56 @@ jobs:
       # rebuild-static cron, not to CI. All this job asserts is that the build
       # SUCCEEDS and the link gate passes.
 
+  browser-gates:
+    name: Browser gates (CTA contrast + translation UX)
+    runs-on: ubuntu-latest
+
+    # Two gates that each shipped as "a new gate" in the commit that introduced
+    # them and had never run anywhere but the author's machine. Both drive REAL
+    # Chromium, because both check things the source cannot tell you:
+    #
+    #   check-cta-contrast     resolves the FULL cascade and measures the CTA
+    #                          label's contrast in both themes. styles.css
+    #                          declares an AA-safe fill near the top and a re-skin
+    #                          layer ~4300 lines down restates `background` at the
+    #                          same specificity — later source order won, and
+    #                          white-on-mint at 1.80:1 hit every hero CTA, every
+    #                          plan-card CTA and the lead form on 269 pages.
+    #                          Reading the CSS could not catch that.
+    #   check-translate-ux     drives a real page with the translate endpoint
+    #                          stubbed to each of five server outcomes and asserts
+    #                          what the visitor actually sees. The runtime is a
+    #                          browser IIFE with no module surface, so there is no
+    #                          other way to test it.
+    #
+    # They could not run in CI because `playwright` was never declared as a
+    # dependency — it resolved only on a machine where someone had installed it
+    # by hand. It is a devDependency now, so `npm install` brings it.
+    #
+    # No lockfile at the repo root (the manifest is a small utility one), so this
+    # is `npm install`, not `npm ci`.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "20"
+
+      - name: Install dependencies + Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      # Both run against the COMMITTED pages, which is what the PR changes —
+      # not a fresh build, so a regression in generated output is visible here.
+      - name: CTA label contrast clears WCAG AA in both themes
+        run: npm run test:cta-contrast
+
+      - name: Every translate outcome produces the right user-facing result
+        run: npm run test:translate-ux
+
   data-consistency:
     name: Data consistency
     runs-on: ubuntu-latest

@@ -184,13 +184,14 @@ jobs:
       - name: Cost-engine tests (incl. the cross-surface parity fixtures)
         run: node --test site/plan-cost.test.js
 
-      # Colour contrast had NO gate anywhere in this repo — not the build, not
-      # tsc/eslint, not the vitest or deno suites — which is how a 1.80:1 CTA
-      # shipped. The money-type block in styles.css states specific measured
-      # ratios in prose; this asserts them against the actual tokens, so a nudge
-      # to --value-ink fails here instead of in production. Same dependency-free
-      # node:test style as the cost engine above, for the same reason.
-      - name: Money-tier contrast gate
+      # A TOKEN-level contrast check, complementing (never replacing) the real
+      # cascade-resolving browser gate in the "Browser gates" job below. That one
+      # measures computed style in Chromium and covers the CTAs; this one pins
+      # the specific ratios the money-type block in styles.css states in prose,
+      # so a nudge to --value-ink fails here instead of in production. Cheap and
+      # dependency-free (node:test), same as the cost engine above, so it runs in
+      # this fast job rather than waiting on a browser install.
+      - name: Money-tier contrast gate (tokens)
         run: node --test site/money-contrast.test.js
 
       - name: Build the static site (runs the internal-link gate)

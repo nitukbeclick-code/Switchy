@@ -2,26 +2,32 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // money-contrast.test.js — the money tiers must stay legible in BOTH themes.
 //
-// WHY THIS FILE EXISTS. Nothing in this repo checks colour contrast. Not
-// `node site/build.js`, not tsc, not eslint, not the vitest or deno suites —
-// and a 1.80:1 CTA has shipped here before precisely because a token can be
-// nudged and every gate stays green.
+// SCOPE — read this before trusting it. This is a TOKEN gate, not a cascade
+// gate, and it is the WEAKER of the two contrast checks in this repo.
 //
-// The money type block in styles.css commits, in prose, to specific measured
+// scripts/check-cta-contrast.mjs is the strong one: it drives real Chromium and
+// measures the FINAL COMPUTED style, and its header explains why that is the
+// only way — the 1.80:1 CTA shipped because a re-skin layer ~4300 lines down
+// restated `background` at the same specificity, which no amount of reading the
+// source can catch. This file cannot catch that class of bug and must never be
+// treated as if it does. It now also covers /calc-cellular.html, so the money
+// pages' CTAs are measured in a real cascade.
+//
+// What THIS file adds is cheap, browser-free coverage of a different failure:
+// the money type block in styles.css commits, in prose, to specific measured
 // ratios ("5.9:1 on --white / 5.5:1 on --cream in light", "#8A570D on that ink
-// measures 2.73:1, below even the 3:1 large-text floor", "6.65:1"). Those
-// numbers were true when written and there is nothing stopping the next edit to
-// --value-ink from falsifying all of them silently. This turns the prose into
-// an assertion.
+// measures 2.73:1, below even the 3:1 large-text floor", "6.65:1"). Those were
+// true when written, and nothing stops the next edit to --value-ink from
+// falsifying all of them silently. This turns the prose into an assertion and
+// runs in the fast, dependency-free job alongside the cost engine.
 //
 // It reads the TOKENS out of styles.css rather than hard-coding hexes, so
-// changing a token is what makes it fail — which is the whole point. The pairs
-// below are the grounds each tier is actually painted on, verified by rendering
+// changing a token is what makes it fail — which is the point. The pairs below
+// are the grounds each tier is actually painted on, cross-checked by rendering
 // calc-cellular.html in real Chromium and reading getComputedStyle: the payoff
 // figure resolved to rgb(138,87,13) on rgb(246,242,233) = 5.45:1 in light and
-// rgb(242,198,109) on rgb(14,23,19) = 11.36:1 in dark, matching the light-theme
-// row here exactly. jsdom cannot do that (it does not lay out or cascade), so
-// the browser check stays a manual step and this file guards the tokens.
+// rgb(242,198,109) on rgb(14,23,19) = 11.36:1 in dark — the light figure
+// matching this file's computation to the hundredth.
 //
 // Floors are WCAG 2.1 AA: 4.5:1 normal text, 3:1 for large text (>=24px, or
 // >=18.66px bold). The money tiers are all large-and-bold, but where a tier

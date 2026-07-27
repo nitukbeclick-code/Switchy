@@ -74,7 +74,7 @@ function LeadsSkeleton() {
   );
 }
 
-export default function CrmLeads() {
+export default function CrmLeads({ canAdmin = false }: { canAdmin?: boolean } = {}) {
   // Filters initialize from the URL (mirrored below on every change), so a
   // refresh / tab-switch / shared link restores the exact view.
   const params = useSearchParams();
@@ -876,6 +876,7 @@ export default function CrmLeads() {
           onNavigate={(id) => setSelectedId(id)}
           onClose={() => setSelectedId(null)}
           onChanged={() => void reload()}
+          canAdmin={canAdmin}
         />
       )}
     </div>

@@ -64,6 +64,18 @@ export const ACTION_CAP: Readonly<Record<string, CrmCapability>> = {
   setLeadNote: "write_leads",
   recordSaving: "write_leads",
   claimLead: "write_leads",
+  // Undoing / redirecting a claim is admin_only, NOT write_leads, and the reason
+  // is a data fact rather than caution: `leads.claimed_by` is a free-text display
+  // STRING (see actClaimLead — "no reps table", and nothing maps a Supabase uid to
+  // a rep). So "may this caller release their OWN lead?" cannot be answered from
+  // the caller's identity; the best available check is comparing the actor's
+  // display name to the stored string, which collides on duplicate names and
+  // breaks on a rename. A capability that can silently mean "any rep may take any
+  // other rep's lead" is not one to grant on a string compare, so the authority
+  // sits with admin until a uid↔rep mapping exists. Reps still self-serve the
+  // common case through claimLead, which is atomic and first-come-first-served.
+  releaseLead: "admin_only",
+  assignLead: "admin_only",
   setMeetingStatus: "write_leads",
   // admin-only: the sensitive consented-PII feed + role management
   listSellableLeads: "admin_only",

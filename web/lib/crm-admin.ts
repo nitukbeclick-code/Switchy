@@ -516,6 +516,50 @@ export async function claimCrmLead(leadId: string, rep: string): Promise<boolean
   return !!res?.ok;
 }
 
+// ── Undoing a claim (admin-only) ─────────────────────────────────────────────
+// These two return the TYPED outcome (CrmFetch), not the `boolean` the older
+// mutations above collapse to, and that is deliberate rather than inconsistent:
+// both have failure modes the rep must be able to read.
+//
+//   releaseLead → 409 "not_claimed" when nobody holds it
+//   both        → 403 when the caller is a rep rather than an admin
+//   both        → 404 on an id that is not there
+//
+// A `!!res?.ok` here would render every one of those as the same silent
+// no-op, on a control whose whole purpose is taking a lead away from someone.
+// (The older ones are C4 in the plan — worth converting, but not by widening
+// this change.)
+
+/** Result of releasing a claim. `releasedFrom` is the rep who held it. */
+export interface CrmReleaseResult {
+  ok: boolean;
+  releasedFrom?: string;
+  /** True when the row was already free by the time the write landed. */
+  alreadyReleased?: boolean;
+}
+
+/** Return a claimed lead to the unclaimed pool so any rep can take it. */
+export function releaseCrmLead(leadId: string, reason?: string): Promise<CrmFetch<CrmReleaseResult>> {
+  return crmRequest<CrmReleaseResult>(
+    "releaseLead",
+    { leadId, ...(reason ? { reason } : {}) },
+    (j) => typeof j.ok === "boolean",
+  );
+}
+
+/** Result of a reassignment. `previousOwner` is null when it was unclaimed. */
+export interface CrmAssignResult {
+  ok: boolean;
+  previousOwner?: string | null;
+  /** True when the named rep already held it and nothing was written. */
+  unchanged?: boolean;
+}
+
+/** Hand a lead to a named rep, overwriting whoever currently holds it. */
+export function assignCrmLead(leadId: string, rep: string): Promise<CrmFetch<CrmAssignResult>> {
+  return crmRequest<CrmAssignResult>("assignLead", { leadId, rep }, (j) => typeof j.ok === "boolean");
+}
+
 // ── Meetings (Zoom bookings) ────────────────────────────────────────────────
 
 /** Meeting lifecycle status (mirrors crm_logic.MEETING_STATUSES / meetings.status). */

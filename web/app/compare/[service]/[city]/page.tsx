@@ -29,7 +29,7 @@ import TrustSignals from "@/components/TrustSignals";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
-import LeadForm from "@/components/LeadForm";
+import LeadForm from "@/components/LeadFormLazy";
 import AeoAnswerBlock from "@/components/AeoAnswerBlock";
 import AeoQA from "@/components/AeoQA";
 import DataMethodology from "@/components/DataMethodology";

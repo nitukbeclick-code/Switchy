@@ -26,7 +26,7 @@ import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
-import LeadForm from "@/components/LeadForm";
+import LeadForm from "@/components/LeadFormLazy";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import AeoAnswerBlock from "@/components/AeoAnswerBlock";
 import AeoQA from "@/components/AeoQA";

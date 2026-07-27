@@ -33,7 +33,7 @@ import PlanFeesBreakdown from "@/components/PlanFeesBreakdown";
 import FreshnessBadge from "@/components/FreshnessBadge";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
-import LeadForm from "@/components/LeadForm";
+import LeadForm from "@/components/LeadFormLazy";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import PriceDropBadge from "@/components/PriceDropBadge";
 import SocialProof from "@/components/SocialProof";

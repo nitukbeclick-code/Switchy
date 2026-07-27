@@ -262,6 +262,42 @@ void main() {
     });
   });
 
+  group('the quoted annual saving is the shared one, not a restated formula', () {
+    // The plans branch used to restate `(bill − price) * 12` with the ROUNDED
+    // headline. On a promo plan that annualises a price which expires inside the
+    // year — פרטנר Fiber 1000Mb would have been quoted "חיסכון שנתי צפוי ₪1,212"
+    // against a ₪140 bill where its published ladder gives ₪212.
+    test('matches planSaveYear for the plan it names, on every category', () {
+      for (final cat in ['cellular', 'internet', 'tv', 'triple']) {
+        final bill = categoryById(cat)!.currentBill;
+        final r = ask('מסלול $cat', context: AdvisorContext(bills: {cat: bill}));
+        final quoted = RegExp(r'חיסכון שנתי צפוי: ₪(\d+)').firstMatch(r.text);
+        if (quoted == null || r.planIds.isEmpty) continue; // nothing quoted
+        final best = planById(r.planIds.first);
+        expect(best, isNotNull, reason: 'the advisor named an unknown plan id');
+        expect(
+          int.parse(quoted.group(1)!),
+          planSaveYear(best!, bill),
+          reason: 'the advisor and planSaveYear disagree on $cat',
+        );
+      }
+    });
+
+    test('a promo plan is not quoted a year of its opening price', () {
+      // Whatever the catalogue's cheapest internet plan is, the quoted figure
+      // must never exceed what netting off its real twelve-month cost allows.
+      const bill = 140;
+      final r = ask('אינטרנט', context: const AdvisorContext(bills: {'internet': bill}));
+      final quoted = RegExp(r'חיסכון שנתי צפוי: ₪(\d+)').firstMatch(r.text);
+      if (quoted == null || r.planIds.isEmpty) return;
+      final best = planById(r.planIds.first)!;
+      expect(
+        int.parse(quoted.group(1)!),
+        lessThanOrEqualTo(((bill - best.priceValue) * 12).round()),
+      );
+    });
+  });
+
   group('context-backed branches', () {
     test('current-bill branch lists saved bills', () {
       final r = ask('כמה אני משלם',

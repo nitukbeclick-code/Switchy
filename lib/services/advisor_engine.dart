@@ -566,7 +566,12 @@ class AdvisorEngine {
       intent = AdvisorIntent.plans;
       final currentBill = context.billFor(cat);
       final best = topPlans.first;
-      final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
+      // planSaveYear, not a restated `(bill − price) * 12`. The restatement used
+      // the ROUNDED headline and annualised a promo that expires inside the
+      // year, so on פרטנר Fiber 1000Mb this line told the visitor "חיסכון שנתי
+      // צפוי: ₪1,212" where the plan's published ladder gives ₪212. The owner of
+      // this formula is data.dart; a second copy is a second thing to forget.
+      final saveYear = planSaveYear(best, currentBill);
       final catName = categoryById(cat)?.name ?? cat;
       final unit = priceUnitShort(best);
       final promoNote = best.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.afterText}/$unit' : '';

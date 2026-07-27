@@ -107,6 +107,21 @@ function scheduledMonths(text: string, fallback: number): number[] | null {
   // headline price covers our whole horizon, even though no in-horizon range is
   // present (for example "ח׳13+: ₪199" or "שנה 2+: ₪149").
   if (/(?:ח[׳'\"]?\s*13\+|שנה\s*2\+)\s*:/.test(text)) found = true;
+  // A free opening month published in PROSE rather than as a tier. yes's
+  // "חודש ראשון חינם | ח׳2-12: ₪209 | …" matches only the ח׳2-12 tier, so month
+  // 1 keeps the ₪209 fallback fill and we bill the plan for a month it gives
+  // away — ₪2,508 instead of ₪2,299.
+  //
+  // Same rule as site/plan-cost.js and lib/services/plan_cost.dart. All three
+  // engines read the same catalogue rows and are meant to agree.
+  //
+  // Applied ONLY when a tier ladder was already found, and that restriction is
+  // the point. 24 catalogue plans contain "חינם"/"מתנה" and nearly all are
+  // ADD-ONS, not free subscription months: "HBO Max חינם 3 ח׳", "משלוח SIM
+  // חינם", "נתב WiFi7 שנה מתנה", "מקרן וידאו במתנה". Refining a schedule the
+  // catalogue already published is safe; inventing one from a phrase that might
+  // describe a router is not — and it would flatter the plan.
+  if (found && /חודש\s*ראשון\s*חינם/.test(text)) months[0] = 0;
   return found ? months : null;
 }
 

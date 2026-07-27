@@ -1237,16 +1237,51 @@
       const catHref = cat ? cat + '.html' : 'plans.html';
       const catLabel = catNames[cat] || 'מסלולים';
       if (yearly > 0) {
-        // `price-stat`, not `price-row`: these figures sit on the same baseline as
-        // their Hebrew label inside a flex row, so the money treatment may add the
-        // typeface and the tabular figures but must not add a font-size — the row
-        // would then break its own alignment. The saving keeps `saving` so the
-        // --value-ink rule still wins on the one figure that is the point.
+        // The two REFERENCE rows keep `price-stat`, not `price-row`: they sit on
+        // the same baseline as their Hebrew label inside a flex row, so the money
+        // treatment may add the typeface and the tabular figures but must not add
+        // a font-size — the row would then break its own alignment.
+        //
+        // The PAYOFF is a different rank and now says so. It used to be a third
+        // identical flex row, separated from "משלמים היום" by 1.6px
+        // (.calc-result__row--main .saving = 1.15rem against the rows' 1.05rem),
+        // so the one figure this calculator exists to produce read as a third
+        // reference line. That is verbatim the failure the money-type block in
+        // styles.css was written to prevent — "the one number the visitor came
+        // for read like a paragraph" — and .price-hero, the tier written for it
+        // ("THE money moment, AT MOST ONE PER PAGE"), had no call site anywhere
+        // on the site.
+        //
+        // It has to LEAVE the flex row to wear the tier, for the same reason the
+        // rows can't: a 52px figure inside `justify-content: space-between`
+        // breaks the row. So it becomes a stacked label/figure/unit block —
+        // the same shape as the homepage calculator's .calc__result, which is
+        // the other half of this pattern. Leaving the row also drops it out of
+        // scope of `.calc-result__row--main .saving`, whose (0,2,0) font-size
+        // would otherwise out-specify the tier's (0,1,0).
+        //
+        // The ANNUAL figure is the hero and the monthly moves to the sub-line,
+        // matching the homepage calculator ("תוכלו לחסוך עד / ₪1,188 / בשנה").
+        // Both numbers are unchanged — this is presentation only, the same
+        // `monthly`/`yearly` computed above, and the estimate disclaimer below
+        // is untouched.
+        //
+        // `price-sign` is wired here too. styles.css declares it and says
+        // explicitly it belongs to the display tiers only ("Wire it up with
+        // .price-hero, never on .price-stat") because demoting the ₪ "earns its
+        // keep at 40px+ and reads as a rendering fault at 20px". This is the
+        // site's only 40px+ money figure, so it is the one correct call site.
+        const heroSaving = '<span dir="ltr"><span class="price-sign">₪</span>'
+          + Math.round(yearly).toLocaleString('he-IL') + '</span>';
         show('<div class="calc-result">'
           + '<div class="calc-result__row"><span>משלמים היום</span><strong class="price-stat">' + money(cur) + '/חודש · ' + money(cur * 12) + '/שנה</strong></div>'
           + '<div class="calc-result__row"><span>מסלול זול ביותר</span><strong class="price-stat">' + money(cheapest) + '/חודש</strong></div>'
           + '<hr class="calc-result__sep">'
-          + '<div class="calc-result__row calc-result__row--main"><span>חיסכון פוטנציאלי</span><strong class="saving price-stat">' + money(monthly) + '/חודש · ' + money(yearly) + '/שנה</strong></div>'
+          + '<div class="calc-result__payoff">'
+          + '<span class="calc-result__payoffLabel">חיסכון פוטנציאלי</span>'
+          + '<strong class="price-hero saving">' + heroSaving + '</strong>'
+          + '<span class="calc-result__payoffUnit">בשנה · ' + money(monthly) + ' לחודש</span>'
+          + '</div>'
           + '</div>'
           + '<a href="' + catHref + '" class="btn btn--primary btn--block" style="margin-top:16px">לראות את כל מסלולי ' + catLabel + ' ←</a>'
           + '<p style="margin:8px 0 0;font-size:.8rem;color:#6b7280;text-align:center">הערכה מול המסלול הזול בשוק. המחירים מתעדכנים ברציפות.</p>');

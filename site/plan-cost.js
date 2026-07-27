@@ -67,6 +67,24 @@
       for (let month = from; month <= to; month += 1) months[month - 1] = amount;
     }
     if (/(?:ח[׳'\"]?\s*13\+|שנה\s*2\+)\s*:/.test(text)) found = true;
+    // A free opening month published in PROSE rather than as a tier. yes's
+    // "חודש ראשון חינם | ח׳2-12: ₪209 | …" only matched the ח׳2-12 tier, so
+    // month 1 kept the ₪209 fallback and we billed the plan for a month it gives
+    // away — ₪2,508 instead of ₪2,299, making it look worse than it is.
+    //
+    // Applied ONLY when a tier ladder was already found, and that restriction is
+    // the point. 24 catalogue plans contain "חינם"/"מתנה" and nearly all of them
+    // are ADD-ONS, not free subscription months: "HBO Max חינם 3 ח׳",
+    // "משלוח SIM חינם", "נתב WiFi7 שנה מתנה", "מקרן וידאו במתנה", "סינון אתרים
+    // חינם". Refining a schedule the catalogue already published is safe;
+    // inventing one from a phrase that might describe a router is not.
+    //
+    // Consequence, deliberately accepted: plans with a free month and NO ladder
+    // (cel_walla_family300, net_gilat_1g_lifetime, and the two-month xphone and
+    // רמי לוי offers) are still charged for it. That OVERSTATES their cost, which
+    // UNDERSTATES their saving — the safe direction — and they are listed here so
+    // the next pass has the work already scoped.
+    if (found && /חודש\s*ראשון\s*חינם/.test(text)) months[0] = 0;
     return found ? months : null;
   };
 

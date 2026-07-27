@@ -1,5 +1,6 @@
 import '../../models.dart';
 import '../../data.dart';
+import '../../services/plan_cost.dart';
 import '../../services/backend/backend.dart';
 
 /// A real, catalogue-grounded price drop: a plan whose latest snapshot in
@@ -40,8 +41,35 @@ class PriceDrop {
   /// Whole-percent drop for display (e.g. 18 for an 18% cut).
   int get dropPctRounded => (dropPct * 100).round();
 
-  /// Estimated annual saving vs. the old price — the honest "₪X/year" headline.
-  int get annualSaving => (dropAmount * 12).round();
+  /// Estimated annual saving vs. the old price — the honest "₪X/year" headline,
+  /// and the figure a price-drop PUSH quotes straight to someone's phone.
+  ///
+  /// NOT simply `dropAmount * 12`. A headline falling from ₪99 to ₪39 is usually
+  /// a promo starting, and ₪39 is not what the plan costs for a year — so that
+  /// arithmetic promises ₪720 for a discount that may run two months. This nets
+  /// a year at the OLD price against what the plan really costs over its first
+  /// twelve, the same correction planSaveYear applies.
+  ///
+  /// The old side stays `oldPrice * 12` on purpose: `plan_price_history` records
+  /// a price, not the fine print that was published alongside it, so we cannot
+  /// know whether the OLD price was itself a promo. Treating it as flat
+  /// understates the old cost, which understates the saving — the safe way to be
+  /// wrong.
+  ///
+  /// Applied only when the live catalogue row still agrees with the snapshot
+  /// about the current price. When it does not, the ladder we hold describes a
+  /// different price than the one that dropped, and mixing the two sources would
+  /// produce a figure belonging to neither; the plain drop is used instead.
+  int get annualSaving {
+    final p = plan;
+    if (p != null &&
+        planHasMonthlyTerm(p) &&
+        (p.priceValue - newPrice).abs() < 0.005) {
+      final cost = calculatePlanCost(p, months: 12);
+      return (oldPrice * 12 - cost.maximum).round().clamp(0, 999999);
+    }
+    return (dropAmount * 12).round().clamp(0, 999999);
+  }
 }
 
 /// Pure engine that turns raw `plan_price_history` snapshots into a ranked list

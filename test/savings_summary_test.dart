@@ -194,4 +194,33 @@ void main() {
       expect(savingsCreditedOnLead(null, 100), kDefaultLeadSavingFallback);
     });
   });
+
+  // ── Electricity is not a head-to-head price ────────────────────────────────
+  // plans_electricity.dart calls its price "an INDICATIVE monthly bill … not a
+  // fixed fee" and rests its safety on the category's currentBill staying 0. The
+  // bills screen renders a card for every category, so a user can set one — at
+  // which point a real bill was being differenced against a representative
+  // household figure and shown as an offer.
+  test('setting an electricity bill produces no saving claim', () {
+    final s = AppState();
+    s.resetAllBills();
+    s.setCurrentBill('electricity', 500);
+    final summary = computeSavings(s);
+    final elec = summary.categories.firstWhere((c) => c.categoryId == 'electricity');
+    expect(elec.best, isNull);
+    expect(elec.annualSaving, 0);
+    expect(summary.totalAnnualPotential, 0);
+  });
+
+  test('a comparable category with the same bill still produces one', () {
+    // Guards the guard: proves the exclusion is specific to electricity and did
+    // not silently switch every category off.
+    final s = AppState();
+    s.resetAllBills();
+    s.setCurrentBill('cellular', 500);
+    final summary = computeSavings(s);
+    final cell = summary.categories.firstWhere((c) => c.categoryId == 'cellular');
+    expect(cell.best, isNotNull);
+    expect(cell.annualSaving, greaterThan(0));
+  });
 }

@@ -2342,7 +2342,14 @@
       const now = ilParts(new Date());
       dateSel.innerHTML = '<option value="">בחרו תאריך</option>';
       let added = 0;
-      for (let i = 0; i < 30 && added < 30; i++) {
+      // Start at TOMORROW. meeting-book rejects `date < addDays(today, 1)` with
+      // "meeting must be booked at least one day ahead", so today was always a
+      // dead end: the visitor picked the first option, filled the form, requested
+      // an email code, and only then got refused. The ≥4h slot lead below is the
+      // client's own courtesy filter and was mistaken for the real rule — the
+      // real rule is a full day. i runs 1..30 to match the server's accepted
+      // window exactly (tomorrow through today+30, its upper bound).
+      for (let i = 1; i <= 30 && added < 30; i++) {
         // Walk forward day by day from today in IL terms.
         const base = ilWallToInstant(now.year, now.month, now.day, 12, 0);
         const d = new Date(base.getTime() + i * 86400000);

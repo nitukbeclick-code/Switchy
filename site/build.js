@@ -1473,7 +1473,14 @@ const calcEffectiveMonthly = (p) => {
 // provider hero, ticker, deal card or machine-readable summary.
 const isConsumerMonthlyPlan = (p) =>
   (!p.priceUnit || p.priceUnit === 'month') &&
-  !(p.cat === 'cellular' && String(p.kind || '').toLowerCase() === 'dataonly');
+  // 'kosher' belongs here for the same reason 'dataonly' does. The cheapest plan
+  // surviving the old predicate was רמי לוי "זול להיות בקשר כשר" at ₪14.9 —
+  // minutes only, NO data — so the cellular hero advertised an entry price for a
+  // plan most visitors cannot use as their phone plan. The honest headline is
+  // ₪19.8. Both kinds keep their own accurate headlines on their own collection
+  // pages (kosher-plans.html, data-only.html); they are excluded from the
+  // CATEGORY headline, not from the site.
+  !(p.cat === 'cellular' && ['dataonly', 'kosher'].includes(String(p.kind || '').toLowerCase()));
 
 // ── Shared social-card image metadata ───────────────────────────────────────
 // Single source of truth for the OG/Twitter image so the dimensions + alt match
@@ -1829,16 +1836,31 @@ function plansItemListJsonLd(plans, listUrl, listName) {
 // `temporalCoverage` is the REAL catalogue month (CATALOGUE_MONTH). Returns null
 // when no priced plan exists so callers omit it rather than emit an empty offer.
 function categoryAggregateOfferNode(plans, categoryLabel) {
-  const prices = plans
+  // lowPrice/highPrice must come from the SAME set the visible "החל מ-₪X" band
+  // uses, or the comment above is false — and it was: cellular.html showed humans
+  // "החל מ-₪19.8" while emitting lowPrice 10.9 (a data-only tablet SIM), and
+  // abroad.html emitted 1 (a per-MINUTE tariff). Search and answer engines were
+  // being told a cheaper entry price than any human ever saw.
+  //
+  // offerCount deliberately stays over ALL priced plans: it is the size of the
+  // ItemList the page actually renders, and narrowing it would swap this
+  // inconsistency for a new one — a page showing "59 מסלולים" while its schema
+  // claims 51.
+  const priceBasis = plans.filter(isConsumerMonthlyPlan);
+  const priceSrc = priceBasis.length ? priceBasis : plans;
+  const prices = priceSrc
     .map(offerPrice)
     .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
-  if (prices.length === 0) return null;
+  const allPrices = plans
+    .map(offerPrice)
+    .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
+  if (prices.length === 0 || allPrices.length === 0) return null;
   const node = {
     '@type': 'AggregateOffer',
     priceCurrency: 'ILS',
     lowPrice: Math.min(...prices),
-    highPrice: Math.max(...prices),
-    offerCount: prices.length,
+    highPrice: Math.max(...allPrices),
+    offerCount: allPrices.length,
     availability: 'https://schema.org/InStock',
     temporalCoverage: CATALOGUE_MONTH,
   };
@@ -1997,12 +2019,33 @@ function page(c) {
     const cheapest = monthly[0].price;
     const maxP = monthly[monthly.length - 1].price;
     const avg = Math.round(monthly.reduce((s, p) => s + p.price, 0) / monthly.length);
-    const maxSave = (avg - cheapest) * 12;
-    if (maxSave < 100) return '';
+    // The saving was (avg headline − cheapest headline) × 12: two PROMO prices,
+    // multiplied out as though both lasted a year. On internet that produced
+    // "חסכו עד ₪744 בשנה" resting on a ₪39 price the catalogue itself publishes
+    // as ₪139 from month 3 and ₪159 from month 13.
+    //
+    // Both sides are now real 12-month service costs, paired so the claim is the
+    // SMALLEST defensible one: the plan you switch TO at its maximum (you might
+    // pay more than the promo suggests), the catalogue baseline at its minimum
+    // (they might pay less than we assume). Any other pairing flatters us.
+    //
+    // On today's catalogue that erases the internet and tv claims entirely — they
+    // were built on promos and do not survive honest accounting — and moves
+    // cellular/triple by ~3.5%, which is the arithmetic, not a new promise.
+    const costs = monthly.map((p) => staticPlanCost.calculateTwelveMonthCost(p));
+    const cheapestYear = costs[0].maximum;
+    const avgYear = costs.reduce((s, c) => s + c.minimum, 0) / costs.length;
+    const maxSave = Math.max(0, Math.round(avgYear - cheapestYear));
+    // A category that cannot honestly claim a saving keeps its real facts — the
+    // plan count and the entry price — and simply drops the clause it cannot
+    // support, rather than losing the whole line.
+    if (maxSave < 100) {
+      return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש</p>`;
+    }
     // Money tier on the ₪ runs only (the plan count keeps its ink <strong>), and
     // .price-stat sets no font-size so the sentence keeps its 13px rhythm. The
     // inline runs get the same dir="ltr" bidi isolation as every other ₪ here.
-    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש · חסכו עד <strong class="price-stat" dir="ltr">₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (<span class="price-stat" dir="ltr">₪${avg}</span>)</p>`;
+    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-<span class="price-stat" dir="ltr">₪${cheapest}</span>/חודש · חסכו עד <strong class="price-stat" dir="ltr">₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (<span class="price-stat" dir="ltr">₪${Math.round(avgYear / 12)}</span> לחודש, לפי עלות שירות ל־12 ח׳)</p>`;
   })();
   // Above-the-fold real-proof band — the light-hero analog of the home ink
   // counts-bar. Every figure is catalogue-derived (this category's live plan

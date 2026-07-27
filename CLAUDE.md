@@ -101,7 +101,24 @@ When adding logic, put it here with tests in `test/<service>_test.dart`, then re
   are legitimately per-day/per-minute/monthly. Bills (חשבון) are always monthly.
   `TrackedPlan` (renewal radar) has no `priceUnit` and is monthly except abroad —
   its two ternaries in renewal/renewal_report are deliberate.
-- Annual saving: `planSaveYear(plan, bill)` = `((bill - plan.price) * 12).clamp(0, …)`.
+- **Annual saving is `planSaveYear(plan, bill)` and it is NOT `(bill − price) × 12`.**
+  It nets off what the plan really costs over twelve months:
+  `bill × 12 − calculatePlanCost(plan, months: 12).maximum`, clamped at 0. The
+  headline is often a promo that expires inside the year, and multiplying it out
+  credits the plan with a discount it does not give (פרטנר Fiber 1000Mb claimed
+  ₪1,212/yr against a ₪140 bill where the published ladder gives ₪212). When the
+  catalogue publishes a promo price but not its duration the cost engine returns
+  a RANGE and the saving takes the **maximum** cost — the smallest defensible
+  claim. Plans with no monthly term (`planHasMonthlyTerm` false — abroad packages
+  priced per-package/day/minute) keep the like-for-like `(bill − price) × 12`.
+  The same rule, from the same parsed fine print, lives in `web/lib/recommend.ts`,
+  `web/lib/switch-kit.ts`, `supabase/functions/_shared/scoring.ts` and the site's
+  savings calculator. **Change one and you must change all of them** —
+  the twelve-month cost engine is duplicated four times
+  (`site/plan-cost.js`, `web/lib/plan-cost.ts`, `lib/services/plan_cost.dart`,
+  `supabase/functions/_shared/plan_cost.ts`) because no single module can be
+  imported into a browser IIFE, a Next bundle, a Flutter app and a Deno function
+  at once. Each copy has a test file pinned to the SAME fixtures.
 - Each plan has its own category; savings must use `appState.currentBill(plan.cat)`,
   not a single global bill.
 

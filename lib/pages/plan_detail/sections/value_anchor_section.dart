@@ -30,14 +30,32 @@ class _ValueAnchor extends StatelessWidget {
   /// Three honest, plan-specific reasons. We prefer the engine's own reasons
   /// (already explainable + real), then top up from the plan's real spec —
   /// budget fit, 5G, and the promo caveat — never inventing claims.
+  /// Is the plan's price in the SAME unit as the stored bill for its category?
+  ///
+  /// Bills are monthly, except abroad which is per-package. A plan priced per-day
+  /// or per-minute is not comparable to either, so any difference between them is
+  /// a number without a referent. Abroad plans with no explicit unit default to
+  /// per-package (CLAUDE.md), which does match the abroad bill.
+  bool get _billComparable {
+    final unit = plan.priceUnit;
+    if (plan.cat == 'abroad') return unit == null || unit.isEmpty || unit == 'package';
+    return unit == null || unit.isEmpty || unit == 'month';
+  }
+
   List<_ValueBullet> _bullets() {
     final out = <_ValueBullet>[];
 
-    // 1) Budget — only when there's a real saving vs the user's own bill.
-    if (saveYear > 0 && bill > 0) {
+    // 1) Budget — only when there's a real saving vs the user's own bill, AND the
+    // two figures are in the same unit. The stored bill is monthly, except for
+    // abroad where it is PER-PACKAGE (billUnitLabel). Subtracting a ₪10-per-DAY
+    // tariff from a ₪250-per-package bill produces a number that means nothing,
+    // and the old text then stamped "בחודש" on it — a third unit, in a sentence
+    // containing neither.
+    if (saveYear > 0 && bill > 0 && _billComparable) {
       out.add(_ValueBullet(
         icon: Icons.account_balance_wallet_rounded,
-        text: 'בתוך התקציב — זול ב-₪${(bill - plan.price).clamp(0, bill)} בחודש מהחשבון הנוכחי שלכם',
+        text: 'בתוך התקציב — זול ב-₪${(bill - plan.price).clamp(0, bill)}'
+            '${billUnitLabel(plan.cat).replaceFirst('/', ' ל')} מהחשבון הנוכחי שלכם',
       ));
     }
 
@@ -113,7 +131,7 @@ class _ValueAnchor extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  'מול ₪$bill/חודש שאתם משלמים היום',
+                  'מול ₪$bill${billUnitLabel(plan.cat)} שאתם משלמים היום',
                   style: t.bodySmall.copyWith(color: t.secondaryText),
                 ),
                 if (!billsPersonalized) ...[

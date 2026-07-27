@@ -90,7 +90,7 @@ List<AppNotification> computeNotifications(AppState s) {
   if (s.billsPersonalized) {
     for (final c in categories) {
       final bill = s.currentBill(c.id);
-      if (bill <= 0) continue;
+      if (bill <= 0 || !isPriceComparableCategory(c.id)) continue;
       final m = RecommendationEngine.bestMatch(MatchProfile.fromAppState(s, c.id));
       if (m == null || m.annualSaving <= 0) continue;
       if (topSaving == null || m.annualSaving > topSaving.annualSaving) topSaving = m;

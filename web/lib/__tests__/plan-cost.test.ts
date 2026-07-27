@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { calculateTwelveMonthCost, formatAnnualCost } from "@/lib/plan-cost";
 import type { Plan } from "@/lib/types";
 import catalogue from "@/data/catalogue.json";
@@ -108,4 +110,96 @@ describe("calculateTwelveMonthCost", () => {
       expect(cost.segments.at(-1)?.toMonth, item.id).toBe(12);
     }
   });
+
+  // The site (site/plan-cost.js), the app (lib/services/plan_cost.dart) and this
+  // engine read the same catalogue rows and are meant to agree. On this row they
+  // differed by exactly one free month.
+  describe("a free opening month published in prose, not as a tier", () => {
+    // The real catalogue row: tri_yes_yes-fiber-triple.
+    const yesTriple = () => plan({
+      price: 209,
+      after: 329,
+      fineLines: [
+        "חודש ראשון חינם",
+        "ח׳2-12: ₪209",
+        "ח׳13-36: ₪229",
+        "ח׳37+: ₪329",
+        "נתב WiFi7 שנה מתנה",
+      ],
+    });
+
+    it("does not charge the free month", () => {
+      const cost = calculateTwelveMonthCost(yesTriple());
+      expect(cost.basis).toBe("published-schedule");
+      expect(cost.minimum).toBe(209 * 11); // 2299
+      expect(cost.minimum).not.toBe(209 * 12); // 2508 — the bug
+      expect(cost.segments[0]).toEqual({ fromMonth: 1, toMonth: 1, monthly: 0 });
+    });
+
+    it("agrees with the other two engines on this row", () => {
+      expect(calculateTwelveMonthCost(yesTriple()).minimum).toBe(2299);
+    });
+
+    it("never mistakes a free ADD-ON for a free subscription month", () => {
+      // HBO Max, a router, SIM delivery, a projector. Zeroing month 1 for those
+      // would invent a discount the plan does not give, and flatter it.
+      for (const line of [
+        'HBO Max חינם 3 ח׳ אח"כ ₪25',
+        "נתב WiFi7 שנה מתנה",
+        'שיחות חו"ל + משלוח SIM חינם',
+        "מקרן וידאו במתנה",
+        "סינון אתרים חינם",
+      ]) {
+        const cost = calculateTwelveMonthCost(plan({
+          price: 100,
+          fineLines: ["ח׳1-12: ₪100", line],
+        }));
+        expect(cost.minimum, line).toBe(1200);
+        expect(cost.segments[0]?.monthly, line).toBe(100);
+      }
+    });
+
+    it("leaves a free first month with NO published ladder alone", () => {
+      // Conservative on purpose: with no ladder we would be inventing a schedule
+      // from prose rather than refining a published one. Overstating the cost
+      // understates the saving — the safe direction to be wrong in.
+      const cost = calculateTwelveMonthCost(plan({
+        price: 75,
+        fineLines: ["₪75 ל-3 מנויים", "חודש ראשון חינם"],
+      }));
+      expect(cost.basis).toBe("fixed-price");
+      expect(cost.minimum).toBe(900);
+    });
+  });
+});
+
+// ── The cross-surface parity contract ────────────────────────────────────────
+// shared/plan-cost-cases.json holds ONE set of expected twelve-month costs, read
+// by all four copies of this engine. See its _readme for why: the copies drifted
+// once and every suite stayed green, because each pinned only its own behaviour.
+describe("the shared cross-surface fixtures", () => {
+  const sharedPath = fileURLToPath(
+    new URL("../../../shared/plan-cost-cases.json", import.meta.url),
+  );
+  const shared = JSON.parse(readFileSync(sharedPath, "utf8")) as {
+    cases: {
+      name: string;
+      plan: Record<string, unknown>;
+      expect: { minimum: number; maximum: number; basis: string };
+    }[];
+  };
+
+  it("has cases to run", () => {
+    expect(shared.cases.length).toBeGreaterThan(0);
+  });
+
+  it.each(shared.cases.map((c) => [c.name, c] as const))(
+    "%s",
+    (_name, c) => {
+      const cost = calculateTwelveMonthCost(c.plan as Plan);
+      expect(cost.basis).toBe(c.expect.basis);
+      expect(cost.minimum).toBeCloseTo(c.expect.minimum, 2);
+      expect(cost.maximum).toBeCloseTo(c.expect.maximum, 2);
+    },
+  );
 });

@@ -8,6 +8,7 @@ import {
   getCategories,
   plansByCategory,
   isConsumerHeadlinePlan,
+  isKosherPlan,
   isDataOnlyPlan,
   isMonthlyPlan,
 } from "@/lib/data";
@@ -160,13 +161,32 @@ describe("buildProviderRankings — ordering (transparent best value)", () => {
 describe("consumer headline price eligibility", () => {
   it("accepts monthly consumer plans and rejects incompatible units/data SIMs", () => {
     const regular = plansByCategory("cellular").find(
-      (p) => isMonthlyPlan(p) && !isDataOnlyPlan(p),
+      (p) => isMonthlyPlan(p) && !isDataOnlyPlan(p) && !isKosherPlan(p),
     );
     const dataOnly = plansByCategory("cellular").find(isDataOnlyPlan);
     const nonMonthly = plansByCategory("abroad").find((p) => !isMonthlyPlan(p));
     expect(regular && isConsumerHeadlinePlan(regular)).toBe(true);
     expect(dataOnly && isConsumerHeadlinePlan(dataOnly)).toBe(false);
     expect(nonMonthly && isConsumerHeadlinePlan(nonMonthly)).toBe(false);
+  });
+
+  it("rejects a kosher line for the same reason it rejects a data SIM", () => {
+    // The cheapest plan surviving the old predicate was רמי לוי "זול להיות בקשר
+    // כשר" at ₪15 — minutes only, NO data — so the category headline and the
+    // homepage savings hook were anchored on a plan most visitors cannot use as
+    // their phone. site/build.js's isConsumerMonthlyPlan already excludes it;
+    // this is the same rule on this surface.
+    const kosher = plansByCategory("cellular").find(isKosherPlan);
+    expect(kosher, "the catalogue should still carry a kosher plan").toBeDefined();
+    expect(kosher && isConsumerHeadlinePlan(kosher)).toBe(false);
+  });
+
+  it("puts the cellular entry price on a plan with data, matching the static site", () => {
+    // ₪19.80, the figure site/build.js reports — not the ₪15 kosher line.
+    const cheapest = priceStats().cellular?.cheapest;
+    expect(cheapest).toBeDefined();
+    expect(isKosherPlan(cheapest!)).toBe(false);
+    expect(isDataOnlyPlan(cheapest!)).toBe(false);
   });
 });
 

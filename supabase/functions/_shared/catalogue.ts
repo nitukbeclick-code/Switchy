@@ -19,6 +19,12 @@ export type Plan = {
   kind?: string;
   specs?: Record<string, string>;
   feats?: string[];
+  // The published promo ladder ("ח׳1-2: ₪39 | ח׳3-12: ₪139"). _shared/plan_cost
+  // parses it to price the first twelve months; without it a plan that steps up
+  // can only be quoted as a range, which understates every saving against it.
+  fineLines?: string[];
+  terms?: string[] | string;
+  notes?: string;
 };
 
 export const CATEGORIES = ["cellular", "internet", "tv", "triple", "abroad"] as const;
@@ -97,6 +103,15 @@ function afterColumn(v: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 }
 
+// The `fine_lines` jsonb column as clean strings. TRUTH-ONLY: a malformed cell
+// yields undefined (the field is omitted), never a fabricated bullet.
+function strListColumn(v: unknown): string[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  const out = v.filter((x): x is string => typeof x === "string" && x.trim() !== "")
+    .map((x) => x.trim());
+  return out.length ? out : undefined;
+}
+
 // Map rows from the live `public.plans` table (DB column names differ from the
 // JSON snapshot: category→cat, title→plan) into the Plan shape.
 //
@@ -137,6 +152,12 @@ export function plansFromRows(rows: Array<Record<string, unknown>>): Plan[] {
         hasAbroad: hasAbroad ?? /חו"ל|חול|abroad|roaming|esim/.test(blob),
         noCommit: noCommit ?? /ללא התחייבות|בלי התחייבות|no commit|ללא הת'/.test(blob),
         feats: subtitle ? [subtitle].filter(Boolean) : undefined,
+        // The promo ladder, so a saving quoted here matches the one the app and
+        // the site quote for the same row. Dropping it left the bot pricing a
+        // step-up plan as a range and understating every saving against it.
+        fineLines: strListColumn(r.fine_lines),
+        terms: strListColumn(r.terms) ?? (typeof r.terms === "string" ? r.terms : undefined),
+        notes: typeof r.notes === "string" && r.notes.trim() ? r.notes.trim() : undefined,
       } as Plan;
     })
     .filter((p) => p.cat && typeof p.price === "number");

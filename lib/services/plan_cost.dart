@@ -83,9 +83,26 @@ class PlanCost {
 }
 
 /// Every line of catalogue prose that may carry a ladder or a promo duration.
+///
+/// `terms` and `notes` are here because the other three copies of this engine
+/// read them, and shared/plan-cost-cases.json pins cases that depend on it: a
+/// live `public.plans` row carries `terms` as a single string and `notes` as
+/// free text, and Plan.fromJson maps both. Neither is populated in the compiled
+/// catalogue today — measured, 0 plans change cost — so this is alignment, not a
+/// new behaviour, and it means a ladder published in either column prices the
+/// same on every surface instead of only three of them.
+///
+/// `intro` is a deliberate SUPERSET: the compiled catalogue keeps the promo
+/// duration there ('חודשיים', '3 חודשים') and the JSON export drops the field.
+/// Also measured: 0 plans change cost when intro is removed, because every one
+/// of them repeats the duration in fineLines. It is read here because it costs
+/// nothing and a row that stops repeating itself would otherwise silently lose
+/// its duration.
 String _planText(Plan p) => [
       p.intro ?? '',
       ...p.fineLines,
+      ...p.terms,
+      p.notes ?? '',
     ].where((s) => s.isNotEmpty).join(' | ');
 
 /// `ח׳1-2: ₪39` → per-month amounts. Returns null when nothing was published,
@@ -131,6 +148,24 @@ List<double>? _scheduledMonths(String text, double fallback, int months) {
     }
   }
   if (!found) return null;
+  // A free opening month published in PROSE rather than as a tier. yes's
+  // "חודש ראשון חינם | ח׳2-12: ₪209 | …" matches only the ח׳2-12 tier, so month
+  // 1 keeps the ₪209 fallback fill and we bill the plan for a month it gives
+  // away — ₪2,508 over 12 months instead of ₪2,299, making it look ₪209 worse
+  // than it is against every rival, in our own comparison.
+  //
+  // This is the rule site/plan-cost.js already applies. The two engines read the
+  // same catalogue rows and are meant to agree; until now they differed by
+  // exactly this free month on this plan.
+  //
+  // Applied ONLY when a tier ladder was already found, and that restriction is
+  // the point. 24 catalogue plans contain "חינם"/"מתנה" and nearly all are
+  // ADD-ONS, not free subscription months: "HBO Max חינם 3 ח׳", "משלוח SIM
+  // חינם", "נתב WiFi7 שנה מתנה", "מקרן וידאו במתנה". Refining a schedule the
+  // catalogue already published is safe; inventing one from a phrase that might
+  // describe a router is not — and it would flatter the plan, which is the worse
+  // direction to be wrong in.
+  if (RegExp(r'חודש\s*ראשון\s*חינם').hasMatch(text)) result[0] = 0;
   // Any month the catalogue simply did not price: prefer the published
   // post-promo rate over the promo headline. Carrying the promo forward is the
   // optimistic lie; the steady-state price is the honest one.

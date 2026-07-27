@@ -30,8 +30,12 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "site");
 const PORT = Number(process.env.PORT || 4402);
-const CHROMIUM =
-  process.env.PW_CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+// Let Playwright launch the browser IT provisioned for its own version. The
+// default used to be a hardcoded /opt/pw-browsers/chromium-1194 path — the
+// browser of ONE development sandbox, pinned to one build number — which is the
+// whole reason this script could never run anywhere else, CI included.
+// PW_CHROMIUM still overrides, for an environment that supplies its own binary.
+const CHROMIUM = process.env.PW_CHROMIUM || undefined;
 const PAGE = process.argv[2] || "/cellular.html";
 // MUST be a language with NO static /i18n/<lang>.json bundle. The 6 bundled
 // languages (am, ar, en, es, fr, ru) translate from the shipped file and barely

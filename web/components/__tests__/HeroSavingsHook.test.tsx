@@ -4,18 +4,24 @@
 // visitor typed a real number AND the arithmetic against the REAL catalogue floor
 // yields a positive difference. These tests pin all three states — empty, ≤ 0,
 // and a real difference — plus the arithmetic itself, which must stay identical
-// to WalletClient's annualSaving (`max(0, round((bill − price) × 12))`) so the
-// two surfaces can never quote the same visitor two different numbers.
+// to WalletClient's annualSaving (`max(0, round((bill − effectiveMonthly) × 12))`)
+// so the two surfaces can never quote the same visitor two different numbers.
+// Note effectiveMonthly, not the advertised headline: a promo price that expires
+// inside the year is not a year's price.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
 import HeroSavingsHook, { annualDifference } from "@/components/HeroSavingsHook";
 
-/** The REAL-catalogue-shaped props the server page passes down. */
+/**
+ * The REAL-catalogue-shaped props the server page passes down. This fixture is a
+ * FLAT plan, so its effective monthly cost equals its headline and the existing
+ * expectations below are unchanged by the promo-aware arithmetic.
+ */
 const PROPS = {
   categoryLabel: "סלולר",
-  cheapestPrice: 39,
+  effectiveMonthly: 39,
   cheapestPlan: "Talk 100GB",
   cheapestProvider: "סלקום",
   cheapestPriceText: "38.90",
@@ -129,5 +135,33 @@ describe("HeroSavingsHook — truth-only annual difference", () => {
     expect(annualDifference(Number.NaN, 39)).toBe(0);
     // A decimal catalogue floor rounds on the ANNUAL figure, as WalletClient does.
     expect(annualDifference(100, 38.9)).toBe(733);
+  });
+
+  it("nets off what the plan REALLY costs, not a promo headline that expires", () => {
+    // The real catalogue row behind the internet hero: פרטנר Fiber 1000Mb, ₪39
+    // for two months, ₪139 to month 12, ₪159 after — ₪1,468 for the year, so
+    // ₪122.33 a month effective. Against a ₪140 bill the headline arithmetic
+    // claimed (140 − 39) × 12 = ₪1,212 where the honest figure is ₪212.
+    const effective = 1468 / 12;
+    expect(annualDifference(140, effective)).toBe(212);
+    expect(annualDifference(140, effective)).toBeLessThan((140 - 39) * 12);
+  });
+
+  it("renders the figure from effectiveMonthly while DISPLAYING the headline", () => {
+    // The advertised price is what a visitor is quoted on day one and stays on
+    // screen; only the arithmetic uses the twelve-month cost.
+    const { container } = render(
+      <HeroSavingsHook
+        {...PROPS}
+        effectiveMonthly={1468 / 12}
+        cheapestPriceText="39"
+      />,
+    );
+    enterBill("140");
+    const figure = container.querySelector(".price-hero");
+    expect(figure).toHaveTextContent("₪212");
+    expect(figure).not.toHaveTextContent("₪1,212");
+    // …and the advertised floor is still the one shown to the visitor.
+    expect(screen.getByText(/החל מ-/)).toHaveTextContent("39");
   });
 });

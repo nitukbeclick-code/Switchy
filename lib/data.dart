@@ -6,6 +6,7 @@ import 'data/plans_cellular.dart';
 import 'data/plans_internet.dart';
 import 'data/plans_tv_triple.dart';
 import 'data/plans_electricity.dart';
+import 'services/plan_cost.dart';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -180,9 +181,63 @@ Plan? planById(String id) {
   try { return allPlans.firstWhere((p) => p.id == id); } catch (_) { return null; }
 }
 
+/// Whether a category's catalogue `price` is a HEAD-TO-HEAD figure that may be
+/// compared against the user's own bill.
+///
+/// Electricity is not. plans_electricity.dart states its price is "an INDICATIVE
+/// monthly bill for a typical household AFTER the discount — a representative
+/// figure, not a fixed fee", and rests its safety on one sentence: "the
+/// electricity category's currentBill is 0 so the savings engine never treats
+/// these indicative figures as a head-to-head price."
+///
+/// That invariant holds only while the bill stays 0 — and the bills screen
+/// renders a card for EVERY category, so a user can set one. The moment they do,
+/// both saving derivations start quoting a difference between their real bill and
+/// a representative household figure, as though it were an offer. The real offer
+/// is a percentage off the regulated tariff, which lives in feats/specs and is
+/// not a subtraction.
+///
+/// Consult this wherever a saving is derived, not where one is displayed: the
+/// two derivations below do not read each other, so guarding one leaves the bug
+/// live in the other.
+bool isPriceComparableCategory(String catId) => catId != 'electricity';
+
+/// Annual saving against [currentBill] — what the switch is really worth over
+/// the first twelve months.
+///
+/// NOT `(bill − headline) × 12`. That formula credits a plan with a discount
+/// that expires: פרטנר Fiber 1000Mb is ₪39 for two months, ₪139 to month 12 and
+/// ₪159 after, so against a ₪140 bill the old arithmetic claimed ₪1,212 a year
+/// when the plan's own published ladder puts the real first-year saving at ₪212.
+/// Fifteen catalogue plans were affected; the overstatement is the gap between
+/// the headline × 12 and the published schedule, and it reached ₪1,000 on that
+/// one row.
+///
+/// This is the same correction [calculatePlanCost] already applies to the
+/// 24-month row on the plan card and the site's savings calculator applies to
+/// its own claim. A saving derived here and a cost derived there must not
+/// disagree about the same plan.
+///
+/// Two deliberate restrictions:
+///
+///  * Only for plans with a real monthly term. An abroad package priced per-day
+///    or per-minute has no 12-month cost to net off, and for abroad the bill is
+///    itself a per-package figure — that pairing is consistent by design and
+///    pinned by recommendation_engine_edge_test.
+///  * When the catalogue publishes a promo price but not its duration,
+///    [calculatePlanCost] returns a RANGE and this takes the MAXIMUM cost, i.e.
+///    the SMALLEST defensible saving. A claim built on the flattering end of a
+///    range we admit we cannot pin down is worth nothing; under-promising is
+///    recoverable.
 int planSaveYear(Plan p, int currentBill) {
-  // Use the exact price so the saving is accurate to the agora even when the
-  // headline price is rounded for sorting.
+  if (planHasMonthlyTerm(p)) {
+    final cost = calculatePlanCost(p, months: 12);
+    return (currentBill * 12 - cost.maximum).round().clamp(0, 999999);
+  }
+  // Per-package / per-day / per-minute: no monthly term to annualise. Keep the
+  // like-for-like unit comparison (a per-package plan against a per-package
+  // bill), using the exact price so the figure is accurate to the agora even
+  // when the headline is rounded for sorting.
   return ((currentBill - p.priceValue) * 12).round().clamp(0, 999999);
 }
 

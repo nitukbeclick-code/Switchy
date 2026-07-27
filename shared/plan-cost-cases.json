@@ -1,0 +1,124 @@
+{
+  "_readme": [
+    "ONE set of expected twelve-month costs, read by all four copies of the cost engine.",
+    "",
+    "WHY THIS FILE EXISTS. The engine is implemented four times because no single",
+    "module can be imported into a browser IIFE, a Next bundle, a Flutter app and a",
+    "Deno function at once:",
+    "",
+    "    site/plan-cost.js                      site/plan-cost.test.js",
+    "    web/lib/plan-cost.ts                   web/lib/__tests__/plan-cost.test.ts",
+    "    lib/services/plan_cost.dart            test/plan_cost_test.dart",
+    "    supabase/functions/_shared/plan_cost.ts  supabase/functions/tests/plan_cost_test.ts",
+    "",
+    "They drifted, and it cost real money: a free-month rule landed in the site copy",
+    "alone, and for a day the app and the web app billed yes+Fiber הטריפל ₪2,508 for",
+    "a year in which the plan gives the first month away — ₪209 worse than the site",
+    "said, in our own comparison. Each copy had its own tests and every suite was",
+    "green, because each pinned its own behaviour.",
+    "",
+    "So the expected numbers now live HERE, once. Every copy's test reads this file",
+    "and asserts against it, which makes a change to one engine that is not made to",
+    "the others fail in the other three.",
+    "",
+    "ADDING A CASE: add it here, then run all four suites. If a case is genuinely",
+    "meaningful on only some surfaces, say so in its `note` rather than silently",
+    "leaving a copy untested — a case nobody runs is how this file stops working.",
+    "",
+    "FIELDS. `plan` uses the catalogue's own field names; every engine reads the",
+    "same ones (price/priceExact/after/afterExact + fineLines/terms/notes).",
+    "`expect.basis` uses the JS/TS string spelling; the Dart test maps it to the",
+    "PriceBasis enum. `minimum`/`maximum` are the twelve-month totals in ₪."
+  ],
+
+  "cases": [
+    {
+      "name": "flat price is simply multiplied",
+      "plan": { "price": 89 },
+      "expect": { "minimum": 1068, "maximum": 1068, "basis": "fixed-price" }
+    },
+    {
+      "name": "the exact price wins over the rounded headline",
+      "note": "₪10.90 rounds to 11 for sorting; money math must not.",
+      "plan": { "price": 11, "priceExact": 10.9 },
+      "expect": { "minimum": 130.8, "maximum": 130.8, "basis": "fixed-price" }
+    },
+    {
+      "name": "after <= price is not a promo",
+      "plan": { "price": 89, "after": 89 },
+      "expect": { "minimum": 1068, "maximum": 1068, "basis": "fixed-price" }
+    },
+    {
+      "name": "a published ladder beats both the promo and the after price",
+      "note": "The real net_partner_fiber1g row. Displayed ₪936 over 24 months once; the ladder makes the first year ₪1,468.",
+      "plan": {
+        "price": 39,
+        "after": 159,
+        "fineLines": ["ח׳1-2: ₪39", "ח׳3-12: ₪139", "ח׳13+: ₪159"]
+      },
+      "expect": { "minimum": 1468, "maximum": 1468, "basis": "published-schedule" }
+    },
+    {
+      "name": "a promo with a published duration runs exactly that long",
+      "plan": { "price": 40, "after": 60, "fineLines": ["מחיר מבצע לחודשיים"] },
+      "expect": { "minimum": 680, "maximum": 680, "basis": "published-promo" }
+    },
+    {
+      "name": "an unpublished duration returns a RANGE rather than a guess",
+      "note": "Floor = promo forever, ceiling = one promo month. Savings claims must net off the ceiling.",
+      "plan": { "price": 39, "after": 159 },
+      "expect": { "minimum": 468, "maximum": 1788, "basis": "published-range" }
+    },
+    {
+      "name": "a tier that starts after the horizon confirms the headline covers it",
+      "plan": { "price": 99, "after": 199, "fineLines": ["ח׳13+: ₪199"] },
+      "expect": { "minimum": 1188, "maximum": 1188, "basis": "published-schedule" }
+    },
+    {
+      "name": "a published free first month is not charged",
+      "note": "The real tri_yes_yes-fiber-triple row — the case that proved the four copies had drifted.",
+      "plan": {
+        "price": 209,
+        "after": 329,
+        "fineLines": [
+          "חודש ראשון חינם",
+          "ח׳2-12: ₪209",
+          "ח׳13-36: ₪229",
+          "ח׳37+: ₪329"
+        ]
+      },
+      "expect": { "minimum": 2299, "maximum": 2299, "basis": "published-schedule" }
+    },
+    {
+      "name": "a free ADD-ON is never mistaken for a free subscription month",
+      "note": "24 catalogue plans say חינם/מתנה and nearly all mean a router, a SIM delivery or a streaming trial. Zeroing month 1 would invent a discount.",
+      "plan": {
+        "price": 100,
+        "fineLines": ["ח׳1-12: ₪100", "נתב WiFi7 שנה מתנה", "HBO Max חינם 3 ח׳"]
+      },
+      "expect": { "minimum": 1200, "maximum": 1200, "basis": "published-schedule" }
+    },
+    {
+      "name": "a free first month with NO published ladder is left alone",
+      "note": "The real cel_walla_family300 row. With no ladder we would be inventing a schedule, not refining one — overstating the cost understates the saving, the safe direction.",
+      "plan": { "price": 75, "fineLines": ["₪75 ל-3 מנויים", "חודש ראשון חינם"] },
+      "expect": { "minimum": 900, "maximum": 900, "basis": "fixed-price" }
+    },
+    {
+      "name": "the ladder is read from terms as well as fineLines",
+      "note": "The live public.plans row carries `terms` as a single string.",
+      "plan": { "price": 39, "after": 159, "terms": "ח׳1-2: ₪39 | ח׳3-12: ₪139" },
+      "expect": { "minimum": 1468, "maximum": 1468, "basis": "published-schedule" }
+    },
+    {
+      "name": "the ladder is read from notes too",
+      "plan": { "price": 39, "after": 159, "notes": "ח׳1-2: ₪39 | ח׳3-12: ₪139" },
+      "expect": { "minimum": 1468, "maximum": 1468, "basis": "published-schedule" }
+    },
+    {
+      "name": "a row with no price at all yields zero, not NaN",
+      "plan": {},
+      "expect": { "minimum": 0, "maximum": 0, "basis": "fixed-price" }
+    }
+  ]
+}

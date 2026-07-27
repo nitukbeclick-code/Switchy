@@ -3,10 +3,13 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <WalletClient> — the PERSONAL savings view of the Telecom Wallet. The user
 // enters their own current monthly bill per service category; for each, we show
-// the REAL cheapest plan in our catalogue and the honest annual saving
-// ((currentBill − cheapestPrice) × 12, clamped ≥ 0) — exactly the app's
-// planSaveYear contract. All comparison prices are real catalogue figures passed
-// in by the server page (the single source of truth); nothing is fabricated.
+// the REAL cheapest plan in our catalogue and the honest annual saving — a year
+// of their bill minus a year of what that plan REALLY costs, clamped ≥ 0,
+// exactly the app's planSaveYear contract. Note "really costs": the displayed
+// price is the advertised headline, but a headline that expires inside the year
+// is not a year's price, so the arithmetic runs on effectiveMonthly. All
+// comparison figures are real catalogue values passed in by the server page (the
+// single source of truth); nothing is fabricated.
 //
 // E-E-A-T / HONESTY (ABSOLUTE):
 //   • The saving is a transparent arithmetic of the user's OWN input vs. a REAL
@@ -46,8 +49,15 @@ export interface WalletCategory {
   cat: string;
   /** Hebrew label (resolved server-side, falls back to CATEGORY_HE). */
   label: string;
-  /** REAL cheapest headline price in this category (₪). */
+  /** REAL cheapest headline price in this category (₪) — what we DISPLAY. */
   cheapestPrice: number;
+  /**
+   * What that plan really costs per month across its first twelve, once any
+   * published promo ladder is taken into account — what the SAVING is computed
+   * from. The two differ whenever the headline is a promo that expires inside
+   * the year, and on internet they differ by ₪1,000 a year.
+   */
+  effectiveMonthly: number;
   /** REAL cheapest plan's display name. */
   cheapestPlan: string;
   /** REAL cheapest plan's provider. */
@@ -63,10 +73,18 @@ export interface WalletClientProps {
 
 const STORAGE_KEY = "switchy.wallet.bills.v1";
 
-/** Annual saving = ((bill − price) × 12), clamped to ≥ 0. Mirrors planSaveYear. */
-function annualSaving(bill: number, cheapestPrice: number): number {
+/**
+ * Annual saving = a year of the bill minus a year of what the plan really costs,
+ * clamped to ≥ 0. Mirrors planSaveYear.
+ *
+ * The second argument is the EFFECTIVE monthly cost, not the advertised
+ * headline: פרטנר Fiber 1000Mb is the cheapest internet plan at ₪39 and costs
+ * ₪1,468 over its first year, so netting the headline off a ₪140 bill claimed
+ * ₪1,212 a year where the honest figure is ₪212.
+ */
+function annualSaving(bill: number, effectiveMonthly: number): number {
   if (!Number.isFinite(bill) || bill <= 0) return 0;
-  return Math.max(0, Math.round((bill - cheapestPrice) * 12));
+  return Math.max(0, Math.round((bill - effectiveMonthly) * 12));
 }
 
 /** Parse a possibly-messy numeric input into a non-negative integer, or 0. */
@@ -165,7 +183,7 @@ export default function WalletClient({ categories }: WalletClientProps) {
 
   const rows = categories.map((c) => {
     const bill = parseBill(bills[c.cat] ?? "");
-    return { ...c, bill, saving: annualSaving(bill, c.cheapestPrice) };
+    return { ...c, bill, saving: annualSaving(bill, c.effectiveMonthly) };
   });
 
   // Total potential annual saving across the categories the user actually filled.

@@ -107,6 +107,12 @@ class _DealsWidgetState extends State<DealsWidget> {
       _alerted.add(key);
       final p = d.plan;
       if (p == null) continue;
+      // A headline can fall while the plan still costs more over twelve months
+      // than a year at the old price did — a promo starting on a ladder that
+      // climbs above it. The drop is real and stays in the list with its real
+      // old→new prices; what it does not do is wake someone's phone to promise
+      // them a saving of ₪0.
+      if (d.annualSaving <= 0) continue;
       PushNotificationService.instance.notifyPriceDrop(
         title: 'ירידת מחיר: ${p.provider}',
         body:

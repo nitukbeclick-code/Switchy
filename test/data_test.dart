@@ -29,6 +29,75 @@ void main() {
       // ₪15 vs bill ₪2000 → (2000-15)*12 = 23820
       expect(planSaveYear(p(15), 2000), equals(23820));
     });
+
+    // ── A promo price is not a year's price ──────────────────────────────────
+    // The saving must net off what the plan REALLY costs over twelve months,
+    // not the headline multiplied out as though the discount never ended.
+
+    test('a published ladder is netted off, not the promo headline', () {
+      // The real catalogue row net_partner_fiber1g: ₪39 for two months, ₪139 to
+      // month 12, ₪159 after. Against a ₪140 bill the old formula claimed
+      // (140-39)*12 = ₪1,212 a year. The plan actually costs ₪1,468 over those
+      // twelve months, so the real saving is 140*12 - 1468 = ₪212.
+      const fiber = Plan(
+        id: 'net_partner_fiber1g', cat: 'internet', provider: 'פרטנר',
+        net: 'fiber', plan: 'Fiber 1000Mb', price: 39, after: 159,
+        intro: 'חודשיים',
+        fineLines: ['ח׳1-2: ₪39', 'ח׳3-12: ₪139', 'ח׳13+: ₪159'],
+      );
+      expect(planSaveYear(fiber, 140), equals(212));
+      expect(planSaveYear(fiber, 140), isNot(equals((140 - 39) * 12)));
+    });
+
+    test('a promo with a published duration is netted off too', () {
+      // ₪39.90 for the promo, ₪60 after, duration published as "לחודשיים".
+      const p2 = Plan(
+        id: 'cel', cat: 'cellular', provider: 'סלקום', net: '5g', plan: '800GB',
+        price: 40, priceExact: 39.9, after: 60, intro: 'לחודשיים',
+      );
+      // 2 x 39.90 + 10 x 60 = 679.80 against a ₪119 bill → 1428 - 679.80.
+      expect(planSaveYear(p2, 119), equals(748));
+    });
+
+    test('a flat price is unchanged — the old formula still holds', () {
+      // No promo means no ladder, so cost is price x 12 and the saving is
+      // exactly (bill - price) * 12. This is most of the catalogue.
+      expect(planSaveYear(p(35), 119), equals(1008));
+    });
+
+    test('a plan that only looks cheap can end up with no saving at all', () {
+      // בזק bFiber 1 ג׳יגה: ₪99 headline, ₪217 after, ladder published. Against
+      // a ₪140 bill the old formula claimed ₪492. The ladder makes the year cost
+      // more than the bill does, so the honest claim is nothing.
+      const bezeq = Plan(
+        id: 'net_bezeq_bfiber1g', cat: 'internet', provider: 'בזק',
+        net: 'fiber', plan: 'bFiber 1 ג׳יגה', price: 99, after: 217,
+        fineLines: ['ח׳1-6: ₪99', 'ח׳7-12: ₪217'],
+      );
+      expect(planSaveYear(bezeq, 140), equals(0));
+    });
+
+    test('an unpublished promo duration claims the SMALLEST defensible saving', () {
+      // No duration anywhere → the cost engine returns a range and we take the
+      // costliest end, i.e. one promo month then full price.
+      const vague = Plan(
+        id: 'v', cat: 'internet', provider: 'x', net: 'fiber', plan: 'v',
+        price: 39, after: 159,
+      );
+      // Cost ceiling 39 + 159*11 = 1788; bill 200*12 = 2400 → 612.
+      expect(planSaveYear(vague, 200), equals(612));
+      expect(planSaveYear(vague, 200), lessThan((200 - 39) * 12));
+    });
+
+    test('a per-package abroad plan keeps its like-for-like comparison', () {
+      // For abroad the bill is itself a per-package figure, so package-vs-
+      // package x12 is consistent by design — the cost engine is not applied.
+      const pkg = Plan(
+        id: 'a', cat: 'abroad', provider: 'x', net: 'esim', plan: 'a',
+        price: 49, priceUnit: 'package',
+      );
+      expect(planSaveYear(pkg, 80), equals((80 - 49) * 12));
+    });
   });
 
   // ── planById ────────────────────────────────────────────────────────────────

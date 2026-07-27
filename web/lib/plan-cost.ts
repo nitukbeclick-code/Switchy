@@ -1,5 +1,3 @@
-import type { Plan } from "./types";
-
 export const COST_HORIZON_MONTHS = 12;
 
 export interface CostSegment {
@@ -20,6 +18,24 @@ export type CostBasis =
   | "fixed-price"
   | "published-range";
 
+/**
+ * The only fields the cost engine reads. The catalogue `Plan` satisfies it
+ * structurally, and so does recommend.ts's ScorablePlan — so a saving derived in
+ * one place and a cost derived in another cannot be computed from different
+ * inputs for the same plan. Everything is optional and validated on the way in;
+ * a row missing its fine print simply gets the flat-price basis.
+ */
+export type CostablePlan = {
+  price?: unknown;
+  priceExact?: unknown;
+  after?: unknown;
+  afterExact?: unknown;
+  fineLines?: string[];
+  terms?: string[] | string;
+  notes?: string;
+  fees?: unknown;
+};
+
 export interface PlanTwelveMonthCost {
   months: 12;
   minimum: number;
@@ -38,15 +54,15 @@ function finiteNumber(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-function headlinePrice(plan: Plan): number {
+function headlinePrice(plan: CostablePlan): number {
   return finiteNumber(plan.priceExact) ?? finiteNumber(plan.price) ?? 0;
 }
 
-function afterPrice(plan: Plan): number | null {
+function afterPrice(plan: CostablePlan): number | null {
   return finiteNumber(plan.afterExact) ?? finiteNumber(plan.after);
 }
 
-function planText(plan: Plan): string {
+function planText(plan: CostablePlan): string {
   const values: string[] = [];
   if (Array.isArray(plan.fineLines)) values.push(...plan.fineLines);
   if (Array.isArray(plan.terms)) values.push(...plan.terms);
@@ -64,7 +80,7 @@ function numericAmount(text: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-function planFees(plan: Plan): {
+function planFees(plan: CostablePlan): {
   recurringExtras: ParsedFee[];
   oneTimeFees: ParsedFee[];
   hasUnpricedFees: boolean;
@@ -107,6 +123,21 @@ function scheduledMonths(text: string, fallback: number): number[] | null {
   // headline price covers our whole horizon, even though no in-horizon range is
   // present (for example "ח׳13+: ₪199" or "שנה 2+: ₪149").
   if (/(?:ח[׳'\"]?\s*13\+|שנה\s*2\+)\s*:/.test(text)) found = true;
+  // A free opening month published in PROSE rather than as a tier. yes's
+  // "חודש ראשון חינם | ח׳2-12: ₪209 | …" matches only the ח׳2-12 tier, so month
+  // 1 keeps the ₪209 fallback fill and we bill the plan for a month it gives
+  // away — ₪2,508 instead of ₪2,299.
+  //
+  // Same rule as site/plan-cost.js and lib/services/plan_cost.dart. All three
+  // engines read the same catalogue rows and are meant to agree.
+  //
+  // Applied ONLY when a tier ladder was already found, and that restriction is
+  // the point. 24 catalogue plans contain "חינם"/"מתנה" and nearly all are
+  // ADD-ONS, not free subscription months: "HBO Max חינם 3 ח׳", "משלוח SIM
+  // חינם", "נתב WiFi7 שנה מתנה", "מקרן וידאו במתנה". Refining a schedule the
+  // catalogue already published is safe; inventing one from a phrase that might
+  // describe a router is not — and it would flatter the plan.
+  if (found && /חודש\s*ראשון\s*חינם/.test(text)) months[0] = 0;
   return found ? months : null;
 }
 
@@ -139,7 +170,7 @@ function compressSchedule(months: number[]): CostSegment[] {
  * describes them as optional; silently adding them would overstate the bill.
  * When a promo end date is missing, return an honest range instead of guessing.
  */
-export function calculateTwelveMonthCost(plan: Plan): PlanTwelveMonthCost {
+export function calculateTwelveMonthCost(plan: CostablePlan): PlanTwelveMonthCost {
   const headline = headlinePrice(plan);
   const after = afterPrice(plan);
   const text = planText(plan);

@@ -1,9 +1,14 @@
 {
   "scripts": {
     "build:site": "node site/build.js",
-    "test:site": "node --test site/plan-cost.test.js"
+    "test:site": "node --test site/plan-cost.test.js",
+    "test:cta-contrast": "node scripts/check-cta-contrast.mjs",
+    "test:translate-ux": "node scripts/check-translate-failure-ux.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.0"
   }
 }

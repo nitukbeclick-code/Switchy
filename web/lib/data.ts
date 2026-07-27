@@ -19,12 +19,14 @@ import type {
 } from "./types";
 import { CATEGORY_HE } from "./categories";
 import { providerSlug } from "./provider-slug";
+import { calculateTwelveMonthCost } from "./plan-cost";
 import { isConsumerHeadlinePlan } from "./plan-classification";
 
 export { providerSlug } from "./provider-slug";
 export {
   isMonthlyPlan,
   isDataOnlyPlan,
+  isKosherPlan,
   isConsumerHeadlinePlan,
 } from "./plan-classification";
 
@@ -437,6 +439,21 @@ export interface PriceStat {
   count: number;
   /** The single cheapest plan (by headline price) in the category. */
   cheapest: Plan;
+  /**
+   * What {@link cheapest} really costs per month across its first twelve, once
+   * any published promo ladder is taken into account — {@link min} is the
+   * ADVERTISED headline and stays the number we display, this is the number a
+   * saving is computed from.
+   *
+   * פרטנר Fiber 1000Mb is the cheapest internet plan at a ₪39 headline and costs
+   * ₪1,468 over the year, not ₪468. Netting the headline off a bill claimed
+   * ₪1,212 a year on a ₪140 bill where the honest figure is ₪212.
+   *
+   * When the catalogue publishes a promo price but not its duration the cost
+   * engine returns a range and this takes the MAXIMUM — the end least favourable
+   * to the claim. Under-promising is recoverable.
+   */
+  effectiveMonthly: number;
 }
 
 /**
@@ -474,6 +491,8 @@ export function priceStats(): Record<string, PriceStat> {
       max,
       count: priced.length,
       cheapest,
+      effectiveMonthly:
+        Math.round((calculateTwelveMonthCost(cheapest).maximum / 12) * 100) / 100,
     };
   }
   return out;

@@ -49,6 +49,7 @@ function buildCategories(): WalletCategory[] {
       cat,
       label: CATEGORY_HE[cat] ?? cat,
       cheapestPrice: s.min,
+      effectiveMonthly: s.effectiveMonthly,
       cheapestPlan: String(s.cheapest.plan),
       cheapestProvider: String(s.cheapest.provider),
       compareHref: `/compare/${cat}`,

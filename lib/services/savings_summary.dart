@@ -94,7 +94,10 @@ SavingsSummary computeSavings(AppState s) {
   for (final c in categories) {
     final bill = s.currentBill(c.id);
     PlanMatch? best;
-    if (bill > 0) {
+    // isPriceComparableCategory, not just bill > 0: electricity prices are
+    // indicative household figures, so subtracting one from a real bill invents
+    // a saving nobody offers (see data.dart).
+    if (bill > 0 && isPriceComparableCategory(c.id)) {
       best = RecommendationEngine.bestMatch(MatchProfile(
         category: c.id,
         currentBill: bill,

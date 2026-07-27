@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chosech/models.dart';
 import 'package:chosech/services/plan_cost.dart';
@@ -93,6 +96,79 @@ void main() {
     });
   });
 
+  // The site engine (site/plan-cost.js) and this one read the same catalogue
+  // rows and are meant to agree. They differed by exactly this free month.
+  group('a free opening month published in prose, not as a tier', () {
+    // The real catalogue row: tri_yes_yes-fiber-triple. Only "ח׳2-12" matched
+    // the tier regex, so month 1 kept the ₪209 fallback fill — the app said
+    // ₪2,508 for a year in which the plan gives the first month away, while the
+    // site said ₪2,299 for the same row.
+    final yesTriple = _plan(
+      price: 209,
+      after: 329,
+      intro: 'חודש ראשון חינם',
+      fineLines: const [
+        'חודש ראשון חינם',
+        'ח׳2-12: ₪209',
+        'ח׳13-36: ₪229',
+        'ח׳37+: ₪329',
+        'נתב WiFi7 שנה מתנה',
+      ],
+    );
+
+    test('the free month is not charged', () {
+      final c = calculatePlanCost(yesTriple, months: 12);
+      expect(c.basis, PriceBasis.publishedSchedule);
+      expect(c.minimum, 209 * 11); // 2299
+      expect(c.minimum, isNot(209 * 12)); // 2508 — the bug
+      expect(c.segments.first.monthly, 0);
+      expect(c.segments.first.toMonth, 1);
+    });
+
+    test('both engines now agree on this row', () {
+      // site/plan-cost.js returns 2299 for the same fine print.
+      expect(calculatePlanCost(yesTriple, months: 12).minimum, 2299);
+    });
+
+    test('24 months keeps the free month and follows the published tail', () {
+      final c = calculatePlanCost(yesTriple, months: 24);
+      expect(c.minimum, 209 * 11 + 229 * 12); // 2299 + 2748
+    });
+
+    test('a free ADD-ON is never mistaken for a free subscription month', () {
+      // Most "חינם"/"מתנה" in the catalogue describe an add-on — HBO Max, a
+      // router, SIM delivery, a projector. Zeroing month 1 for those would
+      // invent a discount the plan does not give, and flatter it.
+      for (final line in const [
+        'HBO Max חינם 3 ח׳ אח"כ ₪25',
+        'נתב WiFi7 שנה מתנה',
+        'שיחות חו"ל + משלוח SIM חינם',
+        'מקרן וידאו במתנה',
+        'סינון אתרים חינם',
+      ]) {
+        final c = calculatePlanCost(
+          _plan(price: 100, fineLines: ['ח׳1-12: ₪100', line]),
+          months: 12,
+        );
+        expect(c.minimum, 1200, reason: line);
+        expect(c.segments.first.monthly, 100, reason: line);
+      }
+    });
+
+    test('a free first month with NO published ladder is left alone', () {
+      // Conservative on purpose: with no tier ladder we would be inventing a
+      // schedule from prose rather than refining a published one. This is the
+      // real cel_walla_family300 row. Overstating the cost understates the
+      // saving — the safe direction to be wrong in.
+      final c = calculatePlanCost(
+        _plan(price: 75, fineLines: const ['₪75 ל-3 מנויים', 'חודש ראשון חינם']),
+        months: 12,
+      );
+      expect(c.basis, PriceBasis.fixedPrice);
+      expect(c.minimum, 900);
+    });
+  });
+
   group('unpublished duration returns a RANGE rather than a guess', () {
     test('min is promo-forever, max is one promo month', () {
       final p = _plan(price: 39, after: 159); // no duration anywhere
@@ -137,5 +213,55 @@ void main() {
       expect(planHasMonthlyTerm(_plan(price: 89, cat: 'cellular')), isTrue);
       expect(planHasMonthlyTerm(_plan(price: 89, cat: 'internet')), isTrue);
     });
+  });
+
+  _sharedFixtures();
+}
+
+// ── The cross-surface parity contract ────────────────────────────────────────
+// shared/plan-cost-cases.json holds ONE set of expected twelve-month costs, read
+// by all four copies of this engine. See its _readme for why: the copies drifted
+// once and every suite stayed green, because each pinned only its own behaviour.
+void _sharedFixtures() {
+  group('the shared cross-surface fixtures', () {
+    final raw = File('shared/plan-cost-cases.json').readAsStringSync();
+    final cases = (jsonDecode(raw) as Map<String, dynamic>)['cases'] as List;
+
+    // The JSON uses the JS/TS spelling of the basis; map it to the enum.
+    const bases = {
+      'published-schedule': PriceBasis.publishedSchedule,
+      'published-promo': PriceBasis.publishedPromo,
+      'published-range': PriceBasis.publishedRange,
+      'fixed-price': PriceBasis.fixedPrice,
+    };
+
+    test('the fixture file has cases to run', () {
+      expect(cases, isNotEmpty);
+    });
+
+    for (final entry in cases) {
+      final c = entry as Map<String, dynamic>;
+      final name = c['name'] as String;
+      test(name, () {
+        final j = c['plan'] as Map<String, dynamic>;
+        final want = c['expect'] as Map<String, dynamic>;
+        final p = Plan(
+          id: 'shared', cat: 'internet', provider: 'x', net: 'x', plan: 'x',
+          price: (j['price'] as num?)?.round() ?? 0,
+          priceExact: (j['priceExact'] as num?)?.toDouble(),
+          after: (j['after'] as num?)?.round(),
+          afterExact: (j['afterExact'] as num?)?.toDouble(),
+          fineLines: ((j['fineLines'] as List?) ?? const []).cast<String>(),
+          terms: [if (j['terms'] is String) j['terms'] as String],
+          notes: j['notes'] as String?,
+        );
+        final cost = calculatePlanCost(p, months: 12);
+        expect(cost.basis, bases[want['basis']], reason: '$name: basis');
+        expect(cost.minimum, closeTo((want['minimum'] as num).toDouble(), 0.005),
+            reason: '$name: minimum');
+        expect(cost.maximum, closeTo((want['maximum'] as num).toDouble(), 0.005),
+            reason: '$name: maximum');
+      });
+    }
   });
 }

@@ -170,6 +170,20 @@ jobs:
       # catalogue read uses the PUBLIC anon key baked into build.js, and any
       # failed/empty read falls back to the committed site/data/plans.json
       # snapshot without failing the build. So this job works on forks too.
+      # site/plan-cost.js is one of FOUR copies of the twelve-month cost engine
+      # (the others: web/lib/plan-cost.ts, lib/services/plan_cost.dart,
+      # supabase/functions/_shared/plan_cost.ts). All four assert against
+      # shared/plan-cost-cases.json so a change to one that is not made to the
+      # rest fails in the others — but that only holds if every copy's suite
+      # actually RUNS. This one never did: the job below only built the site, so
+      # site/plan-cost.test.js was green locally and gated nothing, on the very
+      # copy that was correct when the other three had drifted.
+      #
+      # Dependency-free on purpose (node:test + node:assert, no package.json), so
+      # it needs no install step and works on forks like the build below.
+      - name: Cost-engine tests (incl. the cross-surface parity fixtures)
+        run: node --test site/plan-cost.test.js
+
       - name: Build the static site (runs the internal-link gate)
         run: node site/build.js
 

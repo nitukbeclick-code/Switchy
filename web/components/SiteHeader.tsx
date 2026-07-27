@@ -29,7 +29,8 @@ import Icon from "./Icon";
 import AiConcierge from "./AiConcierge";
 import AccessibilityWidget from "./AccessibilityWidget";
 import LanguageSwitcher from "./LanguageSwitcher";
-import AccountMenu from "./AccountMenu";
+import AccountMenu, { AccountMobileRows } from "./AccountMenu";
+import NotificationsBell from "./community/NotificationsBell";
 
 /** A primary nav link. */
 interface NavLink {
@@ -178,9 +179,26 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           </TrackedCtaLink>
           {/* Light/dark toggle. */}
           <ThemeToggle className="min-h-11 min-w-11" />
-          {/* Community account — login button / avatar menu. Desktop only (lg+) so
-              it never crowds the tight mobile/tablet cluster; below lg the community
-              page carries its own login prompts. */}
+          {/* Community notifications bell. EVERY breakpoint — a reply to your post
+              is the single strongest reason to come back, and this app is used on
+              phones. It self-gates: <NotificationsBell> returns null with no
+              session, so a signed-out visitor's cluster is byte-identical to
+              before.
+              KNOWN TRADE-OFF, stated rather than glossed: because the bell renders
+              only once the session resolves, a signed-in member's end cluster
+              gains 40px a beat after first paint — a small layout shift on every
+              page. Reserving the slot up-front would move that shift onto every
+              signed-OUT visitor instead (the larger group, and the one with no
+              use for the control), so the shift is deliberately spent on the
+              smaller audience that gets something for it. Fixing it properly
+              needs a persisted "was signed in" hint, which is a separate change
+              with its own failure mode. */}
+          <NotificationsBell />
+          {/* Community account — login button / avatar menu. Still lg+ ONLY, on
+              purpose: the phone cluster is already five 44px controls wide and the
+              bell above takes the last of the slack at 360px. Mobile reachability
+              is solved instead by <AccountMobileRows> inside the hamburger panel
+              below, which carries the same login / profile / sign-out actions. */}
           <AccountMenu />
 
         {/* CTA — the single green ACTION in the masthead → the Zoom consultation
@@ -267,6 +285,14 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
                 </TrackedCtaLink>
               </li>
             </ul>
+
+            {/* Account rows — the mobile counterpart of the lg+ <AccountMenu>.
+                Without these, "הפרופיל שלי" existed only in a control hidden
+                below lg, so on a phone the profile route (and with it the
+                <ProfileEditor> that lives on it) was reachable only by finding
+                one of your own posts and tapping your own byline — and not at all
+                for a member who hadn't posted yet. */}
+            <AccountMobileRows />
 
             {/* Category landings — labelled group, divided from the main links. */}
             <p className="mt-2 border-t border-border/60 px-3 pb-1 pt-3 text-xs font-semibold text-muted">

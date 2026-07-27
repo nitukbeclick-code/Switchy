@@ -27,7 +27,7 @@ import {
   type CommunityReply,
 } from "@/lib/community";
 import { buildQaSchema, permalinkRobots } from "@/lib/community-schema";
-import { clip, heDate, renderBody } from "@/lib/community-render";
+import { clip, heCount, heDate, renderBody } from "@/lib/community-render";
 import ShareBar from "@/components/community/ShareBar";
 import { providerBySlug } from "@/lib/providers.generated";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
@@ -326,9 +326,7 @@ export default async function CommunityPostPage({ params }: Params) {
         <h2 className="mb-3 text-sm font-semibold text-ink">
           {replies.length === 0
             ? "אין עדיין תגובות"
-            : replies.length === 1
-              ? "תגובה אחת"
-              : `${replies.length.toLocaleString("he-IL")} תגובות`}
+            : heCount(replies.length, "reply")}
         </h2>
         <ul className="flex list-none flex-col gap-3 p-0">
           {displayTree.map((r) => (
@@ -376,7 +374,7 @@ export default async function CommunityPostPage({ params }: Params) {
                       {q.channel}
                     </span>
                     <span className="nums-tabular tabular-nums">
-                      {q.reply_count.toLocaleString("he-IL")} תגובות
+                      {heCount(q.reply_count, "reply")}
                     </span>
                     <time dateTime={q.created_at}>{heDate(q.created_at)}</time>
                   </div>

@@ -20,7 +20,7 @@ import JsonLd from "@/components/JsonLd";
 import Icon from "@/components/Icon";
 import { pageMetadata } from "@/lib/seo";
 import { linkItemListSchema } from "@/lib/schema";
-import { clip, heDate } from "@/lib/community-render";
+import { clip, heCount, heDate } from "@/lib/community-render";
 import { ALL_CHANNEL, CHANNELS } from "@/lib/community";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
@@ -210,9 +210,12 @@ export default async function CommunityQuestionsPage({
                     <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 font-medium">
                       {q.channel}
                     </span>
+                    {/* The hub only lists answered questions (reply_count >= 1),
+                        so this badge is where "1 תגובות" was guaranteed to show
+                        on every single-reply row — heCount agrees the noun. */}
                     <span className="nums-tabular inline-flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 font-medium tabular-nums text-accent-text">
                       <Icon name="chat" size={14} />
-                      {q.reply_count.toLocaleString("he-IL")} תגובות
+                      {heCount(q.reply_count, "reply")}
                     </span>
                     <time dateTime={q.created_at} className="ms-auto">
                       {heDate(q.created_at)}

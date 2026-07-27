@@ -38,7 +38,7 @@ import { useAuth } from "@/lib/auth-context";
 import { trackEvent } from "@/lib/tracking";
 // Shared render helpers. renderBody here stays mentions-only (no linkProviders):
 // reply bodies bold @mentions but deliberately don't linkify provider names.
-import { initial, relativeTime, renderBody } from "@/lib/community-render";
+import { heCount, initial, relativeTime, renderBody } from "@/lib/community-render";
 import ConfirmDanger from "./ConfirmDanger";
 import MediaView from "./MediaView";
 import MentionTextarea from "./MentionTextarea";
@@ -342,7 +342,7 @@ function ReplyComposer({
   onCancel?: () => void;
   autoFocus?: boolean;
 }) {
-  const { user, profile } = useAuth();
+  const { ready, user, profile } = useAuth();
 
   const [body, setBody] = useState("");
   const [media, setMedia] = useState<Media | null>(null);
@@ -497,6 +497,24 @@ function ReplyComposer({
       clearAttachment,
     ],
   );
+
+  // The session hasn't resolved yet — AuthProvider starts `ready:false,
+  // user:null`, so keying off `user` alone flashed "התחברו כדי להגיב" at
+  // signed-in members before swapping in their own composer. Hold a skeleton of
+  // the same footprint instead of asserting a state we don't know yet.
+  if (!ready) {
+    return (
+      <div
+        aria-busy="true"
+        className="rounded-2xl border border-border bg-surface p-3"
+      >
+        <div aria-hidden="true" className="space-y-2">
+          <div className="h-12 w-full animate-pulse rounded-xl bg-border/50" />
+          <div className="h-8 w-24 animate-pulse rounded-xl bg-border/60" />
+        </div>
+      </div>
+    );
+  }
 
   // Guests see a prompt, not the full composer.
   if (!user) {
@@ -857,7 +875,9 @@ export default function Replies({
                           onClick={() => setExpanded((prev) => new Set(prev).add(root.id))}
                           className="rounded-lg px-2 py-1 text-xs font-medium text-accent-text transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                         >
-                          הצגת {hidden.toLocaleString("he-IL")} תגובות נוספות
+                          {/* The adjective agrees too: "תגובה אחת נוספת". */}
+                          הצגת {heCount(hidden, "reply")}{" "}
+                          {hidden === 1 ? "נוספת" : "נוספות"}
                         </button>
                       </li>
                     )}

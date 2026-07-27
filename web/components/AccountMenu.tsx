@@ -1,15 +1,22 @@
 "use client";
 
 // ────────────────────────────────────────────────────────────────────────────
-// <AccountMenu> — the header account control (desktop only, md+).
+// <AccountMenu> — the header account control (desktop only, lg+).
 //
 // Logged out → a "התחברות" button that opens <AuthModal>.
 // Logged in  → an avatar button opening a small menu (community / my profile /
 //              sign out).
 //
-// Hidden below md so it never crowds the tight mobile icon cluster; on a phone the
-// community page carries its own login prompts. Reads useAuth(); renders nothing
-// until the initial session check resolves (no login flash).
+// Hidden below lg so it never crowds the tight mobile icon cluster. That gate is
+// a LAYOUT decision, not a feature gate — <AccountMobileRows> (exported below)
+// carries the identical actions as plain rows inside the header's mobile
+// hamburger panel, so "הפרופיל שלי" (and the <ProfileEditor> that lives on that
+// route) stays reachable on a phone. Previously it did not: the only other links
+// to /community/profile/[id] anywhere in the app are post bylines, so a member
+// who had not posted yet could not reach their own profile on mobile at all.
+//
+// Both read useAuth() and render nothing until the initial session check
+// resolves (no login flash).
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useEffect, useRef, useState } from "react";
@@ -111,6 +118,74 @@ export default function AccountMenu() {
             התנתקות
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// <AccountMobileRows> — the same account actions as plain rows, for the site
+// header's mobile hamburger panel (< lg). Deliberately NOT another icon in the
+// header's end cluster: that row is already five 44px controls wide on a 360px
+// phone and the notifications bell takes the last of the slack. A disclosure
+// panel has room, so the account lives there on mobile.
+//
+// Renders nothing until the session resolves, so no row ever flashes the wrong
+// state. Styling matches the panel's other rows (44px tap targets, hairline
+// divider, logical properties for RTL).
+// ────────────────────────────────────────────────────────────────────────────
+
+export function AccountMobileRows() {
+  const { ready, user, profile, signOut } = useAuth();
+  const [modalOpen, setModalOpen] = useState(false);
+
+  if (!ready) return null;
+
+  const rowCls =
+    "block w-full rounded-lg px-3 py-2.5 text-start text-sm font-medium text-foreground transition-colors hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+
+  return (
+    <div className="lg:hidden">
+      <p className="mt-2 border-t border-border/60 px-3 pb-1 pt-3 text-xs font-semibold text-muted">
+        החשבון שלי
+      </p>
+      {!user ? (
+        <>
+          <ul className="space-y-0.5">
+            <li>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className={`${rowCls} font-semibold text-accent-text`}
+              >
+                התחברות
+              </button>
+            </li>
+          </ul>
+          <AuthModal open={modalOpen} onClose={() => setModalOpen(false)} />
+        </>
+      ) : (
+        <ul className="space-y-0.5">
+          <li>
+            <p className="truncate px-3 py-1 text-xs text-muted">
+              {profile?.name || "החשבון שלי"}
+            </p>
+          </li>
+          <li>
+            <Link href={`/community/profile/${user.id}`} className={rowCls}>
+              הפרופיל שלי
+            </Link>
+          </li>
+          <li>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className={rowCls}
+            >
+              התנתקות
+            </button>
+          </li>
+        </ul>
       )}
     </div>
   );

@@ -34,8 +34,12 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "site");
 const PORT = Number(process.env.PORT || 4401);
-const CHROMIUM =
-  process.env.PW_CHROMIUM || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+// Let Playwright launch the browser IT provisioned for its own version. The
+// default used to be a hardcoded /opt/pw-browsers/chromium-1194 path — the
+// browser of ONE development sandbox, pinned to one build number — which is the
+// whole reason this script could never run anywhere else, CI included.
+// PW_CHROMIUM still overrides, for an environment that supplies its own binary.
+const CHROMIUM = process.env.PW_CHROMIUM || undefined;
 
 const AA = 4.5; // normal-size text; every CTA label on this site is <18.66px bold
 const TYPES = {

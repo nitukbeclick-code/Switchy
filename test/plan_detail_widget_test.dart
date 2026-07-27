@@ -256,4 +256,35 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+
+  // ── The user's own bill is labelled in the unit it was entered in ──────────
+  // Bills are monthly EXCEPT abroad, which is per-package (billUnitLabel). The
+  // value anchor hardcoded "/חודש", telling a traveller their per-package travel
+  // spend was a monthly bill.
+  testWidgets('an abroad plan labels the bill per-package, not per-month', (tester) async {
+    await _ignoringOverflow(() async {
+      await _bootApp(tester);
+      AppState().setCurrentBill('abroad', 250);
+      await tester.pump(const Duration(milliseconds: 300));
+      _go(tester, '/plan/ab_airalo'); // per-PACKAGE, so comparable to the bill
+      await tester.pumpAndSettle(const Duration(milliseconds: 400));
+
+      expect(find.textContaining('₪250/חבילה'), findsWidgets);
+      expect(find.textContaining('₪250/חודש'), findsNothing);
+    });
+  });
+
+  testWidgets('a per-day tariff shows no budget comparison against a package bill', (tester) async {
+    // ₪10-per-DAY minus a ₪250-per-PACKAGE bill is a number with no referent, so
+    // the budget bullet must not be drawn at all — not drawn with a nicer label.
+    await _ignoringOverflow(() async {
+      await _bootApp(tester);
+      AppState().setCurrentBill('abroad', 250);
+      await tester.pump(const Duration(milliseconds: 300));
+      _go(tester, '/plan/ab_golan'); // priceUnit 'day'
+      await tester.pumpAndSettle(const Duration(milliseconds: 400));
+
+      expect(find.textContaining('מהחשבון הנוכחי שלכם'), findsNothing);
+    });
+  });
 }

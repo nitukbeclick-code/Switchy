@@ -294,8 +294,17 @@ export type LeadSort = "recent" | "oldest";
  *  authoritative "the table continues past this window" flag (computed on the
  *  raw window, before the search filter) — use it, not `leads.length >= 200`,
  *  to decide whether an export is partial. */
+// `limit`/`offset` page the server window. They are OPTIONAL and omitted by
+// default, so an unparameterised call behaves exactly as before (the server's
+// historical 200-row default).
+//
+// Passing them matters for more than long lists: crm-api's `search` is an
+// in-memory filter over the FETCHED WINDOW (never interpolated into PostgREST —
+// see actions_leads). Without paging, a search could only ever see the first
+// window, so a lead at row 250 was unfindable and the console said
+// "לא נמצאו לידים תואמים לחיפוש" — asserting absence it could not know.
 export function fetchCrmLeads(
-  opts?: { status?: LeadStatus; search?: string; sort?: LeadSort },
+  opts?: { status?: LeadStatus; search?: string; sort?: LeadSort; limit?: number; offset?: number },
 ): Promise<CrmFetch<{ leads: CrmLead[]; hasMore: boolean }>> {
   return crmRead<{ leads: CrmLead[]; hasMore: boolean }>(
     "listLeads",
@@ -303,6 +312,8 @@ export function fetchCrmLeads(
       ...(opts?.status ? { status: opts.status } : {}),
       ...(opts?.search ? { search: opts.search } : {}),
       ...(opts?.sort === "oldest" ? { sort: "oldest" } : {}),
+      ...(typeof opts?.limit === "number" ? { limit: opts.limit } : {}),
+      ...(typeof opts?.offset === "number" && opts.offset > 0 ? { offset: opts.offset } : {}),
     },
     (j) => hasArray(j, "leads"),
   );

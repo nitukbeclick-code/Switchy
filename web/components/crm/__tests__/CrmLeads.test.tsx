@@ -309,3 +309,111 @@ describe("CrmLeads keyboard navigation", () => {
     expect(screen.getByLabelText("חיפוש לידים")).toHaveFocus();
   });
 });
+
+// ── Paging: the window used to masquerade as the whole list ──────────────────
+// crm-api returns a bounded window (200 rows) plus an authoritative `hasMore`.
+// The client never sent limit/offset, so the list simply STOPPED at the window
+// with nothing on screen admitting it — and because crm-api's `search` is an
+// in-memory filter over that same window, a search that found nothing said
+// "לא נמצאו לידים תואמים לחיפוש": asserting absence it could not know.
+
+describe("CrmLeads paging", () => {
+  it("offers the next window only when the server says there is one", async () => {
+    mocks.fetchCrmLeads.mockResolvedValue(ok([lead("a")], false));
+    const { rerender } = render(<CrmLeads />);
+    await screen.findAllByText("ליד a");
+    expect(screen.queryByRole("button", { name: "טעינת לידים נוספים" })).toBeNull();
+
+    mocks.fetchCrmLeads.mockResolvedValue(ok([lead("a")], true));
+    rerender(<CrmLeads key="2" />);
+    expect(await screen.findByRole("button", { name: "טעינת לידים נוספים" })).toBeInTheDocument();
+  });
+
+  it("requests the NEXT offset and appends without dropping what is on screen", async () => {
+    mocks.fetchCrmLeads.mockResolvedValueOnce(ok([lead("a"), lead("b")], true));
+    render(<CrmLeads />);
+    await screen.findAllByText("ליד a");
+
+    // The first page asks for a window and no offset.
+    expect(mocks.fetchCrmLeads).toHaveBeenLastCalledWith(
+      expect.objectContaining({ limit: 200 }),
+    );
+    expect(mocks.fetchCrmLeads.mock.calls[0][0].offset).toBeUndefined();
+
+    mocks.fetchCrmLeads.mockResolvedValueOnce(ok([lead("c")], false));
+    fireEvent.click(screen.getByRole("button", { name: "טעינת לידים נוספים" }));
+
+    await screen.findAllByText("ליד c");
+    // Offset is PAGE_SIZE, NOT leads.length — with a search active the server
+    // returns only the matches, so paging on the rendered count would skip every
+    // lead in the gap.
+    expect(mocks.fetchCrmLeads).toHaveBeenLastCalledWith(
+      expect.objectContaining({ limit: 200, offset: 200 }),
+    );
+    // Appended, not replaced.
+    expect(screen.getAllByText("ליד a").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("ליד b").length).toBeGreaterThan(0);
+    // And the exhausted list stops offering more.
+    expect(screen.queryByRole("button", { name: "טעינת לידים נוספים" })).toBeNull();
+  });
+
+  it("de-dupes an overlapping row rather than rendering it twice", async () => {
+    // created_at is not unique and shifts as leads arrive, so two adjacent
+    // windows can legitimately overlap. A blind append would duplicate the row
+    // and let a bulk action count the same lead twice.
+    mocks.fetchCrmLeads.mockResolvedValueOnce(ok([lead("a"), lead("b")], true));
+    render(<CrmLeads />);
+    await screen.findAllByText("ליד a");
+
+    mocks.fetchCrmLeads.mockResolvedValueOnce(ok([lead("b"), lead("c")], false));
+    fireEvent.click(screen.getByRole("button", { name: "טעינת לידים נוספים" }));
+    await screen.findAllByText("ליד c");
+
+    // "ליד b" appears once per layout (desktop table + mobile cards), never twice
+    // within one — compare against a row that was never duplicated.
+    expect(screen.getAllByText("ליד b").length).toBe(screen.getAllByText("ליד c").length);
+  });
+
+  it("does not claim a lead is absent when it has only searched part of the list", async () => {
+    mocks.fetchCrmLeads.mockResolvedValue(ok([], true));
+    render(<CrmLeads />);
+    // Drive a real search through the debounced box.
+    fireEvent.change(screen.getByLabelText("חיפוש לידים"), { target: { value: "דנה" } });
+
+    expect(
+      await screen.findByText(/לא נמצאו התאמות בלידים שנטענו עד כה/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("לא נמצאו לידים תואמים לחיפוש.")).toBeNull();
+    // …and it offers to keep looking rather than leaving the rep stuck.
+    expect(
+      screen.getByRole("button", { name: "המשך לחפש בלידים הבאים" }),
+    ).toBeInTheDocument();
+  });
+
+  it("DOES say 'not found' once the whole list has actually been searched", async () => {
+    // hasMore:false means the server reached the end — absence is now knowable,
+    // and hedging here would be its own dishonesty.
+    mocks.fetchCrmLeads.mockResolvedValue(ok([], false));
+    render(<CrmLeads />);
+    fireEvent.change(screen.getByLabelText("חיפוש לידים"), { target: { value: "דנה" } });
+
+    expect(await screen.findByText("לא נמצאו לידים תואמים לחיפוש.")).toBeInTheDocument();
+    expect(screen.queryByText(/לא נמצאו התאמות בלידים שנטענו עד כה/)).toBeNull();
+  });
+
+  it("keeps the rows on screen when loading the next page fails", async () => {
+    mocks.fetchCrmLeads.mockResolvedValueOnce(ok([lead("a")], true));
+    render(<CrmLeads />);
+    await screen.findAllByText("ליד a");
+
+    mocks.fetchCrmLeads.mockResolvedValueOnce({
+      data: null,
+      failure: { status: 500, message: "הבקשה נכשלה (שגיאת שרת 500). נסו שוב.", retryable: true },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "טעינת לידים נוספים" }));
+
+    // The server's own message, and the rep's working view is intact.
+    expect(await screen.findByText("הבקשה נכשלה (שגיאת שרת 500). נסו שוב.")).toBeInTheDocument();
+    expect(screen.getAllByText("ליד a").length).toBeGreaterThan(0);
+  });
+});

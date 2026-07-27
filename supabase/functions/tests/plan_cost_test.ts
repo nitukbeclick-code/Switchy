@@ -127,3 +127,35 @@ Deno.test("a row with no price at all does not produce a negative or NaN cost", 
   assertEquals(c.maximum, 0);
   assertEquals(c.basis, "fixed-price");
 });
+
+// ── The cross-surface parity contract ────────────────────────────────────────
+// shared/plan-cost-cases.json holds ONE set of expected twelve-month costs, read
+// by all four copies of this engine. See its _readme for why: the copies drifted
+// once and every suite stayed green, because each pinned only its own behaviour.
+type SharedCase = {
+  name: string;
+  plan: Record<string, unknown>;
+  expect: { minimum: number; maximum: number; basis: string };
+};
+
+const sharedCases: SharedCase[] = JSON.parse(
+  Deno.readTextFileSync(
+    new URL("../../../shared/plan-cost-cases.json", import.meta.url),
+  ),
+).cases;
+
+Deno.test("matches the shared cross-surface fixtures", () => {
+  assert(sharedCases.length > 0, "the shared fixture file is empty");
+  for (const c of sharedCases) {
+    const cost = calculateTwelveMonthCost(c.plan);
+    assertEquals(cost.basis, c.expect.basis, `${c.name}: basis`);
+    assert(
+      Math.abs(cost.minimum - c.expect.minimum) < 0.005,
+      `${c.name}: minimum was ${cost.minimum}, expected ${c.expect.minimum}`,
+    );
+    assert(
+      Math.abs(cost.maximum - c.expect.maximum) < 0.005,
+      `${c.name}: maximum was ${cost.maximum}, expected ${c.expect.maximum}`,
+    );
+  }
+});

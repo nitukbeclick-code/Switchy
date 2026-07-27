@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { calculateTwelveMonthCost, formatAnnualCost } from "@/lib/plan-cost";
 import type { Plan } from "@/lib/types";
 import catalogue from "@/data/catalogue.json";
@@ -169,4 +171,35 @@ describe("calculateTwelveMonthCost", () => {
       expect(cost.minimum).toBe(900);
     });
   });
+});
+
+// ── The cross-surface parity contract ────────────────────────────────────────
+// shared/plan-cost-cases.json holds ONE set of expected twelve-month costs, read
+// by all four copies of this engine. See its _readme for why: the copies drifted
+// once and every suite stayed green, because each pinned only its own behaviour.
+describe("the shared cross-surface fixtures", () => {
+  const sharedPath = fileURLToPath(
+    new URL("../../../shared/plan-cost-cases.json", import.meta.url),
+  );
+  const shared = JSON.parse(readFileSync(sharedPath, "utf8")) as {
+    cases: {
+      name: string;
+      plan: Record<string, unknown>;
+      expect: { minimum: number; maximum: number; basis: string };
+    }[];
+  };
+
+  it("has cases to run", () => {
+    expect(shared.cases.length).toBeGreaterThan(0);
+  });
+
+  it.each(shared.cases.map((c) => [c.name, c] as const))(
+    "%s",
+    (_name, c) => {
+      const cost = calculateTwelveMonthCost(c.plan as Plan);
+      expect(cost.basis).toBe(c.expect.basis);
+      expect(cost.minimum).toBeCloseTo(c.expect.minimum, 2);
+      expect(cost.maximum).toBeCloseTo(c.expect.maximum, 2);
+    },
+  );
 });

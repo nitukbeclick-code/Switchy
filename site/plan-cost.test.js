@@ -84,3 +84,21 @@ test('a free first month with NO published ladder is left alone', () => {
   assert.equal(cost.basis, 'fixed-price');
   assert.equal(cost.minimum, 900);
 });
+
+// ── The cross-surface parity contract ────────────────────────────────────────
+// shared/plan-cost-cases.json holds ONE set of expected twelve-month costs, read
+// by all four copies of this engine. See its _readme for why: the copies drifted
+// once and every suite stayed green, because each pinned only its own behaviour.
+const sharedCases = require('../shared/plan-cost-cases.json');
+
+test('matches the shared cross-surface fixtures', () => {
+  assert.ok(sharedCases.cases.length > 0, 'the shared fixture file is empty');
+  for (const c of sharedCases.cases) {
+    const cost = calculateTwelveMonthCost(c.plan);
+    assert.equal(cost.basis, c.expect.basis, `${c.name}: basis`);
+    assert.ok(Math.abs(cost.minimum - c.expect.minimum) < 0.005,
+      `${c.name}: minimum was ${cost.minimum}, expected ${c.expect.minimum}`);
+    assert.ok(Math.abs(cost.maximum - c.expect.maximum) < 0.005,
+      `${c.name}: maximum was ${cost.maximum}, expected ${c.expect.maximum}`);
+  }
+});

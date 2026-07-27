@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chosech/models.dart';
 import 'package:chosech/services/plan_cost.dart';
@@ -210,5 +213,55 @@ void main() {
       expect(planHasMonthlyTerm(_plan(price: 89, cat: 'cellular')), isTrue);
       expect(planHasMonthlyTerm(_plan(price: 89, cat: 'internet')), isTrue);
     });
+  });
+
+  _sharedFixtures();
+}
+
+// ── The cross-surface parity contract ────────────────────────────────────────
+// shared/plan-cost-cases.json holds ONE set of expected twelve-month costs, read
+// by all four copies of this engine. See its _readme for why: the copies drifted
+// once and every suite stayed green, because each pinned only its own behaviour.
+void _sharedFixtures() {
+  group('the shared cross-surface fixtures', () {
+    final raw = File('shared/plan-cost-cases.json').readAsStringSync();
+    final cases = (jsonDecode(raw) as Map<String, dynamic>)['cases'] as List;
+
+    // The JSON uses the JS/TS spelling of the basis; map it to the enum.
+    const bases = {
+      'published-schedule': PriceBasis.publishedSchedule,
+      'published-promo': PriceBasis.publishedPromo,
+      'published-range': PriceBasis.publishedRange,
+      'fixed-price': PriceBasis.fixedPrice,
+    };
+
+    test('the fixture file has cases to run', () {
+      expect(cases, isNotEmpty);
+    });
+
+    for (final entry in cases) {
+      final c = entry as Map<String, dynamic>;
+      final name = c['name'] as String;
+      test(name, () {
+        final j = c['plan'] as Map<String, dynamic>;
+        final want = c['expect'] as Map<String, dynamic>;
+        final p = Plan(
+          id: 'shared', cat: 'internet', provider: 'x', net: 'x', plan: 'x',
+          price: (j['price'] as num?)?.round() ?? 0,
+          priceExact: (j['priceExact'] as num?)?.toDouble(),
+          after: (j['after'] as num?)?.round(),
+          afterExact: (j['afterExact'] as num?)?.toDouble(),
+          fineLines: ((j['fineLines'] as List?) ?? const []).cast<String>(),
+          terms: [if (j['terms'] is String) j['terms'] as String],
+          notes: j['notes'] as String?,
+        );
+        final cost = calculatePlanCost(p, months: 12);
+        expect(cost.basis, bases[want['basis']], reason: '$name: basis');
+        expect(cost.minimum, closeTo((want['minimum'] as num).toDouble(), 0.005),
+            reason: '$name: minimum');
+        expect(cost.maximum, closeTo((want['maximum'] as num).toDouble(), 0.005),
+            reason: '$name: maximum');
+      });
+    }
   });
 }

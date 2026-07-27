@@ -83,9 +83,26 @@ class PlanCost {
 }
 
 /// Every line of catalogue prose that may carry a ladder or a promo duration.
+///
+/// `terms` and `notes` are here because the other three copies of this engine
+/// read them, and shared/plan-cost-cases.json pins cases that depend on it: a
+/// live `public.plans` row carries `terms` as a single string and `notes` as
+/// free text, and Plan.fromJson maps both. Neither is populated in the compiled
+/// catalogue today — measured, 0 plans change cost — so this is alignment, not a
+/// new behaviour, and it means a ladder published in either column prices the
+/// same on every surface instead of only three of them.
+///
+/// `intro` is a deliberate SUPERSET: the compiled catalogue keeps the promo
+/// duration there ('חודשיים', '3 חודשים') and the JSON export drops the field.
+/// Also measured: 0 plans change cost when intro is removed, because every one
+/// of them repeats the duration in fineLines. It is read here because it costs
+/// nothing and a row that stops repeating itself would otherwise silently lose
+/// its duration.
 String _planText(Plan p) => [
       p.intro ?? '',
       ...p.fineLines,
+      ...p.terms,
+      p.notes ?? '',
     ].where((s) => s.isNotEmpty).join(' | ');
 
 /// `ח׳1-2: ₪39` → per-month amounts. Returns null when nothing was published,

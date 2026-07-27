@@ -6,6 +6,7 @@ import 'data/plans_cellular.dart';
 import 'data/plans_internet.dart';
 import 'data/plans_tv_triple.dart';
 import 'data/plans_electricity.dart';
+import 'services/plan_cost.dart';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -201,9 +202,42 @@ Plan? planById(String id) {
 /// live in the other.
 bool isPriceComparableCategory(String catId) => catId != 'electricity';
 
+/// Annual saving against [currentBill] — what the switch is really worth over
+/// the first twelve months.
+///
+/// NOT `(bill − headline) × 12`. That formula credits a plan with a discount
+/// that expires: פרטנר Fiber 1000Mb is ₪39 for two months, ₪139 to month 12 and
+/// ₪159 after, so against a ₪140 bill the old arithmetic claimed ₪1,212 a year
+/// when the plan's own published ladder puts the real first-year saving at ₪212.
+/// Fifteen catalogue plans were affected; the overstatement is the gap between
+/// the headline × 12 and the published schedule, and it reached ₪1,000 on that
+/// one row.
+///
+/// This is the same correction [calculatePlanCost] already applies to the
+/// 24-month row on the plan card and the site's savings calculator applies to
+/// its own claim. A saving derived here and a cost derived there must not
+/// disagree about the same plan.
+///
+/// Two deliberate restrictions:
+///
+///  * Only for plans with a real monthly term. An abroad package priced per-day
+///    or per-minute has no 12-month cost to net off, and for abroad the bill is
+///    itself a per-package figure — that pairing is consistent by design and
+///    pinned by recommendation_engine_edge_test.
+///  * When the catalogue publishes a promo price but not its duration,
+///    [calculatePlanCost] returns a RANGE and this takes the MAXIMUM cost, i.e.
+///    the SMALLEST defensible saving. A claim built on the flattering end of a
+///    range we admit we cannot pin down is worth nothing; under-promising is
+///    recoverable.
 int planSaveYear(Plan p, int currentBill) {
-  // Use the exact price so the saving is accurate to the agora even when the
-  // headline price is rounded for sorting.
+  if (planHasMonthlyTerm(p)) {
+    final cost = calculatePlanCost(p, months: 12);
+    return (currentBill * 12 - cost.maximum).round().clamp(0, 999999);
+  }
+  // Per-package / per-day / per-minute: no monthly term to annualise. Keep the
+  // like-for-like unit comparison (a per-package plan against a per-package
+  // bill), using the exact price so the figure is accurate to the agora even
+  // when the headline is rounded for sorting.
   return ((currentBill - p.priceValue) * 12).round().clamp(0, 999999);
 }
 

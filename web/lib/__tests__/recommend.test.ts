@@ -123,15 +123,21 @@ describe("scorePlan parity — exact hand-computed scores", () => {
   });
 
   it("emits honest reasons (saving only with a real bill) and caveats", () => {
-    // With a real bill of 90 → saving = (90-29)*12 = 732, and a promo step-up.
+    // A ₪29 promo that steps up to ₪49, with no published duration. The old
+    // arithmetic claimed (90-29)*12 = ₪732 — a full year at a price this very
+    // test's own caveat says expires. The catalogue does not say WHEN it
+    // expires, so the cost engine returns a range and the saving takes the
+    // costliest end: 29 + 49*11 = ₪568 for the year, against 90*12 = ₪1,080,
+    // so ₪512. The smallest defensible claim, not the most flattering one.
     const promo: ScorablePlan = { ...plan5g, after: 49 };
     const m = scorePlan(promo, {
       category: "cellular",
       priority: "balanced",
       currentBill: 90,
     });
-    expect(m.annualSaving).toBe(732);
-    expect(m.reasons).toContain("חוסך ₪732 בשנה");
+    expect(m.annualSaving).toBe(512);
+    expect(m.annualSaving).toBeLessThan((90 - 29) * 12);
+    expect(m.reasons).toContain("חוסך ₪512 בשנה");
     expect(m.reasons).toContain("5G מהיר");
     expect(m.reasons).toContain("ללא התחייבות — ביטול בכל עת");
     expect(m.caveats).toContain("מחיר מבצע — עולה ל-₪49 בהמשך");

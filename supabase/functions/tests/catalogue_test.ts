@@ -49,6 +49,36 @@ Deno.test("plansFromRows maps DB columns (category→cat, title→plan) and keep
   assertEquals(p.specs?.data, "100GB");
 });
 
+Deno.test("plansFromRows carries the promo ladder through, so a saving can be priced", () => {
+  // fine_lines was dropped entirely, so _shared/scoring could only ever see a
+  // headline and an after-price — enough to know the price steps up, not enough
+  // to know when. Every saving against a step-up plan was quoted from a range.
+  const rows = [
+    {
+      id: "net_partner_fiber1g", category: "internet", provider: "פרטנר",
+      title: "Fiber 1000Mb", price: 39, after: 159,
+      fine_lines: ["ח׳1-2: ₪39", "ח׳3-12: ₪139", "ח׳13+: ₪159"],
+      terms: "התחייבות 12 חודשים",
+      notes: "הצעה לבית פרטי",
+    },
+  ];
+  const p = plansFromRows(rows)[0];
+  assertEquals(p.fineLines, ["ח׳1-2: ₪39", "ח׳3-12: ₪139", "ח׳13+: ₪159"]);
+  assertEquals(p.terms, "התחייבות 12 חודשים"); // the live column is a raw string
+  assertEquals(p.notes, "הצעה לבית פרטי");
+});
+
+Deno.test("plansFromRows omits malformed fine print rather than fabricating it", () => {
+  const rows = [
+    { id: "a", category: "tv", title: "t", price: 50, fine_lines: "not an array", notes: "   " },
+    { id: "b", category: "tv", title: "t", price: 50, fine_lines: [1, null, ""] },
+  ];
+  const out = plansFromRows(rows);
+  assertEquals(out[0].fineLines, undefined);
+  assertEquals(out[0].notes, undefined);
+  assertEquals(out[1].fineLines, undefined); // nothing usable survived the filter
+});
+
 Deno.test("plansFromRows drops rows without a category or a numeric price", () => {
   const rows = [
     { id: "ok", category: "internet", title: "סיב", price: 99 },

@@ -145,9 +145,51 @@ Deno.test("a REAL rating (reviews>0) does move the score under a service priorit
 
 // ── honest savings ──────────────────────────────────────────────────────────
 
-Deno.test("annualSaving = (bill - price) * 12 for a cheaper monthly plan", () => {
+Deno.test("annualSaving = (bill - price) * 12 for a cheaper FLAT monthly plan", () => {
   const p: ScorablePlan = { id: "a", cat: "cellular", provider: "A", plan: "p", price: 40 };
   assertEquals(annualSaving(p, 90), (90 - 40) * 12); // 600
+});
+
+// ── A promo price is not a year's price ─────────────────────────────────────
+// The bot quotes this number to a person. It must net off what the plan really
+// costs over twelve months, not the headline multiplied out as though the
+// discount never ended.
+
+Deno.test("annualSaving nets off a published ladder, not the promo headline", () => {
+  // The real catalogue row net_partner_fiber1g: ₪39 for two months, ₪139 to
+  // month 12, ₪159 after. Against a ₪140 bill the old formula claimed ₪1,212.
+  // The plan costs 39*2 + 139*10 = ₪1,468 over those months, so the honest
+  // saving is 140*12 - 1468 = ₪212.
+  const p: ScorablePlan = {
+    id: "net_partner_fiber1g", cat: "internet", provider: "פרטנר", plan: "Fiber 1000Mb",
+    price: 39, after: 159,
+    fineLines: ["ח׳1-2: ₪39", "ח׳3-12: ₪139", "ח׳13+: ₪159"],
+  };
+  assertEquals(annualSaving(p, 140), 212);
+  assert(annualSaving(p, 140) < (140 - 39) * 12);
+});
+
+Deno.test("annualSaving claims the SMALLEST defensible figure when the promo duration is unpublished", () => {
+  // Price steps up but the catalogue never says when. The cost engine returns a
+  // range and the saving takes the costliest end: 39 + 159*11 = ₪1,788 for the
+  // year, against 200*12 = ₪2,400 → ₪612. A claim built on the flattering end
+  // of a range we admit we cannot pin down is worth nothing.
+  const p: ScorablePlan = {
+    id: "v", cat: "internet", provider: "x", plan: "v", price: 39, after: 159,
+  };
+  assertEquals(annualSaving(p, 200), 612);
+  assert(annualSaving(p, 200) < (200 - 39) * 12);
+});
+
+Deno.test("annualSaving does not charge a published free first month", () => {
+  // The real tri_yes_yes-fiber-triple row. 11 x ₪209 = ₪2,299 for the year, so
+  // against a ₪260 bill the saving is 3,120 - 2,299 = ₪821.
+  const p: ScorablePlan = {
+    id: "tri_yes_yes-fiber-triple", cat: "triple", provider: "yes", plan: "yes+Fiber הטריפל",
+    price: 209, after: 329,
+    fineLines: ["חודש ראשון חינם", "ח׳2-12: ₪209", "ח׳13-36: ₪229", "נתב WiFi7 שנה מתנה"],
+  };
+  assertEquals(annualSaving(p, 260), 821);
 });
 
 Deno.test("annualSaving is 0 without a current bill (no baseline ⇒ no number)", () => {

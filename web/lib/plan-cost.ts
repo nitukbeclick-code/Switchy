@@ -1,5 +1,3 @@
-import type { Plan } from "./types";
-
 export const COST_HORIZON_MONTHS = 12;
 
 export interface CostSegment {
@@ -20,6 +18,24 @@ export type CostBasis =
   | "fixed-price"
   | "published-range";
 
+/**
+ * The only fields the cost engine reads. The catalogue `Plan` satisfies it
+ * structurally, and so does recommend.ts's ScorablePlan — so a saving derived in
+ * one place and a cost derived in another cannot be computed from different
+ * inputs for the same plan. Everything is optional and validated on the way in;
+ * a row missing its fine print simply gets the flat-price basis.
+ */
+export type CostablePlan = {
+  price?: unknown;
+  priceExact?: unknown;
+  after?: unknown;
+  afterExact?: unknown;
+  fineLines?: string[];
+  terms?: string[] | string;
+  notes?: string;
+  fees?: unknown;
+};
+
 export interface PlanTwelveMonthCost {
   months: 12;
   minimum: number;
@@ -38,15 +54,15 @@ function finiteNumber(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-function headlinePrice(plan: Plan): number {
+function headlinePrice(plan: CostablePlan): number {
   return finiteNumber(plan.priceExact) ?? finiteNumber(plan.price) ?? 0;
 }
 
-function afterPrice(plan: Plan): number | null {
+function afterPrice(plan: CostablePlan): number | null {
   return finiteNumber(plan.afterExact) ?? finiteNumber(plan.after);
 }
 
-function planText(plan: Plan): string {
+function planText(plan: CostablePlan): string {
   const values: string[] = [];
   if (Array.isArray(plan.fineLines)) values.push(...plan.fineLines);
   if (Array.isArray(plan.terms)) values.push(...plan.terms);
@@ -64,7 +80,7 @@ function numericAmount(text: string): number | null {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
-function planFees(plan: Plan): {
+function planFees(plan: CostablePlan): {
   recurringExtras: ParsedFee[];
   oneTimeFees: ParsedFee[];
   hasUnpricedFees: boolean;
@@ -154,7 +170,7 @@ function compressSchedule(months: number[]): CostSegment[] {
  * describes them as optional; silently adding them would overstate the bill.
  * When a promo end date is missing, return an honest range instead of guessing.
  */
-export function calculateTwelveMonthCost(plan: Plan): PlanTwelveMonthCost {
+export function calculateTwelveMonthCost(plan: CostablePlan): PlanTwelveMonthCost {
   const headline = headlinePrice(plan);
   const after = afterPrice(plan);
   const text = planText(plan);

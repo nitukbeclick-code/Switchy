@@ -43,6 +43,7 @@
 
 import type { Plan } from "./types";
 import { CATEGORY_HE } from "./categories";
+import { calculateTwelveMonthCost } from "./plan-cost";
 
 // ── Shared honesty constants (kept identical to _shared/switch.ts) ────────────
 /** The disclaimer every kit carries — kept identical to SWITCH_DISCLAIMER. */
@@ -186,17 +187,20 @@ export function resolveProvider(
 
 /**
  * Honest annual saving (₪/yr) vs. the bill — 0 unless a real monthly bill was
- * given AND the target is a monthly plan. Mirrors the app's planSaveYear shape:
- * ((bill - price) * 12) clamped to ≥ 0. An estimate, never a promise.
+ * given AND the target is a monthly plan. An estimate, never a promise.
+ *
+ * Nets off what the plan REALLY costs over its first twelve months, not
+ * `(bill − price) × 12`: the headline is often a promo that expires inside the
+ * year, and multiplying it out credits the plan with a discount it does not
+ * give for a discount's worth of months. Same engine, and therefore the same
+ * number, as recommend.ts's annualSaving and the app's planSaveYear.
  */
 export function annualSaving(target: Plan, currentBill: number | undefined): number {
   if (!currentBill || currentBill <= 0) return 0;
   const unit = target.priceUnit ?? (target.cat === "abroad" ? "package" : "month");
   if (unit !== "month") return 0; // a per-day/package plan can't compare to a monthly bill
-  const price = typeof target.price === "number" ? target.price : 0;
-  const monthly = currentBill - price;
-  if (monthly <= 0) return 0;
-  return Math.round(monthly * 12);
+  const cost = calculateTwelveMonthCost(target);
+  return Math.max(0, Math.round(currentBill * 12 - cost.maximum));
 }
 
 // ── The factual exit sequence (SAME keys/copy as _shared/switch.ts exitSteps) ─

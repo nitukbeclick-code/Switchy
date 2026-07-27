@@ -87,8 +87,15 @@ describe("switch-kit — step keys + helpers (parity with _shared/switch.ts)", (
     expect(annualSaving(target, 0)).toBe(0);
     // A bill well above the cheapest cellular plan yields a positive estimate.
     const saving = annualSaving(target, 200);
-    expect(saving).toBe(Math.round((200 - target.price) * 12));
     expect(saving).toBeGreaterThan(0);
+    // The saving nets off the plan's real twelve-month cost, so it reads the
+    // EXACT price (₪10.90) rather than the int `price` field the catalogue
+    // rounds for sorting — a one-shekel difference here, and the accurate one.
+    const exact = (target.priceExact as number | undefined) ?? target.price;
+    expect(saving).toBe(Math.round(200 * 12 - exact * 12));
+    // This plan has no promo, so netting the cost off is the same arithmetic
+    // as the old (bill − price) × 12 — within that rounding.
+    expect(saving).toBeCloseTo((200 - target.price) * 12, -1);
   });
 });
 

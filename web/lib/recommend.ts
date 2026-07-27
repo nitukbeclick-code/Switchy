@@ -20,9 +20,14 @@
 //   • HONEST SAVINGS — annualSaving is computed ONLY against a real current bill
 //     and only for monthly plans; never a promised figure for a named person.
 //
-// Pure, dependency-free, deterministic. No network, no env, no node:fs — safe to
-// import from a client component, a route handler, or a server component.
+// Pure and deterministic. No network, no env, no node:fs — safe to import from a
+// client component, a route handler, or a server component. Its one import is
+// ./plan-cost, itself pure: the saving must net off the plan's REAL twelve-month
+// cost, and re-deriving that ladder parser here would be the fourth copy of a
+// formula this project has already watched drift.
 // ────────────────────────────────────────────────────────────────────────────
+
+import { calculateTwelveMonthCost } from "./plan-cost";
 
 /**
  * The catalogue Plan shape this engine scores. A SUPERSET of the fields the
@@ -52,6 +57,15 @@ export type ScorablePlan = {
   term?: number | null; // commitment months (for caveats)
   feats?: string[]; // free-text feature blurbs (gig-fiber detection)
   specs?: Record<string, string>;
+  // ── Fine print the SAVING reads (see annualSaving) ─────────────────────────
+  // Callers already pass whole catalogue rows; these were simply not declared,
+  // so the promo ladder was invisible to the type even though it was present at
+  // runtime. All optional — a row without them gets the flat-price basis.
+  priceExact?: number | null;
+  afterExact?: number | null;
+  fineLines?: string[];
+  terms?: string[] | string;
+  notes?: string;
 };
 
 /** What the user is optimising for. One normalized set across every surface. */
@@ -182,16 +196,29 @@ export function normalizeNet(net: string | undefined): string | undefined {
 }
 
 /**
- * Annual saving: ((bill - price) * 12) clamped ≥ 0. Computed ONLY against a real
- * current bill, and only for monthly plans (a per-day/per-package abroad plan
- * can't be compared to a monthly bill). Mirrors the Dart planSaveYear, the site
- * annualSaving, and _shared/scoring.ts — never a promised figure for a person.
+ * Annual saving: a year of the bill minus what the plan REALLY costs over its
+ * first twelve months. Computed ONLY against a real current bill, and only for
+ * monthly plans (a per-day/per-package abroad plan can't be compared to a
+ * monthly bill). Never a promised figure for a person.
+ *
+ * NOT `(bill − price) × 12`. That credits a plan with a discount that expires:
+ * פרטנר Fiber 1000Mb is ₪39 for two months, ₪139 to month 12 and ₪159 after, so
+ * against a ₪140 bill the old arithmetic claimed ₪1,212 a year where the plan's
+ * own published ladder puts the real first-year saving at ₪212.
+ *
+ * When the catalogue publishes a promo price but not its duration the cost
+ * engine returns a RANGE, and this takes the costliest end — the SMALLEST
+ * defensible saving. A claim built on the flattering end of a range we admit we
+ * cannot pin down is worth nothing; under-promising is recoverable.
+ *
+ * Mirrors the Dart planSaveYear and the site's savings calculator, and reads the
+ * same fine print through the same engine, so the surfaces cannot disagree.
  */
 export function annualSaving(plan: ScorablePlan, currentBill: number): number {
   if (!(currentBill > 0)) return 0;
   if (plan.priceUnit && plan.priceUnit !== "month") return 0;
-  const monthly = currentBill - num(plan.price);
-  return Math.max(0, Math.round(monthly * 12));
+  const cost = calculateTwelveMonthCost(plan);
+  return Math.max(0, Math.round(currentBill * 12 - cost.maximum));
 }
 
 // ── Sub-scores (each 0..1) — ported from recommendation_engine.dart ──────────

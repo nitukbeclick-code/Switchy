@@ -1,0 +1,75 @@
+{
+  "_readme": [
+    "ONE canonical list of community channel strings, read by every surface that",
+    "renders or filters the community feed.",
+    "",
+    "WHY THIS FILE EXISTS. community_posts.channel is a plain TEXT column — the",
+    "Hebrew label IS the key. Nothing in the database constrains it, and every",
+    "surface filters with an exact string compare:",
+    "",
+    "    web/lib/community.ts        CHANNELS      (the source of truth)",
+    "    lib/pages/community/community_widget.dart  _channels",
+    "    site/build.js               COMMUNITY_CHANNELS  -> data-channel attributes",
+    "    site/script.js              paintFeed()   -> p.channel === activeChannel",
+    "",
+    "They drifted on ONE codepoint and silently partitioned the community. The",
+    "abroad channel was written three ways — 'חו״ל' with the Hebrew gershayim",
+    "U+05F4 (canonical), 'חו\"ל' with an ASCII quote U+0022, and bare 'חול' with no",
+    "punctuation. All three look nearly identical in Hebrew, none of them compares",
+    "equal, and the post's channel column stores whichever one its writer used. A",
+    "post filed from the app under the ASCII spelling simply does not exist inside",
+    "the web channel, and vice versa. Nothing errors; the feed just says",
+    "'אין עדיין פוסטים בערוץ הזה'.",
+    "",
+    "So the spellings now live HERE, once, and the tests compare them CODEPOINT BY",
+    "CODEPOINT (web/lib/__tests__/community-channels.test.ts). A byte-level test is",
+    "the whole point: an assertion that passes with a smart quote swapped for an",
+    "ASCII quote would not have caught the bug that created this file.",
+    "",
+    "CHANGING THE LIST. Edit web/lib/community.ts and this file in the same commit,",
+    "then run the web suite — the test fails on any divergence, in either direction.",
+    "A channel added on one surface only is a channel whose posts are invisible",
+    "everywhere else.",
+    "",
+    "FIELDS.",
+    "  channels            the 7 real channels, in display order. Stored verbatim in",
+    "                      community_posts.channel.",
+    "  all_channel         the 'everything' filter label. A UI-only sentinel — it is",
+    "                      NEVER written to the channel column, so it is not a member",
+    "                      of `channels`.",
+    "  category_to_channel catalogue category id -> channel, for the",
+    "                      'דברו על זה בקהילה' deep-link. Unmapped ids (electricity,",
+    "                      …) fall back to 'המלצות'. Note abroad maps to the CHANNELS",
+    "                      label 'חו״ל', not to the catalogue's own 'חבילות חו״ל'.",
+    "  legacy_variants     off-canonical spellings OBSERVED in shipped code, mapped to",
+    "                      the canonical string. This is a repair table, not a list of",
+    "                      accepted values: site/script.js folds them before comparing,",
+    "                      and supabase/community-channel-normalise-2026-07.sql rewrites",
+    "                      the stored rows. Nothing may WRITE a variant."
+  ],
+
+  "channels": [
+    "המלצות",
+    "סלולר",
+    "אינטרנט",
+    "טלוויזיה",
+    "חו״ל",
+    "חבילה משולבת",
+    "עזרה בניתוק"
+  ],
+
+  "all_channel": "הכל",
+
+  "category_to_channel": {
+    "cellular": "סלולר",
+    "internet": "אינטרנט",
+    "tv": "טלוויזיה",
+    "triple": "חבילה משולבת",
+    "abroad": "חו״ל"
+  },
+
+  "legacy_variants": {
+    "חו\"ל": "חו״ל",
+    "חול": "חו״ל"
+  }
+}

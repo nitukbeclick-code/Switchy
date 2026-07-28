@@ -23,7 +23,7 @@ import Icon from "@/components/Icon";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedOutboundLink from "@/components/TrackedOutboundLink";
-import LeadForm from "@/components/LeadForm";
+import LeadForm from "@/components/LeadFormLazy";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import {
   getProviders,

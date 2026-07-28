@@ -34,7 +34,7 @@ import { CATEGORY_HE } from "@/lib/categories";
 import { ils, leadCategory, type LeadCategory } from "@/lib/format";
 import { trackEvent } from "@/lib/tracking";
 import { analyzeBill, type ForensicsPlan } from "@/lib/bill-forensics";
-import LeadForm from "@/components/LeadForm";
+import LeadForm from "@/components/LeadFormLazy";
 import PriceCaveat from "@/components/PriceCaveat";
 import BillForensics from "@/components/BillForensics";
 import SavingsReveal from "@/components/SavingsReveal";

@@ -1776,6 +1776,22 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .calc-result__sep { border: none; border-top: 1px solid #D1D5DB; margin: 2px 0; }
 .calc-result__row--main { font-size: 1.05rem; }
 .calc-result__row--main .saving { color: var(--value-ink); font-size: 1.15rem; }
+/* The payoff block — the calculator's answer, and the site's ONE .price-hero
+   call site. Stacked (label / figure / unit) rather than a .calc-result__row,
+   because the tier's clamp(38px…52px) cannot live inside a space-between flex
+   row without breaking it; same shape as the homepage calculator's
+   .calc__result, which is the other half of this pattern.
+   Ground check: this renders inside .calc-card__out, which is var(--cream) in
+   light and re-skinned in dark — a LIGHT surface both ways, so --value-ink (the
+   AA amber tuned for light grounds) is the correct token here. It is NOT the
+   pinned-dark .calc__card case twenty lines up that needs --value instead. */
+.calc-result__payoff { text-align: center; margin: 2px 0 0; }
+.calc-result__payoffLabel { display: block; font-size: 14px; color: var(--muted); }
+.calc-result__payoffUnit { display: block; margin-top: 2px; font-size: 14px; color: var(--muted); }
+/* .price-hero brings the size, weight, tracking and colour; the tier is
+   deliberately not duplicated here. Only the block-level display the tier
+   cannot assume is added, so the figure owns its own line. */
+.calc-result__payoff .price-hero { display: block; }
 
 /* ── Savings-calculator card (calc-*.html) — token-driven premium surface ─────
    Replaces the old raw-hex inline card so it reads as the same lifted glass

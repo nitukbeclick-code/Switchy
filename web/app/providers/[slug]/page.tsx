@@ -12,7 +12,7 @@ import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
-import LeadForm from "@/components/LeadForm";
+import LeadForm from "@/components/LeadFormLazy";
 import StickyLeadCta from "@/components/StickyLeadCta";
 import TalkInCommunity from "@/components/community/TalkInCommunity";
 import { channelForCategory } from "@/lib/community";

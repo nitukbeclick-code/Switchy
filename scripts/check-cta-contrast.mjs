@@ -60,9 +60,14 @@ const TARGETS = [
   { sel: ".plan__cta", states: ["base", "hover"] },
   { sel: ".btn--ghost", states: ["base", "hover"] },
 ];
+// calc-cellular.html is here because the four calc-*.html pages were outside
+// every contrast gate while carrying a primary CTA of their own ("לראות את כל
+// מסלולי …"), and they are now also the only pages on the site that render the
+// .price-hero money tier. They share one template, so one of the four covers
+// the set.
 const PAGES = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ["/cellular.html", "/index.html"];
+  : ["/cellular.html", "/index.html", "/calc-cellular.html"];
 
 const serve = () =>
   createServer(async (req, res) => {

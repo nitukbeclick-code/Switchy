@@ -37,6 +37,30 @@ export function normalizeLeadPhone(raw: unknown): string {
   return national;
 }
 
+// normalizeLeadPhone, RELAXED for one caller: the WhatsApp hand-off.
+//
+// An Israeli number still normalizes to the canonical national form above — this
+// adds NOTHING for an IL input. It only stops a NON-Israeli number from being
+// dropped: `normalizeLeadPhone` returns "" for one, which would make
+// buildAiLeadRow return null → captureAiLead "incomplete" → no lead, no rep card,
+// while the customer still reads "a rep will get back to you". A silent black hole.
+//
+// Only the WhatsApp channel passes `allow_international` (see AiLeadInput). The
+// asymmetry is deliberate and defensible: on WhatsApp the number is the Meta-
+// verified sender identity (the wa_id we are literally replying to), not free text
+// somebody typed into a form. Everywhere else an un-Israeli number is far more
+// likely a typo than a real foreign customer, and refusing it is the honest call.
+//
+// The fallback shape is `+<digits>` bounded to the same 7..14 the leads
+// BEFORE-INSERT gate accepts (`^[+0-9][0-9\-\s]{7,14}$` = 1 + 7..14 chars).
+export function normalizeLeadPhoneAny(raw: unknown): string {
+  const national = normalizeLeadPhone(raw);
+  if (national) return national;
+  const digits = String(raw ?? "").replace(/[^0-9]/g, "");
+  if (digits.length < 7 || digits.length > 14) return "";
+  return `+${digits}`;
+}
+
 // The structured lead the chat client collects once intent is confirmed. Every
 // field is validated/coerced here — never trusted as-is.
 export type AiLeadInput = {
@@ -63,6 +87,24 @@ export type AiLeadInput = {
   // callbackDue() switches on. Anything else is dropped (it stays in `notes`),
   // because an unrecognised value would render as a phantom window on the card.
   callback_time?: unknown;
+  // ── The three fields below are ADDITIVE and default-inert: omit them and this
+  //    function behaves byte-for-byte as it did before they existed. They exist so
+  //    the WhatsApp hand-off can route through THIS gate instead of hand-rolling
+  //    its own leads INSERT (which is how the two-normalizer split happened).
+  // Accept a non-Israeli number via normalizeLeadPhoneAny instead of refusing it.
+  // WhatsApp only — see normalizeLeadPhoneAny for why the asymmetry is honest.
+  allow_international?: unknown;
+  // How much of `notes` to keep, clamped to [200, 1900]. Default 600 — unchanged.
+  // The hand-off needs ~1400: buildHandoffNotes' payload IS the rep's whole brief
+  // (facts → the customer's real last message → transcript), and the default would
+  // cut more than half of it off the end, which is exactly the part the rep needs.
+  notes_max?: unknown;
+  // The LEGAL BASIS this lead was captured under, in Hebrew, appended as the LAST
+  // notes segment. `consent: true` records terms+privacy but cannot say WHY they
+  // hold; a §30A *service* action (the customer asked for a human) and a form where
+  // somebody ticked a box are both "consented" and must stay distinguishable in the
+  // record. Appended after the notes budget is spent, so it can never be truncated.
+  consent_basis?: unknown;
 };
 
 /** Conversation channels that map to a distinct lead source. */
@@ -137,6 +179,21 @@ function clip(v: unknown, max: number): string {
   return String(v ?? "").trim().slice(0, max);
 }
 
+/** The `|`-separator every notes segment is joined with. */
+const NOTES_SEP = " | ";
+/** Hard ceiling on the assembled notes — stays under the DB gate's 2000 cap. */
+const NOTES_CAP = 1900;
+/** Default notes budget. Unchanged from when it was inlined as clip(notes, 600). */
+const NOTES_MAX_DEFAULT = 600;
+
+/** input.notes_max → an integer in [200, 1900]; anything unusable ⇒ the 600
+ *  default, so an absent/garbage value can never widen OR collapse the budget. */
+function clampNotesMax(v: unknown): number {
+  const n = Math.floor(Number(v));
+  if (!Number.isFinite(n)) return NOTES_MAX_DEFAULT;
+  return Math.min(NOTES_CAP, Math.max(200, n));
+}
+
 // Build the leads row from a validated AiLeadInput, or null when the row can't
 // be captured honestly: no valid name, no valid phone, or — critically — no
 // mandatory consent. Returning null means "do NOT insert" (the AI should keep
@@ -146,7 +203,11 @@ function clip(v: unknown, max: number): string {
 export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOString()): AiLeadRow | null {
   const name = clip(input.name, 80);
   if (name.length < 2) return null;
-  const phone = normalizeLeadPhone(input.phone);
+  // Canonical national form by default. `allow_international` (WhatsApp only)
+  // keeps a Meta-verified foreign number instead of dropping the lead entirely.
+  const phone = input.allow_international === true
+    ? normalizeLeadPhoneAny(input.phone)
+    : normalizeLeadPhone(input.phone);
   if (!phone) return null;
   // MANDATORY consent gate — Spam Law §30A + Privacy. No consent → no capture.
   if (input.consent !== true) return null;
@@ -164,9 +225,15 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
   const category = clip(input.category, 40);
   const notesParts: string[] = [SOURCE_NOTES_PREFIX[source] ?? SOURCE_NOTES_PREFIX.advisor];
   if (category) notesParts.push(`שירות מבוקש: ${category}`);
-  const extra = clip(input.notes, 600);
+  const extra = clip(input.notes, clampNotesMax(input.notes_max));
   if (extra) notesParts.push(extra);
-  const notes = notesParts.join(" | ").slice(0, 1900); // < DB gate's 2000 cap
+  // The legal-basis segment goes LAST, and its room is RESERVED out of the cap
+  // before the rest is clipped — so the one line stating why we may hold this
+  // person's details is never the thing that falls off the end.
+  const basis = clip(input.consent_basis, 120);
+  const reserve = basis ? basis.length + NOTES_SEP.length : 0;
+  let notes = notesParts.join(NOTES_SEP).slice(0, NOTES_CAP - reserve);
+  if (basis) notes = notes ? `${notes}${NOTES_SEP}${basis}` : basis;
 
   return {
     name,

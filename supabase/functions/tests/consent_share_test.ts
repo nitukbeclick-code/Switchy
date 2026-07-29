@@ -16,7 +16,7 @@
 // The defensive-write tests at the BOTTOM stub globalThis.fetch (the PostgREST
 // service-role layer insertRow uses) so they need SUPABASE_URL +
 // SUPABASE_SERVICE_ROLE_KEY set BEFORE _shared/db.ts reads them. No real network.
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 
 Deno.env.set("SUPABASE_URL", "https://stub.supabase.co");
 Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "service-role-stub");
@@ -254,4 +254,48 @@ Deno.test("captureAiLead: no name/phone/consent ⇒ 'incomplete' (no insert atte
   } finally {
     restore();
   }
+});
+
+// ── A WhatsApp SERVICE hand-off is consented but NEVER sellable ────────────────
+// Added 2026-07 with the hand-off's move onto buildAiLeadRow. The risk the move
+// introduces is precisely this: stamping terms+privacy makes a hand-off look like a
+// form lead where somebody ticked a box. consent_share_at is what keeps them apart,
+// so pin it — a service hand-off must never be sold on as a consented lead.
+
+Deno.test("a WhatsApp hand-off is contactable but sellable 'no' (no share stamp)", () => {
+  const row = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true, // §30A SERVICE basis — the person asked for a human
+    channel: "whatsapp",
+    consent_basis: "בסיס הסכמה: פעולת שירות — הלקוח/ה ביקש/ה נציג בוואטסאפ",
+    notes: "שיחת WhatsApp",
+    notes_max: 1400,
+  }, NOW);
+  assert(row);
+  // Contactable: the rep may call, and the basis is on the record.
+  assertEquals(row.terms_accepted_at, NOW);
+  assertEquals(row.privacy_accepted_at, NOW);
+  assertStringIncludes(row.notes ?? "", "בסיס הסכמה");
+  // NOT marketing, and NOT sellable.
+  assertEquals(row.marketing_accepted_at, null);
+  assertEquals(row.consent_marketing_whatsapp, false);
+  assertEquals(row.consent_share_at, null);
+  // The export column a buyer would see.
+  const sheet = buildLeadSheetRow({ ...row, id: "l-1", status: "new", created_at: NOW } as unknown as Lead);
+  assertEquals(sheet[sheet.length - 1], "no", "a service hand-off must never export as sellable");
+});
+
+Deno.test("the service basis does NOT leak into the sellable signal", () => {
+  // A consent_basis string is prose in `notes`; it must not be mistaken for consent
+  // to share. Only an explicit consent_share may ever stamp consent_share_at.
+  const row = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    channel: "whatsapp",
+    consent_basis: "בסיס הסכמה: העברה לצד ג׳", // deliberately misleading prose
+  }, NOW);
+  assert(row);
+  assertEquals(row.consent_share_at, null, "only consent_share === true may stamp this");
 });

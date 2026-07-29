@@ -7,7 +7,7 @@ import { sendUserBotMessage, userBotToken } from "../_shared/telegram_user.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import { HANDOFF_ENDED_REPLY } from "../_shared/handoff.ts";
-import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
+import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, normalizeLeadPhone, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { lastSendWasOutside24hWindow, sendText as waSendText } from "../_shared/whatsapp.ts";
 import {
@@ -222,9 +222,14 @@ async function handleRenewLead(
     await answer("החידוש לא נמצא");
     return { ok: false, skipped: "renewal not found" };
   }
-  // sanitize against the leads insert gate: profile data is free text
-  const phone = String(r.phone ?? "").replace(/[^\d+]/g, "");
-  if (phone.replace(/\D/g, "").length < 9) {
+  // Normalize against the leads insert gate — profile data is free text. Uses THE
+  // canonical normalizer so a renewal lead is stored in the same national form as
+  // every other writer; stripping to `[^\d+]` merely sanitized the characters and
+  // stored whatever shape the profile happened to hold, which is how the same person
+  // ended up unmatched across capture paths. Returns "" for anything that isn't a
+  // real IL number, so the pre-existing friendly answer now also covers junk.
+  const phone = normalizeLeadPhone(r.phone);
+  if (!phone) {
     await answer("אין טלפון תקין בפרופיל של הלקוח");
     return { ok: false, skipped: "no phone" };
   }

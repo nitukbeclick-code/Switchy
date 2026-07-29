@@ -19,7 +19,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-import { fetchRows, serviceFetch } from "../_shared/db.ts";
+import { fetchRows, logEvent, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import {
   buildRecommendBlock,
@@ -79,7 +79,7 @@ import {
   parseContext,
 } from "./context.ts";
 import { buildSavingHint, buildTopicReply } from "./flows.ts";
-import { captureAiLead } from "../_shared/leads.ts";
+import { captureAiLead, normalizeLeadPhoneAny } from "../_shared/leads.ts";
 // §7b: the SAME commission disclosure create_lead surfaces (single source of
 // truth). Prepended to the deterministic human-handoff replies so a customer who
 // reaches a commission-bearing rep is told Switchy may earn a commission — exactly
@@ -953,20 +953,20 @@ async function sendStoredReply(contact: Row, reply: string): Promise<void> {
   }
 }
 
-// Normalize a WhatsApp phone into the shape the leads BEFORE-INSERT trigger
-// accepts (leads_rate_limit: `^[+0-9][0-9\-\s]{7,14}$`). A WhatsApp wa_id is
-// already E.164-ish digits (e.g. "972501234567"), but be defensive: strip any
-// char that isn't a digit (the trigger anchors on a leading [+0-9] then 7-14 of
-// [0-9\-\s], so a leading '+' is the only allowed non-digit) and re-prefix '+'.
-// If after cleaning it can't satisfy the trigger (too short/long), return "" so
-// the caller treats the insert as blocked instead of silently failing the regex.
-function normalizeLeadPhone(raw: string): string {
-  const digits = String(raw ?? "").replace(/\D/g, "");
-  // Trigger total length = 1 leading char + 7..14 = 8..15. With a '+' prefix the
-  // digit count must be 7..14 to land in-bounds.
-  if (digits.length < 7 || digits.length > 14) return "";
-  return `+${digits}`;
-}
+// NOTE (2026-07): this file used to define its OWN `normalizeLeadPhone` returning
+// `+<digits>` (E.164), which SHADOWED the canonical one in _shared/leads.ts inside
+// createHandoffLead. Because it was file-private and same-named, `deno check` never
+// saw a collision, and the two writers silently split public.leads.phone into two
+// incompatible formats: every WhatsApp lead stored "+972…" while every web/site/
+// advisor lead stored the national "05…". One customer accumulated THIRTEEN lead
+// rows across three spellings of the same number, no dedup could match them, and
+// public.search_leads / the leads_rate_limit per-phone cap — both of which compare
+// digit strings — silently stopped working per person.
+//
+// It is deleted. The canonical normalizer is _shared/leads.ts normalizeLeadPhone
+// (national 0-leading, IL-validated), reached here via normalizeLeadPhoneAny, which
+// differs ONLY in keeping a non-Israeli WhatsApp number instead of dropping it.
+// Do not reintroduce a local one.
 
 // ── app-handoff / open-lead awareness ────────────────────────────────────────
 // leadPhoneCandidates + lookupOpenLead now live in _shared/leadlookup.ts so the
@@ -981,6 +981,21 @@ export { leadPhoneCandidates, lookupOpenLead };
 // under the leads gate's 2000-char cap on notes.
 const HANDOFF_TRANSCRIPT_TURNS = 10;
 const HANDOFF_NOTES_MAX = 1400;
+
+// §30A SERVICE basis, recorded in the lead's notes. A hand-off is not marketing:
+// this person received the §11 first-contact notice and then asked us for a human,
+// which is why we may hold and act on their details. Stating it explicitly keeps a
+// service hand-off distinguishable from a form lead where somebody ticked a box —
+// both are "consented", for materially different reasons.
+const HANDOFF_CONSENT_BASIS =
+  'בסיס הסכמה: פעולת שירות — הלקוח/ה ביקש/ה נציג בוואטסאפ (§30A שירות, ללא שיווק, ללא העברה לצד ג׳)';
+// Marks a lead that was reused rather than duplicated, and labels the older brief
+// underneath it.
+const HANDOFF_REPEAT_LABEL = "פנייה חוזרת בוואטסאפ";
+const HANDOFF_PREVIOUS_LABEL = "פנייה קודמת";
+// The name on the card came from the WhatsApp PROFILE, not from the customer. The
+// rep must not open with it — it is routinely a business name or a slogan.
+const HANDOFF_NAME_PROVENANCE = "שם מפרופיל WhatsApp — לא אומת מול הלקוח/ה.";
 
 // The hand-off lead's `notes` — the ONLY thing the rep reads before dialling.
 //
@@ -1055,24 +1070,66 @@ async function createHandoffLead(
   inText: string,
   history: ChatTurn[],
   handoff?: HandoffContext,
+  openLead?: ActiveLead | null,
 ): Promise<boolean> {
   const rawPhone = String(contact.wa_phone ?? "");
-  // Shape the phone to satisfy the leads trigger (`^[+0-9][0-9\-\s]{7,14}$`) —
-  // an unnormalized value would be silently rejected by the BEFORE-INSERT gate.
-  const phone = normalizeLeadPhone(rawPhone);
-  const name = String(contact.wa_name ?? "").trim() || phone || rawPhone;
-  const created = await pgInsert("leads", {
+  // The SAME normalizer buildAiLeadRow applies below (allow_international is set),
+  // so the value we link the contact by is the value that actually got stored.
+  const phone = normalizeLeadPhoneAny(rawPhone);
+  const notes = buildHandoffNotes(inText, history, handoff);
+
+  // ── Repeat hand-off → REUSE the open lead, never insert a duplicate ──────────
+  // Matched on ANY source, not just 'whatsapp': the duplicates that actually piled
+  // up in production spanned web + advisor + whatsapp for one person, so a
+  // whatsapp-only check would have missed the largest cluster. The original
+  // `source` is never rewritten — falsifying where a lead came from is worse than
+  // the cosmetic gap that a reused 'advisor' lead shows no 🤝 relay buttons in
+  // /search (relay resolution itself goes through resolveWaConvoByPhone's
+  // wa_phone suffix match, which is unaffected).
+  if (openLead?.id && isReusableLeadStatus(openLead.status)) {
+    return await reuseHandoffLead(contact, String(openLead.id), notes);
+  }
+
+  const name = handoffLeadName(contact, phone, rawPhone);
+  // Tell the rep where the name came from, but only when it IS a profile name —
+  // when we fell back to the phone there is nothing to caveat.
+  const nameIsFromProfile = name !== phone && name !== rawPhone;
+  const notesWithProvenance = nameIsFromProfile ? `${notes}\n\n${HANDOFF_NAME_PROVENANCE}` : notes;
+  // Route through THE shared consent gate rather than a hand-rolled 4-column
+  // INSERT. `consent: true` records terms+privacy — the §30A SERVICE basis: this
+  // person asked us for a human after receiving the §11 notice. It is NOT marketing
+  // consent, and deliberately stays that way:
+  //   • all three consent_marketing_* omitted  → false, no marketing_accepted_at
+  //   • consent_share      omitted             → consent_share_at null, so
+  //     buildLeadSheetRow's `sellable` column reads `no` and a service hand-off can
+  //     never be sold on as a consented lead
+  //   • consent_basis      names the basis in Hebrew, in the notes the rep reads
+  // so the basis is RECORDED instead of merely implied by the absence of columns.
+  const outcome = await captureAiLead({
     name,
-    phone,
-    source: "whatsapp",
-    notes: buildHandoffNotes(inText, history, handoff),
-  }, { returnRep: true });
-  // The leads AFTER-INSERT trigger fires notify-lead → Telegram rep card.
-  const leadId = created && created.length ? created[0].id : null;
-  await pgPatch("whatsapp_contacts", `id=eq.${contact.id}`, {
-    status: "handed_off",
-    ...(leadId ? { lead_id: leadId } : {}),
+    phone: rawPhone, // normalized inside buildAiLeadRow — one normalizer, one place
+    channel: "whatsapp", // → source:'whatsapp', so leadKeyboard keeps the 🤝 buttons
+    consent: true,
+    notes: notesWithProvenance,
+    notes_max: HANDOFF_NOTES_MAX, // the default 600 would cut the rep's brief in half
+    consent_basis: HANDOFF_CONSENT_BASIS,
+    allow_international: true, // a foreign wa_id must not vanish into "incomplete"
   });
+  const created = outcome === "captured";
+  // captureAiLead doesn't return the row, so recover the link the way the agent's
+  // own captureLead sink already does — by the phone we just stored.
+  if (created) await linkContactToLead(String(contact.id), phone);
+  await pgPatch("whatsapp_contacts", `id=eq.${contact.id}`, { status: "handed_off" });
+  // Reg.13 audit: WHICH basis this lead was captured under, and whether the §11
+  // first-contact notice had actually been delivered to this person. No PII.
+  if (created) {
+    await logSecurityEvent("handoff_lead_service_consent", {
+      basis: "service_30a",
+      marketing: false,
+      sellable: false,
+      firstContactNoticeSent: !!contact.last_inbound_at,
+    });
+  }
   // The bot stays ALIVE on a mere rep-REQUEST. A rep-request creates the lead
   // (→ Telegram card) and marks the contact handed_off, but it must NOT silence
   // the agent — otherwise the customer is stranded while they wait for a human.
@@ -1084,14 +1141,101 @@ async function createHandoffLead(
   // relay_tg_chat_id set), so until the owner takes over the assistant keeps
   // answering — and a row left stuck bot_enabled=false with no relay target
   // self-heals back to answering instead of going silent forever.
-  // pgInsert swallows the PostgREST error (returns falsy), so a blocked insert
-  // (failed shape/rate-limit) would otherwise be invisible. Emit a persistent ops
-  // signal so a failed handoff is observable. No PII: just whether a phone shape
-  // survived normalization.
-  if (!created) {
+  // captureAiLead swallows the PostgREST error, so a blocked insert (failed shape /
+  // rate-limit) would otherwise be invisible. Emit a persistent ops signal so a
+  // failed handoff is observable. No PII: just whether the pieces survived.
+  //
+  // The two failures are DISTINCT and must not be conflated. "error" is a DB
+  // rejection of a row we considered valid; "incomplete" means buildAiLeadRow
+  // refused to build the row at all (no usable name/phone) — a different bug with a
+  // different fix, which the old single `pgInsert` path could not even express.
+  if (outcome === "error") {
     await logSecurityEvent("handoff_lead_insert_failed", { hasPhone: !!phone });
+  } else if (outcome === "incomplete") {
+    await logSecurityEvent("handoff_lead_incomplete", {
+      hasPhone: !!phone,
+      hasName: !!name,
+      nameLen: name.length,
+    });
   }
-  return !!created;
+  return created;
+}
+
+// Reuse a lead only while it is genuinely OPEN. A 'won' or 'lost' lead is a CLOSED
+// episode: appending a fresh enquiry to it would resurrect a finished deal, corrupt
+// the win-rate, and hide the new request behind a status no rep is working. Those
+// insert a new lead, which is the honest outcome. Anything unrecognised is treated
+// as not-reusable — inserting a duplicate is recoverable, silently swallowing a
+// customer's request for a human is not.
+function isReusableLeadStatus(status: unknown): boolean {
+  const s = String(status ?? "").trim().toLowerCase();
+  return s === "new" || s === "contacted";
+}
+
+// The name on a hand-off lead. `wa_name` is the customer's WhatsApp PROFILE name,
+// which is whatever they chose to display — routinely a business ("Yes-Pelehone-
+// Bezeq"), a slogan, or a name trailing emoji ("Hila Ohayon❤️"). We keep it (it is
+// the only name we have) but sanitize it, because _shared/leads.ts defaultDraft
+// puts its first token straight into the rep's prefilled WhatsApp opener.
+//
+// Deliberately NOT a "does this look like a business?" heuristic: it would misfire
+// on real Israeli names and there is no honest fallback when it does. Writing a
+// guessed name into what is a legal record is worse than showing an odd one. The
+// provenance line in the notes (see buildHandoffNotes' caller) is what tells the rep
+// this name was never confirmed by the customer.
+export function handoffLeadName(contact: Row, phone: string, rawPhone: string): string {
+  const cleaned = String(contact.wa_name ?? "")
+    // Strip emoji, variation selectors, ZWJ and other symbol scribble; keep letters
+    // (Hebrew/Latin/any script), digits, spaces and ordinary name punctuation.
+    .replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}\u{20E3}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  // buildAiLeadRow enforces a 2-char floor and would REFUSE the row below it, which
+  // would lose the hand-off entirely. Fall back to the phone rather than drop it.
+  return cleaned.length >= 2 ? cleaned : (phone || rawPhone);
+}
+
+// A repeat hand-off from someone who already has an open lead: update that row
+// instead of creating a second one.
+//
+// No new Telegram card is produced by a PATCH (the rep card fires on INSERT), so
+// re-arming the follow-up is what makes the repeat VISIBLE to a human: _shared/
+// followup.ts followUpDue() fires when follow_up_at <= now and nudged_at is unset or
+// older, so setting one and clearing the other guarantees the next savings-watch
+// pass pushes this lead at the rep. Without it the second request would be silently
+// swallowed — strictly worse than the duplicate it replaces.
+async function reuseHandoffLead(contact: Row, leadId: string, notes: string): Promise<boolean> {
+  // The full stored notes — NOT openLead.notes, which is pre-clipped to 160 chars
+  // for the prompt; PATCHing that back would destroy the rest of the rep's brief.
+  const rows = await fetchRows<Row>(`/rest/v1/leads?id=eq.${leadId}&select=notes&limit=1`);
+  const previous = rows && rows.length ? String(rows[0].notes ?? "").trim() : "";
+  // NEWEST first, so when the 1900-char budget runs out it is the OLDER brief that
+  // gets clipped, not the request the customer just made.
+  const merged = [`🔁 ${HANDOFF_REPEAT_LABEL}`, notes, previous ? `— ${HANDOFF_PREVIOUS_LABEL} —\n${previous}` : ""]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 1900);
+  const now = new Date().toISOString();
+  await pgPatch("leads", `id=eq.${leadId}`, {
+    notes: merged,
+    follow_up_at: now,
+    nudged_at: null,
+  });
+  // The 📜 lead history shows the repeat even though no new card was sent.
+  await logEvent({
+    lead_id: leadId,
+    event: "note",
+    note: `${HANDOFF_REPEAT_LABEL} — לא נוצר ליד חדש, הפנייה צורפה לליד הפתוח.`,
+  });
+  // Repoint the contact's single lead_id at the surviving lead. This is also what
+  // stops the orphaning: every duplicate insert used to steal this column, leaving
+  // the earlier leads unreachable from the conversation view.
+  await pgPatch("whatsapp_contacts", `id=eq.${contact.id}`, {
+    status: "handed_off",
+    lead_id: leadId,
+  });
+  return true;
 }
 
 // Deterministic human-handoff reply text. §7b: a hand-off reaches a commission-
@@ -1110,8 +1254,13 @@ export function buildHandoffReply(ok: boolean): string {
   return `${COMMISSION_DISCLOSURE}\nנציג/ה אנושי/ת יחזור/תחזור אליך בהקדם 🙏 בינתיים אני כאן וזמין/ה לכל שאלה על המסלולים.`;
 }
 
-async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
-  const ok = await createHandoffLead(contact, inText, history);
+async function handleHandoff(
+  contact: Row,
+  inText: string,
+  history: ChatTurn[],
+  openLead?: ActiveLead | null,
+): Promise<string> {
+  const ok = await createHandoffLead(contact, inText, history, undefined, openLead);
   return buildHandoffReply(ok);
 }
 
@@ -1527,8 +1676,13 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
       }
       return result;
     },
+    // `openLead` is declared further down but this closure only RUNS inside
+    // runWhatsappAgent, well after it is initialised — so the agent's escalation
+    // dedups against the same open lead the deterministic path does.
     escalate: (reason, handoff) =>
-      contact ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history, handoff) : false,
+      contact
+        ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history, handoff, openLead)
+        : false,
   };
 
   // Whether this contact has opted out of marketing — computed up here because it
@@ -1682,7 +1836,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
       }
     } else if (buttonId === BTN_HUMAN) {
       intent = "human";
-      reply = contact ? await handleHandoff(contact, text || "נציג אנושי", history) : FALLBACK_REPLY;
+      reply = contact ? await handleHandoff(contact, text || "נציג אנושי", history, openLead) : FALLBACK_REPLY;
     } else if (buttonId === BTN_BILL) {
       intent = "bill";
       reply = BILL_PROMPT_REPLY;
@@ -1717,7 +1871,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
     if (intent === "human") {
       // An explicit "I want a human" stays a deterministic service action — we
       // don't need an LLM round-trip to honour it (create the lead, reassure).
-      reply = contact ? await handleHandoff(contact, t, history) : FALLBACK_REPLY;
+      reply = contact ? await handleHandoff(contact, t, history, openLead) : FALLBACK_REPLY;
     } else {
       // Effective topic for THIS turn (this message's topic, or a continuation of
       // the prior thread) — used both to remember the thread and to build the

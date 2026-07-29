@@ -127,6 +127,7 @@ Deno.test("lookupOpenLead: newest lead comes back with status/created_at/clipped
           seen.push(url);
           return new Response(
             JSON.stringify([{
+              id: "lead-abc",
               status: "contacted",
               created_at: "2026-06-20T10:00:00Z",
               notes: "  שיחת   WhatsApp:\nלקוח: רוצה סיבים  " + "x".repeat(400),
@@ -143,6 +144,9 @@ Deno.test("lookupOpenLead: newest lead comes back with status/created_at/clipped
       // Notes snippet is whitespace-collapsed + clipped (≤160) — no PII blob.
       assert(lead!.notes!.length <= 160);
       assertStringIncludes(lead!.notes!, "שיחת WhatsApp: לקוח: רוצה סיבים");
+      // The lead's id comes back so a caller can REUSE the row instead of inserting
+      // a duplicate (whatsapp-webhook createHandoffLead's dedup depends on this).
+      assertEquals(lead!.id, "lead-abc");
       // The query hits leads with the in.() candidates, newest first, limit 1.
       const q = decodeURIComponent(seen[0]);
       assertStringIncludes(q, 'phone=in.("');
@@ -150,6 +154,8 @@ Deno.test("lookupOpenLead: newest lead comes back with status/created_at/clipped
       assertStringIncludes(q, "0505037537");
       assertStringIncludes(q, "order=created_at.desc");
       assertStringIncludes(q, "limit=1");
+      // …and `id` must actually be SELECTed, or the dedup silently never triggers.
+      assertStringIncludes(q, "select=id,");
     });
   } finally {
     if (prevUrl) Deno.env.set("SUPABASE_URL", prevUrl);

@@ -20,6 +20,7 @@ import {
   recordSuppression,
   summarizeDataFor,
 } from "../_shared/compliance.ts";
+import { withFetchStub } from "./_capture_handler.ts";
 
 // ── isOptOut: the UNIFIED detector (he / ar / ru / en + multi-word + slash) ────
 
@@ -183,4 +184,95 @@ Deno.test("recordErasureRequest fail-soft → Hebrew confirmation, request logge
   assertStringIncludes(r, "הפסקנו לשלוח"); // suppression acknowledged
   // Honest: tells the user it'll be completed within the legal timeframe.
   assertMatch(r, /פרק הזמן הקבוע|בהתאם לדרישת החוק/);
+});
+
+// ── The Amendment-13 lead count must match EVERY stored phone shape ───────────
+// This used to be `leads?phone=eq.<contact>`. On WhatsApp `contact` is the bare wa_id
+// ("972501234567") while leads are stored in the national form since the writers were
+// unified — and in "+972…"/"972…" on older rows. An exact match therefore counted
+// only whichever subset happened to share the caller's spelling, i.e. it UNDER-
+// REPORTED how much data we hold on a person who asked. That is a compliance answer
+// that is simply wrong, so pin the filter.
+
+Deno.test("summarizeDataFor counts leads across ALL stored phone shapes, not an exact match", async () => {
+  const prevUrl = Deno.env.get("SUPABASE_URL");
+  const prevKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  Deno.env.set("SUPABASE_URL", "https://unit.test");
+  Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "svc-key");
+  try {
+    const leadQueries: string[] = [];
+    await withFetchStub([
+      {
+        match: (url: string) => url.includes("/rest/v1/leads"),
+        respond: (url: string) => {
+          leadQueries.push(decodeURIComponent(url));
+          // Content-Range is how countRows reads a count.
+          return new Response("[]", {
+            status: 200,
+            headers: { "Content-Type": "application/json", "Content-Range": "0-2/3" },
+          });
+        },
+      },
+      {
+        match: (url: string) => url.includes("/rest/v1/"),
+        respond: () =>
+          new Response("[]", {
+            status: 200,
+            headers: { "Content-Type": "application/json", "Content-Range": "0-0/1" },
+          }),
+      },
+    ], async () => {
+      const summary = await summarizeDataFor("whatsapp", "972501234567");
+      // A real count came back rather than the fail-soft "unknown".
+      assert(summary.includes("3"), `expected the lead count in the summary, got: ${summary}`);
+      // Still PII-minimal.
+      assertFalse(summary.includes("972501234567"));
+    });
+    assert(leadQueries.length >= 1, "the leads table was queried");
+    const q = leadQueries[0];
+    assertStringIncludes(q, 'phone=in.("');
+    // All three shapes the same human could be stored under.
+    assertStringIncludes(q, "0501234567");
+    assertStringIncludes(q, "+972501234567");
+    assertStringIncludes(q, "972501234567");
+    assertFalse(q.includes("phone=eq."), "an exact match under-reports and is the defect");
+  } finally {
+    if (prevUrl) Deno.env.set("SUPABASE_URL", prevUrl);
+    else Deno.env.delete("SUPABASE_URL");
+    if (prevKey) Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", prevKey);
+    else Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  }
+});
+
+Deno.test("a NON-phone identifier (Telegram) still uses an exact match — unchanged", async () => {
+  const prevUrl = Deno.env.get("SUPABASE_URL");
+  const prevKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  Deno.env.set("SUPABASE_URL", "https://unit.test");
+  Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "svc-key");
+  try {
+    const leadQueries: string[] = [];
+    await withFetchStub([
+      {
+        match: (url: string) => url.includes("/rest/v1/leads"),
+        respond: (url: string) => {
+          leadQueries.push(decodeURIComponent(url));
+          return new Response("[]", {
+            status: 200,
+            headers: { "Content-Type": "application/json", "Content-Range": "0-0/0" },
+          });
+        },
+      },
+      { match: (url: string) => url.includes("/rest/v1/"), respond: () => new Response("[]", { status: 200 }) },
+    ], async () => {
+      await summarizeDataFor("telegram", "tg:123");
+    });
+    assert(leadQueries.length >= 1);
+    // "tg:123" isn't expandable to phone shapes, so the pre-existing exact match holds.
+    assertStringIncludes(leadQueries[0], "phone=eq.");
+  } finally {
+    if (prevUrl) Deno.env.set("SUPABASE_URL", prevUrl);
+    else Deno.env.delete("SUPABASE_URL");
+    if (prevKey) Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", prevKey);
+    else Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  }
 });

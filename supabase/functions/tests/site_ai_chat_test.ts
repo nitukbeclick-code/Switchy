@@ -14,6 +14,7 @@ import {
   buildAiLeadRow,
   detectSwitchIntent,
   normalizeLeadPhone,
+  normalizeLeadPhoneAny,
 } from "../_shared/leads.ts";
 import { buildCitedCatalogueContext, type Plan } from "../_shared/catalogue.ts";
 
@@ -39,6 +40,62 @@ Deno.test("normalizeLeadPhone rejects junk / too-short / non-IL", () => {
   assertEquals(normalizeLeadPhone("hello"), "");
   // Doesn't start with 0 after normalization and isn't a 972 intl form.
   assertEquals(normalizeLeadPhone("1501234567"), "");
+});
+
+// ── normalizeLeadPhoneAny — the WhatsApp-only relaxation ──────────────────────
+// Added 2026-07 when the WhatsApp hand-off was moved onto this shared gate. It
+// exists ONLY so a foreign WhatsApp number isn't silently dropped; for an Israeli
+// input it must be indistinguishable from normalizeLeadPhone.
+
+Deno.test("normalizeLeadPhoneAny is IDENTICAL to normalizeLeadPhone for every IL shape", () => {
+  // If these ever diverge, the WhatsApp path starts writing a different format again
+  // — which is the exact defect the unification removed.
+  for (
+    const input of [
+      "050-1234567",
+      "054 765 4321",
+      "+972501234567",
+      "972 50 123 4567",
+      "03-1234567",
+      "0501234567",
+    ]
+  ) {
+    assertEquals(
+      normalizeLeadPhoneAny(input),
+      normalizeLeadPhone(input),
+      `${input} must normalize identically on both paths`,
+    );
+  }
+});
+
+Deno.test("normalizeLeadPhoneAny KEEPS a non-Israeli number instead of dropping it", () => {
+  // normalizeLeadPhone returns "" here, which would make buildAiLeadRow refuse the
+  // row — no lead, no rep card, while the customer is told a rep will call.
+  assertEquals(normalizeLeadPhone("14155552671"), "");
+  assertEquals(normalizeLeadPhoneAny("14155552671"), "+14155552671");
+  assertEquals(normalizeLeadPhoneAny("+1 415 555 2671"), "+14155552671");
+});
+
+Deno.test("normalizeLeadPhoneAny still refuses what cannot be a phone at all", () => {
+  // The fallback is bounded by the same 7..14 digits the leads BEFORE-INSERT gate
+  // accepts (`^[+0-9][0-9\-\s]{7,14}$`), so it can't smuggle junk past the trigger.
+  for (const junk of ["", "12345", "hello", "123456789012345678"]) {
+    assertEquals(normalizeLeadPhoneAny(junk), "", `${junk} is not a phone`);
+  }
+});
+
+Deno.test("normalizeLeadPhoneAny only applies when a caller OPTS IN", () => {
+  // Default (no allow_international): a foreign number is still refused, so the
+  // site/app/telegram surfaces are unchanged.
+  assertEquals(buildAiLeadRow({ name: "Dana Cohen", phone: "14155552671", consent: true }), null);
+  const optedIn = buildAiLeadRow({
+    name: "Dana Cohen",
+    phone: "14155552671",
+    consent: true,
+    allow_international: true,
+  });
+  assert(optedIn);
+  assertEquals(optedIn.phone, "+14155552671");
 });
 
 // ── buildAiLeadRow — consent is NEVER fabricated ─────────────────────────────

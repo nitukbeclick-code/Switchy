@@ -831,3 +831,141 @@ Deno.test("relay callbacks are rejected for a user not in the allowlist (no PATC
     s.restore();
   }
 });
+
+// ── The rep's 🤝 takeover must survive the 2026-07 phone unification ───────────
+// WhatsApp hand-off leads used to be stored as "+972…"; they are now stored in the
+// canonical national form ("05…"), matching every other surface. resolveWaConvoByPhone
+// is the bridge from a lead's phone to the live WhatsApp conversation, and it is what
+// the takeover / relay depends on. It matches whatsapp_contacts.wa_phone (bare
+// "972…") on the last NINE digits, so it is format-agnostic by construction — but
+// nothing pinned that, and a regression here silently kills the takeover rather than
+// erroring. Pin all three shapes.
+
+Deno.test("resolveWaConvoByPhone resolves the SAME conversation from all three lead phone shapes", async () => {
+  for (const leadPhone of ["0547342005", "+972547342005", "972547342005"]) {
+    const seen: string[] = [];
+    const routes: Route[] = [
+      {
+        match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET",
+        respond: (c) => {
+          seen.push(decodeURIComponent(c.url));
+          return jsonRes([{ id: CONTACT_ID }]);
+        },
+      },
+      {
+        match: (c) => isRest("whatsapp_conversations")(c) && c.method === "GET",
+        respond: () => jsonRes([{ id: CONV_ID, contact_id: CONTACT_ID, bot_enabled: false, relay_tg_chat_id: "-1009" }]),
+      },
+    ];
+    const s = installRoutes(routes);
+    try {
+      const convo = await cb.resolveWaConvoByPhone(leadPhone);
+      assert(convo, `${leadPhone} must resolve the live conversation`);
+      assertEquals(convo!.id, CONV_ID);
+      // The lookup is a 9-digit SUFFIX match, which is why the stored format is
+      // irrelevant — assert the mechanism, not just the outcome.
+      assert(
+        seen[0].includes("wa_phone=ilike.*547342005"),
+        `expected a 9-digit suffix match for ${leadPhone}, got ${seen[0]}`,
+      );
+    } finally {
+      s.restore();
+    }
+  }
+});
+
+Deno.test("resolveWaConvoByPhone refuses to guess when the phone isn't usable", async () => {
+  const s = installRoutes([
+    { match: (c) => isRest("whatsapp_contacts")(c), respond: () => jsonRes([{ id: CONTACT_ID }]) },
+  ]);
+  try {
+    for (const junk of ["", "12345", "hello", null, undefined]) {
+      assertEquals(await cb.resolveWaConvoByPhone(junk), null, `${String(junk)} must not resolve a conversation`);
+    }
+  } finally {
+    s.restore();
+  }
+});
+
+// ── The renewal→lead writer normalizes too (2026-07) ──────────────────────────
+// handleRenewLead built `source='renewal'` leads with `replace(/[^\d+]/g,"")` over
+// free-text profile data — it SANITIZED the characters but stored whatever shape the
+// profile happened to hold. That is the same class of defect as the WhatsApp split:
+// the same human, unmatched across capture paths. It now uses THE canonical
+// normalizer, so a renewal lead is stored in the same national form as every other
+// writer, and junk is refused outright instead of inserted.
+
+// The RPC row handleRenewLead reads (get_upcoming_renewals).
+function renewalRow(phone: unknown) {
+  return {
+    id: LEAD_ID,
+    user_id: "44444444-4444-4444-4444-444444444444",
+    name: "דנה כהן",
+    phone,
+    provider: "פרטנר",
+    plan_name: "Fiber 1000Mb",
+    monthly_price: 140,
+    promo_end_date: "2026-09-01",
+  };
+}
+
+function renewCallback(): TgCallbackQuery {
+  return {
+    id: "cbq-renew",
+    from: { id: 42, first_name: "נציג" },
+    message: { message_id: 31, chat: { id: -1001 } },
+    data: `renew:${LEAD_ID}:lead`,
+  } as unknown as TgCallbackQuery;
+}
+
+Deno.test("a renewal lead is stored in the CANONICAL national form, whatever the profile holds", async () => {
+  // Every one of these is the same person, spelled as a profile might hold it.
+  for (const profilePhone of ["+972-54-734-2005", "972547342005", "054 734 2005", "0547342005"]) {
+    const inserts: Capture[] = [];
+    const s = installRoutes([
+      {
+        match: (c) => isRest("rpc/get_upcoming_renewals")(c),
+        respond: () => jsonRes([renewalRow(profilePhone)]),
+      },
+      { match: (c) => isRest("leads")(c) && c.method === "POST", respond: (c) => { inserts.push(c); return jsonRes([{ id: LEAD_ID }], 201); } },
+      { match: isTg, respond: tgOk },
+    ]);
+    try {
+      const res = await cb.handleCallback(cfg(), renewCallback());
+      assertEquals(res.ok, true, `${profilePhone} should create the lead`);
+      assertEquals(inserts.length, 1);
+      assertEquals(
+        inserts[0].body.phone,
+        "0547342005",
+        `profile "${profilePhone}" must be stored canonically, not as typed`,
+      );
+      assertEquals(inserts[0].body.source, "renewal");
+    } finally {
+      s.restore();
+    }
+  }
+});
+
+Deno.test("a renewal with an UNUSABLE profile phone inserts nothing and tells the rep", async () => {
+  for (const junk of ["", "12345", "לא ידוע", null]) {
+    const inserts: Capture[] = [];
+    const answers: Capture[] = [];
+    const s = installRoutes([
+      { match: (c) => isRest("rpc/get_upcoming_renewals")(c), respond: () => jsonRes([renewalRow(junk)]) },
+      { match: (c) => isRest("leads")(c) && c.method === "POST", respond: (c) => { inserts.push(c); return jsonRes([{ id: LEAD_ID }], 201); } },
+      { match: isTg, respond: (c) => { answers.push(c); return tgOk(); } },
+    ]);
+    try {
+      const res = await cb.handleCallback(cfg(), renewCallback());
+      assertEquals(res.ok, false, `${String(junk)} must not create a lead`);
+      assertEquals(inserts.length, 0, `${String(junk)} must never reach the leads table`);
+      // The rep is told why, rather than the failure being silent.
+      assert(
+        answers.some((a) => String(a.body.text ?? "").includes("אין טלפון תקין")),
+        `the rep is told the profile has no usable phone (${String(junk)})`,
+      );
+    } finally {
+      s.restore();
+    }
+  }
+});

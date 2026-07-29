@@ -173,3 +173,24 @@ Deno.test("dedupKey returns '' for a row with neither a phone nor a name (un-ded
   assertEquals(dedupKey({ plan_id: "partner-cellular-100" }), "");
   assertEquals(dedupKey({}), "");
 });
+
+// ── Bridging the 2026-07 phone unification ────────────────────────────────────
+// Leads written from 2026-07 onward store the national form ("0547342005"); rows
+// captured before it are still "+972547342005"/"972547342005", because the WhatsApp
+// webhook used to carry its own normalizer. dedupKey/normalizeIlPhone are what let
+// the export + dedup layer see ONE person across that boundary, so pin it with the
+// real production case: one customer held 13 lead rows across these three spellings.
+
+Deno.test("dedupKey folds the canonical form and BOTH historical shapes to one key", () => {
+  const canonical = dedupKey({ phone: "0547342005", plan_id: "partner-cellular-100" });
+  // The two shapes the WhatsApp webhook wrote before the writers were unified.
+  assertEquals(dedupKey({ phone: "+972547342005", plan_id: "partner-cellular-100" }), canonical);
+  assertEquals(dedupKey({ phone: "972547342005", plan_id: "partner-cellular-100" }), canonical);
+});
+
+Deno.test("normalizeIlPhone folds all three stored shapes of the SAME production number", () => {
+  const e164 = "+972547342005";
+  for (const stored of ["0547342005", "972547342005", "+972547342005", "054-734-2005"]) {
+    assertEquals(normalizeIlPhone(stored), e164, `${stored} is the same human`);
+  }
+});

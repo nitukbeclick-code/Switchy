@@ -224,3 +224,146 @@ Deno.test("a lead with no slot has a NULL window (never a fabricated one)", () =
   assert(row);
   assertEquals(row.callback_time, null);
 });
+
+// ── notes_max — the regression that would silently halve the rep's brief ───────
+// buildAiLeadRow has always done clip(notes, 600). When the WhatsApp hand-off moved
+// onto this gate, buildHandoffNotes' ~1400-char payload — facts, then the customer's
+// real last message, then the transcript — would have been cut by more than half,
+// losing exactly the tail the rep needs. notes_max exists for that, and defaults to
+// the historical 600 so no other caller changes.
+
+Deno.test("notes_max: the DEFAULT still clips at 600 — no existing caller changes", () => {
+  const long = "פ".repeat(1200);
+  const row = buildAiLeadRow({ name: "דנה כהן", phone: "0501234567", consent: true, notes: long });
+  assert(row);
+  // 600 of the payload survive, and nothing beyond it.
+  assert((row.notes ?? "").includes("פ".repeat(600)), "600 chars of notes survive");
+  assertFalse((row.notes ?? "").includes("פ".repeat(601)), "the 601st is clipped, as before");
+});
+
+Deno.test("notes_max: the hand-off's ~1400-char brief survives INTACT", () => {
+  // A REAL buildHandoffNotes payload, deliberately built long enough to reach the
+  // hand-off's own HANDOFF_NOTES_MAX budget. The `> 600` assertion below is not
+  // decoration: with a shorter fixture this test passes whether or not notes_max is
+  // honoured, which is exactly how a first version of it failed to catch a revert.
+  // Sized deliberately BETWEEN the two budgets — comfortably over the 600 default,
+  // comfortably under buildHandoffNotes' own 1400 cap — so this measures notes_max
+  // and nothing else.
+  const longTurns = Array.from({ length: 4 }, (_, i) => ([
+    { role: "user" as const, text: `שאלה מספר ${i}: ` + "פ".repeat(30) },
+    { role: "assistant" as const, text: `תשובה מספר ${i}: ` + "ת".repeat(30) },
+  ])).flat();
+  const notes = buildHandoffNotes("ס".repeat(120), longTurns, {
+    lastMessage: "ה".repeat(120),
+    facts: "ק".repeat(120),
+  });
+  assert(
+    notes.length > 600 && notes.length < 1300,
+    `fixture must sit between the 600 default and the 1400 hand-off cap (got ${notes.length})`,
+  );
+
+  const row = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    channel: "whatsapp",
+    notes,
+    notes_max: 1400,
+  });
+  assert(row);
+  // The whole brief is there — including its TAIL, which the 600 default would eat.
+  assertStringIncludes(row.notes ?? "", notes.slice(-120));
+  assert((row.notes ?? "").length <= 1900, "still under the DB gate's cap");
+
+  // …and the SAME payload at the default budget really does lose that tail, which is
+  // what makes the line above a test of notes_max rather than of nothing.
+  const clipped = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    channel: "whatsapp",
+    notes,
+  });
+  assert(clipped);
+  assertFalse(
+    (clipped.notes ?? "").includes(notes.slice(-120)),
+    "the 600 default must drop the brief's tail — otherwise notes_max is untested",
+  );
+});
+
+Deno.test("notes_max is CLAMPED — it can't be used to overrun the DB gate", () => {
+  const huge = "פ".repeat(4000);
+  const row = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    notes: huge,
+    notes_max: 999999,
+  });
+  assert(row);
+  assert((row.notes ?? "").length <= 1900, "the 1900 ceiling holds regardless of notes_max");
+});
+
+Deno.test("notes_max: garbage falls back to the 600 default, never to 0", () => {
+  for (const bad of [undefined, null, "abc", NaN, -5, 0]) {
+    const row = buildAiLeadRow({
+      name: "דנה כהן",
+      phone: "0501234567",
+      consent: true,
+      notes: "פ".repeat(700),
+      notes_max: bad,
+    });
+    assert(row, `notes_max=${String(bad)} must still build a row`);
+    // Never collapses the brief to nothing; at least the 200 floor / 600 default.
+    assert((row.notes ?? "").length > 200, `notes_max=${String(bad)} must not swallow the notes`);
+  }
+});
+
+// ── consent_basis — WHY we may hold these details ─────────────────────────────
+
+Deno.test("consent_basis lands as the LAST notes segment, so it can never be clipped", () => {
+  const basis = "בסיס הסכמה: פעולת שירות — הלקוח/ה ביקש/ה נציג";
+  const row = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    channel: "whatsapp",
+    notes: "פ".repeat(1400),
+    notes_max: 1400,
+    consent_basis: basis,
+  });
+  assert(row);
+  const notes = row.notes ?? "";
+  assertStringIncludes(notes, basis);
+  assert(notes.endsWith(basis), "the basis is the final segment");
+  assert(notes.length <= 1900, "its room is RESERVED out of the cap, not added on top");
+});
+
+Deno.test("consent_basis survives even when the notes payload alone would fill the cap", () => {
+  const basis = "בסיס הסכמה: פעולת שירות";
+  const row = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    notes: "פ".repeat(1900),
+    notes_max: 1900,
+    consent_basis: basis,
+  });
+  assert(row);
+  assert((row.notes ?? "").endsWith(basis), "the basis wins the budget fight against the brief");
+  assert((row.notes ?? "").length <= 1900);
+});
+
+Deno.test("consent_basis absent ⇒ notes are byte-identical to before it existed", () => {
+  const withOut = buildAiLeadRow({ name: "דנה כהן", phone: "0501234567", consent: true, notes: "שאלה על סלולר" });
+  const explicitlyEmpty = buildAiLeadRow({
+    name: "דנה כהן",
+    phone: "0501234567",
+    consent: true,
+    notes: "שאלה על סלולר",
+    consent_basis: "",
+  });
+  assert(withOut && explicitlyEmpty);
+  assertEquals(withOut.notes, explicitlyEmpty.notes);
+  assertFalse((withOut.notes ?? "").includes("בסיס הסכמה"));
+});

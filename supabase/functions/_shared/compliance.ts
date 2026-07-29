@@ -27,6 +27,12 @@
 
 import { jlog } from "./log.ts";
 import { serviceFetch } from "./db.ts";
+// public.leads.phone has three possible stored shapes for the same person (the
+// national 0-form written today, plus "+972…"/"972…" on rows captured before the
+// writers were unified in 2026-07). An exact match on the WhatsApp wa_id therefore
+// counts only a subset — see leadCountFilter below. No runtime cycle: leadlookup's
+// only tie to agent.ts is an erased `import type`.
+import { leadPhoneCandidates } from "./leadlookup.ts";
 
 // ── §7b commission disclosure (re-export the original; do NOT redefine) ────────
 export { COMMISSION_DISCLOSURE } from "./tools.ts";
@@ -125,6 +131,25 @@ export type SuppressionChannel = "whatsapp" | "telegram";
 // PostgREST-encode a value for a `column=eq.<value>` filter.
 function eq(value: string): string {
   return `eq.${encodeURIComponent(value)}`;
+}
+
+// The leads filter for "how many of this person's enquiries do we hold?" — an
+// Amendment-13 access request, so under-counting is a compliance answer that is
+// simply WRONG.
+//
+// It must not be `phone=eq.<wa_id>`. On WhatsApp the identifier is the bare wa_id
+// ("972501234567") while leads are stored in the national form ("0501234567") since
+// the writers were unified, and in "+972…"/"972…" on older rows. An exact match
+// therefore counted only whichever subset happened to share the caller's spelling.
+// Match every shape the same number could be stored under instead.
+//
+// Falls back to an exact match when the input isn't a phone we can expand (e.g. a
+// Telegram id), which is the pre-existing behaviour for those callers.
+function leadCountFilter(contact: string): string {
+  const candidates = leadPhoneCandidates(contact);
+  if (!candidates.length) return `phone=${eq(contact)}`;
+  const list = encodeURIComponent(candidates.map((v) => `"${v}"`).join(","));
+  return `phone=in.(${list})`;
 }
 
 /**
@@ -321,12 +346,12 @@ export async function summarizeDataFor(channel: SuppressionChannel, contact: str
         `/rest/v1/whatsapp_messages?contact_id=${eq(contactId)}&select=id`,
       );
     }
-    leadCount = await countRows(`/rest/v1/leads?phone=${eq(c)}&select=id`);
+    leadCount = await countRows(`/rest/v1/leads?${leadCountFilter(c)}&select=id`);
   } else {
     // Telegram: no per-contact conversation/message store to read here.
     convCount = null;
     msgCount = null;
-    leadCount = await countRows(`/rest/v1/leads?phone=${eq(c)}&select=id`);
+    leadCount = await countRows(`/rest/v1/leads?${leadCountFilter(c)}&select=id`);
   }
 
   return [

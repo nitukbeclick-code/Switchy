@@ -425,17 +425,47 @@ Deno.test("handoff keeps the bot ALIVE — never flips bot_enabled=false (the st
   assert(sink.graph.length >= 1, "customer is reassured the handoff happened");
 });
 
-Deno.test("handoff normalizes the phone to satisfy the leads trigger shape", async () => {
+// CHANGED 2026-07 — this test used to assert "+972501234567", pinning the defect.
+// The webhook had its own file-private `normalizeLeadPhone` returning `+<digits>`,
+// which shadowed the canonical one in _shared/leads.ts (national 0-leading). The two
+// writers split public.leads.phone into two incompatible formats: every WhatsApp lead
+// "+972…", every web/advisor lead "05…". This assertion is the reason a reader should
+// not mistake the change for a regression — the expected value moves to the canonical
+// form ON PURPOSE, and the trigger-shape assertion below it is unchanged.
+Deno.test("handoff normalizes the phone to the CANONICAL national form (one writer, one format)", async () => {
   const sink: Sink = { graph: [], telegram: [] };
   const writes: Writes = { convPatch: [], contactPatch: [], leadsInsert: [] };
   await withFetchStub(handoffRoutes(sink, writes, true), async () => {
     await postSigned(metaTextBody("972501234567", "תן לי נציג בבקשה"));
   });
   assertEquals(writes.leadsInsert.length, 1);
-  const phone = String(writes.leadsInsert[0].phone ?? "");
-  // Normalized to the leads_rate_limit shape: ^[+0-9][0-9\-\s]{7,14}$
+  const row = writes.leadsInsert[0];
+  const phone = String(row.phone ?? "");
+  // Still satisfies the leads_rate_limit shape: ^[+0-9][0-9\-\s]{7,14}$
   assert(/^[+0-9][0-9\-\s]{7,14}$/.test(phone), `normalized phone "${phone}" matches the leads trigger regex`);
-  assertEquals(phone, "+972501234567");
+  // …and is now the SAME shape _shared/leads.ts writes for every other surface, so
+  // one person is one phone string and dedup/search_leads can actually match them.
+  assertEquals(phone, "0501234567");
+
+  // The hand-off now routes through the shared consent gate rather than a bespoke
+  // 4-column INSERT, so the row records WHY we may hold these details — while staying
+  // a service action: no marketing, and never sellable.
+  assertEquals(row.source, "whatsapp", "source drives leadKeyboard's 🤝 relay buttons");
+  assert(row.terms_accepted_at, "§30A service basis is recorded, not merely implied");
+  assert(row.privacy_accepted_at, "Privacy §11 is recorded");
+  assertEquals(row.consent_marketing_sms, false);
+  assertEquals(row.consent_marketing_email, false);
+  assertEquals(row.consent_marketing_whatsapp, false);
+  assertEquals(row.marketing_accepted_at, null, "a service hand-off is NOT marketing consent");
+  assertEquals(
+    row.consent_share_at,
+    undefined,
+    "no share stamp ⇒ buildLeadSheetRow reads sellable=no; a service hand-off can never be sold",
+  );
+  assert(
+    String(row.notes ?? "").includes("בסיס הסכמה"),
+    "the notes name the legal basis the rep and an auditor can both read",
+  );
 });
 
 Deno.test("a blocked handoff insert emits the handoff_lead_insert_failed ops signal", async () => {

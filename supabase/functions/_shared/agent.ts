@@ -174,6 +174,10 @@ export type ActiveLead = {
   status: string; // raw public.leads.status ('new'|'contacted'|'won'|'lost'|…)
   created_at?: string; // ISO timestamp the lead was opened
   notes?: string; // short, pre-clipped context snippet (never the full notes)
+  // public.leads.id, so a caller that ALREADY looked this lead up can reuse the row
+  // instead of inserting a duplicate (whatsapp-webhook createHandoffLead). Never
+  // reaches a prompt: buildActiveLeadSection below reads only status/created_at/notes.
+  id?: string;
 };
 
 // leads.status → the app-tracker stage wording (the EXACT language the customer

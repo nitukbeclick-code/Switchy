@@ -33,6 +33,9 @@ import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
 import { requireAdmin } from "../_shared/admin.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 import { jlog } from "../_shared/log.ts";
+import { corsHeaders, preflight } from "../_shared/cors.ts";
+import { rateLimit } from "../_shared/ratelimit.ts";
+import { maskPhone } from "../_shared/pii.ts";
 import {
   auditDetail,
   clampLimit,
@@ -53,16 +56,25 @@ type Row = Record<string, unknown>;
 // server — this is the single source of truth for those validation/formatting
 // rules. See tests/crm_api_test.ts.
 
-// ── CORS + JSON (mirrors site-subscribe) ─────────────────────────────────────
-function cors(extra: Record<string, string> = {}): Record<string, string> {
-  return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
-}
-
-function json(body: unknown, status = 200): Response {
+// ── CORS + JSON ──────────────────────────────────────────────────────────────
+// The admin CRM carries the whole customer pipeline, so — unlike a public site
+// endpoint — it must NOT answer `Access-Control-Allow-Origin: *`. json() builds
+// an origin-neutral response; the single entrypoint wraps every response with
+// withCors(req, …), which reflects the Origin only when it is on the shared
+// allowlist (_shared/cors.ts). Auth is Bearer (not cookie), so CORS here is
+// defense-in-depth: a disallowed origin simply gets no Allow-Origin header.
+function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...cors() },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
   });
+}
+
+// Merge the request-appropriate (allowlisted) CORS headers into a built response.
+function withCors(req: Request, res: Response): Response {
+  const h = new Headers(res.headers);
+  for (const [k, v] of Object.entries(corsHeaders(req))) h.set(k, v);
+  return new Response(res.body, { status: res.status, headers: h });
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -160,7 +172,7 @@ async function logAudit(
 // ── actions ──────────────────────────────────────────────────────────────────
 
 // overview {} → pipeline counts (over leads) + up to 12 recent conversations.
-async function actOverview(): Promise<Response> {
+async function actOverview(actorUid: string): Promise<Response> {
   const statuses = ["new", "contacted", "won", "lost"] as const;
   const pipeline: Record<string, number> = { new: 0, contacted: 0, won: 0, lost: 0 };
   // Count leads per status — one head request each (cheap, exact via
@@ -190,18 +202,19 @@ async function actOverview(): Promise<Response> {
       conversationId: cid,
       contactId: s(c.contact_id),
       name: contactName(contact),
-      phone: s(contact.wa_phone),
+      phone: maskPhone(s(contact.wa_phone)),
       status: s(c.status),
       lastSnippet: snippet(last?.body),
       lastAt: last?.at || s(c.last_message_at) || null,
     };
   });
 
+  await logAudit(actorUid, "crm_read_overview", { recent: recent.length });
   return json({ pipeline, recent });
 }
 
 // listConversations {status?,search?,limit?} → enriched conversation list.
-async function actListConversations(b: Row): Promise<Response> {
+async function actListConversations(b: Row, actorUid: string): Promise<Response> {
   const status = s(b.status).trim();
   const search = s(b.search).trim();
   const limit = clampLimit(b.limit);
@@ -224,37 +237,44 @@ async function actListConversations(b: Row): Promise<Response> {
   const leadIds = [...contacts.values()].map((c) => s(c.lead_id)).filter(Boolean);
   const leadStatuses = await leadStatusById(leadIds);
 
+  // `_raw` carries the UNMASKED phone for the post-fetch search filter only; it
+  // is stripped before responding so raw PII never leaves here (reveal is the
+  // only raw-PII path). `phone` on the wire is always masked.
   let rows = convs.map((c) => {
     const cid = s(c.id);
     const contact = contacts.get(s(c.contact_id)) ?? {};
     const last = snips.get(cid);
     const leadId = s(contact.lead_id);
+    const rawPhone = s(contact.wa_phone);
     return {
       conversationId: cid,
       contactId: s(c.contact_id),
       name: contactName(contact),
-      phone: s(contact.wa_phone),
+      phone: maskPhone(rawPhone),
       status: s(c.status),
       intent: s(c.intent) || null,
       lastSnippet: snippet(last?.body),
       lastAt: last?.at || s(c.last_message_at) || null,
       leadStatus: leadId ? (leadStatuses.get(leadId) || null) : null,
+      _raw: rawPhone,
     };
   });
 
-  // In-memory free-text filter over name / phone (kept simple, post-fetch).
+  // In-memory free-text filter over name / RAW phone (kept simple, post-fetch).
   if (search) {
     const needle = search.toLowerCase();
     rows = rows.filter((r) =>
-      r.name.toLowerCase().includes(needle) || r.phone.toLowerCase().includes(needle)
+      r.name.toLowerCase().includes(needle) || r._raw.toLowerCase().includes(needle)
     );
   }
+  const conversations = rows.map(({ _raw: _drop, ...r }) => r); // strip raw phone
 
-  return json({ conversations: rows });
+  await logAudit(actorUid, "crm_read_conversations", { count: conversations.length });
+  return json({ conversations });
 }
 
 // getThread {conversationId} → contact + ordered messages (oldest→newest).
-async function actGetThread(b: Row): Promise<Response> {
+async function actGetThread(b: Row, actorUid: string): Promise<Response> {
   const convId = s(b.conversationId).trim();
   if (!convId) return json({ error: "conversationId חסר" }, 400);
 
@@ -288,11 +308,19 @@ async function actGetThread(b: Row): Promise<Response> {
     createdAt: s(m.created_at) || null,
   }));
 
+  // Reg.13: opening a full thread is the most PII-exposing read — audit WHO read
+  // WHICH conversation/contact + message count. No message bytes.
+  await logAudit(actorUid, "crm_thread_view", {
+    conversation_id: convId,
+    contact_id: contactId || null,
+    messages: messages.length,
+  });
+
   return json({
     contact: {
       id: contactId,
       name: contactName(contact),
-      phone: s(contact.wa_phone),
+      phone: maskPhone(s(contact.wa_phone)),
       status: s(contact.status),
       leadId: leadId || null,
       leadStatus: leadId ? (leadStatuses.get(leadId) || null) : null,
@@ -504,8 +532,9 @@ async function actSetLeadStatus(b: Row, actorUid: string): Promise<Response> {
   return json({ ok: true });
 }
 
-// listLeads {status?} → the lead pipeline (newest first).
-async function actListLeads(b: Row): Promise<Response> {
+// listLeads {status?} → the lead pipeline (newest first). Phone masked on the
+// wire; the raw value comes only from the audited revealContact action.
+async function actListLeads(b: Row, actorUid: string): Promise<Response> {
   const status = s(b.status).trim();
   if (status && !LEAD_STATUSES.has(status)) return json({ error: "סטטוס ליד לא תקין" }, 400);
   let path =
@@ -516,13 +545,58 @@ async function actListLeads(b: Row): Promise<Response> {
   const leads = rows.map((r) => ({
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
+    phone: maskPhone(r.phone),
     provider: s(r.provider) || null,
     source: s(r.source) || null,
     status: s(r.status),
     createdAt: s(r.created_at) || null,
   }));
+  await logAudit(actorUid, "crm_read_leads", { count: leads.length, status: status || null });
   return json({ leads });
+}
+
+// revealContact {kind, id} → the UNMASKED phone/email for ONE record, on an
+// explicit admin action. Every list/thread read masks contact PII; this is the
+// only path that un-masks it, and it writes a `crm_pii_reveal` audit row per
+// call (actor uid + kind + id — never the revealed value). kind ∈ lead |
+// contact | conversation.
+async function actRevealContact(b: Row, actorUid: string): Promise<Response> {
+  const kind = s(b.kind).trim();
+  const id = s(b.id).trim();
+  if (!id || !["lead", "contact", "conversation"].includes(kind)) {
+    return json({ error: "בקשת חשיפה לא תקינה" }, 400);
+  }
+
+  let phone = "";
+  let email: string | null = null;
+  if (kind === "lead") {
+    const rows = await fetchRows<Row>(`/rest/v1/leads?id=eq.${q(id)}&limit=1&select=phone,email`);
+    if (rows === null) return json({ error: "שגיאה בטעינה" }, 502);
+    if (!rows.length) return json({ error: "לא נמצא" }, 404);
+    phone = s(rows[0].phone);
+    email = s(rows[0].email) || null;
+  } else {
+    // contact | conversation → resolve to a whatsapp_contacts row (phone only).
+    let contactId = id;
+    if (kind === "conversation") {
+      const cr = await fetchRows<Row>(
+        `/rest/v1/whatsapp_conversations?id=eq.${q(id)}&limit=1&select=contact_id`,
+      );
+      if (cr === null) return json({ error: "שגיאה בטעינה" }, 502);
+      if (!cr.length) return json({ error: "לא נמצא" }, 404);
+      contactId = s(cr[0].contact_id);
+      if (!contactId) return json({ error: "אין איש קשר לשיחה" }, 404);
+    }
+    const rows = await fetchRows<Row>(
+      `/rest/v1/whatsapp_contacts?id=eq.${q(contactId)}&limit=1&select=wa_phone`,
+    );
+    if (rows === null) return json({ error: "שגיאה בטעינה" }, 502);
+    if (!rows.length) return json({ error: "לא נמצא" }, 404);
+    phone = s(rows[0].wa_phone);
+  }
+
+  await logAudit(actorUid, "crm_pii_reveal", { kind, id });
+  return json({ phone: phone || null, email });
 }
 
 // Exact row count via a ranged read (Range: 0-0) reading the Content-Range
@@ -554,10 +628,15 @@ async function countRows(path: string): Promise<number> {
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }) });
-  }
+// Per-caller rate limits (fixed window, keyed by the verified admin uid). A
+// valid admin token is still bounded so a STOLEN token can't mass-exfiltrate the
+// pipeline: a generous overall cap plus a tighter cap on raw-PII reveals. Human
+// CRM use stays far under these; only abuse trips them, and a trip is audited.
+const RL_WINDOW_MS = 60_000;
+const RL_GENERAL = 240; // any action, per caller, per minute
+const RL_REVEAL = 40; // revealContact (raw PII), per caller, per minute
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   // Admin gate: requireAdmin distinguishes "no/invalid token" from "not admin"
@@ -581,14 +660,36 @@ Deno.serve(async (req: Request) => {
   const action = s(body.action).trim();
   if (!action) return json({ error: "action חסר" }, 400);
 
+  // Rate limit — a general bucket for every action, plus a stricter bucket for
+  // raw-PII reveals. A trip is audited (so a burst shows on the security trail)
+  // and answers 429 + Retry-After.
+  const gen = rateLimit(`crm:${admin.uid}`, RL_GENERAL, RL_WINDOW_MS);
+  if (!gen.allowed) {
+    await logAudit(admin.uid, "crm_rate_limited", { action, scope: "general" });
+    return json({ error: "יותר מדי בקשות — נסו שוב בעוד רגע" }, 429, {
+      "Retry-After": String(gen.retryAfterSec),
+    });
+  }
+  if (action === "revealContact") {
+    const rev = rateLimit(`crm-reveal:${admin.uid}`, RL_REVEAL, RL_WINDOW_MS);
+    if (!rev.allowed) {
+      await logAudit(admin.uid, "crm_rate_limited", { action, scope: "reveal" });
+      return json({ error: "יותר מדי חשיפות פרטים — נסו שוב בעוד דקה" }, 429, {
+        "Retry-After": String(rev.retryAfterSec),
+      });
+    }
+  }
+
   try {
     switch (action) {
       case "overview":
-        return await actOverview();
+        return await actOverview(admin.uid);
       case "listConversations":
-        return await actListConversations(body);
+        return await actListConversations(body, admin.uid);
       case "getThread":
-        return await actGetThread(body);
+        return await actGetThread(body, admin.uid);
+      case "revealContact":
+        return await actRevealContact(body, admin.uid);
       case "sendReply":
         return await actSendReply(body, admin.uid);
       case "takeOver":
@@ -600,7 +701,7 @@ Deno.serve(async (req: Request) => {
       case "setLeadStatus":
         return await actSetLeadStatus(body, admin.uid);
       case "listLeads":
-        return await actListLeads(body);
+        return await actListLeads(body, admin.uid);
       default:
         return json({ error: `פעולה לא מוכרת: ${action}` }, 400);
     }
@@ -608,4 +709,12 @@ Deno.serve(async (req: Request) => {
     jlog({ at: "crm.dispatch", ok: false, action, error: String(e) });
     return json({ error: "אירעה שגיאה בשרת" }, 500);
   }
+}
+
+Deno.serve(async (req: Request) => {
+  // Allowlisted CORS (not `*`) — preflight here, and every dispatched response is
+  // wrapped so the Origin is reflected only when it is on the shared allowlist.
+  if (req.method === "OPTIONS") return preflight(req);
+  const res = await handle(req);
+  return withCors(req, res);
 });

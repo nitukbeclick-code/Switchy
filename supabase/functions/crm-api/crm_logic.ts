@@ -3,6 +3,11 @@
 // These mirror the validation + formatting rules the function applies before any
 // PostgREST write, so a malformed client can never stamp an arbitrary status onto
 // a row or smuggle a bad ?status= filter into the query string.
+//
+// PII masking: contactName masks its phone fallback via _shared/pii.ts (pure, no
+// I/O). The list/thread DTOs in index.ts mask phone/email the same way; the raw
+// value is served only by the audited `revealContact` action.
+import { maskPhone } from "../_shared/pii.ts";
 
 export const SNIPPET_LEN = 60;
 export const MAX_REPLY_LEN = 4000; // matches the body.slice cap on the stored row
@@ -33,9 +38,11 @@ export function snippet(body: unknown): string {
   return t.length > SNIPPET_LEN ? t.slice(0, SNIPPET_LEN - 1) + "…" : t;
 }
 
-/** Display name: explicit wa_name, else the phone, else a neutral placeholder. */
+/** Display name: explicit wa_name, else the MASKED phone (an unnamed contact's
+ *  name must not leak the raw number the phone field itself masks), else a
+ *  neutral placeholder. */
 export function contactName(c: Record<string, unknown>): string {
-  return s(c.wa_name).trim() || s(c.wa_phone).trim() || "ללא שם";
+  return s(c.wa_name).trim() || maskPhone(s(c.wa_phone).trim()) || "ללא שם";
 }
 
 /**

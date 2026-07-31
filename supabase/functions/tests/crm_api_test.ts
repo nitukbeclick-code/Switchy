@@ -77,7 +77,7 @@ Deno.test("snippet is null-safe", () => {
 
 Deno.test("contactName prefers wa_name, then phone, then a neutral placeholder", () => {
   assertEquals(contactName({ wa_name: "דנה לוי", wa_phone: "0521234567" }), "דנה לוי");
-  assertEquals(contactName({ wa_name: "  ", wa_phone: "0521234567" }), "0521234567");
+  assertEquals(contactName({ wa_name: "  ", wa_phone: "0521234567" }), "•••••••567"); // masked fallback
   assertEquals(contactName({}), "ללא שם");
   assertEquals(contactName({ wa_name: null, wa_phone: null }), "ללא שם");
 });

@@ -643,6 +643,37 @@ class LocalBackend implements Backend {
     return List.unmodifiable(list);
   }
 
+  @override
+  Future<CrmRevealedContact> crmRevealContact({required String kind, required String id}) async {
+    _seedCrm();
+    // Offline mock: the local seed isn't masked, so "reveal" just looks the
+    // record up and echoes its stored value. Mirrors the edge fn's kinds.
+    String? phoneFor() {
+      if (kind == 'lead') {
+        for (final l in _crmLeads) {
+          if (l.id == id) return l.phone;
+        }
+        return null;
+      }
+      var contactId = id;
+      if (kind == 'conversation') {
+        contactId = '';
+        for (final conv in _crmConversations) {
+          if (conv.id == id) {
+            contactId = conv.contactId;
+            break;
+          }
+        }
+      }
+      for (final c in _crmContacts) {
+        if (c.id == contactId) return c.phone;
+      }
+      return null;
+    }
+
+    return CrmRevealedContact(phone: phoneFor());
+  }
+
   // ── Street price ─────────────────────────────────────────────────────────────
   // No network offline — return null so StreetPriceService.hydrate is a strict
   // no-op (nothing cached, aggregateFor unchanged). NEVER a fake aggregate: a

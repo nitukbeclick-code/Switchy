@@ -74,6 +74,23 @@ describe("annualSaving (honest savings — real bill, monthly only)", () => {
     expect(annualSaving({ price: 29, priceUnit: "package" }, 90)).toBe(0);
     expect(annualSaving({ price: 5, priceUnit: "day" }, 90)).toBe(0);
   });
+
+  // An UNSET unit used to fall through to the monthly branch, annualising a
+  // per-package price against a monthly bill: a ₪29 abroad package invented a
+  // (90-29)*12 = ₪732/yr "saving" from nothing. Every one of the 120 catalogue
+  // rows carries a price_unit today, so this never fired in production — but the
+  // field is optional in the type and the catalogue is rebuilt from live data,
+  // so one abroad row missing a unit was all it would have taken.
+  it("does not annualise an abroad plan whose priceUnit is UNSET", () => {
+    expect(annualSaving({ price: 29, cat: "abroad" }, 90)).toBe(0);
+    expect(annualSaving({ price: 29, priceUnit: "", cat: "abroad" }, 90)).toBe(0);
+  });
+
+  it("still treats an unset unit as monthly for a NON-abroad plan", () => {
+    // Mirrors the app's planHasMonthlyTerm: unset ⇒ monthly unless cat is abroad.
+    expect(annualSaving({ price: 29, cat: "cellular" }, 90)).toBe((90 - 29) * 12);
+    expect(annualSaving({ price: 29 }, 90)).toBe((90 - 29) * 12);
+  });
 });
 
 describe("scorePlan parity — exact hand-computed scores", () => {

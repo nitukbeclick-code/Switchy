@@ -185,7 +185,16 @@ function clamp(x: number, lo: number, hi: number): number {
 // which read the same fine print through the same engine.
 export function annualSaving(plan: ScorablePlan, currentBill: number): number {
   if (!(currentBill > 0)) return 0;
-  if (plan.priceUnit && plan.priceUnit !== "month") return 0;
+  // An ABSENT priceUnit must not silently mean "monthly". `plan.priceUnit &&`
+  // let an abroad row with no unit fall through to the monthly branch, which
+  // annualises a per-PACKAGE price against a monthly bill — a ₪50 package became
+  // a ₪600/yr "saving" out of nothing. That is the exact failure the app's
+  // planHasMonthlyTerm was written to stop ("annualising them produces a number
+  // with no real-world referent"). Mirror it: unset ⇒ monthly only when the plan
+  // is not abroad. `||` rather than `??` so an empty string counts as unset too,
+  // matching the Dart `unit == null || unit.isEmpty` check.
+  const unit = plan.priceUnit || (plan.cat === "abroad" ? "package" : "month");
+  if (unit !== "month") return 0;
   const cost = calculateTwelveMonthCost(plan);
   return Math.max(0, Math.round(currentBill * 12 - cost.maximum));
 }

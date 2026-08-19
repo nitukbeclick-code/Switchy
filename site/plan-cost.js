@@ -146,8 +146,16 @@
 
   const numberFormat = new Intl.NumberFormat('he-IL', { maximumFractionDigits: 2 });
   const amount = (value) => numberFormat.format(value);
+  // A 12-month TOTAL is a whole-shekel figure: `maximumFractionDigits: 2` on a
+  // 19.90 x 12 headline printed "₪237.6" — a one-decimal money string, which no
+  // currency is written in, sitting one line under a correctly-formatted
+  // "₪19.90". The agora on a yearly total is noise. Kept byte-for-byte in step
+  // with web/lib/plan-cost.ts so the two surfaces can never quote the same plan
+  // differently; the CALCULATION above is untouched.
+  const annualFormat = new Intl.NumberFormat('he-IL', { maximumFractionDigits: 0 });
+  const annualAmount = (value) => annualFormat.format(value);
   const formatAnnualCost = (cost) => Math.abs(cost.maximum - cost.minimum) < 0.005
-    ? `₪${amount(cost.minimum)}` : `₪${amount(cost.minimum)}–₪${amount(cost.maximum)}`;
+    ? `₪${annualAmount(cost.minimum)}` : `₪${annualAmount(cost.minimum)}–₪${annualAmount(cost.maximum)}`;
   const formatMonthlyEquivalent = (cost) => {
     const min = cost.minimum / MONTHS;
     const max = cost.maximum / MONTHS;

@@ -252,7 +252,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="block rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     {link.label}
                   </Link>
@@ -270,7 +270,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
                   href="/book"
                   location="header"
                   label="consult"
-                  className="flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-accent-text transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="flex min-h-11 items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-accent-text transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   שיחת ייעוץ בזום
                   {/* Page is always dir="rtl"; -scale-x-100 flips the end-pointing
@@ -303,7 +303,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="block rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     {link.label}
                   </Link>

@@ -142,7 +142,7 @@ export function AccountMobileRows() {
   if (!ready) return null;
 
   const rowCls =
-    "block w-full rounded-lg px-3 py-2.5 text-start text-sm font-medium text-foreground transition-colors hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "flex min-h-11 w-full items-center rounded-lg px-3 py-2 text-start text-sm font-medium text-foreground transition-colors hover:bg-accent/[0.06] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   return (
     <div className="lg:hidden">

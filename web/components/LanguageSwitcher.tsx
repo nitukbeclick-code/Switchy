@@ -82,7 +82,7 @@ export default function LanguageSwitcher() {
       // this into React state — it would fight the runtime's direct DOM writes).
       aria-expanded={false}
       aria-label="בחירת שפה / Language"
-      className="interactive press flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.1] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      className="interactive press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.1] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       {/* Globe mark — inherits currentColor so it tints on hover / adapts to dark. */}
       <svg

@@ -197,7 +197,11 @@ export function resolveProvider(
  */
 export function annualSaving(target: Plan, currentBill: number | undefined): number {
   if (!currentBill || currentBill <= 0) return 0;
-  const unit = target.priceUnit ?? (target.cat === "abroad" ? "package" : "month");
+  // `||` not `??`: an EMPTY-string unit is as unset as a null one, and `??` would
+  // pass "" straight through to the !== "month" check. Same rule as the app's
+  // planHasMonthlyTerm (`unit == null || unit.isEmpty`), and now identical to
+  // recommend.ts / _shared/scoring.ts so the three copies cannot drift.
+  const unit = target.priceUnit || (target.cat === "abroad" ? "package" : "month");
   if (unit !== "month") return 0; // a per-day/package plan can't compare to a monthly bill
   const cost = calculateTwelveMonthCost(target);
   return Math.max(0, Math.round(currentBill * 12 - cost.maximum));

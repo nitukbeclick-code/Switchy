@@ -252,3 +252,24 @@ Deno.test("priorityFromId folds every surface's id into one MatchPriority", () =
   assertEquals(priorityFromId("abroad"), "balanced");
   assertEquals(priorityFromId(undefined), "balanced");
 });
+
+// ── An UNSET priceUnit must not be read as "monthly" ─────────────────────────
+// `if (plan.priceUnit && plan.priceUnit !== "month") return 0` let an abroad row
+// with no unit fall through to the monthly branch, annualising a per-PACKAGE
+// price against a monthly bill: a ₪29 package invented (90-29)*12 = ₪732/yr from
+// nothing. It is the failure the app's planHasMonthlyTerm exists to prevent —
+// "annualising them produces a number with no real-world referent (and the
+// recommendation engine ranked on exactly that)". All 120 catalogue rows carry a
+// price_unit today so it never fired in production, but the field is optional and
+// the catalogue is rebuilt from live data.
+
+Deno.test("annualSaving does not annualise an abroad plan with an UNSET priceUnit", () => {
+  assertEquals(annualSaving({ price: 29, cat: "abroad" } as never, 90), 0);
+  // empty string is as unset as null — hence `||`, not `??`
+  assertEquals(annualSaving({ price: 29, priceUnit: "", cat: "abroad" } as never, 90), 0);
+});
+
+Deno.test("annualSaving still treats an unset priceUnit as monthly when NOT abroad", () => {
+  assertEquals(annualSaving({ price: 29, cat: "cellular" } as never, 90), (90 - 29) * 12);
+  assertEquals(annualSaving({ price: 29 } as never, 90), (90 - 29) * 12);
+});

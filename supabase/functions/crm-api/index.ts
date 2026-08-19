@@ -26,6 +26,7 @@
 //   setLeadStatus       → patch leads.status + lead_events audit row
 //   setLeadWorkflow     → priority + next follow-up + disposition reason
 //   listLeads           → the lead pipeline
+//   revealContact       → the ONE audited path that un-masks one record's PII
 //   attentionLeads      → targeted due / urgent / SLA work queue
 //   listSellableLeads   → READ-ONLY consented-sharing feed (audited; no buyer push)
 //   repLeaderboard      → per-rep performance (claimed/won/lost + booked saving)
@@ -42,7 +43,8 @@
 // Errors are always JSON {error, code} — `error` is the human Hebrew message,
 // `code` a small stable machine vocabulary (helpers.err): 401 (no token),
 // 403 (token present but no CRM access / action not allowed), 400 (bad shape),
-// 404 (no such row), 405 (non-POST), 500 (unexpected), 502 (DB read/write failed).
+// 404 (no such row), 405 (non-POST), 429 (rate limited — carries Retry-After),
+// 500 (unexpected), 502 (DB read/write failed).
 //
 // Deploy: supabase functions deploy crm-api   (JWT is verified by us, not the
 // gateway — requireAdmin does the real check, so --no-verify-jwt is fine too).
@@ -53,7 +55,10 @@ import { requireCrmAccess } from "../_shared/admin.ts";
 import { canDo, roleHasCapability } from "../_shared/crm_roles.ts";
 import { jlog } from "../_shared/log.ts";
 import { s } from "./crm_logic.ts";
-import { cors, err, json, type Row } from "./helpers.ts";
+import { err, json, logAudit, withCors, type Row } from "./helpers.ts";
+import { preflight } from "../_shared/cors.ts";
+import { rateLimit } from "../_shared/ratelimit.ts";
+import { actRevealContact } from "./actions_reveal.ts";
 import {
   actGetThread,
   actHandBack,
@@ -89,10 +94,15 @@ import { actOverview, actSlaMetrics } from "./actions_overview.ts";
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }) });
-  }
+// Per-caller rate limits (fixed window, keyed by the verified CRM uid). A valid
+// token is still bounded so a STOLEN token can't mass-exfiltrate the pipeline: a
+// generous overall cap plus a tighter cap on raw-PII reveals. Human CRM use stays
+// far under these; only abuse trips them, and a trip is audited.
+const RL_WINDOW_MS = 60_000;
+const RL_GENERAL = 240; // any action, per caller, per minute
+const RL_REVEAL = 40; // revealContact (raw PII), per caller, per minute
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return err("שיטת הבקשה אינה נתמכת", 405, "method_not_allowed");
 
   // CRM-access gate: requireCrmAccess distinguishes "no/invalid token" from
@@ -128,6 +138,26 @@ Deno.serve(async (req: Request) => {
     return err("אין הרשאה לפעולה זו", 403, "forbidden");
   }
 
+  // Rate limit — a general bucket for every action, plus a stricter bucket for
+  // raw-PII reveals. A trip is audited (so a burst shows on the security trail)
+  // and answers 429 + Retry-After.
+  const gen = rateLimit(`crm:${access.uid}`, RL_GENERAL, RL_WINDOW_MS);
+  if (!gen.allowed) {
+    await logAudit(access.uid, "crm_rate_limited", { action, scope: "general" });
+    return err("יותר מדי בקשות — נסו שוב בעוד רגע", 429, "rate_limited", {
+      "Retry-After": String(gen.retryAfterSec),
+    });
+  }
+  if (action === "revealContact") {
+    const rev = rateLimit(`crm-reveal:${access.uid}`, RL_REVEAL, RL_WINDOW_MS);
+    if (!rev.allowed) {
+      await logAudit(access.uid, "crm_rate_limited", { action, scope: "reveal" });
+      return err("יותר מדי חשיפות פרטים — נסו שוב בעוד דקה", 429, "rate_limited", {
+        "Retry-After": String(rev.retryAfterSec),
+      });
+    }
+  }
+
   try {
     switch (action) {
       // The caller's own effective role. The console gates its shell + tab list on
@@ -148,11 +178,13 @@ Deno.serve(async (req: Request) => {
           },
         });
       case "overview":
-        return await actOverview();
+        return await actOverview(access.uid);
       case "slaMetrics":
         return await actSlaMetrics();
       case "listConversations":
-        return await actListConversations(body);
+        return await actListConversations(body, access.uid);
+      case "revealContact":
+        return await actRevealContact(body, access.uid, access.isAdmin);
       case "getThread":
         return await actGetThread(body, access.uid);
       case "sendReply":
@@ -164,13 +196,13 @@ Deno.serve(async (req: Request) => {
       case "setContactStatus":
         return await actSetContactStatus(body, access.uid);
       case "listContacts":
-        return await actListContacts(body);
+        return await actListContacts(body, access.uid);
       case "setLeadStatus":
         return await actSetLeadStatus(body, access.uid);
       case "setLeadWorkflow":
         return await actSetLeadWorkflow(body, access.uid);
       case "listLeads":
-        return await actListLeads(body);
+        return await actListLeads(body, access.uid);
       case "attentionLeads":
         return await actAttentionLeads();
       case "getLeadDetail":
@@ -208,4 +240,12 @@ Deno.serve(async (req: Request) => {
     jlog({ at: "crm.dispatch", ok: false, action, error: String(e) });
     return err("אירעה שגיאה בשרת", 500, "server_error");
   }
+}
+
+Deno.serve(async (req: Request) => {
+  // Allowlisted CORS (not `*`) — preflight here, and every dispatched response is
+  // wrapped so the Origin is reflected only when it is on the shared allowlist.
+  if (req.method === "OPTIONS") return preflight(req);
+  const res = await handle(req);
+  return withCors(req, res);
 });

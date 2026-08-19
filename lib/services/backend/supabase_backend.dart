@@ -1100,6 +1100,12 @@ class SupabaseBackend implements Backend {
         .toList();
   }
 
+  @override
+  Future<CrmRevealedContact> crmRevealContact({required String kind, required String id}) async {
+    final data = await _crm('revealContact', {'kind': kind, 'id': id});
+    return CrmRevealedContact.fromJson(data);
+  }
+
   // ── Street price (street-price edge fn) ──────────────────────────────────────
   // Read-only GET of the threshold-gated aggregate (mirrors the fetchAdminMetrics
   // GET pattern; the fn is deployed --no-verify-jwt and functions.invoke attaches

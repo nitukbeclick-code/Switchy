@@ -39,7 +39,14 @@ import {
   actSetLeadStatus,
   actSetLeadWorkflow,
 } from "../crm-api/actions_leads.ts";
-import { actGetThread, actSendReply, actSetContactStatus } from "../crm-api/actions_conversations.ts";
+import {
+  actGetThread,
+  actListContacts,
+  actListConversations,
+  actSendReply,
+  actSetContactStatus,
+} from "../crm-api/actions_conversations.ts";
+import { actRevealContact } from "../crm-api/actions_reveal.ts";
 import { actSetMeetingStatus } from "../crm-api/actions_meetings.ts";
 import { actOverview } from "../crm-api/actions_overview.ts";
 import { actListMembers, actSetMemberRole } from "../crm-api/actions_members.ts";
@@ -787,7 +794,7 @@ Deno.test("listLeads pages with limit/offset and reports hasMore (defaults uncha
     return withFetchStub([
       route(rec, (u) => u.includes("/rest/v1/leads?order="), () => jsonResponse(rows)),
     ], async () => {
-      const r = await actListLeads({ limit: 2, offset: 2 });
+      const r = await actListLeads({ limit: 2, offset: 2 }, ACTOR);
       assertEquals(r.status, 200);
       const j = await r.json();
       // limit+1 probe row → hasMore, and only `limit` rows are returned.
@@ -797,7 +804,7 @@ Deno.test("listLeads pages with limit/offset and reports hasMore (defaults uncha
       assertEquals(j.hasMore, true);
 
       // Default window unchanged: no limit → the historical 200 (fetched as 201).
-      const def = await actListLeads({});
+      const def = await actListLeads({}, ACTOR);
       assertEquals(def.status, 200);
       assert(rec[1].url.includes("limit=201"), `default window: ${rec[1].url}`);
       assert(rec[1].url.includes("offset=0"));
@@ -817,13 +824,13 @@ Deno.test("listLeads search is in-memory — NEVER interpolated into the query s
         ])),
     ], async () => {
       const needle = "דנה,or=1.eq.1";
-      const r = await actListLeads({ search: needle });
+      const r = await actListLeads({ search: needle }, ACTOR);
       assertEquals(r.status, 200);
       assertFalse(rec[0].url.includes("דנה"), "raw search text must not reach the URL");
       assertFalse(rec[0].url.includes(encodeURIComponent("דנה")), "encoded search text either");
       const j = await r.json();
       assertEquals(j.leads.length, 0); // the crafted needle matches nothing, safely in-memory
-      const plain = await actListLeads({ search: "דנה" });
+      const plain = await actListLeads({ search: "דנה" }, ACTOR);
       assertEquals((await plain.json()).leads.length, 1);
     });
   });
@@ -833,7 +840,7 @@ Deno.test("listLeads refuses an unknown sort with 400 and zero calls", async () 
   await withEnv(() => {
     const rec: Call[] = [];
     return withFetchStub([route(rec, () => true, () => jsonResponse([]))], async () => {
-      const r = await actListLeads({ sort: "created_at.asc" });
+      const r = await actListLeads({ sort: "created_at.asc" }, ACTOR);
       assertEquals(r.status, 400);
       assertEquals((await r.json()).code, "bad_request");
       assertEquals(rec.length, 0);
@@ -1029,7 +1036,7 @@ Deno.test("overview returns the pipeline + additive contacts/meetings totals", a
       countRoute(rec, "/rest/v1/meetings?select=id", 6),
       route(rec, (u) => u.includes("/rest/v1/whatsapp_conversations?order="), () => jsonResponse([])),
     ], async () => {
-      const r = await actOverview();
+      const r = await actOverview(ACTOR);
       assertEquals(r.status, 200);
       const j = await r.json();
       assertEquals(j.pipeline, { new: 5, contacted: 4, won: 3, lost: 2 });
@@ -1053,7 +1060,7 @@ Deno.test("overview answers 502 when ANY count fails — never a confident zero"
       countRoute(rec, "/rest/v1/meetings?select=id", 6),
       route(rec, (u) => u.includes("/rest/v1/whatsapp_conversations?order="), () => jsonResponse([])),
     ], async () => {
-      const r = await actOverview();
+      const r = await actOverview(ACTOR);
       assertEquals(r.status, 502);
       assertEquals((await r.json()).code, "db_error");
     });
@@ -1102,6 +1109,125 @@ Deno.test("addNote clamps to the unified MAX_NOTE_LEN and signs the real actor",
       const ev = JSON.parse(of(rec, "/rest/v1/lead_events", "POST")[0].body);
       assertEquals(String(ev.note).length, MAX_NOTE_LEN);
       assertEquals(ev.actor_name, "דנה לוי");
+    });
+  });
+});
+
+
+// ── PII masking + the audited reveal ─────────────────────────────────────────
+// The security guarantee: no raw phone/email leaves crm-api EXCEPT through
+// revealContact (one record, one audit row). These pin both halves.
+
+Deno.test("listConversations masks the phone but still SEARCHES the raw number", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_conversations?order="), () =>
+        jsonResponse([{ id: CONV, contact_id: CONTACT, status: "open" }])),
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_contacts?id=in."), () =>
+        jsonResponse([{ id: CONTACT, wa_name: "", wa_phone: "0501112233", status: "active" }])),
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_messages"), () => jsonResponse([])),
+      route(rec, () => true, () => jsonResponse([])),
+    ], async () => {
+      const r = await actListConversations({ search: "1112233" }, ACTOR);
+      assertEquals(r.status, 200);
+      const j = await r.json();
+      assertEquals(j.conversations.length, 1, "the RAW phone still matches the search");
+      assertEquals(j.conversations[0].phone, "•••••••233");
+      // The unnamed contact's NAME falls back to the masked phone, not the raw one.
+      assertEquals(j.conversations[0].name, "•••••••233");
+      assertFalse(JSON.stringify(j).includes("0501112233"), "no raw phone on the wire");
+      assertFalse("_raw" in j.conversations[0], "the filter-only field is stripped");
+    });
+  });
+});
+
+Deno.test("listContacts masks the phone and still searches the raw number", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_contacts?order="), () =>
+        jsonResponse([
+          { id: CONTACT, wa_name: "יעל", wa_phone: "0501112233", status: "active" },
+          { id: MEMBER, wa_name: "רון", wa_phone: "0509998877", status: "active" },
+        ])),
+      route(rec, () => true, () => jsonResponse([])),
+    ], async () => {
+      const r = await actListContacts({ search: "9998877" }, ACTOR);
+      const j = await r.json();
+      assertEquals(j.contacts.length, 1);
+      assertEquals(j.contacts[0].phone, "•••••••877");
+      assertFalse(JSON.stringify(j).includes("0509998877"), "no raw phone on the wire");
+    });
+  });
+});
+
+Deno.test("getThread masks the contact phone", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_conversations?id=eq."), () =>
+        jsonResponse([{ id: CONV, contact_id: CONTACT }])),
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_contacts?id=eq."), () =>
+        jsonResponse([{ id: CONTACT, wa_name: "יעל", wa_phone: "0501112233", status: "active" }])),
+      route(rec, (u) => u.includes("/rest/v1/whatsapp_messages"), () => jsonResponse([])),
+      route(rec, () => true, () => jsonResponse([])),
+    ], async () => {
+      const j = await (await actGetThread({ conversationId: CONV }, ACTOR)).json();
+      assertEquals(j.contact.phone, "•••••••233");
+      assertFalse(JSON.stringify(j).includes("0501112233"));
+    });
+  });
+});
+
+Deno.test("revealContact returns the RAW lead phone/email and audits WHO + WHICH (never the value)", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/leads?id=eq."), () =>
+        jsonResponse([{ phone: "0521234567", email: "d@x.com" }])),
+      route(rec, (u) => u.includes("/rest/v1/security_audit_log"), () => jsonResponse({}, 201)),
+      route(rec, () => true, () => jsonResponse([])),
+    ], async () => {
+      const r = await actRevealContact({ kind: "lead", id: LEAD }, ACTOR, false);
+      assertEquals(r.status, 200);
+      assertEquals(await r.json(), { phone: "0521234567", email: "d@x.com" });
+      const audit = rec.find((c) => c.url.includes("security_audit_log"));
+      assert(audit, "a crm_pii_reveal row is written");
+      const row = JSON.parse(audit.body);
+      assertEquals(row.event, "crm_pii_reveal");
+      assertEquals(row.detail.kind, "lead");
+      assertEquals(row.detail.id, LEAD);
+      assertFalse(audit.body.includes("0521234567"), "the revealed value NEVER enters the audit row");
+      assertFalse(audit.body.includes("d@x.com"));
+    });
+  });
+});
+
+Deno.test("revealContact refuses a bad kind / non-UUID id with 400 and zero calls", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([route(rec, () => true, () => jsonResponse([]))], async () => {
+      assertEquals((await actRevealContact({ kind: "profile", id: LEAD }, ACTOR, true)).status, 400);
+      assertEquals((await actRevealContact({ kind: "lead", id: "../x" }, ACTOR, true)).status, 400);
+      assertEquals(rec.length, 0);
+    });
+  });
+});
+
+Deno.test("revealContact kind:'member' is admin-only", async () => {
+  await withEnv(() => {
+    const rec: Call[] = [];
+    return withFetchStub([
+      route(rec, (u) => u.includes("/rest/v1/profiles?id=eq."), () =>
+        jsonResponse([{ email: "rep@x.com" }])),
+      route(rec, () => true, () => jsonResponse({}, 201)),
+    ], async () => {
+      const denied = await actRevealContact({ kind: "member", id: MEMBER }, ACTOR, false);
+      assertEquals(denied.status, 403);
+      assertEquals(rec.length, 0);
+      const ok = await actRevealContact({ kind: "member", id: MEMBER }, ACTOR, true);
+      assertEquals(await ok.json(), { phone: null, email: "rep@x.com" });
     });
   });
 });

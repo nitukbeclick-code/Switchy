@@ -52,6 +52,13 @@ export const ACTION_CAP: Readonly<Record<string, CrmCapability>> = {
   repLeaderboard: "read",
   listMeetings: "read",
   getMeeting: "read",
+  // Un-mask ONE record's phone/email. Deliberately the same "read" floor as the
+  // surfaces that already show that record: masking is a BULK-exposure control
+  // (and an audit trigger), not an access-control change — a caller who may read
+  // the row may reveal it, one record at a time, with a crm_pii_reveal audit row
+  // and a stricter rate-limit bucket behind it. kind:"member" additionally
+  // requires is_admin, enforced inside the action.
+  revealContact: "read",
   // conversation control (implicit takeover)
   sendReply: "converse",
   takeOver: "converse",

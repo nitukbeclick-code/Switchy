@@ -4,21 +4,35 @@
 // the crm_events / security-audit loggers, and the exact-count reader.
 
 import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 import { jlog } from "../_shared/log.ts";
 import { auditDetail, eventPreview, lastMessagesLimit, s } from "./crm_logic.ts";
 
 export type Row = Record<string, unknown>;
 
-// ── CORS + JSON (mirrors site-subscribe) ─────────────────────────────────────
-export function cors(extra: Record<string, string> = {}): Record<string, string> {
-  return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
-}
-
-export function json(body: unknown, status = 200): Response {
+// ── CORS + JSON ──────────────────────────────────────────────────────────────
+// The admin CRM carries the whole customer pipeline, so — unlike a public site
+// endpoint — it must NOT answer `Access-Control-Allow-Origin: *`. json() builds an
+// ORIGIN-NEUTRAL response (no CORS headers at all); the single entrypoint in
+// index.ts wraps every response with withCors(req, …), which reflects the Origin
+// only when it is on the shared allowlist (_shared/cors.ts: the switchy-ai.com
+// surfaces, *.vercel.app previews, localhost, plus AI_CORS_ALLOWED_ORIGINS).
+// Auth is Bearer (not cookie), so CORS here is defense-in-depth: a disallowed
+// origin simply gets no Allow-Origin header and the browser blocks the read. A
+// request with NO Origin (the native Flutter app, curl, server-to-server) is
+// unaffected — CORS only governs browser cross-origin reads.
+export function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...cors() },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
   });
+}
+
+/** Merge the request-appropriate (allowlisted) CORS headers into a built response. */
+export function withCors(req: Request, res: Response): Response {
+  const h = new Headers(res.headers);
+  for (const [k, v] of Object.entries(corsHeaders(req))) h.set(k, v);
+  return new Response(res.body, { status: res.status, headers: h });
 }
 
 // The ONE error shape every crm-api failure answers with: {error, code}. `error`
@@ -26,9 +40,14 @@ export function json(body: unknown, status = 200): Response {
 // pre-existing paths); `code` is a small, stable machine vocabulary — additive,
 // so a client that only reads `error` sees exactly what it always did:
 //   unauthorized / forbidden / bad_request / invalid_status / not_found /
-//   db_error / server_error / method_not_allowed / unknown_action
-export function err(message: string, status: number, code: string): Response {
-  return json({ error: message, code }, status);
+//   db_error / server_error / method_not_allowed / unknown_action / rate_limited
+export function err(
+  message: string,
+  status: number,
+  code: string,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  return json({ error: message, code }, status, extraHeaders);
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────

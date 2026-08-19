@@ -500,6 +500,21 @@ class CrmLead {
       );
 }
 
+/// The UNMASKED contact details returned by `crmRevealContact` — the one path
+/// that un-masks PII, and only for a single record on explicit user action.
+/// Either field may be null when the entity has none.
+class CrmRevealedContact {
+  const CrmRevealedContact({this.phone, this.email});
+
+  final String? phone;
+  final String? email;
+
+  factory CrmRevealedContact.fromJson(Map<String, dynamic> r) => CrmRevealedContact(
+        phone: r['phone'] as String?,
+        email: r['email'] as String?,
+      );
+}
+
 /// One cheaper plan the bill analyzer surfaced (mirrors a `suggestions[]` entry
 /// from the `site-bill-analyzer` edge function: `{name, provider, price,
 /// annualSaving}`). Every field is null-tolerant so a partial payload never
@@ -1217,6 +1232,14 @@ abstract interface class Backend {
 
   /// The leads board, optionally filtered by [status].
   Future<List<CrmLead>> crmListLeads({String? status});
+
+  /// Reveals the UNMASKED phone/email for a single record, on an explicit user
+  /// action. Every list/thread read masks contact PII by default; this is the
+  /// one path that returns the raw value, and the server writes a `crm_pii_reveal`
+  /// audit row for each call. [kind] is one of `lead` / `contact` / `conversation`;
+  /// [id] is that record's id. Returns `(phone, email)` — either may be null when
+  /// the entity has none. [LocalBackend] returns the local raw value.
+  Future<CrmRevealedContact> crmRevealContact({required String kind, required String id});
 
   // ── Owner observability (admin-only) ─────────────────────────────────────────
   /// Owner observability metrics from the `admin-metrics` edge function:

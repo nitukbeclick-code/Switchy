@@ -106,6 +106,35 @@ class _FakeCrm extends LocalBackend {
   }
 }
 
+// A CRM backend whose server-side data is MASKED (as the hardened crm-api now
+// answers), with the audited reveal returning the raw number. Mirrors the wire
+// contract the thread header's 👁 control is built against.
+class _MaskedCrm extends _FakeCrm {
+  int revealCalls = 0;
+
+  @override
+  Future<CrmThread> crmGetThread(String conversationId) async {
+    final t = await super.crmGetThread(conversationId);
+    return CrmThread(
+      contact: CrmContact(
+        id: t.contact.id,
+        name: t.contact.name,
+        phone: '•••••••567',
+        status: t.contact.status,
+        leadId: t.contact.leadId,
+        leadStatus: t.contact.leadStatus,
+      ),
+      messages: t.messages,
+    );
+  }
+
+  @override
+  Future<CrmRevealedContact> crmRevealContact({required String kind, required String id}) async {
+    revealCalls++;
+    return const CrmRevealedContact(phone: '0521234567');
+  }
+}
+
 Widget _wrap(Widget child) => MaterialApp(
       // GoogleFonts runtime fetch is off in tests, so a wider fallback font
       // stands in for Rubik/Assistant. Shrink the text scale a touch so the
@@ -269,6 +298,45 @@ void main() {
       expect(find.text('נסגרו'), findsWidgets); // 'won' group header
       expect(find.text('אבודים'), findsWidgets); // 'lost' group header
       expect(find.text('אבי דהן'), findsOneWidget); // the seeded 'won' lead
+    });
+  });
+
+  group('Thread PII reveal', () {
+    testWidgets('a masked phone offers the 👁 control, which reveals the real number',
+        (tester) async {
+      final masked = _MaskedCrm();
+      appBackend = masked;
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(_wrap(const CrmWidget()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.text('שיחות'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.tap(find.text('דנה לוי').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // The header shows the MASKED number, never the raw one…
+      expect(find.text('•••••••567'), findsOneWidget);
+      expect(find.text('0521234567'), findsNothing);
+
+      // …until the audited reveal control is tapped.
+      // The AppBar title merges its descendants' semantics, so the reveal
+      // control's label shows up inside the merged node (matched by pattern).
+      expect(find.bySemanticsLabel(RegExp('הצג מספר טלפון מלא')), findsWidgets);
+      final reveal = find.byIcon(Icons.visibility_outlined);
+      expect(reveal, findsOneWidget);
+      await tester.tap(reveal.first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(masked.revealCalls, 1);
+      expect(find.text('0521234567'), findsOneWidget);
+      expect(find.byIcon(Icons.visibility_outlined), findsNothing);
+
+      await tester.pump(const Duration(seconds: 1));
+      handle.dispose();
     });
   });
 }

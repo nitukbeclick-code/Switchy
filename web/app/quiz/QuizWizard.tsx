@@ -288,10 +288,24 @@ export default function QuizWizard({ trustStats }: QuizWizardProps) {
           <span>{progress}%</span>
         </div>
         {/* Step dots — a glanceable per-step position strip: done/active steps are
-            accent-green, upcoming steps neutral. Decorative (the progressbar below
-            owns the a11y semantics), so the strip is aria-hidden. RTL-correct:
-            flex follows the document's logical direction. */}
-        <div aria-hidden="true" className="mb-1.5 flex items-center gap-1.5">
+            accent-green, upcoming steps neutral. RTL-correct: flex follows the
+            document's logical direction.
+
+            This strip used to be aria-hidden with a SECOND, continuous
+            progress bar rendered directly beneath it — two 6px accent-green bars
+            stacked 6px apart, both encoding the identical 20%, which read as a
+            rendering glitch rather than as one indicator. There is one piece of
+            information here, so there is now one bar: the segmented strip carries
+            the progressbar semantics itself (its aria-valuenow is the same
+            percentage the label beside it prints). */}
+        <div
+          className="flex items-center gap-1.5"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+          aria-label="התקדמות השאלון"
+        >
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
             <span
               key={i}
@@ -301,22 +315,6 @@ export default function QuizWizard({ trustStats }: QuizWizardProps) {
               ].join(" ")}
             />
           ))}
-        </div>
-        <div
-          className="h-1.5 w-full overflow-hidden rounded-full bg-border"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={progress}
-          aria-label="התקדמות השאלון"
-        >
-          <div
-            className="h-full rounded-full bg-accent"
-            style={{
-              width: `${progress}%`,
-              transition: "width var(--duration-modal) var(--ease-out)",
-            }}
-          />
         </div>
       </div>
 

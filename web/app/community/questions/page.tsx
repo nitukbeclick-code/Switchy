@@ -110,8 +110,13 @@ export default async function CommunityQuestionsPage({
     })),
   });
 
+  // shrink-0 + whitespace-nowrap: this row is a horizontal SCROLLER, so a chip
+  // must keep its intrinsic width. Without them flexbox shrank the long labels
+  // to fit ("חבילה משולבת" measured 63px — the same width as "אינטרנט" — and
+  // wrapped to two lines, which stretched every chip in the row to 42px).
+  // min-h-11 is the 44px tap-target floor the rest of the site already keeps.
   const chipBase =
-    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+    "inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
   const chipCls = (active: boolean) =>
     `${chipBase} ${
       active
@@ -192,11 +197,19 @@ export default async function CommunityQuestionsPage({
           <p className="mt-1 text-sm text-muted">
             היו הראשונים לשאול או לשתף חוויה.
           </p>
+          {/* SECONDARY, not a second green fill. The hero above already carries
+              this page's one primary action ("פתיחת שאלה חדשה"), and this link
+              points at the very same /community route as the hero's bordered
+              "מעבר לפיד הקהילה" — rendered filled, the empty state put two
+              equally loud green pills on one screen and the weaker of the two
+              sat lower. Bordered here matches the hero's secondary. The arrow is
+              the direction-aware <Icon>, never a hardcoded ←. */}
           <Link
             href="/community"
-            className="press mt-4 inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="press mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-accent/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            למעבר לקהילה ←
+            למעבר לקהילה
+            <Icon name="arrow" size={16} />
           </Link>
         </div>
       ) : (

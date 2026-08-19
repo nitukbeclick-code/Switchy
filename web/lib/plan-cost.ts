@@ -236,8 +236,16 @@ export function calculateTwelveMonthCost(plan: CostablePlan): PlanTwelveMonthCos
 
 const COST_NUMBER = new Intl.NumberFormat("he-IL", { maximumFractionDigits: 2 });
 
+/* A 12-month TOTAL is a whole-shekel figure. `maximumFractionDigits: 2` on a
+   19.90 × 12 headline produced "₪237.6" / "₪130.8" / "₪298.8" — a one-decimal
+   money string, which no currency is ever written in, sitting one line under a
+   correctly-formatted "₪19.90". The agora on a yearly total is noise either way,
+   so annual figures round to the whole shekel and monthly figures keep their
+   agora. Range totals ("₪480–₪700") are unaffected — they were already whole. */
+const ANNUAL_NUMBER = new Intl.NumberFormat("he-IL", { maximumFractionDigits: 0 });
+
 export function formatAnnualCost(cost: PlanTwelveMonthCost): string {
-  const format = (value: number) => COST_NUMBER.format(value);
+  const format = (value: number) => ANNUAL_NUMBER.format(value);
   if (Math.abs(cost.maximum - cost.minimum) < 0.005) return `₪${format(cost.minimum)}`;
   return `₪${format(cost.minimum)}–₪${format(cost.maximum)}`;
 }

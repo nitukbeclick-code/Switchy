@@ -44,9 +44,12 @@
   --value-t: #F8E9C8;       /* warm value wash */
   --value-d: #9C6510;
   /* On-light TEXT tiers — the same hues, darkened so accent-coloured
-     small text clears WCAG AA (≥4.5:1) on white/glass. --accent (3.3:1) and
-     --value (3.5:1) are fine for fills, borders, icons and large display, but
-     fail for label-sized text; use these whenever the colour IS the ink.
+     small text clears WCAG AA (≥4.5:1) on white/glass. MEASURED, because the
+     figures that used to sit here (3.3:1 / 3.5:1) were both wrong: on --white
+     --accent is 5.20:1 (it is in fact safe for small text) and --value is
+     2.44:1 — which fails even the 3:1 non-text floor, so --value is NOT safe
+     for borders or icons either. Use --value-ink whenever amber IS the ink,
+     and --value-d for an amber boundary.
      In dark mode the lifted --accent/--value already pass, so these alias back. */
   --accent-ink: #075B46;    /* emerald text on ivory/paper */
   --value-ink: #8A570D;     /* amber text on ivory/paper */
@@ -91,12 +94,19 @@
   /* Glass-glint — the signature 1px top-edge light that makes a surface read as
      lifted glass. Layer it FIRST in a box-shadow list, before the elevation. */
   --glint: inset 0 1px 0 rgba(255,255,255,.7);
-  /* Focus rings — a two-layer ring (white inner gap + green halo) so the
-     outline reads cleanly on both light glass and the dark ink bands. The
-     value variant is for amber "best/value" controls. */
-  --ring: 0 0 0 2px #fff, 0 0 0 5px rgba(22,163,74,.42);   /* focus ring (green) */
-  --ring-value: 0 0 0 2px #fff, 0 0 0 5px rgba(22,163,74,.42);
-  --ring-flush: 0 0 0 3px rgba(22,163,74,.34);   /* no white gap — for borderless/dark contexts */
+  /* Focus rings — a two-layer ring (white inner gap + accent halo) so the
+     outline reads cleanly on both light glass and the dark ink bands.
+     SOLID --accent, never a tinted alpha: WCAG 2.2 SC 2.4.11 wants 3:1 for the
+     indicator, and the old rgba(22,163,74,.42) composited to #98D1A6 = 1.57:1
+     on --cream (the .34 flush variant was 1.44:1). Even SOLID #16A34A is only
+     2.95:1 there, so lifting the alpha was never going to be enough — the hue
+     had to change. --accent #087A5B measures 4.76:1 on cream / 5.20:1 on paper.
+     Do not reintroduce an alpha here. */
+  --ring: 0 0 0 2px #fff, 0 0 0 5px var(--accent);   /* focus ring */
+  /* Amber "best/value" controls: --value is only 2.44:1 on cream, so the ring
+     uses --value-d (#9C6510, 4.13:1) rather than the fill colour. */
+  --ring-value: 0 0 0 2px #fff, 0 0 0 5px var(--value-d);
+  --ring-flush: 0 0 0 3px var(--accent);   /* no white gap — for borderless/dark contexts */
 
   /* Spacing scale — a single rhythm the whole system can tune against, so
      gaps/padding share one cadence instead of drifting magic numbers. */
@@ -330,6 +340,27 @@ h1, h2 { text-wrap: balance; }
    override used to visibly reshape pills and buttons on focus); bare inline
    links opt into a small radius so the ring hugs the text. */
 :focus-visible { outline: none; box-shadow: var(--ring); }
+
+/* Skip link — emitted by build.js and index.html as <a class="skip" href="#main">,
+   and referenced by the z-index ladder below, but it had NO rule in this file:
+   it rendered as a permanently visible stray link above the sticky nav on every
+   page. Off-screen until focused, then pinned to the start corner. */
+.skip {
+  position: absolute;
+  inset-inline-start: -9999px;
+  top: 0;
+}
+.skip:focus {
+  inset-inline-start: 12px;
+  top: 12px;
+  z-index: 9999;
+  background: var(--white);
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: var(--radius-xs, 8px);
+  box-shadow: var(--ring);
+  font-weight: 600;
+}
 /* Bare inline links: a flush ring (no white gap) hugs the text tightly. */
 a:not([class]):focus-visible { border-radius: 6px; box-shadow: var(--ring-flush); }
 
@@ -1769,11 +1800,11 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .flag-chip.active { background: var(--accent-t); color: var(--accent-ink); border-color: var(--accent); }
 /* Empty state (no plans match the filters) — an intentional, illustrated
    pause rather than a bare line of grey text that could read as broken. */
-.plan-count { margin-right: auto; font-size: 13px; color: var(--ink-500, #6b7280); white-space: nowrap; }
+.plan-count { margin-inline-start: auto; font-size: 13px; color: var(--ink-500, #6b7280); white-space: nowrap; }
 .calc-result { display: grid; gap: 10px; }
 .calc-result__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-.calc-result__row strong { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; text-align: left; }
-.calc-result__sep { border: none; border-top: 1px solid #D1D5DB; margin: 2px 0; }
+.calc-result__row strong { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; text-align: end; }
+.calc-result__sep { border: none; border-top: 1px solid var(--line); margin: 2px 0; }
 .calc-result__row--main { font-size: 1.05rem; }
 .calc-result__row--main .saving { color: var(--value-ink); font-size: 1.15rem; }
 /* The payoff block — the calculator's answer, and the site's ONE .price-hero
@@ -2288,7 +2319,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   font-size: 14px; line-height: 1.5; padding-inline-start: 2px;
   border-inline-start: 2px solid var(--line);
 }
-.toc__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 0 0 10px; padding-inline-start: 12px; }
+.toc__title { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-500); margin: 0 0 10px; padding-inline-start: 12px; }
 .toc ul, .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .toc__link {
   display: block; position: relative; padding: 6px 12px; border-radius: 8px;
@@ -2375,7 +2406,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   opacity: 1; visibility: visible; transform: translateY(0);
 }
 .mega-menu__panel[hidden] { display: none; }
-.mega-menu__col h4 { grid-column: 1 / -1; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 4px 0 6px; }
+.mega-menu__col h4 { grid-column: 1 / -1; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-500); margin: 4px 0 6px; }
 .mega-menu__link {
   display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: var(--radius-sm);
   color: var(--ink); font-weight: 600; text-decoration: none; transition: background .15s, color .15s, transform .15s var(--ease);
@@ -2695,7 +2726,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .post-card__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .post-card__who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 .post-card__author { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); font-size: 15px; }
-.post-card__time { color: var(--ink-400); font-size: 12.5px; }
+.post-card__time { color: var(--ink-500); font-size: 12.5px; }
 /* Channel chip — quiet ink tablet identifying the community channel. */
 .post-card__channel {
   margin-inline-start: auto; flex: none;
@@ -2729,7 +2760,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 .reply__head { display: flex; align-items: baseline; gap: 8px; }
 .reply__author { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; color: var(--green-d); }
-.reply__time { color: var(--ink-400); font-size: 12px; }
+.reply__time { color: var(--ink-500); font-size: 12px; }
 .reply__body { color: var(--muted); font-size: 14px; line-height: 1.6; margin-top: 4px; white-space: pre-line; word-break: break-word; }
 .reply__media { display: block; margin-top: 8px; max-width: 220px; max-height: 200px; border-radius: 10px; border: 1px solid var(--line); }
 
@@ -2773,7 +2804,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 .review-card__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .review-card__provider { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; color: var(--green-d); font-size: 14.5px; }
-.review-card__time { color: var(--ink-400); font-size: 12px; margin-inline-start: auto; }
+.review-card__time { color: var(--ink-500); font-size: 12px; margin-inline-start: auto; }
 .review-card__body { color: var(--ink-700); margin-top: 8px; line-height: 1.65; word-break: break-word; }
 /* Verified-customer pill — a small green VALUE-of-trust badge. */
 .verified-badge {
@@ -3073,7 +3104,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp { width: 100%; border-collapse: collapse; font-size: .92rem; min-width: 780px; }
 .cmp thead th {
   position: sticky; top: 0; z-index: 1;
-  background: var(--cream); color: var(--ink); font-weight: 700; text-align: right;
+  background: var(--cream); color: var(--ink); font-weight: 700; text-align: start;
   padding: 13px 14px; border-bottom: 2px solid var(--line); white-space: nowrap;
 }
 .cmp td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink); }
@@ -3147,11 +3178,11 @@ a.chip:active { transform: translateY(0) scale(.97); }
   /* Same reasoning as the desktop rule: the card keeps its amber BORDER as the
      best-value marker, but not an amber ground under an amber price. */
   .cmp tbody tr.cmp__best { background: color-mix(in srgb, var(--cream) 62%, var(--white)); border-color: var(--value); }
-  .cmp td { display: flex; justify-content: space-between; align-items: center; gap: 16px; border: 0; padding: 8px 14px; text-align: left; }
-  .cmp td[data-th]::before { content: attr(data-th); font-weight: 700; color: var(--muted); text-align: right; flex: none; }
+  .cmp td { display: flex; justify-content: space-between; align-items: center; gap: 16px; border: 0; padding: 8px 14px; text-align: end; }
+  .cmp td[data-th]::before { content: attr(data-th); font-weight: 700; color: var(--muted); text-align: start; flex: none; }
   .cmp td:first-child { border-bottom: 1px solid var(--line); padding-bottom: 11px; margin-bottom: 4px; }
   .cmp td:first-child::before { display: none; }
-  .cmp__info { max-width: 60%; text-align: left; }
+  .cmp__info { max-width: 60%; text-align: end; }
   .cmp__best td:first-child { box-shadow: none; }
   .cmp__cta { width: auto; }
   .cmp__cta::before { display: none; }
@@ -3175,7 +3206,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .plan__more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cmp__name.cmp__more {
   background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--ink);
-  cursor: pointer; text-align: right; text-decoration: underline; text-decoration-color: var(--ink-200);
+  cursor: pointer; text-align: start; text-decoration: underline; text-decoration-color: var(--ink-200);
   text-underline-offset: 3px; transition: color .16s;
 }
 .cmp__name.cmp__more:hover { color: var(--accent); text-decoration-color: var(--accent); }
@@ -3219,7 +3250,7 @@ body.pmodal-lock { overflow: hidden; }
 @media (max-width: 460px) { .pmodal__grid { grid-template-columns: 1fr; } }
 .pmodal__row { display: flex; justify-content: space-between; gap: 12px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 9px 12px; }
 .pmodal__k { color: var(--muted); font-size: .88rem; }
-.pmodal__v { color: var(--ink); font-weight: 600; font-size: .9rem; text-align: left; }
+.pmodal__v { color: var(--ink); font-weight: 600; font-size: .9rem; text-align: end; }
 .pmodal__ul { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
 .pmodal__ul li { color: var(--ink); line-height: 1.5; }
 .pmodal__ul--fine li { color: var(--muted); font-size: .88rem; }
@@ -3359,7 +3390,7 @@ body.pmodal-lock { overflow: hidden; }
    language so the rendered steps + recs read as one component. */
 .advisor__stage { display: grid; gap: 4px; }
 .advisor__q { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); margin: 4px 0 14px; line-height: 1.25; }
-.advisor__progress { color: var(--ink-400); font-size: 13px; font-weight: 700; letter-spacing: .02em; margin-bottom: 2px; }
+.advisor__progress { color: var(--ink-500); font-size: 13px; font-weight: 700; letter-spacing: .02em; margin-bottom: 2px; }
 .advisor__back { align-self: start; margin-top: 14px; }
 .advisor__followup { color: var(--muted); margin: -6px 0 14px; line-height: 1.6; }
 .advisor__recs { display: grid; gap: 12px; }
@@ -4057,7 +4088,14 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); color: var(--accent-ink); }
 .carousel__dot[aria-current="true"] { width: 24px; background: var(--accent); }
 
 /* ── Buttons & chips — press/focus parity so every tap answers the finger ── */
-a.chip:focus-visible, .collection-chip:focus-visible { outline: none; }
+/* a.chip previously sat here too, with `outline: none` and nothing to replace
+   it: the :focus-visible box-shadow (specificity 0,1,0) loses to `.chip`'s own
+   box-shadow later in the file, so link chips had NO focus indicator at all.
+   They are primary navigation on plans.html and the provider strips. The ring
+   is stacked over the chip's resting shadow so the shape is preserved.
+   .collection-chip is safe — it sets its own ring below. */
+a.chip:focus-visible { outline: none; box-shadow: var(--ring), var(--shadow-sm); }
+.collection-chip:focus-visible { outline: none; }
 a.chip:active { transform: translateY(0) scale(.97); }
 .collection-chip:active, .logo-chip:active, .launch-tile:active { transform: scale(.98); }
 .filter-btn:focus-visible { outline: none; box-shadow: var(--ring); }
@@ -4162,7 +4200,12 @@ a.chip:active { transform: translateY(0) scale(.97); }
 /* Partial-fill stars: grey base + a green overlay clipped to --fill percent. */
 .prov-rating__stars { position: relative; font-size: 18px; letter-spacing: 2px; color: var(--ink-200); line-height: 1; }
 .prov-rating__on {
-  position: absolute; inset: 0; overflow: hidden; color: var(--value); /* stars read as rating gold, not action green */
+  position: absolute; inset: 0; overflow: hidden;
+  /* --value-ink, not --value: the stars ARE the rating — nothing else
+     carries it — and --value is 2.44:1 on paper. --value-ink is 5.94:1
+     and still reads as rating gold rather than action green. Every other
+     star glyph in this file already uses it. */
+  color: var(--value-ink);
   width: var(--fill, 0%); white-space: nowrap;
 }
 

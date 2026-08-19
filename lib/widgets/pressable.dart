@@ -9,6 +9,15 @@ import '../theme/app_theme.dart';
 /// semantics of its own, so callers keep wrapping their own [Semantics]/labels.
 /// Honours the platform's reduced-motion setting by skipping the scale. Cheap
 /// enough for list rows: one [AnimatedScale] per instance, no controllers.
+///
+/// KEYBOARD: a bare [GestureDetector] cannot be reached with Tab, cannot be
+/// activated with Enter/Space and paints no focus ring — which made every
+/// Pressable card, chip and row unusable for keyboard and switch-access users
+/// on the web target (`flutter build web` is a release gate). It is therefore
+/// wrapped in a [FocusableActionDetector] that maps Activate to [onTap] and
+/// paints the same halo [AppButton] uses. Focus is only taken when the widget
+/// actually does something — a Pressable with no handler stays out of the tab
+/// order rather than becoming a focus stop that does nothing.
 class Pressable extends StatefulWidget {
   const Pressable({
     super.key,
@@ -19,6 +28,7 @@ class Pressable extends StatefulWidget {
     this.behavior = HitTestBehavior.opaque,
     this.enableFeedback = true,
     this.haptic = true,
+    this.focusRadius,
   });
 
   final Widget child;
@@ -35,15 +45,29 @@ class Pressable extends StatefulWidget {
   /// or that should stay silent.
   final bool haptic;
 
+  /// Corner radius of the keyboard-focus halo. Defaults to [AppTheme.radiusLg]
+  /// (the card corner), which is the shape most Pressables wrap; pass the
+  /// child's own radius where it differs so the ring hugs it.
+  final double? focusRadius;
+
   @override
   State<Pressable> createState() => _PressableState();
 }
 
 class _PressableState extends State<Pressable> {
   bool _down = false;
+  bool _focusVisible = false;
 
   void _set(bool v) {
     if (_down != v) setState(() => _down = v);
+  }
+
+  /// The single activation path, shared by tap and by Enter/Space, so a keyboard
+  /// user gets exactly what a tap gives — haptic included.
+  void _activate() {
+    if (widget.onTap == null) return;
+    if (widget.haptic) HapticFeedback.selectionClick();
+    widget.onTap!();
   }
 
   @override
@@ -56,14 +80,9 @@ class _PressableState extends State<Pressable> {
     // a broken button.
     final tappable = widget.onTap != null || widget.onLongPress != null;
 
-    return GestureDetector(
+    final gesture = GestureDetector(
       behavior: widget.behavior,
-      onTap: widget.onTap == null
-          ? null
-          : () {
-              if (widget.haptic) HapticFeedback.selectionClick();
-              widget.onTap!();
-            },
+      onTap: widget.onTap == null ? null : _activate,
       onLongPress: widget.onLongPress,
       onTapDown: tappable ? (_) => _set(true) : null,
       onTapUp: tappable ? (_) => _set(false) : null,
@@ -79,6 +98,44 @@ class _PressableState extends State<Pressable> {
         duration: _down ? t.motionPress : t.motionMedium,
         curve: t.easeOut,
         child: widget.child,
+      ),
+    );
+
+    // Nothing to activate -> stay out of the tab order entirely. A focus stop
+    // that does nothing is worse than no focus stop.
+    if (!tappable) return gesture;
+
+    return FocusableActionDetector(
+      mouseCursor: SystemMouseCursors.click,
+      onShowFocusHighlight: (visible) {
+        if (_focusVisible != visible) setState(() => _focusVisible = visible);
+      },
+      // Enter and Space both arrive as an Activate intent through the default
+      // WidgetsApp shortcut map; ButtonActivateIntent is the button-flavoured
+      // variant some platforms send for Space.
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            _activate();
+            return null;
+          },
+        ),
+        ButtonActivateIntent: CallbackAction<ButtonActivateIntent>(
+          onInvoke: (_) {
+            _activate();
+            return null;
+          },
+        ),
+      },
+      // foregroundDecoration, so the halo is drawn OVER the child without
+      // changing its layout or clipping it — identical treatment to AppButton.
+      child: AnimatedContainer(
+        duration: t.motionFast,
+        curve: t.easeOut,
+        foregroundDecoration: _focusVisible
+            ? t.focusRingDecoration(radius: widget.focusRadius ?? t.radiusLg)
+            : null,
+        child: gesture,
       ),
     );
   }

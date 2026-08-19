@@ -1517,7 +1517,7 @@ class _PlanHeader extends StatelessWidget {
               // glow (the bespoke amber drop-shadow contradicted the flat standard).
               color: ffTheme.saving.withValues(alpha: ffTheme.dark ? 0.16 : 0.10),
               borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-              border: Border.all(color: ffTheme.saving, width: 2),
+              border: Border.all(color: ffTheme.savingDark, width: 2),
             )
           : ffTheme.cardDecoration(),
       child: Column(

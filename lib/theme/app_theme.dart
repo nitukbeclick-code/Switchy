@@ -37,7 +37,11 @@ class AppColors {
 
   // Lines & borders — Geist 1px gray hairlines (NOT dark). `alternate` = the
   // emphasis/input border; `lineColor` = the default hairline + dividers.
-  static const Color alternate = Color(0xFFC8CEC8); // emphasis/input border
+  // WCAG 1.4.11 wants 3:1 for a component boundary, and this token IS the
+  // only visual edge of every text input and unselected chip. It was
+  // #C8CEC8 = 1.56:1 on the paper surface. #909490 is 3.00:1 in the same
+  // sage hue. [lineColor] stays soft — a decorative hairline is exempt.
+  static const Color alternate = Color(0xFF909490); // emphasis/input border
   static const Color lineColor = Color(0xFFD8D8CE); // warm hairline/divider
 
   // Status (kept functional — errors/warnings still need their semantic hue)
@@ -69,11 +73,15 @@ class AppColors {
   // AA-safe ink for small VALUE TEXT on light glass — green 700 clears 4.5:1 on
   // white (the fill #16A34A only ~3:1 as small text), same as brandAccentText.
   static const Color savingText = Color(0xFF8A570D); // AA amber savings text
-  // The ink read out ON a SOLID green VALUE fill (e.g. "best value" badges that
-  // fill with [saving]) — white, matching white-on-green CTAs. Note: the
-  // SavingPill itself uses the pale TINT bg + green text, not this solid fill;
-  // reach for onSaving only where a chip/badge fills with [saving] underneath.
-  static const Color onSaving = Color(0xFFFFFFFF);
+  // The ink read out ON a SOLID amber VALUE fill (e.g. "best value" badges that
+  // fill with [saving]). DARK amber, not white: the comment here used to say
+  // "white, matching white-on-green CTAs", which was true back when this fill
+  // was green — on the amber #D39A24 it became 2.49:1 and failed WCAG outright
+  // on the most prominent badge in the product ("ההתאמה הכי טובה"). This ink is
+  // 6.44:1 on the same fill, and it is the value the dark variant already used.
+  // Note: the SavingPill itself uses the pale TINT bg + [savingText], not this
+  // solid fill; reach for onSaving only where a chip/badge fills with [saving].
+  static const Color onSaving = Color(0xFF2C1F08);
 
   // ── Dark variant ──────────────────────────────────────────────────────────
   // NOT a colour flip — a cohesive night theme. Deep blue-ink surfaces, slate

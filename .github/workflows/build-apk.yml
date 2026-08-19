@@ -1,0 +1,92 @@
+# Build a sideloadable APK on demand.
+# ────────────────────────────────────────────────────────────────────────────
+# WHY THIS IS SEPARATE FROM ci.yml: ci.yml's "Build APK (debug smoke-test)" job
+# exists to prove the Android target still compiles — it throws the output away.
+# This workflow exists to hand a human an installable file, so it is
+# workflow_dispatch ONLY: it costs nothing until someone asks for a build, and it
+# never runs on a PR.
+#
+# SIGNING: android/app/build.gradle falls back to the DEBUG keystore when
+# android/key.properties is absent, which it is in CI. So the artifact here is a
+# real release build (tree-shaken, AOT-compiled, small and fast) that is signed
+# with debug keys. That is exactly what you want for sideloading onto your own
+# phone — and exactly what you must NOT upload to the Play Store, which requires
+# the real upload keystore.
+#
+# TO INSTALL: download the artifact zip from this run's summary page, unzip it,
+# move the .apk to the phone, and open it. Android will ask you to allow
+# installing from this source once — that prompt is expected for any APK that did
+# not come from a store.
+
+name: Build APK (installable)
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_mode:
+        description: Build mode
+        type: choice
+        default: release
+        options:
+          - release
+          - debug
+      split_per_abi:
+        description: Split per ABI (smaller files, pick the one matching your phone)
+        type: boolean
+        default: false
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build ${{ inputs.build_mode }} APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.10"
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
+        run: |
+          set -euo pipefail
+          args="--${{ inputs.build_mode }}"
+          if [ "${{ inputs.split_per_abi }}" = "true" ]; then
+            args="$args --split-per-abi"
+          fi
+          echo "flutter build apk $args"
+          flutter build apk $args
+
+      - name: Report what was built
+        run: |
+          set -euo pipefail
+          echo "### APK build" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| File | Size |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|------|" >> "$GITHUB_STEP_SUMMARY"
+          for f in build/app/outputs/flutter-apk/*.apk; do
+            [ -e "$f" ] || continue
+            printf '| `%s` | %s |\n' "$(basename "$f")" "$(du -h "$f" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Signed with the **debug** keystore (no android/key.properties in CI) — fine for sideloading, not for the Play Store." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: switchy-apk-${{ inputs.build_mode }}-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          # Long enough to be useful, short enough not to hoard storage.
+          retention-days: 14

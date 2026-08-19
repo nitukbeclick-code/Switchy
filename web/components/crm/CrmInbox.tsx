@@ -75,9 +75,9 @@ function MessageBubble({ m }: { m: CrmMessage }) {
               : "border border-border bg-surface text-foreground"
         }`}
       >
-        <p className="mb-0.5 text-[10px] font-semibold opacity-70">{label}</p>
+        <p className="mb-0.5 text-xs font-semibold text-muted">{label}</p>
         <p className="whitespace-pre-wrap break-words">{m.body}</p>
-        {m.createdAt && <p className="mt-1 text-[10px] opacity-60">{when(m.createdAt)}</p>}
+        {m.createdAt && <p className="mt-1 text-xs text-muted">{when(m.createdAt)}</p>}
       </div>
     </div>
   );

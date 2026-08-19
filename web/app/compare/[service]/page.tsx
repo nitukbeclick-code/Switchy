@@ -71,10 +71,15 @@ import {
 
 // One page per service axis, pre-rendered at build time. Unknown service -> real 404.
 export const dynamicParams = false;
-// ISR: regenerate the static HTML hourly so the live DB catalogue (prices, the
+// ISR: regenerate the static HTML daily so the live DB catalogue (prices, the
 // direct answer, the table and every JSON-LD block) stays fresh while still being
 // served instantly from cache.
-export const revalidate = 3600;
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 export function generateStaticParams() {
   return getServices().map((s) => ({ service: s.slug }));
 }

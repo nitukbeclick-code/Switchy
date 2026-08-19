@@ -24,6 +24,12 @@ pushed.
 - **`web/next.config.ts`** pins the Turbopack workspace root to `web/` (so Next
   doesn't walk up and pick the parent Flutter repo's lockfile) and 301-redirects
   legacy provider slugs.
+- **`ignoreCommand` skips builds this project doesn't need.** `web/vercel.json`
+  runs `git diff --quiet HEAD^ HEAD -- .`, so a commit that changed nothing under
+  `web/` (chiefly the `rebuild-static` workflow's `site/*.html` pushes, up to 48 a
+  day) does not redeploy the Next app; the root `vercel.json` does the mirror
+  image for the static project. Freshness is preserved by the on-demand purge, not
+  by those redeploys — see [Vercel free-tier budget](./vercel-isr-budget.md).
 - **Build needs no secrets.** The catalogue is bundled (`web/data/catalogue.json`),
   read at module init by `web/lib/data.ts`. Keep `next build` green — it's the
   release gate.
@@ -32,7 +38,10 @@ pushed.
   `SUPABASE_SERVICE_ROLE_KEY` (used solely by `web/app/api/lead/route.ts`; if
   absent the route returns 503). Optional: `NEXT_PUBLIC_SUPABASE_URL`
   (defaults to the known project URL), `NEXT_PUBLIC_FB_PIXEL_ID`,
-  `NEXT_PUBLIC_SITE_URL`. See `web/.env.local.example`.
+  `NEXT_PUBLIC_SITE_URL`. Strongly recommended: `REVALIDATE_SECRET`, which turns
+  on the on-demand ISR purge (`POST /api/revalidate`); without it the app is
+  correct but up to 24h behind on price edits. See `web/.env.local.example` and
+  [Vercel free-tier budget](./vercel-isr-budget.md).
 
 ### .vercelignore / root-config gotcha
 

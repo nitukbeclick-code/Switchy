@@ -49,10 +49,15 @@ import type { Plan } from "@/lib/types";
 // The shared <ProviderLogo> (real carrier logo, else a brand-colored monogram),
 // here at a 56px squircle anchoring the provider hero.
 
-// ISR: regenerate hourly so the live plan read (cheapest-plan answer, table,
+// ISR: regenerate daily so the live plan read (cheapest-plan answer, table,
 // AggregateOffer) reflects current DB prices, while serving instantly from the
 // static cache. dynamicParams=false still caps to known slugs.
-export const revalidate = 3600;
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 
 // Pre-render one page per derived provider at build time. Unknown slugs return a
 // real 404 (not a soft-200) so crawlers + users get the not-found page correctly.

@@ -32,7 +32,15 @@ import ShareBar from "@/components/community/ShareBar";
 import { providerBySlug } from "@/lib/providers.generated";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
-export const revalidate = 300;
+// ISR budget: a Q&A permalink is near-immutable once answered, so a 24h safety
+// net is plenty. Today this route renders dynamically (no generateStaticParams,
+// so it is absent from the prerender manifest) and the old 5-minute timer bought
+// nothing; the moment it becomes cacheable, 300s across the ~500 indexed
+// permalinks would be 4.3M writes/month — 21x the whole Vercel free-tier
+// allowance. A new post or reply purges its own permalink on demand
+// (/api/revalidate), so answers go live immediately either way.
+// See docs/vercel-isr-budget.md.
+export const revalidate = 86400;
 
 function sb() {
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

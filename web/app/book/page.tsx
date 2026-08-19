@@ -30,9 +30,14 @@ import { pageMetadata } from "@/lib/seo";
 const PAGE_PATH = "/book";
 const REVIEWED_AT = new Date().toISOString().slice(0, 10);
 
-// ISR: regenerate hourly so the static HTML picks up owner edits to
+// ISR: regenerate daily so the static HTML picks up owner edits to
 // public.provider_capabilities (the Zoom-supported provider list) on a schedule.
-export const revalidate = 3600;
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 
 export const metadata: Metadata = pageMetadata({
   title: "קביעת שיחת ייעוץ — Switchy AI",

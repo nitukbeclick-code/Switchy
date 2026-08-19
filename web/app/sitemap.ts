@@ -19,9 +19,9 @@ import { SITE_URL } from "@/lib/schema";
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase-public";
 
 // ISR (not force-static) because the community-Q&A permalinks below are read from
-// the public community_feed view at runtime; the hourly revalidate picks up newly
+// the public community_feed view at runtime; the 6-hourly revalidate picks up newly
 // answered posts without a redeploy. The catalogue-derived entries are unaffected.
-export const revalidate = 3600;
+export const revalidate = 21600;
 
 // The answered, non-flagged community-Q&A permalinks — the SAME ANON, public gate
 // the /community/questions hub uses (is_flagged=false, reply_count≥1). Only the

@@ -40,10 +40,15 @@ import { lastDataDate } from "@/lib/aeo";
 import { getLivePlans } from "@/lib/live-catalogue";
 import { ils } from "@/lib/format";
 
-// ISR: regenerate the static HTML hourly so the price list + ₪ figures read from
+// ISR: regenerate the static HTML daily so the price list + ₪ figures read from
 // the live DB catalogue (with the bundled snapshot as a resilient fallback) and
 // never drift stale vs the live /compare hubs.
-export const revalidate = 3600;
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 
 // How many cheapest plans to preview per category before linking to /compare.
 // A short, scannable taste of each category's pricing — the full list lives on

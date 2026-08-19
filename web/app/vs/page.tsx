@@ -33,8 +33,13 @@ import {
 import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
-// ISR keeps the hub's static HTML fresh against the live catalogue (hourly).
-export const revalidate = 3600;
+// ISR keeps the hub's static HTML fresh against the live catalogue (daily).
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 
 // Bare title — the root layout's title template brands the <title> once. (The OG
 // title is brand-normalised by pageMetadata.) Previously the inline brand suffix

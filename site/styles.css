@@ -1916,9 +1916,50 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .cmp-cta-row td { background: rgba(17,24,39,.05); }
 .cmp-cta-row .plan__cta { margin-top: 0; align-self: center; }
 .cmp-share { margin-top: 16px; font-size: 13px; }
+/* The compare-page glossary <dl> had no rules at all: terms rendered at the
+   same weight and colour as their definitions, with no separation between
+   entries, so the list read as one undifferentiated block of grey text. */
+.cmp-glossary { margin-top: 16px; }
+.cmp-glossary__list { margin: 12px 0 0; display: grid; gap: 14px; }
+.cmp-glossary__item dt {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-weight: 700; font-size: 15px; color: var(--ink-900);
+}
+.cmp-glossary__item dd { margin: 4px 0 0; font-size: 13.5px; line-height: 1.6; color: var(--ink-500); }
+
+/* The glossary's "?" was an UNSTYLED native button — a 10x22px system control
+   inside an otherwise fully designed page. Give it the badge it was written to
+   be, with a 44px touch area projected around it. */
+.cmp-help {
+  position: relative; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--cream); color: var(--ink-700);
+  font: 700 12px/1 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif;
+  cursor: help; vertical-align: -4px;
+}
+.cmp-help::before { content: ""; position: absolute; inset: -11px; }
+.cmp-help:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent-t); }
+.cmp-help:focus-visible { outline: none; box-shadow: var(--ring); }
 @media (max-width: 640px) {
   .compare-picks { grid-template-columns: 1fr; }
   .cmp-table th, .cmp-table td { padding: 10px 9px; font-size: 13.5px; }
+  /* The table scrolls sideways on a phone; without a pinned label column the
+     rows lose their meaning as soon as it does. The table's own overflow:hidden
+     (there only to clip the corners) would become the sticky cell's containing
+     scrollport and neutralise it, so the corners are cut per-cell instead. */
+  .cmp-table { overflow: visible; }
+  .cmp-table thead th:first-child {
+    position: sticky; inset-inline-start: 0; z-index: 2;
+    background: var(--green-d); border-start-start-radius: 14px;
+  }
+  .cmp-table thead th:last-child { border-start-end-radius: 14px; }
+  .cmp-table tbody tr:last-child > :first-child { border-end-start-radius: 14px; }
+  .cmp-table tbody tr:last-child > :last-child { border-end-end-radius: 14px; }
+  .cmp-table tbody th[scope="row"] {
+    position: sticky; inset-inline-start: 0; z-index: 1;
+    background: var(--cream); border-inline-end: 1px solid var(--line);
+  }
 }
 
 /* ── App showcase page (app.html) ────────────────────────────────────────── */
@@ -3281,6 +3322,12 @@ body.pmodal-lock { overflow: hidden; }
 .cbanner .cbanner__btn { padding-block: 10px; padding-inline: 20px; font-size: .9rem; }
 @media (prefers-reduced-motion: reduce) { .cbanner:not([hidden]) { animation: none; } }
 @media (max-width: 480px) { .cbanner__actions { width: 100%; } .cbanner .cbanner__btn { flex: 1; } }
+/* The banner is fixed to the bottom, so it sat ON TOP of whatever the page's
+   last visible content happened to be — on mobile that is the hero finder's
+   first result rows. Reserve its height at the end of the document so every
+   element can be scrolled clear of it while consent is still pending. */
+body:has(.cbanner:not([hidden])) { padding-bottom: 80px; }
+@media (max-width: 480px) { body:has(.cbanner:not([hidden])) { padding-bottom: 132px; } }
 
 /* ╔══════════════════════════════════════════════════════════════════════╗
    ║  RUNTIME UI — surfaces that script.js BUILDS at runtime.              ║
@@ -3902,11 +3949,17 @@ a.chip:hover { border-color: rgba(22, 163, 74, .35); color: var(--accent-ink); }
 }
 
 /* Hedge line — honest/qualitative, with a green tick. Never a promised figure. */
+/* Was display:flex — in the centred (mobile) heroes the tick was pushed to the
+   far end of the full-width row while the wrapped text stayed centred, leaving
+   the mark floating alone against the margin. Inline-flowing the icon keeps it
+   welded to the first word at every alignment. */
 .hero__hedge {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 14px; font-size: 13.5px; color: rgba(245,247,248,.78);
+  display: block; margin-top: 14px; font-size: 13.5px; color: rgba(245,247,248,.78);
 }
-.hero__hedge .ico { width: 17px; height: 17px; flex: none; color: #4ADE80; }
+.hero__hedge .ico {
+  width: 17px; height: 17px; color: #4ADE80;
+  display: inline-block; vertical-align: -3px; margin-inline-end: 6px;
+}
 
 /* Best-entry green pill — the ONE green pill among the plan flags (blueprint:
    green pill only on the best/value cell). Everything else stays neutral grey. */
@@ -4139,6 +4192,12 @@ a.chip:active { transform: translateY(0) scale(.97); }
   display: grid; gap: 14px;
 }
 .finder__cats { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Under ~480px the four chips wrap 3 + 1 and orphan the last one on its own
+   line. A 2x2 grid keeps the block square and the chips equal-width. */
+@media (max-width: 480px) {
+  .finder__cats { display: grid; grid-template-columns: repeat(2, 1fr); }
+  .finder__cat { padding-inline: 10px; }
+}
 .finder__cat {
   font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px;
   padding: 8px 16px; min-height: 40px; border-radius: 999px; cursor: pointer;
@@ -4183,6 +4242,16 @@ a.chip:active { transform: translateY(0) scale(.97); }
   pointer-events: none;
 }
 .ticker__item.is-on { opacity: 1; transform: none; pointer-events: auto; }
+/* The items are absolutely positioned inside a 44px band with inset-inline:0,
+   so their text ran flush into both viewport edges and, on narrow screens,
+   wrapped onto a second line that spilled out of the band. Pad them, and drop
+   the trailing "all deals" tail on phones so the line stays single-row (the
+   whole item is already a link to deals.html). */
+.ticker__item { padding-inline: 16px; text-align: center; }
+@media (max-width: 600px) {
+  .ticker__item { font-size: 13px; }
+  .ticker__more { display: none; }
+}
 .ticker__item b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--ink-900); }
 @media (prefers-reduced-motion: reduce) { .ticker__item { transition: none; } }
 

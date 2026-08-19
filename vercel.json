@@ -4,7 +4,6 @@
   "installCommand": null,
   "framework": null,
   "outputDirectory": "site",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- site vercel.json",
   "cleanUrls": false,
   "redirects": [
     {

@@ -25,11 +25,12 @@ pushed.
   doesn't walk up and pick the parent Flutter repo's lockfile) and 301-redirects
   legacy provider slugs.
 - **`ignoreCommand` skips builds this project doesn't need.** `web/vercel.json`
-  runs `git diff --quiet HEAD^ HEAD -- .`, so a commit that changed nothing under
-  `web/` (chiefly the `rebuild-static` workflow's `site/*.html` pushes, up to 48 a
-  day) does not redeploy the Next app; the root `vercel.json` does the mirror
-  image for the static project. Freshness is preserved by the on-demand purge, not
-  by those redeploys — see [Vercel free-tier budget](./vercel-isr-budget.md).
+  runs `git diff --quiet HEAD^ HEAD -- .` — scoped to the Root Directory, so a
+  commit that changed nothing under `web/` (chiefly the `rebuild-static`
+  workflow's `site/*.html` pushes, up to 48 a day) does not redeploy the Next app.
+  `site/vercel.json` carries the mirror image for the static project. Freshness is
+  preserved by the on-demand purge, not by those redeploys — see
+  [Vercel free-tier budget](./vercel-isr-budget.md).
 - **Build needs no secrets.** The catalogue is bundled (`web/data/catalogue.json`),
   read at module init by `web/lib/data.ts`. Keep `next build` green — it's the
   release gate.

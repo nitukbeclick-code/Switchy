@@ -60,11 +60,13 @@ prices. A price edit is visible in seconds; a quiet day costs nothing.
 **3. The `rebuild-static` workflow fires that purge** after it pushes, instead of
 relying on a redeploy.
 
-**4. Each Vercel project ignores commits it does not care about**
-(`ignoreCommand` in `vercel.json` / `web/vercel.json`): the Next project skips
-builds for commits that change nothing under `web/`, and the static project skips
-commits that touch neither `site/` nor its own config. `git diff --quiet` exits 0
-when there is no diff → skip; a missing `HEAD^` (first or shallow build) exits
+**4. Each Vercel project ignores commits it does not care about.** Both projects
+run their Root Directory's `vercel.json`, so `ignoreCommand` goes in
+`web/vercel.json` (project `switchyy`, Root Directory `web`) and
+`site/vercel.json` (project `switchy`, Root Directory `site`) — the repo-root
+`vercel.json` is not the config either project reads. Each runs
+`git diff --quiet HEAD^ HEAD -- .`, which is scoped to that root directory: no
+diff → exit 0 → skip the build; a missing `HEAD^` (first or shallow build) →
 non-zero → build. The safe default is always to deploy.
 
 **5. CI enforces the budget.** `web/lib/__tests__/isr-budget.test.ts` reads the

@@ -17,7 +17,15 @@ import { staticDesktopPath } from "@/lib/device-routing";
 // is rewritten the same way → the whole static page loads transparently.
 //
 // `Vary: User-Agent` tells Vercel's CDN to cache desktop and mobile responses
-// separately, so a phone never gets a cached desktop page (or vice-versa).
+// separately, so a phone never gets a cached desktop page (or vice-versa). It is
+// set on the DEVICE-DEPENDENT responses ONLY — the paths where a static twin
+// exists, so phone and desktop genuinely get different bytes. A user-agent
+// string is close to unique per browser build, so a response carrying that Vary
+// is effectively uncacheable at the edge and is re-fetched from the origin on
+// nearly every request (billed as Fast Origin Transfer). The branches that serve
+// the SAME bytes to every device — the static root assets, every *.html, and
+// every Next-only route with no static twin — therefore carry no Vary and cache
+// once. See docs/vercel-isr-budget.md.
 // ────────────────────────────────────────────────────────────────────────────
 
 // The static site's origin. Overridable per-environment; defaults to the
@@ -48,6 +56,25 @@ function isMobileUA(ua: string): boolean {
   return ua.length > 0 && MOBILE_UA.test(ua);
 }
 
+/**
+ * Mark a response as device-dependent.
+ *
+ * APPEND, never `set`: Next.js puts its OWN `Vary` on App Router responses
+ * (`rsc`, `next-router-state-tree`, `next-router-prefetch`, …) and relies on it
+ * so a CDN cannot hand an RSC request a cached HTML response — overwriting it
+ * breaks client-side navigation (see node_modules/next/dist/docs/01-app/
+ * 02-guides/cdn-caching.md).
+ *
+ * Call this ONLY where the response genuinely differs between device classes.
+ * `User-Agent` values are near-unique, so every response carrying it is
+ * effectively uncacheable at the CDN and is re-fetched from the origin — which
+ * is billed as Fast Origin Transfer. See docs/vercel-isr-budget.md.
+ */
+function varyByDevice(res: NextResponse): NextResponse {
+  res.headers.append("Vary", "User-Agent");
+  return res;
+}
+
 export function proxy(request: NextRequest): NextResponse {
   const ua = request.headers.get("user-agent") ?? "";
 
@@ -65,9 +92,9 @@ export function proxy(request: NextRequest): NextResponse {
       request.nextUrl.pathname + request.nextUrl.search,
       STATIC_ORIGIN,
     );
-    const res = NextResponse.rewrite(target);
-    res.headers.set("Vary", "User-Agent");
-    return res;
+    // Same bytes for every device, so NO Vary: the CDN caches one copy instead
+    // of one per user-agent string.
+    return NextResponse.rewrite(target);
   }
 
   // A ".html" URL exists ONLY on the static site — the Next app has no .html
@@ -83,36 +110,31 @@ export function proxy(request: NextRequest): NextResponse {
       request.nextUrl.pathname + request.nextUrl.search,
       STATIC_ORIGIN,
     );
-    const res = NextResponse.rewrite(target);
-    res.headers.set("Vary", "User-Agent");
-    return res;
+    // This branch is explicitly device-INDEPENDENT ("for EVERY device", above),
+    // so no Vary — these documents are the bulk of desktop pageviews and now
+    // cache once at the edge instead of once per user-agent.
+    return NextResponse.rewrite(target);
   }
 
-  // Phone/tablet → stay on the Next.js app. No rewrite; just mark the response
-  // Vary so the CDN keys this device class separately.
-  if (isMobileUA(ua)) {
-    const res = NextResponse.next();
-    res.headers.set("Vary", "User-Agent");
-    return res;
-  }
-
-  // Desktop (and unknown UA) → the desktop-optimized static site. Since the app
-  // now self-canonicals to the apex, Google (mobile-first) indexes CLEAN apex
-  // URLs; a desktop visitor landing on one must not 404. staticDesktopPath maps a
-  // clean marketing path to its static .html twin, passes the static site's own
-  // *.html + "/" + assets through unchanged, and returns null for a Next-only
-  // route — which we then render from THIS app on desktop rather than rewrite to
-  // a non-existent static page.
+  // Resolve the desktop twin BEFORE the device check, because it is what decides
+  // whether this path is device-dependent at all. staticDesktopPath maps a clean
+  // marketing path to its static .html twin, passes the static site's own *.html
+  // + "/" + assets through unchanged, and returns null for a Next-only route.
   const staticPath = staticDesktopPath(request.nextUrl.pathname);
-  if (staticPath === null) {
-    const res = NextResponse.next();
-    res.headers.set("Vary", "User-Agent");
-    return res;
-  }
+
+  // No static twin → BOTH device classes render this from the Next app. The
+  // response is identical either way, so it carries no Vary and the CDN can
+  // cache it once. (Desktop included: the app self-canonicals to the apex, so a
+  // desktop visitor landing on an indexed Next-only route must render here
+  // rather than be rewritten to a static page that does not exist.)
+  if (staticPath === null) return NextResponse.next();
+
+  // From here the two device classes genuinely diverge — phone/tablet gets the
+  // Next app, desktop gets the static twin — so BOTH responses must declare it.
+  if (isMobileUA(ua)) return varyByDevice(NextResponse.next());
+
   const target = new URL(staticPath + request.nextUrl.search, STATIC_ORIGIN);
-  const res = NextResponse.rewrite(target);
-  res.headers.set("Vary", "User-Agent");
-  return res;
+  return varyByDevice(NextResponse.rewrite(target));
 }
 
 export const config = {

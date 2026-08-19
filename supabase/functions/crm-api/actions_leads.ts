@@ -4,6 +4,7 @@
 
 import { fetchRows, insertRow, patchCount, patchCountResult } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import { maskPhone } from "../_shared/pii.ts";
 import {
   aggregateReps,
   clampListLimit,
@@ -144,7 +145,7 @@ export async function actSetLeadWorkflow(b: Row, actorUid: string): Promise<Resp
 // omitted limit changes nothing) and the additive `hasMore` reports whether the
 // table continues past the window — computed on the RAW window, before the
 // search filter (it describes the page, not the matches).
-export async function actListLeads(b: Row): Promise<Response> {
+export async function actListLeads(b: Row, actorUid: string): Promise<Response> {
   const status = s(b.status).trim();
   if (status && !LEAD_STATUSES.has(status)) return err("סטטוס ליד לא תקין", 400, "invalid_status");
   const sort = s(b.sort).trim();
@@ -160,10 +161,13 @@ export async function actListLeads(b: Row): Promise<Response> {
   const rows = await fetchRows<Row>(path);
   if (rows === null) return err("שגיאה בטעינת הלידים", 502, "db_error");
   const hasMore = rows.length > limit;
+  // `_raw` carries the UNMASKED phone for the post-fetch search filter only; it is
+  // stripped before responding, so the wire form is always masked.
   let leads = (hasMore ? rows.slice(0, limit) : rows).map((r) => ({
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
+    phone: maskPhone(s(r.phone)), // masked — revealContact{kind:'lead'} serves the raw value
+    _raw: s(r.phone),
     provider: s(r.provider) || null,
     source: s(r.source) || null,
     status: s(r.status),
@@ -173,11 +177,14 @@ export async function actListLeads(b: Row): Promise<Response> {
     followUpAt: s(r.follow_up_at) || null,
   }));
   if (search) {
+    // Match the RAW phone — masking must not break "search by number".
     leads = leads.filter((l) =>
-      l.name.toLowerCase().includes(search) || l.phone.toLowerCase().includes(search)
+      l.name.toLowerCase().includes(search) || l._raw.toLowerCase().includes(search)
     );
   }
-  return json({ leads, hasMore });
+  const out = leads.map(({ _raw: _drop, ...l }) => l); // strip the raw phone
+  await logAudit(actorUid, "crm_read_leads", { count: out.length, status: status || null });
+  return json({ leads: out, hasMore });
 }
 
 // attentionLeads → a complete, purpose-built work queue. The generic listLeads
@@ -195,7 +202,7 @@ function shapeLeadSummary(r: Row) {
   return {
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
+    phone: maskPhone(s(r.phone)), // masked — revealContact{kind:'lead'} serves the raw value
     provider: s(r.provider) || null,
     source: s(r.source) || null,
     status: s(r.status),

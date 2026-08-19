@@ -1,6 +1,7 @@
 // crm-api actions: the dashboard — pipeline overview + speed-to-lead metrics.
 
 import { fetchRows } from "../_shared/db.ts";
+import { maskPhone } from "../_shared/pii.ts";
 // Speed-to-lead metrics reuse the SAME shared sources as the Telegram digest/nudge
 // so the CRM never drifts from the team's push alerts: the first-response median
 // (medianMinutes) and the response-SLA window (SLA_HOURS). Both are pure/side-
@@ -8,13 +9,22 @@ import { fetchRows } from "../_shared/db.ts";
 import { medianMinutes } from "../_shared/digests.ts";
 import { SLA_HOURS } from "../lead-digest/lib.ts";
 import { contactName, s, snippet } from "./crm_logic.ts";
-import { contactsById, countRows, err, json, lastMessages, q, type Row } from "./helpers.ts";
+import {
+  contactsById,
+  countRows,
+  err,
+  json,
+  lastMessages,
+  logAudit,
+  q,
+  type Row,
+} from "./helpers.ts";
 
 // overview {} → pipeline counts (over leads) + the contact/meeting roster totals
 // + up to 12 recent conversations. Every count is honest: a failed countRows is
 // null (never 0), and any null fails the whole overview with a 502 — the
 // dashboard never confidently renders an empty pipeline over a DB outage.
-export async function actOverview(): Promise<Response> {
+export async function actOverview(actorUid: string): Promise<Response> {
   const statuses = ["new", "contacted", "won", "lost"] as const;
   // Count leads per status + the two roster totals — one head request each
   // (cheap, exact via Content-Range), fanned out in parallel so it's a single
@@ -57,13 +67,14 @@ export async function actOverview(): Promise<Response> {
       conversationId: cid,
       contactId: s(c.contact_id),
       name: contactName(contact),
-      phone: s(contact.wa_phone),
+      phone: maskPhone(s(contact.wa_phone)), // masked — revealContact serves the raw value
       status: s(c.status),
       lastSnippet: snippet(last?.body),
       lastAt: last?.at || s(c.last_message_at) || null,
     };
   });
 
+  await logAudit(actorUid, "crm_read_overview", { recent: recent.length });
   // contacts/meetings are ADDITIVE roster totals (the console may ignore them).
   return json({ pipeline, recent, contacts: nContacts, meetings: nMeetings });
 }

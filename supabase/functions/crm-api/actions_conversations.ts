@@ -3,6 +3,7 @@
 
 import { fetchRows, insertRow, patchCountResult, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import { maskPhone } from "../_shared/pii.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 import {
   clampLimit,
@@ -32,7 +33,10 @@ import {
 } from "./helpers.ts";
 
 // listConversations {status?,search?,limit?} → enriched conversation list.
-export async function actListConversations(b: Row): Promise<Response> {
+// Phone is MASKED on the wire (the raw number is served only by the audited
+// revealContact action); the free-text search still matches the RAW phone, by
+// filtering on a private `_raw` field that is stripped before responding.
+export async function actListConversations(b: Row, actorUid: string): Promise<Response> {
   const status = s(b.status).trim();
   const search = s(b.search).trim();
   const limit = clampLimit(b.limit);
@@ -60,28 +64,33 @@ export async function actListConversations(b: Row): Promise<Response> {
     const contact = contacts.get(s(c.contact_id)) ?? {};
     const last = snips.get(cid);
     const leadId = s(contact.lead_id);
+    const rawPhone = s(contact.wa_phone);
     return {
       conversationId: cid,
       contactId: s(c.contact_id),
       name: contactName(contact),
-      phone: s(contact.wa_phone),
+      phone: maskPhone(rawPhone),
       status: s(c.status),
       intent: s(c.intent) || null,
       lastSnippet: snippet(last?.body),
       lastAt: last?.at || s(c.last_message_at) || null,
       leadStatus: leadId ? (leadStatuses.get(leadId) || null) : null,
+      _raw: rawPhone, // filter-only; stripped below so it never reaches the wire
     };
   });
 
-  // In-memory free-text filter over name / phone (kept simple, post-fetch).
+  // In-memory free-text filter over name / RAW phone (kept simple, post-fetch):
+  // masking must not break "search by the number the customer called from".
   if (search) {
     const needle = search.toLowerCase();
     rows = rows.filter((r) =>
-      r.name.toLowerCase().includes(needle) || r.phone.toLowerCase().includes(needle)
+      r.name.toLowerCase().includes(needle) || r._raw.toLowerCase().includes(needle)
     );
   }
+  const conversations = rows.map(({ _raw: _drop, ...r }) => r); // strip the raw phone
 
-  return json({ conversations: rows });
+  await logAudit(actorUid, "crm_read_conversations", { count: conversations.length });
+  return json({ conversations });
 }
 
 // getThread {conversationId} → contact + ordered messages (oldest→newest).
@@ -130,13 +139,14 @@ export async function actGetThread(b: Row, actorUid: string): Promise<Response> 
   await logAudit(actorUid, "crm_thread_view", {
     conversation_id: convId,
     contact_id: contactId || null,
+    messages: messages.length,
   });
 
   return json({
     contact: {
       id: contactId,
       name: contactName(contact),
-      phone: s(contact.wa_phone),
+      phone: maskPhone(s(contact.wa_phone)), // masked — revealContact serves the raw value
       status: s(contact.status),
       leadId: leadId || null,
       leadStatus: leadId ? (leadStatuses.get(leadId) || null) : null,
@@ -356,7 +366,7 @@ export async function actSetContactStatus(b: Row, actorUid: string): Promise<Res
 // in-memory name/phone filter as listLeads (never interpolated into the query).
 // Light allowlist DTO. limit/offset+hasMore page the window exactly like
 // listLeads (default: the historical 200 rows; hasMore is pre-search).
-export async function actListContacts(b: Row): Promise<Response> {
+export async function actListContacts(b: Row, actorUid: string): Promise<Response> {
   const status = s(b.status).trim();
   if (status && !CONTACT_STATUSES.has(status)) {
     return err("סטטוס איש קשר לא תקין", 400, "invalid_status");
@@ -370,11 +380,16 @@ export async function actListContacts(b: Row): Promise<Response> {
   const rows = await fetchRows<Row>(path);
   if (rows === null) return err("שגיאה בטעינת אנשי הקשר", 502, "db_error");
   const hasMore = rows.length > limit;
-  let contacts = (hasMore ? rows.slice(0, limit) : rows).map(shapeContact);
+  // Filter on the RAW rows first (search must still match the real number), then
+  // shape — shapeContact masks the phone, so filtering after it would only ever
+  // match the masked form.
+  let window = hasMore ? rows.slice(0, limit) : rows;
   if (search) {
-    contacts = contacts.filter((c) =>
-      c.name.toLowerCase().includes(search) || c.phone.toLowerCase().includes(search)
+    window = window.filter((r) =>
+      s(r.wa_name).toLowerCase().includes(search) || s(r.wa_phone).toLowerCase().includes(search)
     );
   }
+  const contacts = window.map(shapeContact);
+  await logAudit(actorUid, "crm_read_contacts", { count: contacts.length });
   return json({ contacts, hasMore });
 }

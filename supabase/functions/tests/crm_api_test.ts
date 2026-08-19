@@ -43,7 +43,7 @@ import {
 // The 2026-07 module split: index.ts is the thin gate+router; the handlers live
 // in cohesive actions_*.ts modules over the shared helpers.ts plumbing. These
 // imports pin the module map — a dropped export breaks here, not in dispatch.
-import { cors, countRows, err, json, lastMessages } from "../crm-api/helpers.ts";
+import { countRows, err, json, lastMessages, withCors } from "../crm-api/helpers.ts";
 import { jsonResponse, withFetchStub } from "./_capture_handler.ts";
 import * as actionsOverview from "../crm-api/actions_overview.ts";
 import * as actionsConversations from "../crm-api/actions_conversations.ts";
@@ -106,7 +106,7 @@ Deno.test("snippet is null-safe", () => {
 
 Deno.test("contactName prefers wa_name, then phone, then a neutral placeholder", () => {
   assertEquals(contactName({ wa_name: "דנה לוי", wa_phone: "0521234567" }), "דנה לוי");
-  assertEquals(contactName({ wa_name: "  ", wa_phone: "0521234567" }), "0521234567");
+  assertEquals(contactName({ wa_name: "  ", wa_phone: "0521234567" }), "•••••••567"); // masked fallback
   assertEquals(contactName({}), "ללא שם");
   assertEquals(contactName({ wa_name: null, wa_phone: null }), "ללא שם");
 });
@@ -283,7 +283,8 @@ Deno.test("shapeLeadDetail maps the CRM fields + coerces empties/consent honestl
     consent_marketing_sms: true, consent_marketing_email: false, consent_marketing_whatsapp: true,
   });
   assertEquals(d.name, "דנה לוי");
-  assertEquals(d.email, "d@x.com");
+  assertEquals(d.phone, "•••••••567"); // masked by default — revealContact serves the raw value
+  assertEquals(d.email, "d•@x.com"); // local part masked, domain kept
   assertEquals(d.actualSaving, 480);
   assertEquals(d.priority, "high");
   assertEquals(d.followUpAt, "2026-07-02T15:00:00Z");
@@ -364,7 +365,8 @@ Deno.test("shapeMeetingDetail maps the CRM fields but still drops internal colum
   for (const leak of ["gcal_event_id", "claimed_by_tg_id", "reminded_rep_at"]) {
     assertFalse(keys.includes(leak), `${leak} must not appear in the meeting detail DTO`);
   }
-  assertEquals(d.email, "r@x.com");
+  assertEquals(d.phone, "•••••••887"); // masked by default
+  assertEquals(d.email, "r•@x.com");
   assertEquals(d.joinUrl, "https://zoom.us/j/1");
   assertEquals(d.notes, null); // "" → null
 });
@@ -391,7 +393,7 @@ Deno.test("shapeContact is an allowlist — wa_id / internal columns never leak"
     assertFalse(keys.includes(leak), `${leak} must not appear in the contact DTO`);
   }
   assertEquals(c.name, "יעל");
-  assertEquals(c.phone, "0501112233");
+  assertEquals(c.phone, "•••••••233"); // masked by default
   assertEquals(c.leadId, "L9");
 });
 
@@ -417,7 +419,8 @@ Deno.test("shapeSellableLead is an allowlist — source_ip / notes / internal co
     assertFalse(keys.includes(leak), `${leak} must not appear in the sellable DTO`);
   }
   assertEquals(d.name, "דנה");
-  assertEquals(d.email, "d@x.com");
+  assertEquals(d.phone, "•••••••567"); // even the consented sellable feed is masked on the wire
+  assertEquals(d.email, "d•@x.com");
   assertEquals(d.consentShareAt, "2026-07-01T10:00:00Z");
 });
 
@@ -438,7 +441,7 @@ Deno.test("shapeMember maps uid/role/grantedAt + the member's own name/email onl
     uid: "u1",
     role: "rep",
     name: "דנה",
-    email: "d@x.com",
+    email: "d•@x.com", // masked like every other address leaving the function
     grantedAt: "2026-07-10T10:00:00Z",
   });
 });
@@ -503,25 +506,37 @@ Deno.test("aggregateReps ignores unclaimed rows and non-positive savings", () =>
 // edits. These tests pin (a) the shared response builders the router and every
 // action use, and (b) the action → module map the router's switch depends on.
 
-Deno.test("cors() returns the permissive base headers and merges extras on top", () => {
-  assertEquals(cors(), {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "*",
-  });
-  assertEquals(cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }), {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  });
-});
-
-Deno.test("json() wraps a body as application/json + CORS, default 200", async () => {
+// CORS is no longer `*`: json() is ORIGIN-NEUTRAL and withCors() reflects the
+// Origin only when it is on the shared allowlist (_shared/cors.ts).
+Deno.test("json() is origin-neutral — no Allow-Origin header of its own", async () => {
   const ok = json({ ok: true });
   assertEquals(ok.status, 200);
   assertEquals(ok.headers.get("content-type"), "application/json");
-  assertEquals(ok.headers.get("access-control-allow-origin"), "*");
-  assertEquals(ok.headers.get("access-control-allow-headers"), "*");
+  assertEquals(ok.headers.get("access-control-allow-origin"), null);
   assertEquals(await ok.json(), { ok: true });
+});
+
+Deno.test("withCors reflects an allowlisted Origin and refuses an unknown one", async () => {
+  const allowed = withCors(
+    new Request("https://fn/", { headers: { origin: "https://switchy-ai.com" } }),
+    json({ ok: true }),
+  );
+  assertEquals(allowed.headers.get("access-control-allow-origin"), "https://switchy-ai.com");
+  assertEquals(allowed.headers.get("vary"), "Origin");
+  assertEquals(await allowed.json(), { ok: true });
+
+  const denied = withCors(
+    new Request("https://fn/", { headers: { origin: "https://evil.example" } }),
+    json({ ok: true }),
+  );
+  assertEquals(denied.headers.get("access-control-allow-origin"), null);
+  assertEquals(denied.status, 200); // the response itself is unchanged — the browser blocks the read
+});
+
+Deno.test("withCors preserves the status and adds no header for a request with no Origin", () => {
+  const r = withCors(new Request("https://fn/"), json({ error: "x" }, 502));
+  assertEquals(r.status, 502);
+  assertEquals(r.headers.get("access-control-allow-origin"), null);
 });
 
 Deno.test("json() carries an explicit error status + the Hebrew error body unchanged", async () => {
@@ -534,7 +549,6 @@ Deno.test("err() answers the unified {error, code} shape — additive over {erro
   const r = err("הליד לא נמצא", 404, "not_found");
   assertEquals(r.status, 404);
   assertEquals(r.headers.get("content-type"), "application/json");
-  assertEquals(r.headers.get("access-control-allow-origin"), "*");
   // `error` keeps the human Hebrew message; `code` is the additive machine field.
   assertEquals(await r.json(), { error: "הליד לא נמצא", code: "not_found" });
 });

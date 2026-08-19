@@ -57,6 +57,7 @@ on:
           - site-bill-analyzer
           - site-plan-advisor
           - site-push-notify
+          - security-watch
           - all
 
 concurrency:
@@ -104,7 +105,7 @@ jobs:
 
           # Keep this list identical to the dispatch choices above (minus "all").
           if [ "$target" = "all" ]; then
-            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat crm-api site-subscribe savings-watch telegram-webhook renewal-reminders meeting-book referral-issue street-price account-delete analytics-track admin-metrics translate community-moderate community-notify lead-digest site-bill-analyzer site-plan-advisor site-push-notify; do
+            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat crm-api site-subscribe savings-watch telegram-webhook renewal-reminders meeting-book referral-issue street-price account-delete analytics-track admin-metrics translate community-moderate community-notify lead-digest site-bill-analyzer site-plan-advisor site-push-notify security-watch; do
               deploy_one "$fn"
             done
           else

@@ -10,6 +10,14 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // web/lib/__tests__/crm-parity.test.ts deliberately imports the Deno module
+    // supabase/functions/crm-api/crm_logic.ts, to pin this console's validation
+    // vocabulary to the server's. Deno REQUIRES the .ts extension on its own
+    // relative imports, so once that module imports anything, tsc following it
+    // hits TS5097. This flag lets tsc resolve those specifiers; it is safe
+    // because noEmit is true above, and it changes nothing at runtime — the app
+    // itself still imports extensionless, as every file here does.
+    "allowImportingTsExtensions": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

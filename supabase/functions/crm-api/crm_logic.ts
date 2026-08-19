@@ -4,6 +4,8 @@
 // PostgREST write, so a malformed client can never stamp an arbitrary status onto
 // a row or smuggle a bad ?status= filter into the query string.
 
+import { maskEmailN, maskPhone } from "../_shared/pii.ts";
+
 export const SNIPPET_LEN = 60;
 export const MAX_REPLY_LEN = 4000; // matches the body.slice cap on the stored row
 export const EVENT_PREVIEW_LEN = 80; // crm_events.preview cap — a short, PII-light snippet
@@ -49,9 +51,11 @@ export function snippet(body: unknown): string {
   return t.length > SNIPPET_LEN ? t.slice(0, SNIPPET_LEN - 1) + "…" : t;
 }
 
-/** Display name: explicit wa_name, else the phone, else a neutral placeholder. */
+/** Display name: explicit wa_name, else the MASKED phone (an unnamed contact's
+ *  name must not leak the raw number the phone field itself masks), else a
+ *  neutral placeholder. */
 export function contactName(c: Record<string, unknown>): string {
-  return s(c.wa_name).trim() || s(c.wa_phone).trim() || "ללא שם";
+  return s(c.wa_name).trim() || maskPhone(s(c.wa_phone).trim()) || "ללא שם";
 }
 
 /**
@@ -260,8 +264,8 @@ export function shapeLeadDetail(r: Record<string, unknown>): LeadDetail {
   return {
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
-    email: emptyToNull(r.email),
+    phone: maskPhone(s(r.phone)), // masked by default — revealContact{kind:'lead'} serves the raw value
+    email: maskEmailN(r.email),
     provider: emptyToNull(r.provider),
     planId: emptyToNull(r.plan_id),
     source: emptyToNull(r.source),
@@ -368,7 +372,7 @@ export function shapeContact(r: Record<string, unknown>): ContactSummary {
   return {
     id: s(r.id),
     name: emptyToNull(r.wa_name) ?? "",
-    phone: s(r.wa_phone),
+    phone: maskPhone(s(r.wa_phone)), // masked — revealContact{kind:'contact'} serves the raw value
     status: s(r.status),
     leadId: emptyToNull(r.lead_id),
     lastMessageAt: emptyToNull(r.last_message_at),
@@ -398,7 +402,7 @@ export function shapeMeeting(r: Record<string, unknown>): MeetingSummary {
   return {
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
+    phone: maskPhone(s(r.phone)), // masked — revealContact{kind:'meeting'} serves the raw value
     provider: emptyToNull(r.provider),
     meetingDate: emptyToNull(r.meeting_date),
     slot: emptyToNull(r.slot),
@@ -437,8 +441,8 @@ export function shapeMeetingDetail(r: Record<string, unknown>): MeetingDetail {
   return {
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
-    email: emptyToNull(r.email),
+    phone: maskPhone(s(r.phone)), // masked — revealContact{kind:'meeting'} serves the raw value
+    email: maskEmailN(r.email),
     provider: emptyToNull(r.provider),
     planId: emptyToNull(r.plan_id),
     meetingDate: emptyToNull(r.meeting_date),
@@ -504,8 +508,8 @@ export function shapeSellableLead(r: Record<string, unknown>): SellableLead {
   return {
     id: s(r.id),
     name: s(r.name),
-    phone: s(r.phone),
-    email: emptyToNull(r.email),
+    phone: maskPhone(s(r.phone)), // masked — revealContact{kind:'lead'} serves the raw value
+    email: maskEmailN(r.email),
     provider: emptyToNull(r.provider),
     source: emptyToNull(r.source),
     status: s(r.status),
@@ -539,7 +543,10 @@ export function shapeMember(
     uid: s(r.uid),
     role: s(r.role),
     name: profile ? emptyToNull(profile.name) : null,
-    email: profile ? emptyToNull(profile.email) : null,
+    // Staff (not customer) PII, but an email is an email: masked like every other
+    // address that leaves this function. revealContact{kind:'member'} (admin-only)
+    // serves the raw address when an admin genuinely needs it.
+    email: profile ? maskEmailN(profile.email) : null,
     grantedAt: emptyToNull(r.granted_at),
   };
 }

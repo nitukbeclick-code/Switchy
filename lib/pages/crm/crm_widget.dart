@@ -724,6 +724,11 @@ class _ThreadViewState extends State<_ThreadView> {
   final ScrollController _scroll = ScrollController();
   bool _sending = false;
 
+  // The contact phone is MASKED by the server; the raw value is fetched on
+  // demand via the audited revealContact endpoint and held here for the session.
+  String? _revealedPhone;
+  bool _revealing = false;
+
   // Locally-appended optimistic messages, cleared once a refresh confirms them.
   final List<CrmMessage> _pending = [];
 
@@ -829,7 +834,7 @@ class _ThreadViewState extends State<_ThreadView> {
         : (widget.fallbackName.isNotEmpty
             ? widget.fallbackName
             : widget.fallbackPhone);
-    final subtitle = contact?.phone ?? widget.fallbackPhone;
+    final subtitle = _revealedPhone ?? contact?.phone ?? widget.fallbackPhone;
 
     return Scaffold(
       backgroundColor: t.background,
@@ -845,10 +850,36 @@ class _ThreadViewState extends State<_ThreadView> {
             Text(title,
                 style: GoogleFonts.rubik(
                     fontSize: 16, fontWeight: FontWeight.w700, color: t.primaryText)),
-            Text(subtitle,
-                style: GoogleFonts.assistant(
-                    fontSize: 12,
-                    color: t.secondaryText)),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(subtitle,
+                    style: GoogleFonts.assistant(fontSize: 12, color: t.secondaryText)),
+                if (_revealedPhone == null && subtitle.contains('•'))
+                  _revealing
+                      ? Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 6),
+                          child: SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.6, color: t.secondaryText),
+                          ),
+                        )
+                      : Semantics(
+                          button: true,
+                          label: 'הצג מספר טלפון מלא',
+                          child: InkWell(
+                            onTap: _revealPhone,
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              child: Icon(Icons.visibility_outlined,
+                                  size: 15, color: t.primary),
+                            ),
+                          ),
+                        ),
+              ],
+            ),
           ],
         ),
       ),
@@ -865,6 +896,34 @@ class _ThreadViewState extends State<_ThreadView> {
         ],
       ),
     );
+  }
+
+  // Fetch the UNMASKED phone on explicit rep action (audited server-side). Keyed
+  // by conversation so the server resolves the right contact.
+  Future<void> _revealPhone() async {
+    if (_revealing || _revealedPhone != null) return;
+    setState(() => _revealing = true);
+    try {
+      final revealed = await appBackend.crmRevealContact(
+        kind: 'conversation',
+        id: widget.conversationId,
+      );
+      if (!mounted) return;
+      final phone = revealed.phone;
+      if (phone == null || phone.isEmpty) {
+        setState(() => _revealing = false);
+        AppSnackBar.error(context, 'אין מספר טלפון לאיש קשר זה');
+        return;
+      }
+      setState(() {
+        _revealedPhone = phone;
+        _revealing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _revealing = false);
+      AppSnackBar.error(context, 'לא הצלחנו להציג את המספר');
+    }
   }
 
   Future<void> _changeContactStatus(String status) async {

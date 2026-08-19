@@ -152,19 +152,30 @@ community permalinks, and a new reply must not re-write the catalogue.
 2. `cd web && npx vitest run lib/__tests__/isr-budget.test.ts` — the failure
    message lists the five most expensive surfaces.
 3. If the budget test passes and the meter is still climbing, the cause is
-   traffic through dynamic renders, not configuration. Two known candidates,
-   both deliberately left out of this change because they alter behaviour and
-   need their own testing:
+   traffic through dynamic renders, not configuration.
 
-   - **The desktop device-split proxy** (`web/proxy.ts`) rewrites desktop
-     requests to the static origin and sets `Vary: User-Agent`. User-agent
-     strings are near-unique, so the CDN misses on most requests and those bytes
-     are billed as origin transfer. Narrowing the `Vary` to the paths whose
-     response genuinely differs by device (the `.html` and static-asset rewrites
-     are identical for every device) is the next available saving.
-   - **The community Q&A pages** render on every request. `/community/questions`
-     is dynamic because it reads `searchParams`; `/community/post/[id]` has no
-     `generateStaticParams`, so nothing is prerendered and each permalink view is
-     a function invocation plus two Supabase reads. Making them cacheable would
-     move that cost from CPU/transfer to a handful of ISR writes — the budget
-     test already reserves room for 500 such pages.
+   - **The desktop device-split proxy** (`web/proxy.ts`) — *addressed.* It
+     rewrites desktop requests to the static origin, and it used to set
+     `Vary: User-Agent` on every response it touched. User-agent strings are
+     near-unique per browser build, so those responses missed the CDN on almost
+     every request and were re-fetched from the origin — billed as Fast Origin
+     Transfer. The header is now set only where phone and desktop genuinely get
+     different bytes (a clean path with a static twin). The branches that serve
+     identical bytes to every device — the static root assets, every `*.html`
+     document, and every Next-only route — carry no `Vary` and cache once at the
+     edge. `web/lib/__tests__/proxy.test.ts` pins both the routing and which
+     responses may carry the header. The helper also *appends* rather than
+     overwrites, so Next's own `Vary` (`rsc`, `next-router-*`) survives — without
+     it a CDN can hand an RSC request a cached HTML response and break
+     client-side navigation.
+   - **The community Q&A pages** render on every request — *deliberately left as
+     they are.* `/community/questions` is dynamic because it reads
+     `searchParams`; `/community/post/[id]` never reaches the prerender manifest
+     because its Supabase reads are uncached fetches, which opt the route out of
+     static rendering. Making them cacheable would move that cost from CPU and
+     origin transfer to a handful of ISR writes — the budget test already
+     reserves room for 500 such pages — but it also means a post **flagged after
+     it was cached stays publicly visible for the rest of the window**. Do this
+     only together with a purge-on-flag call into `/api/revalidate`
+     (`{"scope":"community","paths":["/community/post/<id>"]}`) from the
+     moderation path, so a flag takes effect immediately.

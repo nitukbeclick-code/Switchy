@@ -934,7 +934,7 @@ class _SavingsRing extends StatelessWidget {
                         // rest (market price) — the savings slice reads as money.
                         PieChartSectionData(
                           value: savingsPerMonth.toDouble(),
-                          color: ffTheme.saving,
+                          color: ffTheme.savingText,
                           radius: 16 + 4 * t,
                           showTitle: false,
                         ),

@@ -28,9 +28,10 @@ pushed.
   runs `git diff --quiet HEAD^ HEAD -- .` — scoped to the Root Directory, so a
   commit that changed nothing under `web/` (chiefly the `rebuild-static`
   workflow's `site/*.html` pushes, up to 48 a day) does not redeploy the Next app.
-  `site/vercel.json` carries the mirror image for the static project. Freshness is
-  preserved by the on-demand purge, not by those redeploys — see
-  [Vercel free-tier budget](./vercel-isr-budget.md).
+  Freshness is preserved by the on-demand purge, not by those redeploys — see
+  [Vercel free-tier budget](./vercel-isr-budget.md). The static project has no
+  equivalent: the same key in `site/vercel.json` failed its deployment and was
+  reverted.
 - **Build needs no secrets.** The catalogue is bundled (`web/data/catalogue.json`),
   read at module init by `web/lib/data.ts`. Keep `next build` green — it's the
   release gate.

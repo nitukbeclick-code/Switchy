@@ -24,7 +24,12 @@ import { clip, heCount, heDate } from "@/lib/community-render";
 import { ALL_CHANNEL, CHANNELS } from "@/lib/community";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase-public";
 
-export const revalidate = 300;
+// This hub reads searchParams (channel filter + cursor), so it renders
+// dynamically and the timer is only the ceiling for the day it stops doing so.
+// 5 minutes bought no real freshness anyway (posts trickle in); 30 minutes plus
+// the on-demand purge a new post fires (/api/revalidate) does.
+// See docs/vercel-isr-budget.md.
+export const revalidate = 1800;
 
 export const metadata: Metadata = pageMetadata({
   title: "שאלות ותשובות — קהילת חוסך",

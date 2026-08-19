@@ -71,9 +71,14 @@ import {
 // Bounded matrix: every service × every city, pre-rendered at build time.
 // Unknown service/city combos -> real 404 (we only serve the curated matrix).
 export const dynamicParams = false;
-// ISR: regenerate hourly so the live DB catalogue (prices, direct answer, table,
+// ISR: regenerate daily so the live DB catalogue (prices, direct answer, table,
 // JSON-LD) stays fresh on every geo page while still serving instantly.
-export const revalidate = 3600;
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 export function generateStaticParams() {
   const cities = getCities();
   return getServices().flatMap((s) =>

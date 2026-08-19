@@ -44,11 +44,16 @@ import StickyLeadCta from "@/components/StickyLeadCta";
 import { directAnswerFor, lastDataDate } from "@/lib/aeo";
 import { pageMetadata } from "@/lib/seo";
 
-// ISR: regenerate hourly so the AEO direct answer reads fresh DB prices for
+// ISR: regenerate daily so the AEO direct answer reads fresh DB prices for
 // price-related guides, while still serving instantly from the static cache.
 // (force-static is intentionally NOT set — it would pin the page and defeat the
-// hourly revalidation. dynamicParams=false below still caps to known slugs.)
-export const revalidate = 3600;
+// daily revalidation. dynamicParams=false below still caps to known slugs.)
+// ISR budget: 24h is the SAFETY NET, not the freshness mechanism — a price
+// edit reaches this page in seconds via the on-demand purge (/api/revalidate,
+// fired by the catalogue webhook). Hourly revalidation re-wrote every page 24x
+// a day and blew the Vercel free-tier ISR-write / origin-transfer budget.
+// See docs/vercel-isr-budget.md before lowering this.
+export const revalidate = 86400;
 
 // Pre-render one page per guide at build time. dynamicParams=false caps to known
 // slugs -> unknown slugs get a real 404 (not a soft-200).

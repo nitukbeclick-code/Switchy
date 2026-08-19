@@ -103,6 +103,7 @@ jobs:
         run: node site/build.js
 
       - name: Commit & push regenerated output (redeploys the site)
+        id: commit
         run: |
           set -euo pipefail
           git config user.name  "github-actions[bot]"
@@ -138,3 +139,45 @@ jobs:
           # Push to the branch this workflow ran on (main on schedule). The host's
           # git integration (Netlify/Vercel) picks up the push and redeploys.
           git push origin "HEAD:${{ github.ref_name }}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # ── Purge the Next app's ISR cache (the /api/revalidate on-demand hook) ──
+      # The static site above redeploys from the push; the Next app at the apex
+      # serves PRERENDERED pages whose safety-net timer is 24h (see
+      # web/lib/isr-budget.ts — short timers blew the Vercel free tier). This is
+      # what makes a price edit visible in seconds instead of within a day: purge
+      # the catalogue routes, and the next request regenerates them with the live
+      # DB prices.
+      #
+      # Set the REVALIDATE_SECRET repo secret to the SAME value as the Vercel
+      # environment variable of that name (docs/vercel-isr-budget.md). Without it
+      # the step is skipped loudly — freshness falls back to the 24h timer, which
+      # is degraded but never wrong.
+      - name: Purge the Next app's ISR cache
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          REVALIDATE_URL: ${{ vars.REVALIDATE_URL || 'https://switchy-ai.com/api/revalidate' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REVALIDATE_SECRET}" ]; then
+            echo "::warning::REVALIDATE_SECRET is not set — skipping the ISR purge."
+            echo "The Next app will pick the new prices up on its 24h revalidate instead."
+            exit 0
+          fi
+
+          # A purge carries no data and can only invalidate caches, so a failure
+          # here must never fail the rebuild — the timer is the fallback. We do
+          # print the response so a misconfigured secret is visible in the log.
+          status=$(curl -sS -o /tmp/revalidate.out -w '%{http_code}' \
+            --max-time 30 --retry 3 --retry-delay 5 --retry-all-errors \
+            -X POST "${REVALIDATE_URL}" \
+            -H "content-type: application/json" \
+            -H "x-revalidate-secret: ${REVALIDATE_SECRET}" \
+            -d '{"scope":"catalogue"}') || status="000"
+          echo "purge HTTP ${status}"
+          cat /tmp/revalidate.out || true
+          echo
+          if [ "${status}" != "200" ]; then
+            echo "::warning::ISR purge did not return 200 (got ${status})."
+          fi

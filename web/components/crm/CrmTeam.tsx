@@ -203,8 +203,13 @@ export default function CrmTeam() {
       ) : members.length === 0 ? (
         <NoticeCard>אין עדיין חברי צוות עם תפקיד מדורג. מנהלים (is_admin) לא מוצגים כאן.</NoticeCard>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-soft">
+        <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-soft"
+          tabIndex={0}
+          role="region"
+          aria-label="טבלת חברי צוות"
+        >
           <table className="w-full text-right text-sm">
+            <caption className="sr-only">טבלת חברי צוות</caption>
             <thead>
               <tr className="border-b border-border text-xs text-muted">
                 <th scope="col" className="px-4 py-2 font-medium">חבר/ה</th>
@@ -221,7 +226,7 @@ export default function CrmTeam() {
                     <td className="px-4 py-2">
                       <div className="font-medium text-ink">{m.name || "—"}</div>
                       {m.email && <div className="text-xs text-muted" dir="ltr">{m.email}</div>}
-                      <div className="text-[10px] text-muted/70" dir="ltr">{m.uid}</div>
+                      <div className="text-xs text-muted" dir="ltr">{m.uid}</div>
                     </td>
                     <td className="px-4 py-2"><RoleBadge role={m.role} /></td>
                     <td className="whitespace-nowrap px-4 py-2 text-muted">{when(m.grantedAt) || "—"}</td>

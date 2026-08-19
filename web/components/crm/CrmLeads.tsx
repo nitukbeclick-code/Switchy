@@ -797,8 +797,13 @@ export default function CrmLeads({ canAdmin = false }: { canAdmin?: boolean } = 
           </p>
 
           {/* Desktop: a semantic table. */}
-          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface shadow-soft md:block">
+          <div className="hidden overflow-x-auto rounded-2xl border border-border bg-surface shadow-soft md:block"
+            tabIndex={0}
+            role="region"
+            aria-label="טבלת לידים"
+          >
             <table className="w-full text-right text-sm">
+              <caption className="sr-only">טבלת לידים</caption>
               <thead>
                 <tr className="border-b border-border text-xs text-muted">
                   <th scope="col" className="w-10 px-4 py-2 font-medium">

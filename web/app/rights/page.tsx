@@ -115,7 +115,7 @@ export default function RightsPage() {
             href="#rights-form"
             className="interactive inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-medium text-accent-text hover:bg-accent/15"
           >
-            <Icon name="arrow" size={14} className="-scale-x-100" />
+            <Icon name="arrow" size={14} />
             לטופס הגשת הבקשה
           </a>
         </div>

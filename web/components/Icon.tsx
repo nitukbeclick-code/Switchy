@@ -9,12 +9,18 @@
 //   • round caps/joins, no fills (outline style)
 //   • `size` (px) drives both width/height; defaults to 20 (the masthead/run size)
 //
-// RTL: glyphs are mirror-aware where direction is semantic. `arrow` and `chevron`
-// point to the logical *end* (used for "forward"/"next"); in an RTL document the
-// inline flow already flips them visually via the parent's direction, but the
-// caret/arrow paths here are drawn pointing toward the inline-start "back" by the
-// `flip` convention callers choose. We keep the raw glyph LTR and let callers pass
-// the right name; no glyph hard-codes a left/right that fights RTL.
+// RTL: `arrow` and `chevron` are DIRECTIONAL — they mean "forward"/"next", and
+// forward is leftward in Hebrew. Their paths are drawn pointing right (the LTR
+// forward), so they are mirrored here with the `rtl:` variant.
+//
+// This used to claim "the inline flow already flips them visually via the
+// parent's direction". It does not: `direction: rtl` reorders inline BOXES and
+// has no effect whatsoever on SVG path geometry. The result was ~91 forward
+// affordances pointing backwards on a Hebrew site, with two call sites
+// (StickyLeadCta, /rights) hand-patching `-scale-x-100` around it. Flipping in
+// one place is what makes those hand-patches unnecessary — if you add a glyph
+// whose meaning is directional, add it to DIRECTIONAL below rather than asking
+// callers to remember.
 //
 // a11y: decorative by default (aria-hidden), since most icons sit beside text that
 // already carries the meaning. Pass `label` to make an icon a labelled image
@@ -163,6 +169,12 @@ export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "ref"> {
   strokeWidth?: number;
 }
 
+/**
+ * Glyphs whose meaning is a DIRECTION, so they must mirror with the document.
+ * Everything else (check, close, search…) is direction-neutral and must not.
+ */
+const DIRECTIONAL: ReadonlySet<IconName> = new Set<IconName>(["arrow", "chevron"]);
+
 export default function Icon({
   name,
   size = 20,
@@ -172,6 +184,11 @@ export default function Icon({
   ...rest
 }: IconProps) {
   const decorative = label == null;
+  // rtl:-scale-x-100 keys off <html dir="rtl"> (set in app/layout.tsx), so the
+  // glyph is mirrored in Hebrew and left alone if the document ever renders LTR.
+  const classes = [DIRECTIONAL.has(name) ? "rtl:-scale-x-100" : null, className]
+    .filter(Boolean)
+    .join(" ") || undefined;
   return (
     <svg
       width={size}
@@ -182,7 +199,7 @@ export default function Icon({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      className={classes}
       role={decorative ? undefined : "img"}
       aria-hidden={decorative ? true : undefined}
       aria-label={decorative ? undefined : label}

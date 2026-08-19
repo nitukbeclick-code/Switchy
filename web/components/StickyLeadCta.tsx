@@ -134,10 +134,9 @@ export default function StickyLeadCta({
         className="interactive press flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-float hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {label}
-        {/* Page is always dir="rtl"; flip the end-pointing arrow so it points to
-            the logical "forward" (left) like the prior ← — direction-aware, never
-            a hardcoded glyph. */}
-        <Icon name="arrow" size={18} aria-hidden="true" className="-scale-x-100" />
+        {/* The arrow mirrors itself: <Icon> flips its directional glyphs with the
+            document direction, so this no longer needs a local -scale-x-100. */}
+        <Icon name="arrow" size={18} aria-hidden="true" />
       </button>
       <p className="mt-1.5 text-center text-[12px] leading-snug text-muted">
         השוואה חינמית · ללא התחייבות · פנייה רק באישורכם

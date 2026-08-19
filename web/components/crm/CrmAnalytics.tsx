@@ -223,8 +223,13 @@ export default function CrmAnalytics() {
       {reps && reps.reps.length > 0 && (
         <Section title="לוח מובילים — נציגים">
           {reps.capped && <p className="mb-2 text-xs text-muted">מוצג לפי מדגם הלידים האחרונים.</p>}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto"
+            tabIndex={0}
+            role="region"
+            aria-label="טבלת נתוני אנליטיקה"
+          >
             <table className="w-full text-right text-sm">
+              <caption className="sr-only">טבלת נתוני אנליטיקה</caption>
               <thead>
                 <tr className="border-b border-border text-xs text-muted">
                   {REP_COLUMNS.map((c) => {

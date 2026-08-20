@@ -39,6 +39,10 @@
      money moments their own voice while green stays exclusively "click here". */
   --accent: #087A5B;        /* emerald action */
   --accent-d: #075B46;      /* deep emerald hover / gradient depth */
+  /* Text that sits ON a solid --accent-d fill. It is a PAIR with --accent-d:
+     change one and you must change the other, because the dark theme flips
+     --accent-d to a bright mint where white text drops to 2.47:1. */
+  --on-accent-d: #fff;
   --accent-t: #DCEDE5;      /* soft emerald surface tint */
   --value: #D39A24;         /* restrained amber — savings only */
   --value-t: #F8E9C8;       /* warm value wash */
@@ -169,6 +173,8 @@
 
     --accent: #5DD6AB;
     --accent-d: #36B98B;
+    /* Bright mint fill → the label has to be ink, not white (see --on-accent-d). */
+    --on-accent-d: #04140E;
     --accent-t: #16382D;
     --value: #F2C66D;
     --value-d: #D7A640;
@@ -216,7 +222,12 @@
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
   :root[data-theme="dark"] .feature, :root[data-theme="dark"] .guide-card, :root[data-theme="dark"] .plan, :root[data-theme="dark"] .post-card { background: var(--white); }
 }
-:root[data-theme="dark"] .plogo--img, :root[data-theme="dark"] .pchip { background: var(--white); }
+/* A literal near-white plate, NOT var(--white): that token flips to a dark
+   surface in this theme, which put dark-inked carrier marks on a dark ground —
+   פרטנר and גולן טלקום rendered as empty circles. Carrier logos are supplied as
+   art for a light background and must never be recoloured (see CLAUDE.md), so
+   the plate stays light in both themes and the mark keeps its own colours. */
+:root[data-theme="dark"] .plogo--img, :root[data-theme="dark"] .pchip { background: #F7F5EF; }
 /* Surfaces with a HARD-CODED light background (#fff) and NO token to re-skin:
    in dark mode their text flips light → light-on-light. Re-skin them to dark so
    contrast holds. (.feature/.plan/etc. already covered above via their own
@@ -952,7 +963,7 @@ a.chip:hover { border-color: var(--green-2); color: var(--green); }
 .section--alt .step { background: var(--cream); }
 .step { box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 /* .step:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
-.step__num { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: var(--glint), 0 6px 16px rgba(22,163,74,.32); }
+.step__num { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: var(--on-accent-d); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: var(--glint), 0 6px 16px rgba(22,163,74,.32); }
 @media (max-width: 900px) { .steps::before { display: none; } }
 .step h3 { font-size: 19px; color: var(--green-d); margin-bottom: 8px; }
 .step p { color: var(--muted); }
@@ -1224,9 +1235,15 @@ details > summary:active { transform: scale(.98); }
      (script.js stamps body.is-scroll-down; audit: 3 floating layers ate ~140px.) */
   .wa-fab { transition: transform .2s var(--ease), box-shadow .2s var(--ease), opacity .22s var(--ease); }
   body.is-scroll-down .wa-fab { opacity: 0; transform: translateY(14px); pointer-events: none; }
-  /* Slimmer a11y launcher on phones — it was hiding section headings. */
-  .a11y-fab { width: 44px; height: 44px; bottom: 12px; }
-  body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 72px; }
+  /* …and it stays out of the way until the visitor has actually started
+     reading. On arrival the first screen is where the working controls live —
+     the catalogue filters, the compare pickers, the bill finder rows — and a
+     fixed 54px disc parked over them costs more than the shortcut is worth.
+     script.js stamps body.is-past-fold at the same 60%-of-viewport threshold
+     the sticky CTA uses, so the two floating layers appear together. */
+  .wa-fab { opacity: 0; transform: translateY(14px); pointer-events: none; }
+  body.is-past-fold .wa-fab { opacity: 1; transform: none; pointer-events: auto; }
+  body.is-past-fold.is-scroll-down .wa-fab { opacity: 0; transform: translateY(14px); pointer-events: none; }
   /* Comfortable 44px touch targets for the card icon actions. (.plan prefix
      outranks the base 36px rules declared later in the sheet.) */
   .plan .plan__compare, .plan .plan__watch { width: 44px; height: 44px; }
@@ -1277,6 +1294,18 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 /* Match the WhatsApp FAB behaviour: lift above the sticky CTA bar when it shows. */
 body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 @media (prefers-reduced-motion: reduce) { .a11y-fab { transition: none; } }
+
+/* Phone sizing. This HAS to live after the base block above, not up in the
+   mobile section with the WhatsApp FAB: media queries add no specificity, so
+   the earlier `.a11y-fab { width: 44px }` was silently overruled by the later
+   `.a11y-fab { width: 52px }` and the launcher stayed 52px on phones — the
+   shrink that was added to stop it covering section headings never applied.
+   The launcher itself is legally required on every page (ת"י 5568), so it is
+   never hidden the way the WhatsApp FAB is; it just gets smaller. */
+@media (max-width: 760px) {
+  .a11y-fab { width: 44px; height: 44px; bottom: 12px; }
+  body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 72px; }
+}
 
 /* Panel — a real modal dialog. Sits above the grain overlay (z 9999) via a very
    high stacking context; the backdrop dims the page and closes on click. */
@@ -1567,12 +1596,24 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 @media (max-width: 560px) { .guide-cards, .guide-cards--2, .guide-cards--4 { gap: 14px; } }
 
 /* ── Plan catalogue cards ────────────────────────────────────────────── */
-.plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 14px; }
+/* minmax(min(248px, 100%), 1fr), not minmax(248px, 1fr): below a 248px content
+   box the fixed floor stops being a floor and becomes an overflow. min() lets
+   the track collapse to the container on the narrowest phones. */
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr)); gap: 14px; }
 /* Homepage "featured deals" — a centered 3-up showcase of real plan cards. */
 .plan-grid--featured { grid-template-columns: repeat(3, 1fr); max-width: 880px; margin-inline: auto; }
 @media (max-width: 860px) { .plan-grid--featured { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .plan-grid--featured { grid-template-columns: 1fr; } }
-.plan { background: rgba(255,255,255,.7); backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); border: 1px solid rgba(255,255,255,.65); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .18s; }
+/* min-width:0 so a card can shrink below its min-content inside a grid track —
+   without it the widest card sets a hard floor for every column.
+   NOT content-visibility:auto. It was tried here to let the browser skip layout
+   for the ~120 off-screen cards, but a plan card is 566-590px tall and no single
+   contain-intrinsic-size fits them all: under-reserving made the section CTA that
+   follows the grid render ON TOP of the last card's controls (measured: the
+   "לכל המסלולים" ghost button covered 22x36px of the price-watch bell on every
+   provider-vs page, so the bell's right edge clicked through to the wrong link).
+   A speculative paint saving is not worth swallowing clicks. */
+.plan { background: rgba(255,255,255,.7); backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); border: 1px solid rgba(255,255,255,.65); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; min-width: 0; box-shadow: var(--shadow-sm); transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .18s; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .plan { background: #fff; } }
 /* .plan:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 /* Keyboard parity — tabbing into a card's link lifts it like a hover, with a
@@ -1586,15 +1627,40 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 /* Real logo image variant: a UNIFORM white rounded badge container that every
    provider logo sits inside — a consistent tile rim + glass-glint, so a row of
    mixed brand marks reads as one tidy set. The mark itself is never recoloured. */
+/* Initials chip: the carrier's own colour arrives inline as --brand (build.js),
+   rendered here so each theme can tune it. Light mode reproduces the original
+   10%/25% alpha wash exactly. */
+.plogo:not(.plogo--img) {
+  background: color-mix(in srgb, var(--brand, #0F766E) 10%, transparent);
+  /* Deepened a touch for TEXT: the initials sit on a 10% wash of their own
+     carrier colour, and a mid-tone brand green (#2E7D32) against that wash
+     measured 4.28:1 at 9px. The wash and border keep the pure hue; only the
+     glyphs are darkened, so the carrier still reads as itself. */
+  color: color-mix(in srgb, var(--brand, #0F766E) 82%, var(--ink-900));
+  border-color: color-mix(in srgb, var(--brand, #0F766E) 25%, transparent);
+}
+/* On the dark canvas the deeper carrier hues fall to ~2.9:1 as 9px bold text.
+   Lifting the hue toward paper keeps the carrier recognisable — it is still its
+   own colour, not the site accent — while clearing AA. */
+:root[data-theme="dark"] .plogo:not(.plogo--img) {
+  color: color-mix(in srgb, var(--brand, #0F766E) 45%, #fff);
+  background: color-mix(in srgb, var(--brand, #0F766E) 22%, transparent);
+  border-color: color-mix(in srgb, var(--brand, #0F766E) 40%, transparent);
+}
 .plogo--img { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-xs); overflow: hidden; box-shadow: var(--glint), var(--shadow-sm); }
 .plogo--img img { width: 100%; height: 100%; object-fit: contain; padding: 4px; display: block; }
-.provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)); gap: 14px; }
 .provider-card { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 /* .provider-card:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .provider-card:focus-visible, .provider-card:focus-within { transform: translateY(-3px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
 .provider-card b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; display: block; }
 .provider-card small { color: var(--muted); font-size: 13px; display: block; }
-.provider-card__cats { font-size: 11px !important; opacity: .65; margin-top: 2px; }
+/* No opacity. It multiplied an ALREADY-muted colour and broke AA on every
+   provider card: --muted is 5.74:1 on paper and 8.74:1 on the dark card at full
+   strength, but .65 dropped that to 3.02/4.49 and even .8 only reached 3.72 in
+   light mode. The step down from the provider name is carried by size (11px vs
+   16px bold) and by --muted itself, neither of which costs contrast. */
+.provider-card__cats { font-size: 11px !important; margin-top: 2px; }
 .plan__provider:hover { color: var(--green); text-decoration: underline; }
 .plan__net { background: var(--mint); color: var(--green); font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
 .plan__name { color: var(--muted); font-size: 13px; margin-top: 3px; }
@@ -1778,7 +1844,7 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
    nav's aria-current) — was solid ink here and grey one row below. */
 /* Solid green fills behind WHITE text use --accent-d: white on --accent (#16A34A)
    is only 3.3:1 (fails normal AA), while on --accent-d (#15803D) it's 5.0:1. */
-.filter-btn.active { background: var(--accent-d); color: #fff; border-color: var(--accent-d); }
+.filter-btn.active { background: var(--accent-d); color: var(--on-accent-d); border-color: var(--accent-d); }
 .filter-search { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-size: 15px; background: var(--white); transition: border-color .15s, box-shadow .15s; }
 .filter-search:hover { border-color: var(--ink-300); }
 /* Use the site's own focus ring (was a raw 2px outline — inconsistent with
@@ -2029,7 +2095,18 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   .footer__inner { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 520px) { .footer__inner { grid-template-columns: 1fr; } }
-@media (max-width: 760px) {
+/* ── Nav collapse ─────────────────────────────────────────────────────────
+   The header row is the widest fixed-width thing on every page: measured across
+   30 pages it needs 933px to lay out, identically on all of them. Collapsing it
+   any later than that hands the document a horizontal scrollbar — the row keeps
+   rendering, overflows, and drags the whole RTL page sideways so the headline
+   and primary CTA fall off the start edge. This used to sit at 760px, which
+   left 761–932px broken: iPad portrait (768), iPad Air landscape (820), iPad
+   Pro 11" portrait (834) and Surface (912) all land inside that band.
+   960px keeps ~27px of headroom over the measured 933. If nav labels are ever
+   added or lengthened, re-measure and raise this — it is a hard layout floor,
+   not a taste preference. */
+@media (max-width: 960px) {
   .nav__links, .nav__cta { display: none; }
   /* The AI pill folds into the drawer on phones (its row lives under כלים) —
      the burger must never fight it for room. Language + theme stay: they're
@@ -2050,6 +2127,12 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
      the drawer's bottom items stay visible AND tappable pre-consent; still below
      the skip link (9999) and language menu (10000). */
   .nav:has(.nav__mobile.open) { z-index: 1200; }
+}
+/* While the drawer is open the page behind it must not scroll. The drawer has
+   its own overflow-y, so locking the body does not trap the menu's own tail. */
+body.nav-open { overflow: hidden; }
+
+@media (max-width: 760px) {
   .section { padding: 48px 0; }
   .section__head { margin-bottom: 36px; }
   .hero { padding: 36px 0 28px; }
@@ -2075,8 +2158,12 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   .hero h1 { font-size: clamp(28px, 9vw, 48px); letter-spacing: -1px; }
   .hero__sub { font-size: 16px; }
   .hero__cta .btn { flex: 1 1 100%; }   /* full-width stacked CTAs */
-  /* Single-column plan grids everywhere on small phones. */
-  .plan-grid, .plan-grid--featured { grid-template-columns: 1fr; gap: var(--space-xs); }
+  /* Single-column plan grids everywhere on small phones. minmax(0,1fr) rather
+     than a bare 1fr: `1fr` is `minmax(auto,1fr)`, and that `auto` floor is the
+     card's min-content width — which on the widest cards resolved to 358px and
+     pushed a 288px-wide grid to a 374px scrollWidth, giving every 320–360px
+     phone a sideways scrollbar. */
+  .plan-grid, .plan-grid--featured { grid-template-columns: minmax(0, 1fr); gap: var(--space-xs); }
   /* Calculator stacks vertically and the dark card gets calmer padding. */
   .calc { grid-template-columns: 1fr; gap: var(--space-md); }
   .calc__card { padding: 22px; }
@@ -2086,6 +2173,13 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   /* Trust strip wraps to a comfortable two-up rather than one cramped line. */
   .trust__row { gap: var(--space-xs) var(--space-sm); }
   .trust__item { font-size: 12px; }
+  /* Buttons stop refusing to wrap. The base .btn is white-space:nowrap so a CTA
+     never breaks mid-phrase on roomy screens — but once the CTA is full-width on
+     a phone, an un-wrappable Hebrew label just pushes past the viewport and hands
+     the whole page a sideways scrollbar (community's
+     "להצטרף ולפרסם — הורידו את האפליקציה" overflowed every screen under ~365px).
+     Two lines of button beat a document that scrolls sideways. */
+  .btn { white-space: normal; text-wrap: balance; min-width: 0; }
   /* Nav: trim the gutter and brand size so the toggle never collides. */
   .container { padding-inline: var(--space-sm); }
   .nav__inner { gap: 10px; }
@@ -2093,6 +2187,26 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   /* Section heads & rhythm breathe a touch less on tiny screens. */
   .section { padding: var(--space-lg) 0; }
   .subscribe, .advisor { width: 100%; }
+}
+
+/* ── Folded phones (≤340px: Galaxy Fold cover screen) ──────────────────────
+   The header lockup — brand tile + wordmark + language + theme + burger — is
+   the last thing to fit, and below ~300px it was still pushing the document
+   sideways. Shrink the mark and wordmark and close the gaps; everything stays
+   above the 44px touch floor because the icon buttons are untouched. */
+@media (max-width: 340px) {
+  .container { padding-inline: 12px; }
+  .nav__inner { gap: 6px; }
+  .brand { gap: 7px; }
+  .brand__mark { width: 28px; height: 28px; padding: 4px; border-radius: 8px; }
+  .brand__name { font-size: 16px; letter-spacing: -.02em; }
+  .hero h1 { font-size: clamp(24px, 8.5vw, 40px); }
+  /* Stacked comparison cards put the row label and its value on one flex line.
+     At this width they stop fitting side by side and the card sets a ~304px
+     floor, so let the label take its own line instead. */
+  .cmp td { flex-wrap: wrap; gap: 2px 10px; padding-inline: 10px; }
+  .cmp td[data-th]::before { flex: 1 1 100%; }
+  .cmp__info { max-width: 100%; }
 }
 
 /* ╔══════════════════════════════════════════════════════════════════════╗
@@ -2117,8 +2231,13 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
   border-radius: 14px; padding: 9px; width: 52px; height: 52px; box-sizing: border-box;
 }
 :root[data-theme="dark"] .cat__icon { color: var(--tf); }
-.cat .cat__go { color: var(--tt); }
-:root[data-theme="dark"] .cat .cat__go { color: var(--tf); }
+/* The five category hues are tuned as ICON tints, where they only ever have to
+   read as a shape. As 13px bold label text on the ivory canvas the warmest of
+   them (triple's amber) measured 4.38:1 — under the 4.5 floor — and its dark
+   counterpart 4.28:1. Pulling each hue a fifth of the way toward the page's own
+   ink/paper keeps every category's voice while clearing AA in both themes. */
+.cat .cat__go { color: color-mix(in srgb, var(--tt) 78%, var(--ink-900)); }
+:root[data-theme="dark"] .cat .cat__go { color: color-mix(in srgb, var(--tf) 80%, #fff); }
 @media (hover: hover) and (pointer: fine) {
   .cat:hover { border-color: color-mix(in srgb, var(--tf) 55%, var(--line)); }
 }
@@ -2733,7 +2852,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .community__chan--active,
 .community__chan[aria-pressed="true"],
 .community__chip[aria-pressed="true"] {
-  background: var(--accent-d); color: #fff; border-color: var(--accent-d);
+  background: var(--accent-d); color: var(--on-accent-d); border-color: var(--accent-d);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2808,7 +2927,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ── Provider ratings grid ──────────────────────────────────────────────────
    A responsive grid of compact rating cards (one per provider): avg stars,
    review count. Reviews list below shows individual verified reviews. */
-.ratings { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.ratings { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 14px; }
 .rating-card {
   background: var(--white); border: 1px solid var(--line); border-radius: 16px;
   padding: 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow-sm);
@@ -2948,7 +3067,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 /* Even auto-fit grid so the 7 carrier chips align in tidy rows (no ragged
    wrap), each cell an equal-width pill with its logo + name. */
-.booking__providers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
+.booking__providers-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr)); gap: 10px; }
 .booking__providers .provider-pick,
 .booking__providers-grid .booking__provider,
 .booking__providers .booking__provider {
@@ -2974,7 +3093,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .booking__providers .provider-pick.is-chosen,
 .booking__providers .booking__provider[aria-pressed="true"],
 .booking__providers .booking__provider.is-chosen {
-  background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; border-color: var(--accent-d);
+  background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: var(--on-accent-d); border-color: var(--accent-d);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 6px 16px rgba(22,163,74,.30); transform: translateY(-1px);
 }
 
@@ -2996,7 +3115,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 /* Slot grid — responsive grid of 30-min time buttons. Chosen = green; taken or
    out-of-window slots render disabled. */
-.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
+.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(82px, 100%), 1fr)); gap: 8px; }
 .slot {
   font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px;
   min-height: 44px; padding: 10px 8px; text-align: center;
@@ -3011,7 +3130,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .slot:active { transform: scale(.96); }
 .slot:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
 .slot--chosen, .slot[aria-pressed="true"] {
-  background: var(--accent-d); color: #fff; border-color: var(--accent-d);
+  background: var(--accent-d); color: var(--on-accent-d); border-color: var(--accent-d);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -3098,11 +3217,11 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   .booking__step-num { width: 23px; height: 23px; font-size: 12px; }
   .booking__step-dot + .booking__step-dot::before { width: 12px; }
   .booking__row { grid-template-columns: 1fr; gap: 18px; }
-  .booking__providers-grid { grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 8px; }
+  .booking__providers-grid { grid-template-columns: repeat(auto-fit, minmax(min(108px, 100%), 1fr)); gap: 8px; }
   .booking__form #bookSubmit { width: 100%; }
   .community__join { padding: 16px; }
   .reply { margin-inline-start: 10px; }
-  .slot-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .slot-grid { grid-template-columns: repeat(auto-fill, minmax(min(72px, 100%), 1fr)); gap: 6px; }
 }
 
 /* ── Chips & pills: tactile press (links only) ─────────────────────────────── */
@@ -3172,7 +3291,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp__best-pill {
   display: inline-block; margin-inline-start: 8px; vertical-align: middle;
   font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 11px; line-height: 1;
-  color: #fff; background: var(--accent-d); padding: 4px 9px; border-radius: 999px;
+  color: var(--on-accent-d); background: var(--accent-d); padding: 4px 9px; border-radius: 999px;
   white-space: nowrap;
 }
 .cmp__prov { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; font-weight: 600; white-space: nowrap; }
@@ -3206,7 +3325,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
   font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13px; white-space: nowrap;
   transition: background .16s, color .16s, transform .16s var(--ease);
 }
-.cmp__cta a:hover { background: var(--accent-d); color: #fff; }
+.cmp__cta a:hover { background: var(--accent-d); color: var(--on-accent-d); }
 .cmp__cta a:active { transform: scale(.97); }
 .cmp__cta svg { width: 16px; height: 16px; flex: none; }
 
@@ -3530,7 +3649,7 @@ body:has(.cbanner:not([hidden])) { padding-bottom: 80px; }
    script.js paints these load/empty/error strings and the dynamic grid. The
    markup-side .ratings/.rating-card rules above style the cards; these add the
    container layout + status lines the build doesn't pre-render. */
-.ratings__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.ratings__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: 14px; }
 .ratings__loading, .ratings__empty, .ratings__error,
 .community__loading, .community__empty, .community__error {
   text-align: center; color: var(--muted); font-size: 14px; padding: 28px 16px;
@@ -3775,7 +3894,7 @@ h1 { letter-spacing: -.02em; }
    min 300px (not 240) so a 6-card grid lands 3x2 on desktop instead of an
    orphaned 4+2 with an empty column. */
 .features {
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: var(--gap-bento);
 }
 /* The 4-bullet category feature grid reads best as a balanced 2x2 bento with a
@@ -4207,7 +4326,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .finder__cat:hover { border-color: var(--ink-300); }
 .finder__cat:active { transform: scale(.96); }
 .finder__cat:focus-visible { outline: none; box-shadow: var(--ring); }
-.finder__cat.is-active { background: var(--accent-d); color: #fff; border-color: var(--accent-d); }
+.finder__cat.is-active { background: var(--accent-d); color: var(--on-accent-d); border-color: var(--accent-d); }
 .finder__bill { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-weight: 600; font-size: 14px; color: var(--ink-700); }
 .finder__bill output { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .finder input[type="range"] { width: 100%; accent-color: var(--accent); }
@@ -4299,7 +4418,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 .cmp-tray__clear:focus-visible { outline: none; box-shadow: var(--ring-flush); }
 @media (prefers-reduced-motion: reduce) { .cmp-tray { transition: none; } }
 /* The scale icon reflects tray membership. */
-.plan__compare.is-in { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
+.plan__compare.is-in { background: var(--accent-d); border-color: var(--accent-d); color: var(--on-accent-d); }
 .plan__compare.is-in:hover { background: var(--accent-d); }
 
 /* Per-plan price-watch bell — same footprint as the compare icon. */
@@ -4314,7 +4433,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   .plan__watch:hover { transform: scale(1.07); }
 }
 .plan__watch:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
-.plan__watch.is-on { background: var(--accent-d); border-color: var(--accent-d); color: #fff; }
+.plan__watch.is-on { background: var(--accent-d); border-color: var(--accent-d); color: var(--on-accent-d); }
 .plan__watch.is-on:hover { background: var(--accent-d); }
 
 /* Watch dialog — rides the shared .pmodal chrome; only the form bits are custom. */
@@ -4334,7 +4453,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 :root[data-theme="dark"] .watch-modal__email { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.14); }
 
 /* ── Home community strip + post share ─────────────────────────────────────── */
-.home-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.home-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px; }
 .home-post {
   display: grid; gap: 8px; padding: 20px; text-decoration: none; color: inherit;
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
@@ -4784,6 +4903,50 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
 @media print {
   #planGrid > .plan, #catPlanGrid > .plan,
   .guide-cards > .guide-card { content-visibility: visible; }
+
+  /* ── Print chrome ───────────────────────────────────────────────────────
+     Guides and comparison tables are the pages people actually print, and
+     everything below is screen furniture that either overlays the content on
+     paper (the fixed launcher and the carousel arrows land on top of whatever
+     is under them on page 1) or is dead weight (a nav that cannot be clicked).
+     Content-bearing chrome — the header wordmark, the footer disclosure —
+     stays. */
+  .a11y-fab, .a11y-panel, .wa-fab, .sticky-cta, .cmp-tray, .cbanner,
+  .carousel__btn, .carousel__dots, .nav__toggle, .nav__mobile, .mega-menu,
+  .nav__cta, .skip, .toast-host, .hero__aurora, .hero-decor { display: none !important; }
+
+  /* Rails print as a wrapping grid: their scroll position is meaningless on
+     paper, and a snap viewport would clip everything past the first slide.
+     A grid (not display:block) keeps the cards side by side and, unlike the
+     flex rail, cannot lay them out wider than the sheet. */
+  .carousel__viewport {
+    overflow: visible !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px;
+  }
+  .carousel__viewport > * { break-inside: avoid; width: auto !important; min-width: 0 !important; }
+
+  /* Ink: the editorial surfaces are gradients, glass and float shadows on
+     screen. On paper they print as grey wash over the type. */
+  body, .section, .section--alt, .hero, .plan, .guide-card, .feature,
+  .provider-card, .cmp-wrap, .chip { background: #fff !important; box-shadow: none !important; }
+
+  /* Keep a card, a table row and a heading with its text on one sheet. */
+  .plan, .guide-card, .feature, .provider-card, tr, figure { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
+
+  /* A URL is the only way to follow a link off paper — but ONLY in running
+     prose. Appending one inside a button-styled link is a page-breaker: .btn
+     carries white-space:nowrap, so a wa.me href with a URL-encoded Hebrew
+     message becomes one unbreakable ~1,900px line and blows the grid track
+     (measured: +1,941px of print overflow on a guide, +2,157px on the
+     catalogue). Paragraphs and list items only, and never nowrap. */
+  main p > a[href^="http"]::after,
+  main li > a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: .85em; word-break: break-all; white-space: normal;
+  }
 }
 
 /* ── SWITCHY Editorial Fintech system · 2026-07 ───────────────────────────

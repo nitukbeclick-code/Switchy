@@ -44,15 +44,23 @@
     toggle.setAttribute('aria-expanded', String(open));
     menu.hidden = !open;
     menu.classList.toggle('open', open);
+    // The drawer scrolls internally; the page behind it must not, or a swipe
+    // over the backdrop drags the article away underneath the open menu.
+    document.body.classList.toggle('nav-open', open);
   };
   if (toggle && menu) {
     toggle.addEventListener('click', () =>
       setMenu(toggle.getAttribute('aria-expanded') !== 'true'));
     menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
-    // Esc closes the menu and returns focus to the toggle — keyboard parity with
-    // the click-to-open affordance.
-    menu.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { setMenu(false); toggle.focus(); }
+    // Esc closes the menu and returns focus to the toggle. This listens on the
+    // document, not on `menu`: the toggle itself sits OUTSIDE the drawer, so
+    // right after opening — the one moment Esc is most likely to be pressed —
+    // focus is on the toggle and a menu-scoped listener never fires.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (toggle.getAttribute('aria-expanded') !== 'true') return;
+      setMenu(false);
+      toggle.focus();
     });
   }
 
@@ -781,7 +789,10 @@
         });
       const wa = (p) => 'https://wa.me/972505037537?text=' +
         encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
-      const ctaRow = `<tr class="cmp-cta-row"><th scope="row"></th>${chosen.map((p) =>
+      // The row header is visually blank — the CTA buttons speak for themselves —
+      // but a th[scope=row] with no text leaves every button in the row without a
+      // row name when a screen reader reads the grid. Label it off-screen.
+      const ctaRow = `<tr class="cmp-cta-row"><th scope="row"><span class="sr-only">פנייה לספק</span></th>${chosen.map((p) =>
         `<td><a class="plan__cta" target="_blank" rel="noopener" href="${escHtml(wa(p))}">💬 מעוניין/ת ←</a></td>`).join('')}</tr>`;
       compareTable.innerHTML =
         `<table class="cmp-table"><thead><tr><th scope="col"><span class="sr-only">קריטריון</span></th>${cols}</tr></thead><tbody>${rows.join('')}${ctaRow}</tbody></table>`;
@@ -1130,7 +1141,10 @@
       // always one tap away on mobile.
       '<a class="sticky-cta__zoom" href="book.html" aria-label="תיאום פגישת Zoom חינם עם נציג">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg></a>';
-    document.body.appendChild(stickyBar);
+    // Join the floating-actions landmark the page already declares, rather than
+    // landing on <body> as orphaned content outside every region.
+    const floatHost = document.querySelector('.floating-actions') || document.body;
+    floatHost.appendChild(stickyBar);
     stickyBar.querySelector('.sticky-cta__zoom').addEventListener('click', () => {
       track('cta_click', { location: 'sticky', label: 'zoom', source: location.pathname });
     });
@@ -3484,7 +3498,18 @@
       grid.style.setProperty('--car-nd', n);
       if (grid.dataset.carouselM) grid.style.setProperty('--car-nm', grid.dataset.carouselM);
       if (grid.dataset.carouselT) grid.style.setProperty('--car-nt', grid.dataset.carouselT);
-      grid.setAttribute('tabindex', '-1');
+      // The rail is a scroll container, so it needs to be reachable by keyboard —
+      // arrows/Home/End scroll it once focused. tabindex="-1" only allowed
+      // programmatic focus, which left the overflowing content keyboard-dead for
+      // anyone not using the arrow buttons.
+      grid.setAttribute('tabindex', '0');
+      if (!grid.hasAttribute('role')) grid.setAttribute('role', 'region');
+      if (!grid.getAttribute('aria-label')) {
+        const near = wrap.closest('section, .section');
+        const head = near && near.querySelector('h2, h3');
+        const title = head && head.textContent.trim();
+        grid.setAttribute('aria-label', title ? title + ' — ניתן לגלול' : 'רשימה נגללת');
+      }
 
       const mkBtn = (dir, label, path) => {
         const b = document.createElement('button');
@@ -3745,6 +3770,19 @@
     }
     if (!links.length) return;
 
+    // From here on JS owns the icon: the click handler below preventDefaults and
+    // toggles tray membership, so the control is a BUTTON now, not a link. Say so
+    // in the accessibility tree — `aria-pressed` is not a valid attribute on
+    // role=link, and sync() sets it on every one of these — and accept Space,
+    // which a button must handle but an anchor does not.
+    links.forEach(function (a) {
+      if (!idOf(a)) return;
+      a.setAttribute('role', 'button');
+      a.addEventListener('keydown', function (e) {
+        if (e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); a.click(); }
+      });
+    });
+
     var bar = document.createElement('div');
     bar.className = 'cmp-tray';
     bar.setAttribute('role', 'region');
@@ -3752,16 +3790,19 @@
     bar.innerHTML = '<span class="cmp-tray__count"></span>' +
       '<a class="btn btn--primary btn--sm cmp-tray__go" href="compare.html">השוו עכשיו ←</a>' +
       '<button type="button" class="cmp-tray__clear" aria-label="ניקוי הבחירה">✕</button>';
-    document.body.appendChild(bar);
+    (document.querySelector('.floating-actions') || document.body).appendChild(bar);
     var countEl = bar.querySelector('.cmp-tray__count');
     var goEl = bar.querySelector('.cmp-tray__go');
 
     function sync() {
       var tray = read();
       links.forEach(function (a) {
-        var on = tray.indexOf(idOf(a)) !== -1;
+        var aid = idOf(a);
+        var on = tray.indexOf(aid) !== -1;
         a.classList.toggle('is-in', on);
-        a.setAttribute('aria-pressed', on ? 'true' : 'false');
+        // Only the upgraded (role=button) icons carry pressed state; an icon we
+        // could not read an id from stays a plain link and must not claim one.
+        if (aid) a.setAttribute('aria-pressed', on ? 'true' : 'false');
       });
       if (!tray.length) { bar.classList.remove('is-on'); return; }
       countEl.textContent = tray.length === 1 ? 'מסלול אחד נבחר להשוואה' : tray.length + ' מסלולים נבחרו להשוואה';
@@ -3997,12 +4038,19 @@
   (() => {
     let lastY = 0;
     let ticking = false;
+    // Landing on a deep link (#calculator, a guide anchor) starts the page
+    // mid-document with no scroll event to come, so seed the state once.
+    document.body.classList.toggle('is-past-fold', (window.scrollY || 0) > window.innerHeight * 0.6);
     window.addEventListener('scroll', () => {
       if (ticking) return;
       ticking = true;
       requestAnimationFrame(() => {
         const y = window.scrollY || 0;
         document.body.classList.toggle('is-scroll-down', y > lastY && y > 320);
+        // Same 60%-of-viewport threshold the sticky CTA uses: below it the
+        // visitor is still on the first screen, where the page's own controls
+        // live and a floating disc parked over them is pure obstruction.
+        document.body.classList.toggle('is-past-fold', y > window.innerHeight * 0.6);
         lastY = y;
         ticking = false;
       });

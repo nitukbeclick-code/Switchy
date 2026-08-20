@@ -5209,7 +5209,7 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
   border-radius: clamp(26px, 4vw, 42px);
   box-shadow: var(--shadow-lg), var(--glint);
 }
-.hero--light h1 { letter-spacing: -.045em; max-width: 12ch; }
+.hero--light h1 { letter-spacing: -.045em; max-width: 11em; }
 .hero--light h1 .hl { color: var(--accent-ink); }
 .hero__sub { max-width: 61ch; color: var(--muted); }
 .hero__launch-prompt { color: var(--ink-700); letter-spacing: -.015em; }

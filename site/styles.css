@@ -1605,12 +1605,15 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 @media (max-width: 860px) { .plan-grid--featured { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .plan-grid--featured { grid-template-columns: 1fr; } }
 /* min-width:0 so a card can shrink below its min-content inside a grid track —
-   without it the widest card sets a hard floor for every column. content-visibility
-   lets the browser skip layout/paint for cards far off-screen: the full catalogue
-   renders 120 of these at once, which on a phone is a ~104,000px document.
-   contain-intrinsic-size keeps the scrollbar honest while they are skipped. */
+   without it the widest card sets a hard floor for every column.
+   NOT content-visibility:auto. It was tried here to let the browser skip layout
+   for the ~120 off-screen cards, but a plan card is 566-590px tall and no single
+   contain-intrinsic-size fits them all: under-reserving made the section CTA that
+   follows the grid render ON TOP of the last card's controls (measured: the
+   "לכל המסלולים" ghost button covered 22x36px of the price-watch bell on every
+   provider-vs page, so the bell's right edge clicked through to the wrong link).
+   A speculative paint saving is not worth swallowing clicks. */
 .plan { background: rgba(255,255,255,.7); backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); border: 1px solid rgba(255,255,255,.65); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; min-width: 0; box-shadow: var(--shadow-sm); transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .18s; }
-.plan-grid > .plan { content-visibility: auto; contain-intrinsic-size: auto 420px; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .plan { background: #fff; } }
 /* .plan:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 /* Keyboard parity — tabbing into a card's link lifts it like a hover, with a
@@ -1629,7 +1632,11 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
    10%/25% alpha wash exactly. */
 .plogo:not(.plogo--img) {
   background: color-mix(in srgb, var(--brand, #0F766E) 10%, transparent);
-  color: var(--brand, #0F766E);
+  /* Deepened a touch for TEXT: the initials sit on a 10% wash of their own
+     carrier colour, and a mid-tone brand green (#2E7D32) against that wash
+     measured 4.28:1 at 9px. The wash and border keep the pure hue; only the
+     glyphs are darkened, so the carrier still reads as itself. */
+  color: color-mix(in srgb, var(--brand, #0F766E) 82%, var(--ink-900));
   border-color: color-mix(in srgb, var(--brand, #0F766E) 25%, transparent);
 }
 /* On the dark canvas the deeper carrier hues fall to ~2.9:1 as 9px bold text.
@@ -1648,7 +1655,12 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .provider-card:focus-visible, .provider-card:focus-within { transform: translateY(-3px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
 .provider-card b { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; display: block; }
 .provider-card small { color: var(--muted); font-size: 13px; display: block; }
-.provider-card__cats { font-size: 11px !important; opacity: .65; margin-top: 2px; }
+/* No opacity. It multiplied an ALREADY-muted colour and broke AA on every
+   provider card: --muted is 5.74:1 on paper and 8.74:1 on the dark card at full
+   strength, but .65 dropped that to 3.02/4.49 and even .8 only reached 3.72 in
+   light mode. The step down from the provider name is carried by size (11px vs
+   16px bold) and by --muted itself, neither of which costs contrast. */
+.provider-card__cats { font-size: 11px !important; margin-top: 2px; }
 .plan__provider:hover { color: var(--green); text-decoration: underline; }
 .plan__net { background: var(--mint); color: var(--green); font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
 .plan__name { color: var(--muted); font-size: 13px; margin-top: 3px; }

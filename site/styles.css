@@ -1832,6 +1832,142 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
   .plan__compare:hover { transform: scale(1.07); }
 }
 
+/* ── Storefront (plans.html) ────────────────────────────────────────────────
+   Shop layout, not an article: a slim head, a persistent facet rail beside the
+   product grid on desktop, and a toolbar that always states the result count
+   and the sort. Below 1024px the rail becomes an off-canvas drawer opened from
+   the toolbar (script.js owns the open/close contract). RTL: the rail is
+   anchored inline-start, so it slides in from the RIGHT — the translate below
+   is written for the site's rtl direction. */
+.shop-head { padding: 30px 0 4px; }
+.shop-head__row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.shop-head h1 {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-size: clamp(28px, 4.2vw, 48px); font-weight: 900; color: var(--green-d);
+  letter-spacing: -1.3px; line-height: 1.05;
+}
+.shop-head h1 .hl { color: var(--green); }
+.shop-head__copy p { color: var(--muted); font-size: 15px; margin-top: 10px; }
+.shop-head__copy p b { color: var(--green-d); font-weight: 800; }
+.shop-head__note {
+  display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px;
+  background: var(--white); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; margin-bottom: 4px;
+}
+.shop-head__note .ico { width: 16px; height: 16px; color: var(--accent); flex: 0 0 auto; }
+
+.shop { padding: 22px 0 60px; }
+/* A storefront wants more shelf than an editorial page: the shop container
+   runs wider than --maxw so the filter rail does not eat a product column. */
+.shop-head > .container, .shop > .container { max-width: 1340px; }
+.shop__layout { display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: 26px; align-items: start; }
+.shop__main { min-width: 0; }
+
+.shop__rail {
+  background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+  padding: 0 16px 16px; position: sticky; top: 86px;
+  max-height: calc(100vh - 106px); overflow-y: auto; overscroll-behavior: contain;
+}
+.shop__rail:focus { outline: none; }
+.shop__rail-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  position: sticky; top: 0; z-index: 1; background: var(--white); padding: 14px 0 10px;
+}
+.shop__rail-head h2 {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-size: 17px; font-weight: 800; color: var(--green-d); letter-spacing: -.02em;
+}
+.shop__rail-x { display: none; }
+
+.shop-facet { border-top: 1px solid var(--line); padding: 14px 0 0; }
+.shop-facet:first-child { border-top: 0; padding-top: 0; }
+.shop-facet__t {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-size: 13px; font-weight: 800; color: var(--green-d); margin-bottom: 10px;
+}
+.shop-facet__t label { cursor: pointer; }
+.shop-facet .filter-search { flex: 0 0 auto; width: 100%; max-width: none; min-height: 42px; padding: 9px 14px; font-size: 14px; }
+.shop-facet .filter-price { flex-wrap: wrap; }
+.shop-facet .filter-price .filter-search { width: 96px; }
+.shop-facet__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.shop-facet__chips .filter-btn, .shop-facet__chips .flag-chip { font-size: 13px; padding: 7px 13px; min-height: 40px; }
+.shop-facet__links { display: flex; flex-direction: column; gap: 1px; }
+.shop-facet__links a {
+  color: var(--muted); font-size: 13.5px; line-height: 1.35; padding: 8px; border-radius: 9px;
+  text-decoration: none; transition: background .15s, color .15s;
+}
+.shop-facet__links a:hover { background: var(--accent-t); color: var(--accent-ink); }
+.shop__clear {
+  margin-top: 16px; width: 100%; min-height: 42px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--cream); color: var(--green-d);
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 13.5px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.shop__clear:hover { border-color: var(--ink-300); background: var(--white); }
+
+.shop__toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--white); border: 1px solid var(--line); border-radius: 14px;
+  padding: 8px 12px; margin-bottom: 16px; position: sticky; top: 74px; z-index: 6;
+}
+.shop__toolbar .plan-count { margin-inline-start: 0; margin-inline-end: auto; font-size: 14px; font-weight: 700; color: var(--green-d); }
+.shop__filter-btn { display: none; }
+.shop__sort { display: flex; align-items: center; gap: 8px; }
+.shop__sort-lbl { font-size: 13px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.shop__sort select {
+  min-height: 40px; padding: 7px 13px; font-size: 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--white); color: var(--green-d);
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; cursor: pointer; max-width: 240px;
+}
+.shop__sort select:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+/* Painted from the body state, never from the class alone: the scrim carries
+   `hidden` for AT, and an author-level `display:block` outranks the UA's
+   [hidden] rule — a "hidden" scrim would still swallow every tap. */
+.shop__scrim { display: none; position: fixed; inset: 0; z-index: 1290; background: rgba(12, 23, 19, .45); }
+.shop__scrim[hidden] { display: none; }
+/* Product shelf. The 248px floor is deliberate: the wider shop container would
+   otherwise fit a 4th column at ~242px, which wraps .plan__actions onto two
+   rows and drops the icon buttons below the 24px safe-space WCAG 2.5.8 wants.
+   Three roomy columns beat four cramped ones. */
+.plan-grid--shop { grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr)); gap: 14px; }
+
+@media (max-width: 1023.98px) {
+  .shop__layout { grid-template-columns: minmax(0, 1fr); }
+  .shop__filter-btn {
+    display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 7px 14px;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--white); color: var(--green-d);
+    font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .shop__filter-btn .ico { width: 17px; height: 17px; }
+  .shop__filter-btn:hover { border-color: var(--ink-300); }
+  .shop__rail {
+    position: fixed; inset-block: 0; inset-inline-start: 0; z-index: 1300;
+    width: min(340px, 88vw); max-height: none; height: 100%; border-radius: 0;
+    border: 0; border-inline-end: 1px solid var(--line);
+    transform: translateX(100%); transition: transform .26s var(--ease);
+    box-shadow: var(--shadow); padding-bottom: 28px;
+  }
+  .shop__rail.is-open { transform: translateX(0); }
+  .shop__rail-x {
+    display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+    border-radius: 50%; border: 1px solid var(--line); background: var(--cream); color: var(--green-d); cursor: pointer;
+  }
+  .shop__rail-x .ico { width: 18px; height: 18px; }
+  body.shop-drawer-open .shop__scrim:not([hidden]) { display: block; }
+  body.shop-drawer-open { overflow: hidden; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop__rail { transition: none; }
+}
+@media (max-width: 560px) {
+  .shop-head__note { font-size: 12px; padding: 7px 12px; }
+  .shop__toolbar { gap: 8px; padding: 8px 10px; }
+  .shop__toolbar .plan-count { font-size: 13px; }
+  .shop__sort-lbl { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .shop__sort select { max-width: 168px; font-size: 13px; }
+}
+:root[data-theme="dark"] .shop__scrim { background: rgba(0, 0, 0, .6); }
+
 /* filter bar (all-plans page) */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; }
 .filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 700; font-size: 14px; padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
@@ -2732,18 +2868,40 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .advisor__nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; }
 @keyframes advisor-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
+/* ── AI tools row ──────────────────────────────────────────────────────────
+   `.ai-tools-grid` shipped with no rule at all, so the advisor and the bill
+   analyser stacked as two centred blocks with a column of dead space beside
+   them. Two peer cards, side by side, stacking below 700px. */
+.ai-tools-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr));
+  gap: 18px; align-items: stretch; max-width: 980px; margin-inline: auto;
+}
+.ai-tools-grid .advisor { max-width: none; margin: 0; }
+.ai-tools-grid > * { min-width: 0; }
+
 /* ── Bill-drop (drag/drop upload zone) ─────────────────────────────────────
    A dashed target for dropping/choosing a bill image. .is-dragover lights it
    green; the whole zone is clickable (a label wrapping a hidden file input). */
 .bill-drop {
-  display: grid; place-items: center; gap: 10px; text-align: center;
-  padding: 36px 24px; border: 2px dashed var(--ink-200); border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; text-align: start;
+  padding: 28px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--white); color: var(--muted); box-shadow: var(--shadow);
+}
+.bill-drop__zone {
+  display: grid; place-items: center; gap: 8px; text-align: center; width: 100%; margin-top: 4px;
+  padding: 26px 18px; border: 2px dashed var(--ink-200); border-radius: 14px;
   background: var(--cream); color: var(--muted); cursor: pointer;
   transition: border-color .18s, background .18s, color .18s;
 }
-.bill-drop:hover { border-color: var(--accent); color: var(--ink-700); }
-.bill-drop.is-dragover { border-color: var(--accent); background: var(--accent-t); color: var(--accent-ink); }
-.bill-drop:focus-within { box-shadow: var(--ring); border-color: var(--accent); }
+.bill-drop__zone:hover { border-color: var(--accent); color: var(--ink-700); }
+.bill-drop__zone.is-dragover { border-color: var(--accent); background: var(--accent-t); color: var(--accent-ink); }
+.bill-drop__zone:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.bill-drop__zone .ico { width: 34px; height: 34px; color: var(--accent); }
+.bill-drop__text { font-size: 14.5px; font-weight: 600; color: var(--ink-700); line-height: 1.5; }
+.bill-drop__text small { font-weight: 500; }
+.bill-drop__fine { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.bill-drop h3 { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 20px; color: var(--green-d); }
+.bill-drop > p { font-size: 14.5px; line-height: 1.6; }
 .bill-drop__icon { width: 40px; height: 40px; color: var(--accent); }
 .bill-drop__icon .ico { width: 40px; height: 40px; }
 .bill-drop strong { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; color: var(--green-d); font-size: 16px; }

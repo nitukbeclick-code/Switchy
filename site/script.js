@@ -673,7 +673,7 @@
       visibleCards.forEach((card) => frag.appendChild(card));
       planGrid.appendChild(frag);
       if (empty) empty.style.display = shown ? 'none' : 'block';
-      if (planCount) planCount.textContent = shown < cards.length ? `${shown} מסלולים נמצאו` : '';
+      if (planCount) planCount.textContent = shown === cards.length ? `${cards.length} מסלולים` : `${shown} מתוך ${cards.length} מסלולים`;
     };
     // Reflect toggle state in ARIA so AT announces the active category/flag, not
     // just the visual .active class.
@@ -705,20 +705,59 @@
     if (sort) sort.addEventListener('change', apply);
     if (providerSel) providerSel.addEventListener('change', apply);
     if (maxPriceInput) maxPriceInput.addEventListener('input', debounce(apply, 120));
-    const emptyReset = $('planEmptyReset');
-    if (emptyReset) emptyReset.addEventListener('click', () => {
-      cat = 'all';
-      btns.forEach((x) => { const on = x.dataset.filter === 'all'; x.classList.toggle('active', on); setPressed(x, on); });
-      flagChips.forEach((c) => { c.classList.remove('active'); setPressed(c, false); });
-      if (search) search.value = '';
-      if (providerSel) providerSel.value = '';
-      if (maxPriceInput) maxPriceInput.value = '';
-      apply();
+    // Reset is offered twice on the storefront — in the filter rail and inside
+    // the empty state — so bind the behaviour to the attribute, not one id.
+    Array.from(document.querySelectorAll('[data-plan-reset]')).forEach((resetBtn) => {
+      resetBtn.addEventListener('click', () => {
+        cat = 'all';
+        btns.forEach((x) => { const on = x.dataset.filter === 'all'; x.classList.toggle('active', on); setPressed(x, on); });
+        flagChips.forEach((c) => { c.classList.remove('active'); setPressed(c, false); });
+        if (search) search.value = '';
+        if (providerSel) providerSel.value = '';
+        if (maxPriceInput) maxPriceInput.value = '';
+        apply();
+      });
     });
     // Pre-fill search from URL ?q= param (for Sitelinks search box / deep links)
     const initQ = new URLSearchParams(location.search).get('q');
     if (initQ && search) { search.value = initQ; }
     apply();
+  }
+
+  // ── Storefront filter drawer (plans.html) ──────────────────────────────────
+  // Desktop keeps the rail in flow beside the grid; below 1024px it becomes an
+  // off-canvas drawer opened from the toolbar. Escape / scrim / close button all
+  // dismiss it, and focus returns to the trigger — same contract as the nav menu.
+  const shopRail = $('shopRail');
+  if (shopRail) {
+    const openBtn = $('shopFilterOpen');
+    const closeBtn = $('shopFilterClose');
+    const scrim = $('shopScrim');
+    const drawerMQ = window.matchMedia('(max-width: 1023.98px)');
+    let lastFocus = null;
+    const setOpen = (on) => {
+      document.body.classList.toggle('shop-drawer-open', on);
+      shopRail.classList.toggle('is-open', on);
+      if (scrim) scrim.hidden = !on;
+      if (openBtn) openBtn.setAttribute('aria-expanded', String(on));
+      if (on) {
+        lastFocus = document.activeElement;
+        (closeBtn || shopRail).focus();
+      } else if (lastFocus && lastFocus.focus) {
+        try { lastFocus.focus(); } catch (_) { /* trigger gone */ }
+      }
+    };
+    if (openBtn) openBtn.addEventListener('click', () => setOpen(true));
+    if (closeBtn) closeBtn.addEventListener('click', () => setOpen(false));
+    if (scrim) scrim.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.body.classList.contains('shop-drawer-open')) setOpen(false);
+    });
+    // Growing past the drawer breakpoint puts the rail back in flow — drop the
+    // body scroll-lock with it, or the page stays frozen at desktop width.
+    const onMQ = () => { if (!drawerMQ.matches) setOpen(false); };
+    if (drawerMQ.addEventListener) drawerMQ.addEventListener('change', onMQ);
+    else if (drawerMQ.addListener) drawerMQ.addListener(onMQ);
   }
 
   // ── Side-by-side comparison (compare.html) ──────────────────────────────────

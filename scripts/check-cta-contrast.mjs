@@ -116,8 +116,39 @@ const PROBE = (selector) => {
   // `color(srgb 1 0.988 0.965 / 0.82)` — 0–1 channels, NOT 0–255. Reading those
   // as rgb() turns a near-white fill into near-black and invents failures, so
   // normalise both notations to [r,g,b (0–255), a (0–1)].
+  // Regex-sniffing a serialised colour is a losing game. This parser already had
+  // to learn `color(srgb …)` once; Chromium now serialises an IN-FLIGHT
+  // `color-mix()` transition as `oklab(0.99 0.0009 0.0085 / 0.99)`, and the same
+  // three-numbers-times-one path turned that near-white fill into #010000 and
+  // reported a 1.26:1 FAILURE no visitor can see. So for any notation this file
+  // does not parse exactly, let the engine convert: painting the string into a
+  // 1×1 canvas resolves every colour space Chromium can compute, including ones
+  // added after this was written.
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 1;
+  const cx = canvas.getContext("2d", { willReadFrequently: true });
+  const viaCanvas = (s) => {
+    if (!cx) return null;
+    // fillStyle silently KEEPS its previous value for a string the engine cannot
+    // parse, so "it didn't change" is ambiguous on its own. Seeding twice with
+    // different colours tells the cases apart: a colour the engine understands
+    // lands on the same value from either seed.
+    const read = (seed) => { cx.fillStyle = seed; cx.fillStyle = s; return cx.fillStyle; };
+    if (read("#010203") !== read("#f0e1d2")) return null;
+    cx.clearRect(0, 0, 1, 1);
+    cx.fillRect(0, 0, 1, 1);
+    const d = cx.getImageData(0, 0, 1, 1).data;
+    return [d[0], d[1], d[2], d[3] / 255];
+  };
   const parse = (s) => {
     if (!s || s === "transparent" || s === "none") return [0, 0, 0, 0];
+    // rgb()/rgba()/color(srgb …) keep the exact arithmetic below; everything
+    // else (oklab, oklch, lab, color(display-p3 …) …) goes through the engine,
+    // which costs a byte of rounding on translucent fills and buys correctness.
+    if (!/^(rgba?\(|color\(\s*srgb)/i.test(s.trim())) {
+      const viaEngine = viaCanvas(s);
+      if (viaEngine) return viaEngine;
+    }
     const raw = s.match(/-?[\d.]+%?/g) || [];
     if (raw.length < 3) return [0, 0, 0, 0];
     const n = raw.map((t) => (t.endsWith("%") ? parseFloat(t) / 100 : parseFloat(t)));
@@ -208,7 +239,26 @@ async function main() {
             if (state === "hover") {
               await el.scrollIntoViewIfNeeded().catch(() => {});
               await el.hover({ force: true }).catch(() => {});
-              await page.waitForTimeout(250);
+              // Sample the END of the hover transition, not a frame inside it.
+              // A fixed 250ms wait is a race the slower CI runner loses, and the
+              // interpolated value Chromium hands back mid-flight is serialised
+              // in whatever space it interpolated in — which is how oklab()
+              // reached the parser above in the first place.
+              await page
+                .waitForFunction(
+                  (s) => {
+                    const e = document.querySelector(s);
+                    if (!e) return true;
+                    const now = getComputedStyle(e).backgroundColor;
+                    const settled = e.__ctaPrevBg === now;
+                    e.__ctaPrevBg = now;
+                    return settled;
+                  },
+                  sel,
+                  { timeout: 2000, polling: 100 },
+                )
+                .catch(() => {});
+              await page.waitForTimeout(120);
             }
             const probe = await page.evaluate(PROBE, sel);
             if (!probe) continue;

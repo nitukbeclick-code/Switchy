@@ -2165,6 +2165,14 @@ ${comparisonTable(catPlans, c.slug)}
             ${['cellular', 'triple'].includes(c.slug) ? '<button type="button" class="flag-chip" data-flag="abroad" aria-pressed="false">כולל חו״ל</button>' : ''}
           </div>
           <label class="cat-filters__price" for="catMaxPrice">עד&nbsp;₪<input type="number" id="catMaxPrice" min="0" inputmode="numeric" placeholder="—" aria-label="מחיר מקסימלי בשקלים" /></label>
+          <label class="cat-filters__sort" for="catSort"><span class="cat-filters__sort-lbl">מיון</span>
+            <select id="catSort">
+              <option value="price-asc" selected>מהזול ליקר</option>
+              <option value="price-desc">מהיקר לזול</option>
+              <option value="annual-asc">עלות ל־12 חודשים (הנמוכה תחילה)</option>
+              <option value="after-asc">מחיר אחרי מבצע (זול ליקר)</option>
+            </select>
+          </label>
           <span class="cat-filters__count" id="catCount" aria-live="polite">מציג את כל ${catPlans.length} המסלולים</span>
           <button type="button" class="linklike cat-filters__clear" id="catClear" hidden>נקו הכול</button>
         </div>
@@ -3623,6 +3631,7 @@ ${nav}
               </select>
             </label>
           </div>
+          <div class="shop__applied" id="planApplied" role="group" aria-label="מסננים פעילים" hidden></div>
           <div class="plan-grid plan-grid--shop" id="planGrid">
           ${cards}
           </div>

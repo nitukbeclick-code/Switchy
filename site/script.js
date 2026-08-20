@@ -636,7 +636,104 @@
     const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
     const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo', kosher: 'data-kosher' };
     const planCount = $('planCount');
+    const applied = $('planApplied');
     let cat = 'all';
+    // Labels for the applied-filter chips. Category names come from the filter
+    // buttons themselves so the chip always matches the rail, and provider names
+    // from the <option> text — no second copy of either list to drift.
+    const catLabel = (slug) => {
+      const b = btns.find((x) => x.dataset.filter === slug);
+      return b ? b.textContent.trim() : slug;
+    };
+    const provLabel = (slug) => {
+      const o = providerSel && providerSel.querySelector(`option[value="${slug}"]`);
+      return o ? o.textContent.trim() : slug;
+    };
+    const flagLabel = (flag) => {
+      const c = flagChips.find((x) => x.dataset.flag === flag);
+      return c ? c.textContent.trim() : flag;
+    };
+    // ── URL <-> control state ────────────────────────────────────────────────
+    // A storefront's filtered view has to be a place you can link to, reload and
+    // walk back out of. Everything the rail can set is mirrored into the query
+    // string, so a filtered catalogue survives a share, a refresh and Back.
+    const setFlagState = (chip, on) => {
+      chip.classList.toggle('active', on);
+      chip.setAttribute('aria-pressed', String(on));
+    };
+    const setCatState = (slug) => {
+      cat = slug;
+      btns.forEach((b) => { const on = b.dataset.filter === slug; b.classList.toggle('active', on); setPressed(b, on); });
+    };
+    const readUrl = () => {
+      const u = new URLSearchParams(location.search);
+      const wanted = u.get('cat') || 'all';
+      setCatState(btns.some((b) => b.dataset.filter === wanted) ? wanted : 'all');
+      if (search) search.value = u.get('q') || '';
+      if (providerSel) providerSel.value = u.get('prov') || '';
+      if (maxPriceInput) maxPriceInput.value = u.get('max') || '';
+      if (sort) {
+        const s = u.get('sort');
+        if (s && sort.querySelector(`option[value="${s}"]`)) sort.value = s;
+      }
+      const flags = (u.get('flags') || '').split(',').filter(Boolean);
+      flagChips.forEach((c) => setFlagState(c, flags.includes(c.dataset.flag)));
+    };
+    const writeUrl = (state) => {
+      const u = new URLSearchParams();
+      if (state.cat !== 'all') u.set('cat', state.cat);
+      if (state.q) u.set('q', state.q);
+      if (state.prov) u.set('prov', state.prov);
+      if (state.max) u.set('max', state.max);
+      if (state.sort && state.sort !== 'price-asc') u.set('sort', state.sort);
+      if (state.flags.length) u.set('flags', state.flags.join(','));
+      const qs = u.toString();
+      const next = location.pathname + (qs ? '?' + qs : '') + location.hash;
+      // replaceState, not pushState: typing in the search box would otherwise
+      // stack one history entry per keystroke and bury the previous page.
+      if (next !== location.pathname + location.search + location.hash) {
+        try { history.replaceState(null, '', next); } catch (_) { /* file:// */ }
+      }
+    };
+    // One removable chip per active facet — the only readout of what is applied
+    // once the drawer closes on mobile, and a one-tap way back out.
+    const renderApplied = (state) => {
+      if (!applied) return;
+      const items = [];
+      if (state.cat !== 'all') items.push(['cat', '', catLabel(state.cat)]);
+      if (state.q) items.push(['q', '', `חיפוש: ${state.q}`]);
+      if (state.prov) items.push(['prov', '', provLabel(state.prov)]);
+      if (state.max) items.push(['max', '', `עד ₪${state.max}`]);
+      state.flags.forEach((f) => items.push(['flag', f, flagLabel(f)]));
+      applied.hidden = !items.length;
+      if (!items.length) { applied.textContent = ''; return; }
+      applied.textContent = '';
+      const lbl = document.createElement('span');
+      lbl.className = 'shop__applied-lbl';
+      lbl.textContent = 'מסננים פעילים:';
+      applied.appendChild(lbl);
+      items.forEach(([kind, value, text]) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'shop__chip';
+        btn.dataset.clear = kind;
+        if (value) btn.dataset.value = value;
+        btn.setAttribute('aria-label', `הסירו את המסנן ${text}`);
+        btn.append(document.createTextNode(text));
+        const x = document.createElement('span');
+        x.className = 'shop__chip-x';
+        x.setAttribute('aria-hidden', 'true');
+        x.textContent = '\u00d7';
+        btn.appendChild(x);
+        applied.appendChild(btn);
+      });
+      const all = document.createElement('button');
+      all.type = 'button';
+      all.className = 'shop__chip shop__chip--all';
+      all.setAttribute('data-plan-reset', '');
+      all.textContent = 'נקו הכל';
+      applied.appendChild(all);
+    };
     const apply = () => {
       const q = (search && search.value || '').trim().toLowerCase();
       const prov = providerSel ? providerSel.value : '';
@@ -674,6 +771,9 @@
       planGrid.appendChild(frag);
       if (empty) empty.style.display = shown ? 'none' : 'block';
       if (planCount) planCount.textContent = shown === cards.length ? `${cards.length} מסלולים` : `${shown} מתוך ${cards.length} מסלולים`;
+      const state = { cat, q, prov, max: (maxPriceInput && maxPriceInput.value) || '', sort: mode, flags: activeFlags };
+      renderApplied(state);
+      writeUrl(state);
     };
     // Reflect toggle state in ARIA so AT announces the active category/flag, not
     // just the visual .active class.
@@ -705,22 +805,44 @@
     if (sort) sort.addEventListener('change', apply);
     if (providerSel) providerSel.addEventListener('change', apply);
     if (maxPriceInput) maxPriceInput.addEventListener('input', debounce(apply, 120));
-    // Reset is offered twice on the storefront — in the filter rail and inside
-    // the empty state — so bind the behaviour to the attribute, not one id.
-    Array.from(document.querySelectorAll('[data-plan-reset]')).forEach((resetBtn) => {
-      resetBtn.addEventListener('click', () => {
-        cat = 'all';
-        btns.forEach((x) => { const on = x.dataset.filter === 'all'; x.classList.toggle('active', on); setPressed(x, on); });
-        flagChips.forEach((c) => { c.classList.remove('active'); setPressed(c, false); });
-        if (search) search.value = '';
-        if (providerSel) providerSel.value = '';
-        if (maxPriceInput) maxPriceInput.value = '';
-        apply();
-      });
+    // Reset is offered in three places — the filter rail, the empty state and
+    // the applied-chip row — and the last of those is rebuilt on every apply().
+    // So delegate on the attribute rather than binding the elements that exist
+    // at load, or the chip row's "נקו הכל" would be inert.
+    document.addEventListener('click', (e) => {
+      const resetBtn = e.target.closest && e.target.closest('[data-plan-reset]');
+      if (!resetBtn) return;
+      setCatState('all');
+      flagChips.forEach((c) => setFlagState(c, false));
+      if (search) search.value = '';
+      if (providerSel) providerSel.value = '';
+      if (maxPriceInput) maxPriceInput.value = '';
+      apply();
     });
-    // Pre-fill search from URL ?q= param (for Sitelinks search box / deep links)
-    const initQ = new URLSearchParams(location.search).get('q');
-    if (initQ && search) { search.value = initQ; }
+    // A chip removes exactly the one facet it names — delegated, because the
+    // chip row is rebuilt on every apply().
+    if (applied) applied.addEventListener('click', (e) => {
+      const chip = e.target.closest('.shop__chip');
+      if (!chip || chip.hasAttribute('data-plan-reset')) return;   // "נקו הכל" is handled by the reset binding
+      switch (chip.dataset.clear) {
+        case 'cat': setCatState('all'); break;
+        case 'q': if (search) search.value = ''; break;
+        case 'prov': if (providerSel) providerSel.value = ''; break;
+        case 'max': if (maxPriceInput) maxPriceInput.value = ''; break;
+        case 'flag': {
+          const c = flagChips.find((x) => x.dataset.flag === chip.dataset.value);
+          if (c) setFlagState(c, false);
+          break;
+        }
+        default: return;
+      }
+      apply();
+    });
+    // Hydrate every control from the query string — this also covers the
+    // ?q= deep link the Sitelinks search box and the AI surfaces use.
+    readUrl();
+    // Back/forward through filtered views: the URL is the state, so re-read it.
+    window.addEventListener('popstate', () => { readUrl(); apply(); });
     apply();
   }
 
@@ -4035,22 +4157,40 @@
     const total = Number(grid.getAttribute('data-total')) || cards.length;
     const chips = Array.from(bar.querySelectorAll('.flag-chip'));
     const maxEl = $('catMaxPrice');
+    const sortEl = $('catSort');
     const countEl = $('catCount');
     const clearEl = $('catClear');
     const emptyEl = $('catEmpty');
     const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo' };
 
+    // Same four modes as the storefront, off the same card data attributes —
+    // keep them in step if either list changes.
+    const byMode = (mode) => (a, b) => {
+      if (mode === 'price-desc') return Number(b.dataset.price) - Number(a.dataset.price);
+      if (mode === 'annual-asc') {
+        const annual = (card) => Number(card.querySelector('.plan__annual')?.dataset.costMax || Infinity);
+        return annual(a) - annual(b);
+      }
+      if (mode === 'after-asc') return Number(a.dataset.after || a.dataset.price) - Number(b.dataset.after || b.dataset.price);
+      return Number(a.dataset.price) - Number(b.dataset.price);
+    };
     const apply = () => {
       const active = chips.filter((ch) => ch.classList.contains('active')).map((ch) => ch.dataset.flag);
       const maxPrice = maxEl && maxEl.value ? Number(maxEl.value) : Infinity;
       let shown = 0;
+      const visibleCards = [];
       for (const card of cards) {
         const okFlags = active.every((f) => card.getAttribute(flagKey[f]) === 'true');
         const okPrice = Number(card.dataset.price) <= maxPrice;
         const visible = okFlags && okPrice;
         card.style.display = visible ? '' : 'none';
-        if (visible) shown++;
+        if (visible) { shown++; visibleCards.push(card); }
       }
+      visibleCards.sort(byMode((sortEl && sortEl.value) || 'price-asc'));
+      // One reflow for the whole reorder, not one per card.
+      const frag = document.createDocumentFragment();
+      visibleCards.forEach((card) => frag.appendChild(card));
+      grid.appendChild(frag);
       const filtering = active.length || maxPrice !== Infinity;
       if (countEl) countEl.textContent = filtering ? ('מציג ' + shown + ' מתוך ' + total + ' מסלולים') : ('מציג את כל ' + total + ' המסלולים');
       if (clearEl) clearEl.hidden = !filtering;
@@ -4064,11 +4204,15 @@
       track('cat_filter', { flag: ch.dataset.flag, on: on });
     }));
     if (maxEl) maxEl.addEventListener('input', apply);
+    if (sortEl) sortEl.addEventListener('change', () => { apply(); track('cat_sort', { mode: sortEl.value }); });
     if (clearEl) clearEl.addEventListener('click', () => {
       chips.forEach((ch) => { ch.classList.remove('active'); ch.setAttribute('aria-pressed', 'false'); });
       if (maxEl) maxEl.value = '';
       apply();
     });
+    // The grid is already server-rendered cheapest-first, so only reorder when
+    // the visitor actually asks for something else.
+    if (sortEl && sortEl.value !== 'price-asc') apply();
   })();
 
   // ── (16) SCROLL-DIRECTION FLAG — lets CSS tuck floating chrome away ────────

@@ -1924,6 +1924,24 @@ button.plan__after--btn:focus-visible { outline: none; box-shadow: var(--ring-fl
    [hidden] rule — a "hidden" scrim would still swallow every tap. */
 .shop__scrim { display: none; position: fixed; inset: 0; z-index: 1290; background: rgba(12, 23, 19, .45); }
 .shop__scrim[hidden] { display: none; }
+/* Applied-filter chips. Once the drawer closes on mobile the rail is out of
+   sight, so this row is the only readout of what is filtering the shelf — and
+   each chip is the one-tap way back out of that facet. */
+.shop__applied { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+.shop__applied-lbl { font-size: 13px; font-weight: 700; color: var(--muted); }
+.shop__chip {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 5px 12px;
+  border-radius: 999px; border: 1px solid var(--accent); background: var(--accent-t);
+  color: var(--accent-ink); font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-weight: 700; font-size: 13px; cursor: pointer; max-width: 100%;
+  transition: background .15s, border-color .15s;
+}
+.shop__chip:hover { background: var(--white); }
+.shop__chip:focus-visible { outline: none; box-shadow: var(--ring); }
+.shop__chip-x { font-size: 16px; line-height: 1; opacity: .75; }
+.shop__chip--all { border-color: var(--line); background: var(--cream); color: var(--green-d); }
+.shop__chip--all:hover { border-color: var(--ink-300); background: var(--white); }
+
 /* Product shelf. The 248px floor is deliberate: the wider shop container would
    otherwise fit a 4th column at ~242px, which wraps .plan__actions onto two
    rows and drops the icon buttons below the 24px safe-space WCAG 2.5.8 wants.
@@ -2846,6 +2864,22 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   position: relative; max-width: 560px; margin: 0 auto;
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 28px; box-shadow: var(--shadow);
+}
+/* The card's three-step preview. Its own class on purpose: `.advisor__step`
+   belongs to the DIALOG's wizard, which is `display:none` until `.is-active`,
+   and reusing it here made this trail invisible on the homepage. */
+.advisor__steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 20px; counter-reset: advisor-step; }
+.advisor__flow-step {
+  display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 11px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--cream);
+  color: var(--ink-700); font-size: 13px; font-weight: 600;
+}
+.advisor__flow-step::before {
+  counter-increment: advisor-step; content: counter(advisor-step);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; flex: 0 0 auto; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-size: 11px; font-weight: 800;
 }
 .advisor__progress { display: flex; gap: 6px; margin-bottom: 22px; }
 .advisor__progress span { flex: 1; height: 4px; border-radius: 999px; background: var(--ink-100); transition: background .25s var(--ease); }
@@ -4800,6 +4834,20 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: var(--white); font: inherit; color: var(--ink-900); font-variant-numeric: tabular-nums;
 }
 .cat-filters__price input:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.cat-filters__sort { display: inline-flex; align-items: center; gap: 7px; }
+.cat-filters__sort-lbl { font-size: 13.5px; font-weight: 700; color: var(--ink-600); white-space: nowrap; }
+.cat-filters__sort select {
+  min-height: 38px; padding: 6px 12px; font-size: 13.5px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--white); color: var(--green-d);
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; cursor: pointer; max-width: 230px;
+}
+.cat-filters__sort select:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+@media (max-width: 560px) {
+  /* Never `display:none` — the label is the select's accessible name. */
+  .cat-filters__sort-lbl { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .cat-filters__sort select { max-width: 170px; font-size: 13px; }
+}
 .cat-filters__count { margin-inline-start: auto; font-size: 13px; font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 .cat-filters__clear { font-size: 13px; }
 .cat-filters__empty { text-align: center; color: var(--muted); padding: 28px 0; }

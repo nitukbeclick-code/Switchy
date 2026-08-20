@@ -632,6 +632,8 @@ const ICONS = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.6 1-5.8L3.5 9.7l5.9-.9z"/>',
   scale: '<path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/>',
+  sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  close: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
   building: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01M10 21v-3h4v3"/>',
   book: '<path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v17H7.5A2.5 2.5 0 0 0 5 21.5z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/>',
   sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>',
@@ -3498,19 +3500,24 @@ function plansPage() {
   const url = `${SITE}/plans.html`;
   const filterBtns = [['all', 'הכל'], ...categories.map((c) => [c.slug, c.name])]
     .map(([f, label], i) => `<button class="filter-btn${i === 0 ? ' active' : ''}" data-filter="${f}">${esc(label)}</button>`)
-    .join('\n          ');
-  const cards = catalogue.plans.slice().sort((a, b) => a.price - b.price).map(planCardHtml).join('\n        ');
+    .join('\n                ');
+  const cards = catalogue.plans.slice().sort((a, b) => a.price - b.price).map(planCardHtml).join('\n          ');
   const providerNames = [...new Set(catalogue.plans.map((p) => p.provider))].sort((a, b) => a.localeCompare(b, 'he'));
   const providerOptions = providerNames.map((n) => `<option value="${providerSlug(n)}">${esc(n)}</option>`).join('');
-  const collectionsSection = builtCollections.length ? `
-    <section class="section section--alt" aria-label="אוספים">
-      <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">קיצורי דרך</span><h2>אוספים פופולריים</h2><p>קפיצה ישירה למה שמחפשים.</p></header>
-        <div class="providers__row">
-          ${builtCollections.map((col) => `<a class="chip" href="${col.slug}.html">${esc(col.h1)}</a>`).join('\n          ')}
-        </div>
-      </div>
-    </section>` : '';
+  const flagChips = [['5g', '5G'], ['nocommit', 'ללא התחייבות'], ['abroad', 'כולל חו״ל'], ['haspromo', 'מחיר מבצע'], ['kosher', 'כשר']]
+    .map(([f, label]) => `<button class="flag-chip" data-flag="${f}">${esc(label)}</button>`)
+    .join('\n                ');
+  // Storefront redesign (2026-08): the curated collections are a FACET in the
+  // filter rail, not a separate editorial section under the grid. A shop lists
+  // its collections beside the facets; stacking them below the products is what
+  // made this page read as an article with a grid in the middle.
+  const collectionsFacet = builtCollections.length ? `
+            <div class="shop-facet">
+              <h3 class="shop-facet__t" id="facetCollections">אוספים</h3>
+              <div class="shop-facet__links" role="group" aria-labelledby="facetCollections">
+                ${builtCollections.map((col) => `<a href="${col.slug}.html">${esc(col.h1)}</a>`).join('\n                ')}
+              </div>
+            </div>` : '';
   // Breadcrumb + a CollectionPage carrying an ItemList of the cheapest plan
   // Products. Capped at 40 so the JSON-LD payload stays lean (the page renders
   // every plan in HTML; the structured list just gives crawlers a real sample).
@@ -3547,56 +3554,83 @@ ${head('כל החבילות — מחירון מלא של כל חברות התק�
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
-      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+    <section class="shop-head">
       <div class="container">
         ${crumbsHtml([['דף הבית', 'index.html'], ['כל החבילות', null]])}
-        <span class="pill pill--ico">${svgIcon('check')} מחירון מלא · מעודכן יומית</span>
-        <h1>כל החבילות — <span class="hl">מחירון מלא</span></h1>
-        <p><span data-count-to="${catalogue.plans.length}">${catalogue.plans.length}</span> מסלולים מכל חברות התקשורת, ממוינים מהזול ביותר. סננו לפי קטגוריה או חפשו ספק/מסלול/תכונה.</p>
-        <ul class="stat-band" aria-label="נתוני המחירון — מהקטלוג">
-          <li><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים</li>
-          <li><b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים</li>
-          <li><b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות</li>
-        </ul>
-        <p class="hero__hedge hero__hedge--ink">${svgIcon('check')} חינם — אנחנו מקבלים עמלה מהספק, לא מכם. העמלה לא משפיעה על הדירוג.</p>
-      </div>
-    </section>
-    <section class="section">
-      <div class="container">
-        <div class="filters">
-          ${filterBtns}
-          <input type="search" class="filter-search" id="planSearch" placeholder="חיפוש ספק, מסלול או תכונה…" aria-label="חיפוש בחבילות" />
-          <select id="planSort" class="filter-search" style="flex:0 0 auto;max-width:210px" aria-label="מיון חבילות">
-            <option value="price-asc" selected>מהזול ליקר</option>
-            <option value="price-desc">מהיקר לזול</option>
-            <option value="annual-asc">עלות ל־12 חודשים (הנמוכה תחילה)</option>
-            <option value="after-asc">מחיר אחרי מבצע (זול ליקר)</option>
-          </select>
-          <select id="planProvider" class="filter-search" style="flex:0 0 auto;max-width:180px" aria-label="סינון לפי ספק">
-            <option value="">כל הספקים</option>
-            ${providerOptions}
-          </select>
-          <div class="filter-price" role="group" aria-label="סינון לפי מחיר">
-            <span class="filter-price__label">עד</span>
-            <input type="number" id="planMaxPrice" class="filter-search" style="flex:0 0 auto;width:90px" min="0" step="5" placeholder="₪ מקס׳" aria-label="מחיר מקסימלי לחודש" />
-            <span class="filter-price__label">₪</span>
+        <div class="shop-head__row">
+          <div class="shop-head__copy">
+            <h1>כל החבילות — <span class="hl">מחירון מלא</span></h1>
+            <p><b data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</b> מסלולים · <b data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</b> ספקים · <b data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</b> קטגוריות · ממוינים מהזול ביותר</p>
           </div>
-          <button class="flag-chip" data-flag="5g">5G</button>
-          <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
-          <button class="flag-chip" data-flag="abroad">כולל חו״ל</button>
-          <button class="flag-chip" data-flag="haspromo">מחיר מבצע</button>
-          <button class="flag-chip" data-flag="kosher">כשר</button>
-          <span class="plan-count" id="planCount" aria-live="polite" aria-atomic="true"></span>
+          <p class="shop-head__note">${svgIcon('check')} מעודכן ${BUILD_DATE_HE} · מחירים כוללים מע״מ · חינם — העמלה מהספק, לא מכם</p>
         </div>
-        <div class="plan-grid" id="planGrid">
-        ${cards}
-        </div>
-        <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש. נסו להסיר חלק מהמסננים או <button type="button" class="plan-empty__reset" id="planEmptyReset">לנקות הכל</button>.</p>
-        <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון המחירון (${BUILD_DATE_HE}). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
       </div>
     </section>
-${collectionsSection}
+    <div class="shop">
+      <div class="container shop__layout">
+        <div class="shop__scrim" id="shopScrim" hidden></div>
+        <aside class="shop__rail" id="shopRail" tabindex="-1" aria-labelledby="shopRailTitle">
+          <div class="shop__rail-head">
+            <h2 id="shopRailTitle">סינון</h2>
+            <button type="button" class="shop__rail-x" id="shopFilterClose" aria-label="סגירת חלונית הסינון">${svgIcon('close')}</button>
+          </div>
+          <div class="shop__rail-body">
+            <div class="shop-facet">
+              <h3 class="shop-facet__t"><label for="planSearch">חיפוש</label></h3>
+              <input type="search" class="filter-search" id="planSearch" placeholder="ספק, מסלול או תכונה…" />
+            </div>
+            <div class="shop-facet">
+              <h3 class="shop-facet__t" id="facetCat">קטגוריה</h3>
+              <div class="shop-facet__chips" role="group" aria-labelledby="facetCat">
+                ${filterBtns}
+              </div>
+            </div>
+            <div class="shop-facet">
+              <h3 class="shop-facet__t"><label for="planProvider">ספק</label></h3>
+              <select id="planProvider" class="filter-search">
+                <option value="">כל הספקים</option>
+                ${providerOptions}
+              </select>
+            </div>
+            <div class="shop-facet">
+              <h3 class="shop-facet__t"><label for="planMaxPrice">מחיר מקסימלי</label></h3>
+              <div class="filter-price">
+                <span class="filter-price__label">עד</span>
+                <input type="number" id="planMaxPrice" class="filter-search" min="0" step="5" placeholder="₪ מקס׳" />
+                <span class="filter-price__label">₪ לחודש</span>
+              </div>
+            </div>
+            <div class="shop-facet">
+              <h3 class="shop-facet__t" id="facetFlags">תכונות</h3>
+              <div class="shop-facet__chips" role="group" aria-labelledby="facetFlags">
+                ${flagChips}
+              </div>
+            </div>${collectionsFacet}
+            <button type="button" class="shop__clear" data-plan-reset>נקו את כל המסננים</button>
+          </div>
+        </aside>
+        <div class="shop__main">
+          <div class="shop__toolbar">
+            <button type="button" class="shop__filter-btn" id="shopFilterOpen" aria-expanded="false" aria-controls="shopRail">${svgIcon('sliders')} סינון</button>
+            <span class="plan-count" id="planCount" aria-live="polite" aria-atomic="true"></span>
+            <label class="shop__sort" for="planSort">
+              <span class="shop__sort-lbl">מיון</span>
+              <select id="planSort">
+                <option value="price-asc" selected>מהזול ליקר</option>
+                <option value="price-desc">מהיקר לזול</option>
+                <option value="annual-asc">עלות ל־12 חודשים (הנמוכה תחילה)</option>
+                <option value="after-asc">מחיר אחרי מבצע (זול ליקר)</option>
+              </select>
+            </label>
+          </div>
+          <div class="plan-grid plan-grid--shop" id="planGrid">
+          ${cards}
+          </div>
+          <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש. נסו להסיר חלק מהמסננים או <button type="button" class="plan-empty__reset" id="planEmptyReset" data-plan-reset>לנקות הכל</button>.</p>
+          <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון המחירון (${BUILD_DATE_HE}). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
+        </div>
+      </div>
+    </div>
 ${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">

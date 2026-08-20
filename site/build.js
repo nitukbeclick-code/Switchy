@@ -959,7 +959,12 @@ function providerLogo(name, size = 36, eager = false) {
     if (name.includes(key)) { color = c; initials = ini; break; }
   }
   const fs = initials.length >= 3 ? Math.round(size * 0.3) : Math.round(size * 0.4);
-  return `<span class="plogo" style="width:${size}px;height:${size}px;background:${color}1a;color:${color};border-color:${color}40;font-size:${fs}px">${esc(initials)}</span>`;
+  // The brand colour ships as a custom property, not as baked-in background/
+  // color/border-color declarations: inline colours cannot be re-tuned per
+  // theme, and on the dark canvas the darker carrier hues (e.g. #0F766E)
+  // measured 2.88:1 against the panel. styles.css renders --brand per theme,
+  // keeping each carrier's own colour rather than recolouring it to the palette.
+  return `<span class="plogo" style="width:${size}px;height:${size}px;--brand:${color};font-size:${fs}px">${esc(initials)}</span>`;
 }
 
 // Direction-aware CTA chevron — the SVG points to the reading-end (RTL: left)
@@ -1340,8 +1345,15 @@ const footer = `  <footer class="footer">
     <p class="footer__disclosure">גילוי נאות: השירות חינמי לכם. SWITCHY (Switch AI) מקבלת עמלת תיווך מחברות התקשורת כאשר עוברים דרכנו — העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על הדירוג. אנחנו מדרגים מסלולים לפי ההתאמה לכם, לא לפי מי שמשלם לנו. <a href="about.html">המתודולוגיה שלנו</a></p>
     <div class="container footer__bottom"><span>© <span id="year">${BUILD_YEAR}</span> SWITCHY · כל הזכויות שמורות</span><span class="footer__made">נבנה באהבה בישראל</span></div>
   </footer>
+  <!-- The floating controls sit outside <main>/<footer>, so without a landmark
+       of their own a screen reader reviewing the page by region finds them
+       orphaned — and on phones that is three separate interactive things
+       (WhatsApp, accessibility, and the sticky CTA script.js appends) with no
+       home. One complementary landmark adopts them. -->
+  <aside class="floating-actions" aria-label="פעולות מהירות">
   <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
 ${a11yWidget}
+  </aside>
   <div class="pmodal" id="planModal" role="dialog" aria-modal="true" aria-labelledby="pmodalTitle" hidden>
     <div class="pmodal__backdrop" data-pmodal-close></div>
     <div class="pmodal__panel" role="document">
@@ -1920,7 +1932,12 @@ function jsonLd(c) {
 // on one page (one per category), so they pass a unique id to avoid duplicate
 // `id="compare-table"` (invalid HTML). Category pages omit it and keep the
 // original single id, so their output is unchanged.
-function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead = true } = {}) {
+// `label` names this particular table. Provider and head-to-head pages render
+// several of these on one page, and a landmark's accessible name is how a screen
+// reader's landmark list tells them apart — three regions all called
+// "טבלת השוואת מחירים" are three identical entries in that list. Callers that
+// render exactly one table can leave the default.
+function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead = true, label = 'טבלת השוואת מחירים' } = {}) {
   if (!plans || plans.length < 2) return '';
   const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
   const fee = (p, ...keys) => { for (const k of keys) { const v = (p.fees || {})[k]; if (v) return esc(v); } return ''; };
@@ -1984,10 +2001,10 @@ function comparisonTable(plans, catSlug, sectionId = 'compare-table', { withHead
     return `              <tr${i === bestIdx ? ' class="cmp__best"' : ''}>${cells}${cta}</tr>`;
   }).join('\n');
   return `
-    <section class="section section--tight" id="${sectionId}" aria-label="טבלת השוואת מחירים">
+    <section class="section section--tight" id="${sectionId}" aria-label="${esc(label)}">
       <div class="container">
         ${withHead ? `<header class="section__head reveal"><span class="eyebrow">השוואה מהירה</span><h2>טבלת השוואת מחירים</h2><p>כל המסלולים במבט אחד — מחיר מבצע מול המחיר אחרי תקופת המבצע, ומה כלול. ממוין מהזול ביותר.</p></header>` : ''}
-        <div class="cmp-wrap reveal" role="region" aria-label="טבלת השוואה — ניתן לגלול" tabindex="0">
+        <div class="cmp-wrap reveal" role="region" aria-label="${esc(label)} — ניתן לגלול" tabindex="0">
           <table class="cmp">
             <thead><tr>${ths}</tr></thead>
             <tbody>
@@ -3628,7 +3645,7 @@ function providerPage(name, plans) {
     .filter((c) => planCats.includes(c.slug))
     .map((c) => {
       const catPlans = sortedPlans.filter((p) => p.cat === c.slug);
-      const table = comparisonTable(catPlans, c.slug, `compare-${c.slug}`, { withHead: false });
+      const table = comparisonTable(catPlans, c.slug, `compare-${c.slug}`, { withHead: false, label: `טבלת השוואת מחירים — ${name} ${c.name}` });
       if (!table) return '';
       return `      <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">${esc(c.name)}</span><h2>${esc(name)} ${esc(c.name)} — המסלולים הזולים</h2></header>${table}`;
     })
@@ -5048,7 +5065,7 @@ function versusSideHtml(side, catSlug, sideKey) {
   const fromTxt = `${matched.length} מסלולים · החל מ-₪${cheapest.price}${(!cheapest.priceUnit || cheapest.priceUnit === 'month') ? '/חודש' : ''}`;
   // `sideKey` (e.g. 'a'/'b') keeps each table's id unique on the page (the labels
   // are Hebrew and would collapse to an empty ASCII slug → duplicate ids).
-  const table = comparisonTable(matched.slice(0, 6), catSlug, `vs-${sideKey}`);
+  const table = comparisonTable(matched.slice(0, 6), catSlug, `vs-${sideKey}`, { label: `טבלת השוואת מחירים — ${side.label}` });
   const colLink = side.collection ? `<a class="btn btn--ghost" href="${esc(side.collection)}">לכל המסלולים בקטגוריה${chev()}</a>` : '';
   return { matched, html: `
     <section class="section" aria-label="${esc(side.label)}">
@@ -5310,7 +5327,7 @@ function providerVsPage(v) {
     <section class="section section--tight" aria-label="טבלת השוואה ראש בראש">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">ראש בראש</span><h2>${esc(a.provider)} מול ${esc(b.provider)} — במבט אחד</h2><p>כל המספרים מהקטלוג המעודכן. הערך המנצח בכל שורה מודגש.</p></header>
-        <div class="cmp-wrap reveal" role="region" aria-label="טבלת השוואה — ניתן לגלול" tabindex="0">
+        <div class="cmp-wrap reveal" role="region" aria-label="${esc(`טבלה ראש בראש — ${a.provider} מול ${b.provider}`)} — ניתן לגלול" tabindex="0">
           <table class="cmp">
             <thead><tr><th>קריטריון</th><th class="cmp__num">${providerLogo(a.provider, 24)} ${esc(a.provider)}</th><th class="cmp__num">${providerLogo(b.provider, 24)} ${esc(b.provider)}</th></tr></thead>
             <tbody>
@@ -5324,7 +5341,7 @@ ${rows.map(([label, av, bv, winner, isMoney]) => `              <tr><td data-th=
   // scoped to that provider's plans in this category (reuses comparisonTable).
   const sideSection = (S, key) => {
     const cards = S.plans.slice(0, 3).map((p) => planCardHtml(p, false)).join('\n');
-    const table = comparisonTable(S.plans, catSlug, `vs-${key}`);
+    const table = comparisonTable(S.plans, catSlug, `vs-${key}`, { label: `טבלת השוואת מחירים — ${S.provider} ${catName}` });
     const fromTxt = `${S.count} מסלולים · החל מ-₪${Number.isInteger(S.from) ? S.from : S.from.toFixed(2)}${(catSlug === 'cellular' || catSlug === 'internet' || catSlug === 'triple') ? '/חודש' : ''}`;
     return `
     <section class="section" aria-label="${esc(S.provider)} ${esc(catName)}">

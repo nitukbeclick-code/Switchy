@@ -1777,11 +1777,27 @@ body:has(.sticky-cta.is-visible) .a11y-fab { bottom: 76px; }
 .plan__annual-details p { margin: 5px 0 0; }
 .plan--hasjump .plan__after { color: var(--value-ink); font-weight: 600; }
 .plan--hasjump .plan__after::before { content: '⚠ '; }
+/* 11px is fine for a one-word rank label (`לחודש`, `5G`), but these two carry
+   full sentences — the 12-month average and the "how we worked it out" fine
+   print. Hebrew has no ascender/descender silhouette to read a word by, so at
+   11px on a phone they stop being read at all. Phone-only bump; the desktop
+   hierarchy is unchanged. */
+@media (max-width: 560px) {
+  .plan__annual small,
+  .plan__annual-details,
+  .cmp__cost-details { font-size: 12px; }
+}
 /* Tappable after-price chip — opens the plan modal with the full jump story. */
 button.plan__after--btn {
-  background: none; border: 0; padding: 2px 0; cursor: pointer; font: inherit; font-size: 11px;
+  background: none; border: 0; cursor: pointer; font: inherit; font-size: 11px;
   text-align: start; text-decoration: underline dotted; text-underline-offset: 3px;
   transition: transform .16s cubic-bezier(.23,1,.32,1), color .16s;
+  /* `.plan__after` is display:block, so this chip sits on its own line — the
+     WCAG 2.5.8 inline exception does not cover it, and it measured 22px tall.
+     The padding buys the 24px floor; the negative margin keeps the card's
+     vertical rhythm exactly where it was. */
+  display: inline-flex; align-items: center; min-height: 24px;
+  padding: 4px 0; margin-block: -2px;
 }
 button.plan__after--btn:hover { color: var(--value-ink); }
 button.plan__after--btn:active { transform: scale(.96); }
@@ -3489,6 +3505,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp__prov { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; font-weight: 600; white-space: nowrap; }
 .cmp__prov:hover span { color: var(--accent); }
 .cmp__name { font-weight: 700; }
+button.cmp__name { display: inline-flex; align-items: center; min-height: 24px; }
 /* The after-promo price is still money, but it is the price the promo jumps TO
    — one rank BELOW the figure in the cell beside it. It used to render
    byte-identical to that figure, so the row read as two equal prices. */
@@ -5173,7 +5190,12 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
 .nav__tools button,
 .nav__tools a { border-radius: var(--radius-sm); }
 
-.hero--light { padding-block: clamp(30px, 5vw, 74px); }
+/* 72px of section padding around a 36px-padded panel put the finder's payoff
+   line — the yearly saving, the whole point of the widget — below the fold on
+   a 1440x900 laptop (measured: bottom 912px). Trimming the top of the clamp
+   lifts it back into view without touching the phone end, where the hero
+   cannot fit the widget above the fold at any padding. */
+.hero--light { padding-block: clamp(30px, 4.2vw, 58px); }
 /* Emerald only — the amber lobe made a whole hero panel faintly amber, which is
    exactly the field the price is supposed to be the only occupant of. */
 .hero--light .hero__aurora {
@@ -5181,12 +5203,13 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
   filter: blur(18px);
 }
 .hero--light .hero__panel {
+  padding-block: clamp(16px, 2vw, 28px);
   background: linear-gradient(145deg, rgba(255,252,246,.96), rgba(248,239,220,.88));
   border: 1px solid color-mix(in srgb, var(--line) 80%, white);
   border-radius: clamp(26px, 4vw, 42px);
   box-shadow: var(--shadow-lg), var(--glint);
 }
-.hero--light h1 { letter-spacing: -.045em; max-width: 12ch; }
+.hero--light h1 { letter-spacing: -.045em; max-width: 11em; }
 .hero--light h1 .hl { color: var(--accent-ink); }
 .hero__sub { max-width: 61ch; color: var(--muted); }
 .hero__launch-prompt { color: var(--ink-700); letter-spacing: -.015em; }

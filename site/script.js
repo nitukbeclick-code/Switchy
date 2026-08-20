@@ -3802,8 +3802,26 @@
     var escEl = document.createElement('span');
     var esc = function (t) { escEl.textContent = t == null ? '' : String(t); return escEl.innerHTML; };
     var fmt = function (v) { return '₪' + Number(v).toLocaleString('he-IL'); };
+    // The blob is the 8 cheapest plans in the category, and for TV that is
+    // STING TV three times at the same ₪49 — so "the three cheapest" rendered as
+    // one provider, thrice, on a comparison site. Take the cheapest plan PER
+    // provider first, then top up from the rest if a category has fewer than
+    // three providers. Order is preserved, so row 1 is still the genuine
+    // cheapest and the saving below it still refers to that plan.
+    function topThree(all) {
+      var seen = {}, picked = [];
+      for (var i = 0; i < all.length && picked.length < 3; i++) {
+        if (seen[all[i].p]) continue;
+        seen[all[i].p] = 1;
+        picked.push(all[i]);
+      }
+      for (var j = 0; j < all.length && picked.length < 3; j++) {
+        if (picked.indexOf(all[j]) === -1) picked.push(all[j]);
+      }
+      return picked;
+    }
     function render() {
-      var list = (data[cat] || []).slice(0, 3);
+      var list = topThree(data[cat] || []);
       res.innerHTML = list.map(function (p) {
         var msg = encodeURIComponent('היי, מעניין אותי ' + p.p + ' - ' + p.n + ' (₪' + p.pr + ')');
         return '<a class="finder__row" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=' + msg + '">' +

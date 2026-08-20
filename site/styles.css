@@ -4903,6 +4903,50 @@ a.ticker__item:hover .ticker__more { text-decoration: underline; }
 @media print {
   #planGrid > .plan, #catPlanGrid > .plan,
   .guide-cards > .guide-card { content-visibility: visible; }
+
+  /* ── Print chrome ───────────────────────────────────────────────────────
+     Guides and comparison tables are the pages people actually print, and
+     everything below is screen furniture that either overlays the content on
+     paper (the fixed launcher and the carousel arrows land on top of whatever
+     is under them on page 1) or is dead weight (a nav that cannot be clicked).
+     Content-bearing chrome — the header wordmark, the footer disclosure —
+     stays. */
+  .a11y-fab, .a11y-panel, .wa-fab, .sticky-cta, .cmp-tray, .cbanner,
+  .carousel__btn, .carousel__dots, .nav__toggle, .nav__mobile, .mega-menu,
+  .nav__cta, .skip, .toast-host, .hero__aurora, .hero-decor { display: none !important; }
+
+  /* Rails print as a wrapping grid: their scroll position is meaningless on
+     paper, and a snap viewport would clip everything past the first slide.
+     A grid (not display:block) keeps the cards side by side and, unlike the
+     flex rail, cannot lay them out wider than the sheet. */
+  .carousel__viewport {
+    overflow: visible !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 12px;
+  }
+  .carousel__viewport > * { break-inside: avoid; width: auto !important; min-width: 0 !important; }
+
+  /* Ink: the editorial surfaces are gradients, glass and float shadows on
+     screen. On paper they print as grey wash over the type. */
+  body, .section, .section--alt, .hero, .plan, .guide-card, .feature,
+  .provider-card, .cmp-wrap, .chip { background: #fff !important; box-shadow: none !important; }
+
+  /* Keep a card, a table row and a heading with its text on one sheet. */
+  .plan, .guide-card, .feature, .provider-card, tr, figure { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
+
+  /* A URL is the only way to follow a link off paper — but ONLY in running
+     prose. Appending one inside a button-styled link is a page-breaker: .btn
+     carries white-space:nowrap, so a wa.me href with a URL-encoded Hebrew
+     message becomes one unbreakable ~1,900px line and blows the grid track
+     (measured: +1,941px of print overflow on a guide, +2,157px on the
+     catalogue). Paragraphs and list items only, and never nowrap. */
+  main p > a[href^="http"]::after,
+  main li > a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: .85em; word-break: break-all; white-space: normal;
+  }
 }
 
 /* ── SWITCHY Editorial Fintech system · 2026-07 ───────────────────────────

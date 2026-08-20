@@ -1,8 +1,34 @@
 # CLAUDE.md — חוסך (Chosech)
 
-Israeli telecom price-comparison app. Hebrew-first, RTL, Flutter.
+Israeli telecom price-comparison product. Hebrew-first, RTL. Two surfaces: the
+static marketing/catalogue **site** (`site/`) and the **Flutter app** (`lib/`).
 
-## ⚠️ ARCHITECTURE DIRECTIVE — read first
+## ⚠️ SCOPE DIRECTIVE — read this before anything else
+
+**Default scope is the SITE ONLY — `site/`, on mobile and desktop. Do not touch
+the Flutter app or the APK unless the user asks for it in that turn.**
+
+Owner's instruction (2026-08-20): *"מעכשיו לא לגעת באפליקציה APK — אני רוצה
+שתתרכז רק באתר במובייל ובמחשב. בעתיד, כשארצה לשפר את האפליקציה, אני אגיד לך."*
+
+Out of scope until the user explicitly asks for app work:
+
+| Off-limits by default | Notes |
+|---|---|
+| `lib/`, `test/`, `tool/` | the Flutter app and its tests |
+| `android/`, `ios/`, `macos/`, `linux/`, `windows/` | platform shells |
+| `pubspec.yaml`, `pubspec.lock`, `analysis_options.yaml` | Dart toolchain |
+| `flutter build apk` / `ipa`, `flutter analyze`, `flutter test` | do not run as routine gates |
+
+In scope by default: `site/` (plus `scripts/` when a site CI gate itself is
+wrong, and this file). `web/` and `supabase/` only when the task is about them,
+or when the twelve-month cost engine changes and its four copies must stay in
+step (see Domain rules).
+
+The Flutter sections in this file stay as reference for when app work IS
+requested — they are not an instruction to go do app work now.
+
+## ⚠️ ARCHITECTURE DIRECTIVE — Flutter app (only when app work is requested)
 
 **This is plain, hand-authored Flutter. There is NO FlutterFlow — not the
 runtime, not the widget-tree pattern, not the `*_model.dart` convention.**
@@ -122,7 +148,36 @@ When adding logic, put it here with tests in `test/<service>_test.dart`, then re
 - Each plan has its own category; savings must use `appState.currentBill(plan.cat)`,
   not a single global bill.
 
-## Validation gates (run after every change, in order)
+## Validation gates — SITE (the default surface; run these)
+
+Serve `site/` and drive a real browser; do not trust source reading alone.
+
+1. `node site/build.js` → must end with **"link check: all internal links across
+   N generated pages resolve"**.
+2. `node --test site/plan-cost.test.js` and `node --test site/money-contrast.test.js`.
+3. `PW_CHROMIUM=/opt/pw-browsers/chromium npm run test:cta-contrast` and
+   `npm run test:translate-ux` — the two browser gates CI runs.
+4. axe-core across pages × mobile/desktop × light/dark, and a horizontal-overflow
+   sweep across widths. Target is **zero** on both; that is the standing bar.
+
+**Emulate touch when testing "mobile"** — `hasTouch: true, isMobile: true`.
+Without it Chromium reports `pointer: fine`, so `@media (hover: none) and
+(pointer: coarse)` rules do not apply and the sweep invents defects that no
+phone has (carousel arrows, in particular). Measure a tap target's `::before`
+hit overlay too, not just `getBoundingClientRect()`.
+
+**Commit SOURCE ONLY** — `site/build.js`, `site/styles.css`, `site/script.js`,
+`site/index.html`. The generated `site/*.html`, `*.min.css` and `*.min.js` are
+rebuilt and committed by the `rebuild-static` cron from the LIVE Supabase
+catalogue every 30 min (and can be fired on demand via workflow_dispatch). A
+local build in a sandbox with no network falls back to `site/data/plans.json`
+and **rounds real prices** (10.90 → 11, 19.8 → 20). Before committing
+`index.html`, restore its build-stamped regions from HEAD **by content, not by
+counting them**: the asset `?v=` hashes, `build:catalogue-source`, the
+`<!--DEALS:START-->…<!--DEALS:END-->` ticker and the `window.__HERO_PLANS__`
+blob. (Comparing occurrence counts once let rounded prices reach main.)
+
+## Validation gates — FLUTTER APP (only when app work is requested)
 
 1. `flutter analyze` → must print **No issues found**.
 2. `flutter test` → all pass (track the count; it only goes up).
@@ -136,7 +191,7 @@ first; ignore the "running as root" warning. When dispatching parallel agents,
 give each **disjoint files** and have it self-validate; wait for all completions
 before validating, and code-review each wave's diff before committing.
 
-## Build & ship
+## Build & ship — Flutter app (only when app work is requested)
 
 - `flutter pub get`, `flutter run`, `flutter analyze`, `flutter build apk` /
   `flutter build ipa`. No FlutterFlow step anywhere.

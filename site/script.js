@@ -287,13 +287,45 @@
     }
     return wrap;
   };
-  // Hand off to the lead form: scroll it into view and focus the name field.
-  // Shared by the advisor's "להשאיר פרטים" CTA.
+  // Every lead form on the page, in document order: the bottom-of-page form and
+  // — on the homepage — the hero quick-close card. Queried live so a form added
+  // after load still counts. Function declarations, so the sticky bar and the
+  // advisor handoff below can both reach them.
+  function leadForms() {
+    return Array.prototype.slice.call(document.querySelectorAll('#leadForm, form[data-lead-form]'));
+  }
+  // The form a visitor should be SENT to: whichever is nearest the viewport's
+  // centre. With a form in the hero and another at the page bottom, always
+  // targeting the bottom one would scroll someone away from the form already in
+  // front of them — a tap that costs a conversion instead of saving one.
+  function nearestLeadForm() {
+    const forms = leadForms();
+    if (!forms.length) return null;
+    const mid = window.scrollY + window.innerHeight / 2;
+    let best = forms[0];
+    let bestDist = Infinity;
+    forms.forEach((f) => {
+      const r = f.getBoundingClientRect();
+      const dist = Math.abs((window.scrollY + r.top + r.height / 2) - mid);
+      if (dist < bestDist) { bestDist = dist; best = f; }
+    });
+    return best;
+  }
+  // True while any lead form is on screen — the cue to stand down a CTA that
+  // would only scroll to one.
+  function aLeadFormIsOnScreen() {
+    return leadForms().some((f) => {
+      const r = f.getBoundingClientRect();
+      return r.top < window.innerHeight && r.bottom > 0;
+    });
+  }
+  // Hand off to the lead form: scroll the nearest one into view and focus its
+  // name field. Shared by the advisor's "להשאיר פרטים" CTA.
   const handoffToLead = () => {
-    const f = $('leadForm');
+    const f = nearestLeadForm();
     if (!f) { location.href = 'index.html#lead'; return; }
     f.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-    const first = $('leadName');
+    const first = f.querySelector('input[name="name"]');
     if (first) setTimeout(() => first.focus({ preventScroll: true }), reduceMotion ? 0 : 400);
   };
 
@@ -1318,17 +1350,20 @@
       // Canonical CTA-click event, matching the web app's StickyLeadCta
       // (`cta_click` with location:"sticky", label:"lead").
       track('cta_click', { location: 'sticky', label: 'lead', source: location.pathname });
-      form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-      const first = $('leadName');
+      const target = nearestLeadForm() || form;
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      const first = target.querySelector('input[name="name"]');
       if (first) first.focus({ preventScroll: true });
     });
     let visible = false;
     let stickyTicking = false;
     const updateSticky = () => {
       const past = window.scrollY > window.innerHeight * 0.6;
-      const formRect = form.getBoundingClientRect();
-      const overForm = formRect.top < window.innerHeight && formRect.bottom > 0;
-      const show = past && !overForm;
+      // Stand down while ANY lead form is on screen, not just the bottom one.
+      // The hero card is tall enough on a phone that the 0.6-viewport threshold
+      // fires while its submit button is still visible, and the bar would then
+      // offer to scroll the visitor away from the form they are filling in.
+      const show = past && !aLeadFormIsOnScreen();
       if (show !== visible) { visible = show; stickyBar.classList.toggle('is-visible', show); }
       stickyTicking = false;
     };

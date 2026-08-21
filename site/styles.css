@@ -2115,6 +2115,12 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .compare-picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
 .compare-pick { flex: none; width: 100%; }
 .compare-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.compare-table-wrap:empty {
+  min-height: 522px;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 47px, var(--line) 47px 48px);
+  opacity: .5;
+}
+@media (min-width: 768px) { .compare-table-wrap:empty { min-height: 599px; } }
 .cmp-empty {
   text-align: center; color: var(--muted); padding: 56px 24px;
   background: var(--cream); border: 1px dashed var(--ink-200); border-radius: var(--radius);
@@ -4062,7 +4068,7 @@ h1 { letter-spacing: -.02em; }
    roomy asymmetric two-column hero that collapses to one column on tablet. */
 .lead-hero--split { text-align: start; }
 .lead-hero__grid {
-  display: grid; grid-template-columns: 1.08fr .92fr; gap: clamp(28px, 5vw, 64px);
+  display: grid; grid-template-columns: 1.12fr .88fr; gap: clamp(28px, 5vw, 64px);
   align-items: center;
 }
 .lead-hero--split .pill { margin-top: 4px; }

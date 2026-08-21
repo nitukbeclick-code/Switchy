@@ -245,11 +245,13 @@
   </header>
 
   <main id="top"><span id="main"></span>
-    <!-- ── Hero — light "category launcher" (kamaze-style, improved, no black) ──
-         A bright, airy panel (NOT the old ink slab): a deep-forest-green headline
-         and a grid of colour-coded category tiles that ARE the primary nav — each
-         with its real catalogue count + truthful "מ-₪X לחודש" (numbers mirror the
-         generated category pages). חו״ל (mixed units) → a chip, no monthly anchor.
+    <!-- ── Hero — conversion-first split (2026-08 redesign): the CLOSE lives
+         above the fold. Left: outcome headline + the quick-close lead card
+         (phone + name + one legal checkbox → done, or straight to WhatsApp).
+         Right: the answer-in-10-seconds finder, whose rows each deep-link to
+         WhatsApp — a two-tap close. The colour-coded category tiles (real
+         catalogue counts + truthful "מ-₪X לחודש", numbers mirror the generated
+         category pages) become a launch strip under the split.
          Colours are AA-tuned + dark-parity-safe (see .hero--light in styles.css). -->
     <section class="hero hero--light">
       <div class="hero__aurora" aria-hidden="true"></div>
@@ -257,22 +259,42 @@
         <div class="hero__panel">
         <div class="hero__split">
         <div class="hero__copy">
-          <h1>התקשורת שלכם.<br /><span class="hl">במחיר שמרגיש נכון.</span></h1>
+          <h1>מפסיקים לשלם יותר מדי.<br /><span class="hl">עוד היום.</span></h1>
           <p class="hero__sub">
-            משווים את כל חברות התקשורת בישראל, מבינים מה אתם באמת צריכים,
-            ומציגים את המחיר המלא — גם אחרי שהמבצע נגמר.
-            <strong>החלטה חכמה, בלי לחץ ובלי אותיות קטנות</strong>, עם
-            ליווי אנושי עד שהמעבר הושלם.
+            סלולר, אינטרנט, טלוויזיה — משווים בשבילכם את כל החברות,
+            מוצאים מסלול זול יותר <strong>וסוגרים לכם אותו עד הסוף</strong>.
+            חינם, בלי התחייבות, והמספר שלכם נשמר.
           </p>
 
-          <div class="hero__cta">
-            <a class="btn btn--primary btn--lg" href="#heroFinder">מצאו את המסלול שלכם ←</a>
-            <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">התייעצו עם SWITCHY AI</a>
+          <!-- Quick-close card: the shortest path from landing to a lead.
+               Same backend + consent contract as the bottom form (script.js
+               binds every form[data-lead-form]); ids are hero-prefixed so the
+               page keeps one #leadForm at the bottom for anchors/handoff. -->
+          <div class="qlead reveal" id="lead">
+            <p class="qlead__title">השאירו טלפון — נחזור עם המסלול הכי משתלם עבורכם</p>
+            <form class="qlead__form" data-lead-form novalidate data-lead-context="טופס מהיר — הירו">
+              <input type="text" id="heroLeadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" aria-label="שדה לא בשימוש — אנא השאירו ריק" style="position:absolute;clip-path:inset(50%);width:1px;height:1px;opacity:0" />
+              <div class="qlead__fields">
+                <input type="text" id="heroLeadName" name="name" placeholder="שם" aria-label="שם מלא" autocomplete="name" required />
+                <input type="tel" id="heroLeadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+              </div>
+              <label class="consent__row qlead__consent" for="heroConsentLegal">
+                <input type="checkbox" id="heroConsentLegal" name="consentLegal" required />
+                <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a> ול<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
+              </label>
+              <button class="btn btn--primary btn--lg qlead__submit" type="submit">מצאו לי מסלול זול יותר ←</button>
+            </form>
+            <p class="cta__note qlead__note" role="status" aria-live="polite"></p>
+            <a class="cta__wa qlead__wa" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעדיפים לסגור בוואטסאפ? דברו איתנו ←</a>
+            <p class="qlead__fine">חינם לחלוטין · בלי התחייבות · לא נשתף את המספר עם ספקים</p>
           </div>
-
+        </div>
+        <div class="hero__visual">
           <!-- Answer-in-10-seconds finder — hydrated by script.js from the
-               build-stamped __HERO_PLANS__ blob; hidden without JS. -->
+               build-stamped __HERO_PLANS__ blob; hidden without JS. Every row
+               deep-links to WhatsApp, so a real deal is two taps from landing. -->
           <div class="finder" id="heroFinder" hidden>
+            <p class="finder__title">בדקו ב-10 שניות כמה תחסכו</p>
             <div class="finder__cats" role="group" aria-label="בחירת קטגוריה להשוואה מהירה">
               <button type="button" class="finder__cat is-active" data-cat="cellular">סלולר</button>
               <button type="button" class="finder__cat" data-cat="internet">אינטרנט</button>
@@ -286,12 +308,13 @@
             <input type="range" id="finderBill" min="20" max="200" step="5" value="60" aria-label="התשלום החודשי הנוכחי שלכם" />
             <div class="finder__results" id="finderResults" aria-live="polite"></div>
             <p class="finder__save" id="finderSave" aria-live="polite"></p>
+            <div class="finder__meter" id="finderMeter" hidden aria-hidden="true"><i id="finderMeterFill"></i><span class="finder__meter-tick"></span></div>
           </div>
-
         </div>
-        <div class="hero__visual">
-          <p class="hero__launch-prompt">איפה מתחילים לחסוך?</p>
-          <ul class="hero__launch" aria-label="קטגוריות להשוואה">
+        </div>
+        <div class="hero__launch-wrap">
+          <p class="hero__launch-prompt">או גלשו לפי קטגוריה</p>
+          <ul class="hero__launch hero__launch--strip" aria-label="קטגוריות להשוואה">
             <li><a class="launch-tile" href="cellular.html" style="--tf:#168B69;--tt:#075B46;--td:#064635">
               <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></span>
               <span class="launch-tile__body"><span class="launch-tile__name">סלולר</span><span class="launch-tile__count">59 מסלולים</span><span class="launch-tile__price">מ-<span dir="ltr">₪11</span> לחודש</span></span>
@@ -308,14 +331,11 @@
               <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.5 9 4.5-9 4.5-9-4.5 9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg></span>
               <span class="launch-tile__body"><span class="launch-tile__name">חבילה משולבת</span><span class="launch-tile__count">11 מסלולים</span><span class="launch-tile__price">מ-<span dir="ltr">₪119</span> לחודש</span></span>
             </a></li>
+            <li><a class="launch-tile" href="abroad.html" style="--tf:#3E7CB1;--tt:#245A8D;--td:#193F63">
+              <span class="launch-tile__ico" aria-hidden="true"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2.5 3 10l6.5 2.5L12 19l2.5-6.5 7-10z"/><path d="m9.5 12.5 3-3"/></svg></span>
+              <span class="launch-tile__body"><span class="launch-tile__name">חבילות חו״ל</span><span class="launch-tile__count">eSIM לכל היעדים</span><span class="launch-tile__price">מחיר לפי חבילה</span></span>
+            </a></li>
           </ul>
-          <div class="hero__more">
-            <span class="hero__more-label">קטגוריות נוספות</span>
-            <ul class="hero__chips">
-              <li><a href="abroad.html"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2.5 3 10l6.5 2.5L12 19l2.5-6.5 7-10z"/><path d="m9.5 12.5 3-3"/></svg>חבילות חו״ל</a></li>
-            </ul>
-          </div>
-        </div>
         </div>
         </div>
       </div>
@@ -337,53 +357,13 @@
       <div class="container ticker__inner"><!--DEALS:START--><a class="ticker__item is-on" href="deals.html"><b>סלולר</b> הכי זול היום: 019 מובייל · <b class="price-stat" dir="ltr">₪19.8</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>אינטרנט</b> הכי זול היום: פרטנר · <b class="price-stat" dir="ltr">₪39</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>טלוויזיה</b> הכי זול היום: STING TV · <b class="price-stat" dir="ltr">₪49</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><a class="ticker__item" href="deals.html" aria-hidden="true" tabindex="-1"><b>חבילה משולבת</b> הכי זול היום: NextTV · <b class="price-stat" dir="ltr">₪119</b>/חודש · נבדק היום · <span class="ticker__more">לכל העסקאות ←</span></a><!--DEALS:END--></div>
     </div>
 
-    <!-- ── Providers strip ──────────────────────────────────────────────── -->
-    <section class="providers" aria-label="חברות התקשורת">
-      <div class="container">
-        <p class="providers__title">משווים את כל הגדולות — והקטנות</p>
-        <div class="logo-marquee">
-          <div class="logo-marquee__row">
-            <div class="logo-marquee__track">
-              <a class="logo-chip" href="provider-pelephone.html"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async">פלאפון</a>
-              <a class="logo-chip" href="provider-cellcom.html"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async">סלקום</a>
-              <a class="logo-chip" href="provider-partner.html"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async">פרטנר</a>
-              <a class="logo-chip" href="provider-hot-mobile.html"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">הוט מובייל</a>
-              <a class="logo-chip" href="provider-golan.html"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async">גולן טלקום</a>
-              <a class="logo-chip" href="provider-019mobile.html"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">019 מובייל</a>
-              <a class="logo-chip" href="provider-rami-levy.html"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async">רמי לוי</a>
-              <a class="logo-chip" href="provider-bezeq.html"><img src="assets/logos/bezeq.svg" alt="" width="22" height="22" loading="lazy" decoding="async">בזק</a>
-              <a class="logo-chip" href="provider-yes.html"><img src="assets/logos/yes.webp" alt="" width="22" height="22" loading="lazy" decoding="async">yes</a>
-              <a class="logo-chip" href="provider-hot.html"><img src="assets/logos/hot.svg" alt="" width="22" height="22" loading="lazy" decoding="async">HOT</a>
-              <a class="logo-chip" href="provider-wecom.html"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async">WeCom</a>
-              <a class="logo-chip" href="provider-airalo.html"><img src="assets/logos/airalo.webp" alt="" width="22" height="22" loading="lazy" decoding="async">Airalo</a>
-            </div>
-            <div class="logo-marquee__track" aria-hidden="true">
-              <a class="logo-chip" href="provider-pelephone.html" tabindex="-1"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async">פלאפון</a>
-              <a class="logo-chip" href="provider-cellcom.html" tabindex="-1"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async">סלקום</a>
-              <a class="logo-chip" href="provider-partner.html" tabindex="-1"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async">פרטנר</a>
-              <a class="logo-chip" href="provider-hot-mobile.html" tabindex="-1"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">הוט מובייל</a>
-              <a class="logo-chip" href="provider-golan.html" tabindex="-1"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async">גולן טלקום</a>
-              <a class="logo-chip" href="provider-019mobile.html" tabindex="-1"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">019 מובייל</a>
-              <a class="logo-chip" href="provider-rami-levy.html" tabindex="-1"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async">רמי לוי</a>
-              <a class="logo-chip" href="provider-bezeq.html" tabindex="-1"><img src="assets/logos/bezeq.svg" alt="" width="22" height="22" loading="lazy" decoding="async">בזק</a>
-              <a class="logo-chip" href="provider-yes.html" tabindex="-1"><img src="assets/logos/yes.webp" alt="" width="22" height="22" loading="lazy" decoding="async">yes</a>
-              <a class="logo-chip" href="provider-hot.html" tabindex="-1"><img src="assets/logos/hot.svg" alt="" width="22" height="22" loading="lazy" decoding="async">HOT</a>
-              <a class="logo-chip" href="provider-wecom.html" tabindex="-1"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async">WeCom</a>
-              <a class="logo-chip" href="provider-airalo.html" tabindex="-1"><img src="assets/logos/airalo.webp" alt="" width="22" height="22" loading="lazy" decoding="async">Airalo</a>
-            </div>
-          </div>
-        </div>
-        <p class="providers__more"><a href="providers.html">לכל הספקים ←</a></p>
-      </div>
-    </section>
-
     <!-- ── Featured real deals ──────────────────────────────────────────── -->
     <section class="section section--alt" id="deals" aria-label="מסלולים נבחרים">
       <div class="container">
         <header class="section__head reveal">
-          <span class="eyebrow">מחירים אמיתיים</span>
-          <h2>ככה נראה מסלול משתלם</h2>
-          <p>שלוש דוגמאות מתוך ההשוואה — מחיר אטרקטיבי בכל קטגוריה, כולל המחיר שאחרי המבצע. שקוף, בלי כוכביות נסתרות.</p>
+          <span class="eyebrow">מחירים אמיתיים · מתעדכן יומית</span>
+          <h2>דילים ששווה לסגור היום</h2>
+          <p>מחיר מלא ושקוף בכל קטגוריה — כולל מה שקורה אחרי שהמבצע נגמר. לחיצה אחת על ״מעוניין/ת״ ואנחנו סוגרים לכם את המעבר.</p>
         </header>
         <div class="plan-grid plan-grid--featured" data-carousel="3" data-carousel-m="1.08">
           <article class="plan reveal" data-cat="cellular">
@@ -479,8 +459,73 @@
       </div>
     </section>
 
+    <!-- ── Providers strip ──────────────────────────────────────────────── -->
+    <section class="providers" aria-label="חברות התקשורת">
+      <div class="container">
+        <p class="providers__title">משווים את כל הגדולות — והקטנות</p>
+        <div class="logo-marquee">
+          <div class="logo-marquee__row">
+            <div class="logo-marquee__track">
+              <a class="logo-chip" href="provider-pelephone.html"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async">פלאפון</a>
+              <a class="logo-chip" href="provider-cellcom.html"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async">סלקום</a>
+              <a class="logo-chip" href="provider-partner.html"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async">פרטנר</a>
+              <a class="logo-chip" href="provider-hot-mobile.html"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">הוט מובייל</a>
+              <a class="logo-chip" href="provider-golan.html"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async">גולן טלקום</a>
+              <a class="logo-chip" href="provider-019mobile.html"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">019 מובייל</a>
+              <a class="logo-chip" href="provider-rami-levy.html"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async">רמי לוי</a>
+              <a class="logo-chip" href="provider-bezeq.html"><img src="assets/logos/bezeq.svg" alt="" width="22" height="22" loading="lazy" decoding="async">בזק</a>
+              <a class="logo-chip" href="provider-yes.html"><img src="assets/logos/yes.webp" alt="" width="22" height="22" loading="lazy" decoding="async">yes</a>
+              <a class="logo-chip" href="provider-hot.html"><img src="assets/logos/hot.svg" alt="" width="22" height="22" loading="lazy" decoding="async">HOT</a>
+              <a class="logo-chip" href="provider-wecom.html"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async">WeCom</a>
+              <a class="logo-chip" href="provider-airalo.html"><img src="assets/logos/airalo.webp" alt="" width="22" height="22" loading="lazy" decoding="async">Airalo</a>
+            </div>
+            <div class="logo-marquee__track" aria-hidden="true">
+              <a class="logo-chip" href="provider-pelephone.html" tabindex="-1"><img src="assets/logos/pelephone.svg" alt="" width="22" height="22" loading="lazy" decoding="async">פלאפון</a>
+              <a class="logo-chip" href="provider-cellcom.html" tabindex="-1"><img src="assets/logos/cellcom.webp" alt="" width="22" height="22" loading="lazy" decoding="async">סלקום</a>
+              <a class="logo-chip" href="provider-partner.html" tabindex="-1"><img src="assets/logos/partner.webp" alt="" width="22" height="22" loading="lazy" decoding="async">פרטנר</a>
+              <a class="logo-chip" href="provider-hot-mobile.html" tabindex="-1"><img src="assets/logos/hot-mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">הוט מובייל</a>
+              <a class="logo-chip" href="provider-golan.html" tabindex="-1"><img src="assets/logos/golan.webp" alt="" width="22" height="22" loading="lazy" decoding="async">גולן טלקום</a>
+              <a class="logo-chip" href="provider-019mobile.html" tabindex="-1"><img src="assets/logos/019mobile.webp" alt="" width="22" height="22" loading="lazy" decoding="async">019 מובייל</a>
+              <a class="logo-chip" href="provider-rami-levy.html" tabindex="-1"><img src="assets/logos/rami-levy.webp" alt="" width="22" height="22" loading="lazy" decoding="async">רמי לוי</a>
+              <a class="logo-chip" href="provider-bezeq.html" tabindex="-1"><img src="assets/logos/bezeq.svg" alt="" width="22" height="22" loading="lazy" decoding="async">בזק</a>
+              <a class="logo-chip" href="provider-yes.html" tabindex="-1"><img src="assets/logos/yes.webp" alt="" width="22" height="22" loading="lazy" decoding="async">yes</a>
+              <a class="logo-chip" href="provider-hot.html" tabindex="-1"><img src="assets/logos/hot.svg" alt="" width="22" height="22" loading="lazy" decoding="async">HOT</a>
+              <a class="logo-chip" href="provider-wecom.html" tabindex="-1"><img src="assets/logos/wecom.png" alt="" width="22" height="22" loading="lazy" decoding="async">WeCom</a>
+              <a class="logo-chip" href="provider-airalo.html" tabindex="-1"><img src="assets/logos/airalo.webp" alt="" width="22" height="22" loading="lazy" decoding="async">Airalo</a>
+            </div>
+          </div>
+        </div>
+        <p class="providers__more"><a href="providers.html">לכל הספקים ←</a></p>
+      </div>
+    </section>
+
+    <!-- ── Savings calculator ───────────────────────────────────────────── -->
+    <section class="section section--alt" id="calculator">
+      <div class="container calc">
+        <div class="calc__copy reveal">
+          <span class="eyebrow">מחשבון חיסכון</span>
+          <h2>כמה אתם משלמים היום?</h2>
+          <p>הזיזו את המחוון ותגלו כמה תוכלו לחסוך בשנה. ההערכה מבוססת על מעבר ממוצע — הסכום המדויק מחושב באפליקציה לפי החשבון האמיתי שלכם.</p>
+        </div>
+        <div class="calc__card reveal">
+          <label class="calc__row">
+            <span>חשבון חודשי נוכחי</span>
+            <output id="billOut" dir="ltr">₪220</output>
+          </label>
+          <input type="range" id="billRange" min="50" max="600" step="10" value="220" aria-label="חשבון חודשי נוכחי" />
+          <div class="calc__result">
+            <span class="calc__resultLabel">תוכלו לחסוך עד</span>
+            <span class="calc__resultBig" id="saveOut" dir="ltr">₪1,188</span>
+            <span class="calc__resultUnit">בשנה</span>
+          </div>
+          <a class="btn btn--primary btn--block" href="#cta">קבלו את ההמלצה המדויקת ←</a>
+          <p class="calc__fine">* הערכה בלבד. החיסכון בפועל תלוי בחבילה ובספק.</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ── How it works ─────────────────────────────────────────────────── -->
-    <section class="section section--alt" id="how">
+    <section class="section" id="how">
       <div class="container">
         <header class="section__head reveal">
           <span class="eyebrow">פשוט כמו 1·2·3</span>
@@ -504,31 +549,6 @@
             <p>נציג חוזר אליכם, וניוד המספר נעשה תוך 1–3 ימי עסקים — בלי עמלות נסתרות.</p>
           </li>
         </ol>
-      </div>
-    </section>
-
-    <!-- ── Savings calculator ───────────────────────────────────────────── -->
-    <section class="section" id="calculator">
-      <div class="container calc">
-        <div class="calc__copy reveal">
-          <span class="eyebrow">מחשבון חיסכון</span>
-          <h2>כמה אתם משלמים היום?</h2>
-          <p>הזיזו את המחוון ותגלו כמה תוכלו לחסוך בשנה. ההערכה מבוססת על מעבר ממוצע — הסכום המדויק מחושב באפליקציה לפי החשבון האמיתי שלכם.</p>
-        </div>
-        <div class="calc__card reveal">
-          <label class="calc__row">
-            <span>חשבון חודשי נוכחי</span>
-            <output id="billOut" dir="ltr">₪220</output>
-          </label>
-          <input type="range" id="billRange" min="50" max="600" step="10" value="220" aria-label="חשבון חודשי נוכחי" />
-          <div class="calc__result">
-            <span class="calc__resultLabel">תוכלו לחסוך עד</span>
-            <span class="calc__resultBig" id="saveOut" dir="ltr">₪1,188</span>
-            <span class="calc__resultUnit">בשנה</span>
-          </div>
-          <a class="btn btn--primary btn--block" href="#cta">קבלו את ההמלצה המדויקת ←</a>
-          <p class="calc__fine">* הערכה בלבד. החיסכון בפועל תלוי בחבילה ובספק.</p>
-        </div>
       </div>
     </section>
 
@@ -679,21 +699,13 @@
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
           <div class="consent">
-            <label class="consent__row" for="consentTerms">
-              <input type="checkbox" id="consentTerms" name="consentTerms" required />
-              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+            <label class="consent__row" for="consentLegal">
+              <input type="checkbox" id="consentLegal" name="consentLegal" required />
+              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a> ול<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
             </label>
-            <label class="consent__row" for="consentPrivacy">
-              <input type="checkbox" id="consentPrivacy" name="consentPrivacy" required />
-              <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
-            </label>
-            <label class="consent__row" for="consentMarketing">
-              <input type="checkbox" id="consentMarketing" name="consentMarketing" />
-              <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
-            </label>
-            <label class="consent__row" for="consentPriceAlert">
-              <input type="checkbox" id="consentPriceAlert" name="consentPriceAlert" />
-              <span>התריעו לי כשיורד מחיר על מסלול שמתאים לי</span>
+            <label class="consent__row" for="consentUpdates">
+              <input type="checkbox" id="consentUpdates" name="consentUpdates" />
+              <span>עדכנו אותי על מבצעים וירידות מחיר (אופציונלי, ניתן לבטל בכל עת)</span>
             </label>
           </div>
           <button class="btn btn--primary btn--lg" type="submit">קבלו המלצה אישית תוך 2 דקות ←</button>

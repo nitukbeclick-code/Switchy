@@ -3878,14 +3878,16 @@
           : 'אתם כבר במחיר מצוין — שווה לוודא מול ההשוואה המלאה';
         // Savings meter: honest arithmetic as a feel-able bar (₪1,500/yr = full).
         if (meter && fill) {
-          meter.hidden = yearly <= 0;
+          // Class, not `hidden` — the bar keeps its 17px whether or not there is
+          // a saving to show, so hydration never shifts the page (see #191).
+          meter.classList.toggle('is-on', yearly > 0);
           var pct = Math.max(0.04, Math.min(1, yearly / 1500));
           fill.style.transform = 'scaleX(' + pct + ')';
           meter.classList.toggle('is-great', yearly >= 600);
         }
       } else {
         save.textContent = '';
-        if (meter) meter.hidden = true;
+        if (meter) meter.classList.remove('is-on');
       }
     }
     root.querySelectorAll('.finder__cat').forEach(function (btn) {

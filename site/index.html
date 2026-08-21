@@ -57,7 +57,7 @@
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/rubik-hebrew-800-normal.woff2" />
   <link rel="preload" as="font" type="font/woff2" crossorigin href="assets/fonts/assistant-hebrew-400-normal.woff2" />
   <link rel="stylesheet" href="assets/fonts/fonts.css" />
-  <link rel="stylesheet" href="styles.min.css?v=9a075457" />
+  <link rel="stylesheet" href="styles.min.css?v=870b9825" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -308,8 +308,12 @@
             <input type="range" id="finderBill" min="20" max="200" step="5" value="60" aria-label="התשלום החודשי הנוכחי שלכם" />
             <div class="finder__results" id="finderResults" aria-live="polite"></div>
             <p class="finder__save" id="finderSave" aria-live="polite"></p>
-            <div class="finder__meter" id="finderMeter" hidden aria-hidden="true"><i id="finderMeterFill"></i><span class="finder__meter-tick"></span></div>
+            <div class="finder__meter" id="finderMeter" aria-hidden="true"><i id="finderMeterFill"></i><span class="finder__meter-tick"></span></div>
           </div>
+          <!-- Unhidden during parse, not by deferred JS, so the finder is in the
+               first frame and the attribute is genuinely removed for assistive
+               tech (see #191). -->
+          <script>try{document.getElementById('heroFinder').hidden=false}catch(e){}</script>
         </div>
         </div>
         <div class="hero__launch-wrap">

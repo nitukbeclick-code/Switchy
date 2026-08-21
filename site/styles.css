@@ -4510,6 +4510,7 @@ a.chip:active { transform: translateY(0) scale(.97); }
 }
 
 /* ── HERO FINDER — the answer-in-10-seconds widget ─────────────────────────── */
+.finder[hidden] { display: none; }
 .finder {
   margin-top: 24px;
   background: var(--white);
@@ -4539,7 +4540,13 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .finder__bill { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-weight: 600; font-size: 14px; color: var(--ink-700); }
 .finder__bill output { font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif; font-weight: 800; font-size: 20px; color: var(--ink-900); font-variant-numeric: tabular-nums; }
 .finder input[type="range"] { width: 100%; accent-color: var(--accent); }
-.finder__results { display: grid; border-top: 1px solid var(--line); }
+.finder__results { display: grid; border-top: 1px solid var(--line); min-height: 194px; }
+.finder__results:empty {
+  background-image: repeating-linear-gradient(
+    to bottom, transparent 0 63px, var(--line) 63px 64px);
+  opacity: .5;
+}
+.finder__save { min-height: 23px; }
 .finder__row {
   display: flex; align-items: center; gap: 10px; padding: 10px 2px; min-height: 48px;
   border-bottom: 1px solid var(--line); text-decoration: none; color: inherit;
@@ -4706,7 +4713,14 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 .finder__meter {
   position: relative; height: 7px; margin-top: 10px; border-radius: 999px;
   background: var(--ink-100); overflow: hidden;
+  /* ALWAYS in layout. Toggling this in and out of flow on hydration would push
+     everything below the hero down by its 17px — the same shift #191 removed by
+     reserving .finder__results and #finderSave. So it hides by visibility, never
+     by display, and the markup carries no `hidden` attribute. It is decorative
+     (aria-hidden), so occupying invisible space costs assistive tech nothing. */
+  visibility: hidden; opacity: 0; transition: opacity .2s cubic-bezier(.23,1,.32,1);
 }
+.finder__meter.is-on { visibility: visible; opacity: 1; }
 .finder__meter i {
   position: absolute; inset: 0; border-radius: 999px;
   background: linear-gradient(90deg, var(--value), var(--value-d));
@@ -4718,7 +4732,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: color-mix(in srgb, var(--ink-400) 55%, transparent); border-radius: 1px;
 }
 .finder__meter.is-great i { background: linear-gradient(90deg, var(--accent), var(--accent-d)); }
-@media (prefers-reduced-motion: reduce) { .finder__meter i, .plan__drop { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .finder__meter, .finder__meter i, .plan__drop { transition: none; } }
 
 /* ── Conversion wave — the Zoom closing channel everywhere ────────────────── */
 .zoom-cta {

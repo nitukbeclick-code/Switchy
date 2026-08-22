@@ -287,13 +287,45 @@
     }
     return wrap;
   };
-  // Hand off to the lead form: scroll it into view and focus the name field.
-  // Shared by the advisor's "להשאיר פרטים" CTA.
+  // Every lead form on the page, in document order: the bottom-of-page form and
+  // — on the homepage — the hero quick-close card. Queried live so a form added
+  // after load still counts. Function declarations, so the sticky bar and the
+  // advisor handoff below can both reach them.
+  function leadForms() {
+    return Array.prototype.slice.call(document.querySelectorAll('#leadForm, form[data-lead-form]'));
+  }
+  // The form a visitor should be SENT to: whichever is nearest the viewport's
+  // centre. With a form in the hero and another at the page bottom, always
+  // targeting the bottom one would scroll someone away from the form already in
+  // front of them — a tap that costs a conversion instead of saving one.
+  function nearestLeadForm() {
+    const forms = leadForms();
+    if (!forms.length) return null;
+    const mid = window.scrollY + window.innerHeight / 2;
+    let best = forms[0];
+    let bestDist = Infinity;
+    forms.forEach((f) => {
+      const r = f.getBoundingClientRect();
+      const dist = Math.abs((window.scrollY + r.top + r.height / 2) - mid);
+      if (dist < bestDist) { bestDist = dist; best = f; }
+    });
+    return best;
+  }
+  // True while any lead form is on screen — the cue to stand down a CTA that
+  // would only scroll to one.
+  function aLeadFormIsOnScreen() {
+    return leadForms().some((f) => {
+      const r = f.getBoundingClientRect();
+      return r.top < window.innerHeight && r.bottom > 0;
+    });
+  }
+  // Hand off to the lead form: scroll the nearest one into view and focus its
+  // name field. Shared by the advisor's "להשאיר פרטים" CTA.
   const handoffToLead = () => {
-    const f = $('leadForm');
+    const f = nearestLeadForm();
     if (!f) { location.href = 'index.html#lead'; return; }
     f.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-    const first = $('leadName');
+    const first = f.querySelector('input[name="name"]');
     if (first) setTimeout(() => first.focus({ preventScroll: true }), reduceMotion ? 0 : 400);
   };
 
@@ -303,7 +335,6 @@
   // to the Supabase `leads` table. With no config it falls back to a local
   // thank-you so the form always works. No keys are committed to the repo.
   const form = $('leadForm');
-  const note = $('leadNote');
   const sendLead = async (lead) => {
     const cfg = window.CHOSECH_SUPABASE;
     if (!cfg || !cfg.url || !cfg.anonKey) {
@@ -377,18 +408,24 @@
   };
   // Israeli mobile: +972/0, then 5X, then 7 more digits — lenient on spaces/dashes.
   const IL_PHONE_RE = /^(\+?972|0)5[0-9](-?\d){7}$/;
-  if (form) {
-    const nameEl0 = $('leadName');
-    const phoneEl0 = $('leadPhone');
+  // One binder for EVERY lead form on the page — the classic bottom-of-page
+  // form (#leadForm) and the hero quick-close form (form[data-lead-form]).
+  // Fields resolve by [name=…] inside the form so ids stay unique per page;
+  // the status note is the nearest .cta__note within the form's own scope.
+  const bindLeadForm = (form) => {
+    const note = (form.closest('.qlead, .cta__inner') || form.parentElement || document).querySelector('.cta__note');
+    const nameEl0 = form.querySelector('input[name="name"]');
+    const phoneEl0 = form.querySelector('input[name="phone"]');
     // Clearing the error as the user corrects the field is friendlier than
     // leaving a stale red message until the next submit.
     if (nameEl0) nameEl0.addEventListener('input', () => { if (nameEl0.getAttribute('aria-invalid')) fieldError(nameEl0, null); });
     if (phoneEl0) phoneEl0.addEventListener('input', () => { if (phoneEl0.getAttribute('aria-invalid')) fieldError(phoneEl0, null); });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      // Honeypot: real users never see/fill #leadCompany (offscreen + aria-hidden
-      // + tabindex -1). A filled value means a bot — fake success, skip the POST.
-      if (($('leadCompany') && $('leadCompany').value || '').trim()) {
+      // Honeypot: real users never see/fill the offscreen company field
+      // (aria-hidden + tabindex -1). A filled value means a bot — fake success, skip the POST.
+      const hpEl = form.querySelector('input[name="company"]');
+      if ((hpEl && hpEl.value || '').trim()) {
         form.reset();
         if (note) { note.classList.remove('cta__note--err'); note.textContent = 'תודה! נחזור אליך בהקדם ✦'; }
         // This branch shows the REAL success copy and sends nothing — correct for
@@ -407,8 +444,8 @@
         track('lead_form_blocked', { source: location.pathname, reason: 'honeypot' });
         return;
       }
-      const nameEl = $('leadName');
-      const phoneEl = $('leadPhone');
+      const nameEl = nameEl0;
+      const phoneEl = phoneEl0;
       const name = (nameEl && nameEl.value || '').trim();
       const phoneRaw = (phoneEl && phoneEl.value || '').trim();
       // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
@@ -437,24 +474,24 @@
         return;
       }
       // Legal consent gate (Privacy Protection Regulations + Spam/Communications
-      // Law): terms + privacy are MANDATORY — block submission without both.
-      // Marketing is optional opt-in. The server re-stamps these timestamps
-      // authoritatively; we send them so the consent moment is captured client-side.
-      const termsEl = $('consentTerms');
-      const privacyEl = $('consentPrivacy');
-      const termsOk = termsEl && termsEl.checked;
-      const privacyOk = privacyEl && privacyEl.checked;
-      if (!termsOk || !privacyOk) {
+      // Law): terms + privacy are MANDATORY — one explicit checkbox covers both
+      // documents (each linked in the label), so the close costs one click, not
+      // two. Marketing/price-alert is a single optional opt-in. The server
+      // re-stamps these timestamps authoritatively; we send them so the consent
+      // moment is captured client-side.
+      const legalEl = form.querySelector('input[name="consentLegal"]');
+      const legalOk = legalEl && legalEl.checked;
+      if (!legalOk) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
         toast('יש לאשר את תנאי השימוש ומדיניות הפרטיות', 'error');
-        const badConsent = !termsOk ? termsEl : privacyEl;
-        if (badConsent) badConsent.focus();
+        if (legalEl) legalEl.focus();
         track('lead_form_blocked', { source: location.pathname, reason: 'consent' });
         return;
       }
       const now = new Date().toISOString();
-      const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
-      const priceAlert = $('consentPriceAlert') && $('consentPriceAlert').checked;
+      const updatesEl = form.querySelector('input[name="consentUpdates"]');
+      const marketingAt = updatesEl && updatesEl.checked ? now : null;
+      const priceAlert = !!marketingAt;
       // Rep context for the CRM card: the page's own `data-lead-context` (what
       // the visitor was reading when they converted — e.g. the guide title +
       // category, stamped by build.js) plus any opt-in flag, joined into the
@@ -532,7 +569,7 @@
         track('lead_form_error', { source: location.pathname, reason: leadErrCode || 'server_error' });
         // Surface the WhatsApp escape hatch: reveal + emphasise the existing link
         // so it presents itself as the fallback rather than sitting there passively.
-        const waCta = (form.closest('.cta__inner, .container') || form.parentElement || document)
+        const waCta = (form.closest('.qlead, .cta__inner, .container') || form.parentElement || document)
           .querySelector('a.cta__wa[href*="wa.me"]');
         if (waCta) {
           waCta.classList.add('cta__wa--offer');
@@ -543,7 +580,7 @@
       }
       // Recovered after a prior failure — drop the fallback emphasis so the CTA
       // returns to its resting state on the successful retry.
-      const waCtaOk = (form.closest('.cta__inner, .container') || form.parentElement || document)
+      const waCtaOk = (form.closest('.qlead, .cta__inner, .container') || form.parentElement || document)
         .querySelector('a.cta__wa--offer');
       if (waCtaOk) waCtaOk.classList.remove('cta__wa--offer');
       // Canonical lead-conversion event, matching the web app's fireLeadConversion
@@ -568,7 +605,7 @@
         form.insertAdjacentElement('afterend', up);
         track('zoom_upsell_shown', { source: location.pathname });
       }
-      showReferralShare();
+      showReferralShare(form);
     });
     // lead_form_view — the funnel's DENOMINATOR: fires once, when the form is
     // actually on screen. Deliberately NOT on load: on 269 pages the form sits
@@ -599,14 +636,15 @@
       formStarted = true;
       track('lead_form_start', { source: location.pathname });
     });
-  }
+  };
+  document.querySelectorAll('#leadForm, form[data-lead-form]').forEach(bindLeadForm);
 
   // ── Referral share (after a successful lead) ───────────────────────────────
   // No backend tracking table for referrals yet — the ?ref= param on the link
   // is the entire mechanic; redeeming/crediting it is a future backend concern.
-  function showReferralShare() {
+  function showReferralShare(srcForm) {
     if ($('referralShare')) return; // already shown (e.g. double submit)
-    const cta = form.closest('.cta__inner, .container') || form.parentElement;
+    const cta = srcForm.closest('.qlead, .cta__inner, .container') || srcForm.parentElement;
     if (!cta) return;
     let code = '';
     try { code = (sessionStorage.getItem('chosechRef') || ''); } catch (_) { /* storage may be blocked */ }
@@ -1140,10 +1178,8 @@
         '<p class="ai-lead__intro">רוצים שנחזור אליכם עם השוואה אישית? השאירו שם וטלפון — חינם, בלי התחייבות.</p>' +
         '<input type="text" class="ai-lead__name" autocomplete="name" maxlength="80" placeholder="שם מלא" aria-label="שם מלא" required />' +
         '<input type="tel" class="ai-lead__phone" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" required />' +
-        '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__terms" required />' +
-        '<span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span></label>' +
-        '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__privacy" required />' +
-        '<span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span></label>' +
+        '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__legal" required />' +
+        '<span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a> ול<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span></label>' +
         '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__mkt" />' +
         '<span>אשמח לקבל עדכונים, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span></label>' +
         '<p class="ai-lead__note" role="status" aria-live="polite"></p>' +
@@ -1152,8 +1188,7 @@
       wrap.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
       const nameEl = wrap.querySelector('.ai-lead__name');
       const phoneEl = wrap.querySelector('.ai-lead__phone');
-      const termsEl = wrap.querySelector('.ai-lead__terms');
-      const privacyEl = wrap.querySelector('.ai-lead__privacy');
+      const legalEl = wrap.querySelector('.ai-lead__legal');
       const mktEl = wrap.querySelector('.ai-lead__mkt');
       const noteEl = wrap.querySelector('.ai-lead__note');
       const submit = wrap.querySelector('.ai-lead__submit');
@@ -1172,9 +1207,10 @@
         const nameOk = name.length >= 2 && name.length <= 80;
         const phoneOk = IL_PHONE_RE_AI.test(phoneRaw.replace(/[^\d+\-\s]/g, '')) || phone.replace(/\D/g, '').length >= 9;
         if (!nameOk || !phoneOk) { fail('נא למלא שם וטלפון תקין 🙏', !nameOk ? nameEl : phoneEl); return; }
-        // MANDATORY consent gate — identical to the page lead form.
-        if (!(termsEl && termsEl.checked) || !(privacyEl && privacyEl.checked)) {
-          fail('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', (termsEl && !termsEl.checked) ? termsEl : privacyEl);
+        // MANDATORY consent gate — identical to the page lead form: one explicit
+        // checkbox covering both linked documents.
+        if (!(legalEl && legalEl.checked)) {
+          fail('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', legalEl);
           return;
         }
         const cfg = window.CHOSECH_SUPABASE;
@@ -1297,34 +1333,37 @@
   if (form && window.matchMedia('(max-width: 720px)').matches) {
     const stickyBar = document.createElement('div');
     stickyBar.className = 'sticky-cta';
-    stickyBar.innerHTML = '<button type="button" class="btn btn--primary">קבלו השוואה חינם ←</button>' +
-      // Second thumb-reach action: the Zoom meeting (the closing channel) is
-      // always one tap away on mobile.
-      '<a class="sticky-cta__zoom" href="book.html" aria-label="תיאום פגישת Zoom חינם עם נציג">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5"/></svg></a>';
+    stickyBar.innerHTML = '<button type="button" class="btn btn--primary">השאירו טלפון ←</button>' +
+      // Second thumb-reach action: a DIRECT WhatsApp close — one tap from
+      // anywhere on the page straight into the chat, no form, no scroll.
+      '<a class="btn sticky-cta__wa" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="סגירה מהירה בוואטסאפ">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>וואטסאפ</a>';
     // Join the floating-actions landmark the page already declares, rather than
     // landing on <body> as orphaned content outside every region.
     const floatHost = document.querySelector('.floating-actions') || document.body;
     floatHost.appendChild(stickyBar);
-    stickyBar.querySelector('.sticky-cta__zoom').addEventListener('click', () => {
-      track('cta_click', { location: 'sticky', label: 'zoom', source: location.pathname });
+    stickyBar.querySelector('.sticky-cta__wa').addEventListener('click', () => {
+      track('cta_click', { location: 'sticky', label: 'whatsapp', source: location.pathname });
     });
     const stickyBtn = stickyBar.querySelector('button');
     stickyBtn.addEventListener('click', () => {
       // Canonical CTA-click event, matching the web app's StickyLeadCta
       // (`cta_click` with location:"sticky", label:"lead").
       track('cta_click', { location: 'sticky', label: 'lead', source: location.pathname });
-      form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-      const first = $('leadName');
+      const target = nearestLeadForm() || form;
+      target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      const first = target.querySelector('input[name="name"]');
       if (first) first.focus({ preventScroll: true });
     });
     let visible = false;
     let stickyTicking = false;
     const updateSticky = () => {
       const past = window.scrollY > window.innerHeight * 0.6;
-      const formRect = form.getBoundingClientRect();
-      const overForm = formRect.top < window.innerHeight && formRect.bottom > 0;
-      const show = past && !overForm;
+      // Stand down while ANY lead form is on screen, not just the bottom one.
+      // The hero card is tall enough on a phone that the 0.6-viewport threshold
+      // fires while its submit button is still visible, and the bar would then
+      // offer to scroll the visitor away from the form they are filling in.
+      const show = past && !aLeadFormIsOnScreen();
       if (show !== visible) { visible = show; stickyBar.classList.toggle('is-visible', show); }
       stickyTicking = false;
     };
@@ -3839,14 +3878,16 @@
           : 'אתם כבר במחיר מצוין — שווה לוודא מול ההשוואה המלאה';
         // Savings meter: honest arithmetic as a feel-able bar (₪1,500/yr = full).
         if (meter && fill) {
-          meter.hidden = yearly <= 0;
+          // Class, not `hidden` — the bar keeps its 17px whether or not there is
+          // a saving to show, so hydration never shifts the page (see #191).
+          meter.classList.toggle('is-on', yearly > 0);
           var pct = Math.max(0.04, Math.min(1, yearly / 1500));
           fill.style.transform = 'scaleX(' + pct + ')';
           meter.classList.toggle('is-great', yearly >= 600);
         }
       } else {
         save.textContent = '';
-        if (meter) meter.hidden = true;
+        if (meter) meter.classList.remove('is-on');
       }
     }
     root.querySelectorAll('.finder__cat').forEach(function (btn) {

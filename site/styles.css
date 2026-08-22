@@ -5450,3 +5450,78 @@ textarea:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)
   .btn--primary, .btn--primary:hover, .btn--primary:active { transform: none; transition: none; }
   .plan-grid--featured .plan, .plan-grid--featured .plan:hover { transform: none; transition: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2026-08 HERO: FIT THE FOLD, USE THE MONITOR
+   Owner feedback from a 1920-wide desktop: the hero elements were oversized,
+   ~340px of ground sat unused down each side, and "או גלשו לפי קטגוריה" fell
+   below the fold. Three moves — widen the page on big screens, shrink the
+   hero's own furniture, and compact the launch strip — so the whole hero,
+   category strip included, lands on the first screen.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Reclaim the side gutters on large monitors ─────────────────────────
+   --maxw is the page-wide measure, so this widens every section together and
+   the hero does not end up a card sticking out past the content below it. The
+   storefront keeps its own wider measure (it carries a 264px filter rail on
+   top of the product grid) and has to move in step, or the shop would end up
+   NARROWER than an editorial page. */
+@media (min-width: 1500px) {
+  :root { --maxw: 1400px; }
+  .shop-head > .container, .shop > .container { max-width: 1520px; }
+  /* The measure grows 13% here but .lead-hero h1 is already pinned at its 66px
+     clamp ceiling from ~1223px up, so the headline BOX widens while the text
+     does not — and category headlines that comfortably wrapped at 1240 land a
+     hair short of their wrap point at 1400. cellular-5g proved it: 713px of
+     text in a 726px box, 1.8% of slack, which the ~1pp-wider metric fallback
+     eats, so the headline set on two lines until the webfont arrived and then
+     snapped to one. 62px restores ~8% slack for the longest headline in the
+     template and keeps every other one on the line count it already had. */
+  .lead-hero h1 { font-size: 62px; }
+}
+
+/* ── 2. Hero furniture, sized down ─────────────────────────────────────────
+   Scoped to the two-column range: below 981px the split is already a single
+   column and the phone hero is tuned separately.
+
+   The headline was the main offender. At its old clamp it resolved to 64px,
+   which needs 636px to set "מפסיקים לשלם יותר מדי." on one line — 36px more
+   than the 600px column it lived in, so it broke to THREE lines and pushed
+   everything under it down ~65px. The new clamp tops out at 56px (549px) and
+   its 3.6vw slope holds >=10% clearance at every width in the range (measured
+   10.7% at 1280 and 1440, 12.2% at 1920), which is also what keeps the line
+   count stable across the webfont swap: the metric fallback and Rubik differ
+   by ~1pp, and 10% is an order of magnitude more than that (the same trap that
+   made cellular.html the worst CLS on the site — a headline two pixels from
+   its own wrap point). */
+@media (min-width: 981px) {
+  .hero--light { padding-block: clamp(24px, 2.2vw, 36px); }
+  /* The light panel re-adds a background + border further up the file but not
+     the padding-inline the open-hero rule zeroed, so headline and finder card
+     both sat 1px off its own border. Give the card real gutters now that the
+     page is wide enough to spend them. */
+  .hero--light .hero__panel { padding-inline: clamp(20px, 2.4vw, 40px); }
+  .hero__split { gap: clamp(30px, 2.8vw, 44px); }
+  .hero__split h1 { font-size: clamp(36px, 3.6vw, 56px); }
+  .hero--light .hero__sub { margin: 14px 0 20px; }
+  .hero--light .qlead { margin-top: 0; }
+  .hero__split ~ .hero__launch-wrap { margin-top: 20px; padding-top: 16px; }
+}
+
+/* ── 3. Launch strip: a row of compact category tiles ──────────────────────
+   The strip inherited the stacked tile (icon above the text) built for the
+   old 2x2 launcher, which cost 167px of height for five items that only ever
+   carry three short lines. Laying each tile out as icon-beside-text spends
+   the width the page just reclaimed instead of the height the fold is short
+   of, and takes the strip from 167px to ~95px. */
+.hero__launch--strip .launch-tile {
+  flex-direction: row; align-items: center; gap: 12px;
+  min-height: 0; padding: 13px 14px;
+}
+.hero__launch--strip .launch-tile__ico {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
+}
+.hero__launch--strip .launch-tile__ico svg { width: 21px; height: 21px; }
+.hero__launch--strip .launch-tile__body { min-width: 0; margin-top: 0; padding-top: 0; }
+.hero__launch--strip .launch-tile__count { margin-top: 1px; }
+.hero__launch--strip .launch-tile__price { margin-top: 1px; }

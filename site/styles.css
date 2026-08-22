@@ -4718,7 +4718,14 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 .finder__meter {
   position: relative; height: 7px; margin-top: 10px; border-radius: 999px;
   background: var(--ink-100); overflow: hidden;
+  /* ALWAYS in layout. Toggling this in and out of flow on hydration would push
+     everything below the hero down by its 17px — the same shift #191 removed by
+     reserving .finder__results and #finderSave. So it hides by visibility, never
+     by display, and the markup carries no `hidden` attribute. It is decorative
+     (aria-hidden), so occupying invisible space costs assistive tech nothing. */
+  visibility: hidden; opacity: 0; transition: opacity .2s cubic-bezier(.23,1,.32,1);
 }
+.finder__meter.is-on { visibility: visible; opacity: 1; }
 .finder__meter i {
   position: absolute; inset: 0; border-radius: 999px;
   background: linear-gradient(90deg, var(--value), var(--value-d));
@@ -4730,7 +4737,7 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
   background: color-mix(in srgb, var(--ink-400) 55%, transparent); border-radius: 1px;
 }
 .finder__meter.is-great i { background: linear-gradient(90deg, var(--accent), var(--accent-d)); }
-@media (prefers-reduced-motion: reduce) { .finder__meter i, .plan__drop { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .finder__meter, .finder__meter i, .plan__drop { transition: none; } }
 
 /* ── Conversion wave — the Zoom closing channel everywhere ────────────────── */
 .zoom-cta {
@@ -4794,15 +4801,17 @@ body:has(.cbanner:not([hidden])) .cmp-tray { bottom: 86px; }
 /* Sticky mobile bar: primary CTA + always-reachable Zoom button. */
 .sticky-cta { display: flex; gap: 8px; align-items: stretch; }
 .sticky-cta .btn { flex: 1 1 auto; width: auto; }
-.sticky-cta__zoom {
-  flex: 0 0 auto; width: 52px; display: grid; place-items: center; border-radius: 14px;
-  background: var(--white); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
-  color: var(--accent-d);
+/* Direct WhatsApp close in the bar — WhatsApp's own brand green with ink text
+   (≈8:1, AA), same in both themes. The floating WhatsApp FAB hides while the
+   bar shows (rule below) so the page never offers the same tap twice. */
+.sticky-cta__wa {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  flex: 0 1 42%; background: #25D366; color: #0B3D2E; font-weight: 800;
 }
-.sticky-cta__zoom svg { width: 22px; height: 22px; }
-.sticky-cta__zoom:active { transform: scale(.95); }
-:root[data-theme="dark"] .sticky-cta__zoom { background: rgba(28,36,46,.9); color: var(--accent); }
-
+.sticky-cta__wa:hover { background: #1FBF5B; color: #0B3D2E; }
+.sticky-cta__wa:active { transform: scale(.97); }
+.sticky-cta__wa svg { width: 20px; height: 20px; flex: none; }
+body:has(.sticky-cta.is-visible) .wa-fab { display: none; }
 /* Booking page proof line + a quiet pulse dot on the nav meeting link. */
 .book-proof { margin-top: 10px; font-weight: 700; color: var(--accent-ink); font-size: 14.5px; }
 .nav__links a[href="book.html"] { position: relative; padding-inline-end: 12px; }
@@ -5326,3 +5335,118 @@ textarea:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line)
   .section { padding-block: 58px; }
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   2026-08 CONVERSION-FIRST REDESIGN
+   The close moves above the fold: a quick-lead card in the hero, the finder
+   beside it, and the category tiles as a launch strip underneath. Everything
+   reuses the existing token set so light/dark parity and AA contrast hold.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Hero split rebalance: copy+card ↔ finder ───────────────────────────────
+   Scoped to the two-column range ONLY. The base .hero__split rule is collapsed
+   to a single column by `@media (max-width: 980px)` far earlier in this file;
+   an unscoped override here would win on every width (same specificity, later
+   in source) and leave phones with two squeezed columns. */
+@media (min-width: 981px) {
+  .hero__split { grid-template-columns: 1.04fr .96fr; }
+}
+.hero--light .hero__panel .hero__copy { max-width: 640px; }
+
+/* ── Quick-close lead card (.qlead) — the hero's conversion anchor ────────── */
+.qlead {
+  margin-top: 24px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glint), var(--elev-2);
+  padding: 20px 20px 16px;
+  position: relative;
+}
+/* Accent thread along the card's top edge — signals "this is the action". */
+.qlead::before {
+  content: ""; position: absolute; top: -1px; inset-inline: 24px; height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-d));
+}
+.qlead__title {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-weight: 800; font-size: 17px; letter-spacing: -.3px;
+  color: var(--ink-900); margin: 0 0 12px;
+}
+.qlead__form { display: grid; gap: 10px; }
+.qlead__fields { display: grid; grid-template-columns: .8fr 1.2fr; gap: 10px; }
+@media (max-width: 480px) { .qlead__fields { grid-template-columns: 1fr; } }
+.qlead__form input[type="text"], .qlead__form input[type="tel"] {
+  min-width: 0; padding: 13px 14px; border: 1px solid var(--line); border-radius: 12px;
+  font-family: 'Assistant', 'Assistant Fallback', 'Segoe UI', Arial, sans-serif; font-size: 16px;
+  background: var(--cream); color: var(--ink);
+}
+.qlead__form input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+/* The shared .consent__row is styled for the dark CTA band — re-ink it for the
+   light card (text, links, checkbox) without forking the markup contract. */
+.qlead .consent__row { color: var(--ink-700); font-size: 13px; }
+.qlead .consent__row a { color: var(--accent-ink); }
+.qlead .consent__row input[type="checkbox"] {
+  flex: 0 0 auto; width: 20px; height: 20px; min-width: 20px; margin: 1px 0 0;
+  border-radius: 5px; accent-color: var(--accent); cursor: pointer;
+}
+.qlead .consent__row input[type="checkbox"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.qlead__submit { width: 100%; }
+.qlead .cta__note { color: var(--accent-ink); min-height: 0; }
+.qlead .cta__note:empty { display: none; }
+.qlead .cta__note--err { color: #B4231F; }
+.qlead .cta__wa {
+  display: inline-block; margin-top: 10px; color: var(--accent-ink); opacity: 1;
+  border-bottom-color: color-mix(in srgb, var(--accent-ink) 45%, transparent);
+  font-size: 14px;
+}
+.qlead__fine { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+/* Post-success inserts (zoom upsell / referral) land inside the light card —
+   re-ink them off the dark-band palette. */
+.qlead .zoom-upsell { background: var(--cream); color: var(--ink-700); border: 1px solid var(--line); }
+.qlead .zoom-upsell b { color: var(--accent-ink); }
+.qlead .zoom-upsell:hover { background: var(--accent-t); }
+:root[data-theme="dark"] .qlead .cta__note--err { color: #FCA5A5; }
+
+/* ── Finder in the hero's visual column ───────────────────────────────────── */
+.hero__visual .finder { margin-top: 0; width: 100%; }
+.finder__title {
+  font-family: 'Rubik', 'Rubik Fallback', 'Segoe UI', Arial, sans-serif;
+  font-weight: 800; font-size: 17px; letter-spacing: -.3px;
+  color: var(--ink-900); margin: 0;
+}
+
+/* ── Launch strip — the category tiles as one row under the split ─────────── */
+.hero__launch-wrap { margin-top: 26px; padding-top: 4px; }
+.hero__launch-wrap .hero__launch-prompt { margin-top: 0; font-size: 16px; color: var(--ink-700); }
+:root[data-theme="dark"] .hero__launch-wrap .hero__launch-prompt { color: #C7D6CD; }
+.hero__split ~ .hero__launch-wrap { border-top: 1px dashed var(--line); margin-top: 28px; padding-top: 20px; }
+.hero__launch--strip { grid-template-columns: repeat(5, 1fr); gap: 14px; }
+.hero__launch--strip .launch-tile { min-height: 126px; padding: 14px; }
+.hero__launch--strip .launch-tile__name { font-size: 17px; }
+.hero__launch--strip .launch-tile__count { font-size: 12.5px; }
+.hero__launch--strip .launch-tile__price { margin-top: 6px; }
+@media (max-width: 1000px) { .hero__launch--strip { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px) { .hero__launch--strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Visual energy (2026-08): motion + colour moments, all reduced-motion-safe ── */
+/* Highlighter swash under the hero's accent line — action-green into value-amber. */
+.hero--light .hl { position: relative; }
+.hero--light .hl::after {
+  content: ""; display: block; position: absolute; inset-inline: 2px; bottom: -.06em;
+  height: .12em; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--value, #D39A24));
+  opacity: .85;
+}
+/* Primary CTA: a real press-me affordance — lift + green bloom on hover. The
+   label/fill colours are untouched, so AA contrast is exactly the audited pair. */
+.btn--primary { transition: transform .16s var(--ease-spring), box-shadow .2s var(--ease), background .18s, color .18s; }
+.btn--primary:hover { transform: translateY(-1px); box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 32%, transparent); }
+.btn--primary:active { transform: translateY(0) scale(.98); }
+/* Featured deal cards: lift on hover so the grid feels alive. */
+.plan-grid--featured .plan { transition: transform .18s var(--ease), box-shadow .18s var(--ease); }
+.plan-grid--featured .plan:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(15,27,34,.14); }
+@media (prefers-reduced-motion: reduce) {
+  .btn--primary, .btn--primary:hover, .btn--primary:active { transform: none; transition: none; }
+  .plan-grid--featured .plan, .plan-grid--featured .plan:hover { transform: none; transition: none; }
+}

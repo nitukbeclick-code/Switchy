@@ -1389,21 +1389,13 @@ const leadFormHtml = (submitLabel, leadContext) => `<form class="cta__form" id="
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
           <div class="consent">
-            <label class="consent__row" for="consentTerms">
-              <input type="checkbox" id="consentTerms" name="consentTerms" required />
-              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+            <label class="consent__row" for="consentLegal">
+              <input type="checkbox" id="consentLegal" name="consentLegal" required />
+              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a> ול<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
             </label>
-            <label class="consent__row" for="consentPrivacy">
-              <input type="checkbox" id="consentPrivacy" name="consentPrivacy" required />
-              <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
-            </label>
-            <label class="consent__row" for="consentMarketing">
-              <input type="checkbox" id="consentMarketing" name="consentMarketing" />
-              <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
-            </label>
-            <label class="consent__row" for="consentPriceAlert">
-              <input type="checkbox" id="consentPriceAlert" name="consentPriceAlert" />
-              <span>התריעו לי כשיורד מחיר על מסלול שמתאים לי</span>
+            <label class="consent__row" for="consentUpdates">
+              <input type="checkbox" id="consentUpdates" name="consentUpdates" />
+              <span>עדכנו אותי על מבצעים וירידות מחיר (אופציונלי, ניתן לבטל בכל עת)</span>
             </label>
           </div>
           <button class="btn btn--primary btn--lg" type="submit">${esc(submitLabel)}</button>
